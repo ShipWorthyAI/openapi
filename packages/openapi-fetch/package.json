@@ -1,0 +1,60 @@
+{
+  "name": "@shipworthy/openapi-fetch",
+  "description": "Fast, type-safe fetch client for your OpenAPI schema. Only 6 kb (min). Works with React, Vue, Svelte, or vanilla JS.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    }
+  },
+  "keywords": [
+    "openapi",
+    "swagger",
+    "rest",
+    "api",
+    "oapi_3",
+    "oapi_3_1",
+    "typescript",
+    "fetch",
+    "react",
+    "vue",
+    "svelte"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "generate-types": "openapi-typescript -c test/redocly.yaml",
+    "prepack": "bun run build",
+    "pretest": "bun run generate-types",
+    "test": "bun run test:js && bun run test:exports",
+    "test:js": "vitest run",
+    "test:exports": "bun run build && attw --pack .",
+    "test-e2e": "playwright test",
+    "bench:js": "vitest bench",
+    "e2e-vite-build": "vite build test/e2e/app",
+    "e2e-vite-start": "vite preview test/e2e/app",
+    "version": "bun run build"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-typescript-helpers": "workspace:^"
+  },
+  "devDependencies": {
+    "axios": "1.16.0",
+    "execa": "catalog:",
+    "express": "5.2.1",
+    "feature-fetch": "0.0.55",
+    "node-forge": "1.4.0",
+    "@shipworthy/openapi-typescript": "workspace:^",
+    "openapi-typescript-codegen": "0.30.0",
+    "openapi-typescript-fetch": "2.2.1",
+    "superagent": "10.3.0",
+    "typescript": "catalog:",
+    "undici": "7.25.0",
+    "vite": "catalog:"
+  }
+}

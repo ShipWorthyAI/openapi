@@ -1,0 +1,720 @@
+import { describe, it } from "vitest";
+import { expect } from "vitest";
+import type { FileInfo } from "../../../lib/index.js";
+import $RefParser from "../../../lib/index.js";
+import helper from "../../utils/helper.js";
+import path from "../../utils/path.js";
+import parsedSchema from "./parsed.js";
+import dereferencedSchema from "./dereferenced.js";
+import { ResolverError, UnmatchedResolverError, JSONParserErrorGroup } from "../../../lib/util/errors.js";
+import type { ParserOptions } from "../../../lib/options";
+
+const selfSignedKey = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgtssiJGf4HoTmOR7a
+gQ0GVH3TzAHKnt246/BGc/CWMAuhRANCAARSXlthTDcst50Xy+gSjJKTqI8ut+gT
+U8wFnIbhZRGcoyYuJw0j790OVBo0RsPIkGn67/SbXbR5/KPuD1LSWYPO
+-----END PRIVATE KEY-----`;
+const selfSignedCert = `-----BEGIN CERTIFICATE-----
+MIIBZjCCAQ2gAwIBAgIUR6AsdFtpqVd0/Fo0MlIVV5R9cgYwCgYIKoZIzj0EAwIw
+FDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI2MDMwODE4MDk0M1oXDTI3MDMwODE4
+MDk0M1owFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0D
+AQcDQgAEUl5bYUw3LLedF8voEoySk6iPLrfoE1PMBZyG4WURnKMmLicNI+/dDlQa
+NEbDyJBp+u/0m120efyj7g9S0lmDzqM9MDswGgYDVR0RBBMwEYIJbG9jYWxob3N0
+hwR/AAABMB0GA1UdDgQWBBTXsktzSvAT+42E/wiWneCMNc6UfzAKBggqhkjOPQQD
+AgNHADBEAiAjVAMO0sUWXFmrXDDYcm5S9T+hI1fKLaIWhbQgShEj7wIgA157RoMh
+mJf0C5aIMmJS5ZMmqUv6QrMeTkhHn+8OQw8=
+-----END CERTIFICATE-----`;
+
+async function withSelfSignedHttpsServer(run: (schemaUrl: string) => Promise<void>) {
+  const { createServer } = await import(["node", "https"].join(":"));
+  const server = createServer({ key: selfSignedKey, cert: selfSignedCert }, (_request, response) => {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ type: "object", properties: { secure: { type: "boolean" } } }));
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("Expected the HTTPS test server to listen on a TCP port");
+  }
+
+  try {
+    await run(`https://127.0.0.1:${address.port}/schema.json`);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+}
+
+function normalizeWindowsDriveUrl(path: string) {
+  return path.replace(/\\/g, "/").replace(/^([A-Z]):/, (_, drive: string) => `${drive.toLowerCase()}:`);
+}
+
+describe("options.resolve", () => {
+  it('should not resolve external links if "resolve.external" is disabled', async () => {
+    const schema = await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+      resolve: { external: false },
+    });
+    expect(schema).to.deep.equal(parsedSchema);
+  });
+
+  it("should throw an error for unrecognized protocols", async () => {
+    try {
+      await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"));
+      helper.shouldNotGetCalled();
+    } catch (err) {
+      expect(err).to.be.an.instanceOf(SyntaxError);
+      expect((err as Error).message).to.equal('Unable to resolve $ref pointer "foo://bar.baz"');
+    }
+  });
+
+  it("should use a custom resolver with static values", async () => {
+    const schema = await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+      resolve: {
+        // A custom resolver for "foo://" URLs
+        foo: {
+          canRead: /^foo:\/\//i,
+          read: { bar: { baz: "hello world" } },
+        },
+        bar: {
+          canRead: /^bar:\/\//i,
+          read: { Foo: { Baz: "hello world" } },
+        },
+      },
+    } as ParserOptions);
+
+    expect(schema).to.deep.equal(dereferencedSchema);
+  });
+
+  it("should use a custom resolver that returns a value", async () => {
+    const schema = await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+      resolve: {
+        // A custom resolver for "foo://" URLs
+        foo: {
+          canRead: /^foo:\/\//i,
+          read(_file: any) {
+            return { bar: { baz: "hello world" } };
+          },
+        },
+        bar: {
+          canRead: /^bar:\/\//i,
+          read(_file: any) {
+            return { Foo: { Baz: "hello world" } };
+          },
+        },
+      },
+    });
+    expect(schema).to.deep.equal(dereferencedSchema);
+  });
+
+  it("should allow a custom HTTP resolver to control TLS behavior", async () => {
+    if (typeof window !== "undefined") {
+      return;
+    }
+
+    await withSelfSignedHttpsServer(async (schemaUrl) => {
+      const insecureHttpResolver = {
+        order: 1,
+        canRead: /^https?:\/\//i,
+        async read(file: FileInfo) {
+          const requestUrl = new URL(file.url);
+          const moduleName = requestUrl.protocol === "https:" ? "node:https" : "node:http";
+          const { request } = await import(moduleName);
+
+          return await new Promise<Buffer>((resolve, reject) => {
+            const req = request(
+              requestUrl,
+              {
+                method: "GET",
+                ...(requestUrl.protocol === "https:" ? { rejectUnauthorized: false } : {}),
+              },
+              (res: any) => {
+                const chunks: Buffer[] = [];
+
+                res.on("data", (chunk: string | Buffer) => {
+                  chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                });
+                res.on("end", () => resolve(Buffer.concat(chunks)));
+              },
+            );
+
+            req.on("error", reject);
+            req.end();
+          });
+        },
+      };
+
+      const schema = await $RefParser.dereference(
+        {
+          $ref: schemaUrl,
+        },
+        {
+          resolve: {
+            http: false,
+            insecureHttp: insecureHttpResolver,
+          },
+        } as ParserOptions,
+      );
+
+      expect(schema).to.deep.equal({
+        type: "object",
+        properties: {
+          secure: {
+            type: "boolean",
+          },
+        },
+      });
+    });
+  });
+
+  it("should return _file url as it's written", async () => {
+    const schema = await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+      resolve: {
+        // A custom resolver for "foo://" URLs
+        foo: {
+          canRead: /^foo:\/\//i,
+          read(_file: any) {
+            return { bar: { baz: "hello world" } };
+          },
+        },
+        // A custom resolver with uppercase symbols
+        bar: {
+          canRead: /^bar:\/\//i,
+          read(_file: any) {
+            expect(_file.url).to.be.equal("bar://Foo.Baz");
+
+            return { Foo: { Baz: "hello world" } };
+          },
+        },
+      },
+    });
+
+    expect(schema).to.deep.equal(dereferencedSchema);
+  });
+
+  it("should expose the original relative $ref to custom resolvers", async () => {
+    const rootPath = path.abs("test/specs/resolvers/resolvers.yaml");
+    const rootUrl = path.unixify(path.abs("test/specs/resolvers/resolvers.yaml"));
+    const petUrl = path.unixify(path.abs("test/specs/resolvers/definitions/pet.yaml"));
+    let canReadInfo: Pick<FileInfo, "url" | "reference" | "baseUrl" | "hash"> | undefined;
+    let readInfo: Pick<FileInfo, "url" | "reference" | "baseUrl" | "hash"> | undefined;
+
+    const schema = await $RefParser.dereference(
+      rootPath,
+      {
+        type: "object",
+        properties: {
+          pet: {
+            $ref: "definitions/pet.yaml",
+          },
+        },
+      },
+      {
+        resolve: {
+          relativeFile: {
+            order: 1,
+            canRead(file: FileInfo) {
+              canReadInfo = {
+                url: file.url,
+                reference: file.reference,
+                baseUrl: file.baseUrl,
+                hash: file.hash,
+              };
+              return file.reference === "definitions/pet.yaml";
+            },
+            async read(file: FileInfo) {
+              readInfo = {
+                url: file.url,
+                reference: file.reference,
+                baseUrl: file.baseUrl,
+                hash: file.hash,
+              };
+
+              return {
+                title: "pet",
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string",
+                  },
+                  age: {
+                    type: "number",
+                  },
+                  species: {
+                    type: "string",
+                    enum: ["cat", "dog", "bird", "fish"],
+                  },
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+
+    expect(canReadInfo).to.deep.equal({
+      url: petUrl,
+      reference: "definitions/pet.yaml",
+      baseUrl: `${rootUrl}#/properties/pet`,
+      hash: "",
+    });
+    expect(readInfo).to.deep.equal({
+      url: petUrl,
+      reference: "definitions/pet.yaml",
+      baseUrl: `${rootUrl}#/properties/pet`,
+      hash: "",
+    });
+    expect(schema).to.deep.equal({
+      type: "object",
+      properties: {
+        pet: {
+          title: "pet",
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+            },
+            age: {
+              type: "number",
+            },
+            species: {
+              type: "string",
+              enum: ["cat", "dog", "bird", "fish"],
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("should resolve Windows drive-letter paths through custom file resolvers", async () => {
+    // Adapted from stoplightio/json-ref-resolver resolver.spec.ts: "windows file paths"
+    if (typeof window !== "undefined") {
+      return;
+    }
+
+    const source = {
+      schema: {
+        $ref: "../b.json#/inner",
+      },
+    };
+
+    const remotes: Record<string, unknown> = {
+      "c:/b.json": {
+        inner: {
+          bName: "b",
+          nested: {
+            $ref: "./models/c.json",
+          },
+        },
+      },
+      "c:/models/c.json": {
+        cName: "c",
+        network: {
+          $ref: "D:\\network.json#/inner",
+        },
+      },
+      "d:/network.json": {
+        inner: {
+          dName: "d",
+        },
+      },
+    };
+
+    const seenUrls: string[] = [];
+    const parser = new $RefParser();
+    const schema = await parser.dereference("c:/My Documents/spec.json", structuredClone(source), {
+      resolve: {
+        file: {
+          order: 1,
+          canRead: true,
+          read(file: FileInfo) {
+            const normalizedUrl = normalizeWindowsDriveUrl(file.url);
+            seenUrls.push(normalizedUrl);
+
+            const remote = remotes[normalizedUrl];
+            if (remote === undefined) {
+              throw new Error(`Unexpected file URL: ${file.url}`);
+            }
+
+            return structuredClone(remote);
+          },
+        },
+      },
+    } as ParserOptions);
+
+    expect(seenUrls).toEqual(["c:/b.json", "c:/models/c.json", "d:/network.json"]);
+    expect(schema).toEqual({
+      schema: {
+        bName: "b",
+        nested: {
+          cName: "c",
+          network: {
+            dName: "d",
+          },
+        },
+      },
+    });
+  });
+
+  it("should use a custom resolver that calls a callback", async () => {
+    const schema = await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+      resolve: {
+        // A custom resolver for "foo://" URLs
+        foo: {
+          canRead: /^foo:\/\//i,
+          read(_file: any, callback: any) {
+            callback(null, { bar: { baz: "hello world" } });
+          },
+        },
+        bar: {
+          canRead: /^bar:\/\//i,
+          read(_file: any, callback: any) {
+            callback(null, { Foo: { Baz: "hello world" } });
+          },
+        },
+      },
+    });
+    expect(schema).to.deep.equal(dereferencedSchema);
+  });
+
+  if (typeof Promise === "function") {
+    it("should use a custom resolver that returns a promise", async () => {
+      const schema = await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+        resolve: {
+          // A custom resolver for "foo://" URLs
+          foo: {
+            canRead: /^foo:\/\//i,
+            read(_file: any) {
+              return Promise.resolve({ bar: { baz: "hello world" } });
+            },
+          },
+          bar: {
+            canRead: /^bar:\/\//i,
+            read(_file: any) {
+              return Promise.resolve({ Foo: { Baz: "hello world" } });
+            },
+          },
+        },
+      });
+      expect(schema).to.deep.equal(dereferencedSchema);
+    });
+  }
+
+  it("should continue resolving if a custom resolver fails", async () => {
+    const schema = await $RefParser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+      resolve: {
+        // A custom resolver that always fails
+        badResolver: {
+          order: 1,
+          canRead: true,
+          read(_file: any) {
+            throw new Error("BOMB!!!");
+          },
+        },
+        // A custom resolver for "foo://" URLs
+        foo: {
+          canRead: /^foo:\/\//i,
+          read: { bar: { baz: "hello world" } },
+        },
+        bar: {
+          canRead: /^bar:\/\//i,
+          read: { Foo: { Baz: "hello world" } },
+        },
+      },
+    });
+    expect(schema).to.deep.equal(dereferencedSchema);
+  });
+
+  it("should normalize errors thrown by resolvers", async () => {
+    try {
+      await $RefParser.dereference({ $ref: path.abs("test/specs/resolvers/resolvers.yaml") }, {
+        resolve: {
+          // A custom resolver that always fails
+          file: {
+            order: 1,
+            canRead: true,
+            parse() {
+              throw new Error("Woops");
+            },
+          },
+        },
+      } as ParserOptions);
+      helper.shouldNotGetCalled();
+    } catch (err) {
+      expect(err).to.be.instanceof(ResolverError);
+      expect((err as ResolverError).message).to.contain("Error opening file");
+    }
+  });
+
+  it("should throw an error if no resolver returned a result", async () => {
+    try {
+      await $RefParser.dereference(path.rel("test/specs/resolvers/resolvers.yaml"), {
+        resolve: {
+          http: false,
+          file: {
+            order: 1,
+            canRead: true,
+            read() {
+              return;
+            },
+          },
+        },
+      });
+      helper.shouldNotGetCalled();
+    } catch (err) {
+      // would time out otherwise
+      expect(err).to.be.an.instanceOf(ResolverError);
+    }
+  });
+
+  it.each([Object.assign(new Error("Custom resolver failed"), { code: "ECONNRESET" }), "Custom resolver failed"])(
+    "should preserve custom resolver failure details (%s)",
+    async (cause) => {
+      await expect(
+        $RefParser.parse("memory://schema.json", {
+          resolve: {
+            file: false,
+            http: false,
+            memory: {
+              canRead: true,
+              read() {
+                throw cause;
+              },
+            },
+          },
+        }),
+      ).rejects.toMatchObject({
+        name: "ResolverError",
+        code: "ERESOLVER",
+        message: "Custom resolver failed",
+        source: "memory://schema.json",
+        cause,
+        ...(cause instanceof Error ? { ioErrorCode: "ECONNRESET" } : {}),
+      });
+    },
+  );
+
+  it("should throw a grouped error if no resolver can be matched and continueOnError is true", async () => {
+    const parser = new $RefParser();
+    try {
+      await parser.dereference(path.abs("test/specs/resolvers/resolvers.yaml"), {
+        resolve: {
+          file: false,
+          http: false,
+        },
+        continueOnError: true,
+      });
+      helper.shouldNotGetCalled();
+    } catch (err) {
+      expect(err).to.be.instanceof(JSONParserErrorGroup);
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      expect(err.errors.length).to.equal(1);
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      expect(err.errors).to.containSubset([
+        {
+          name: UnmatchedResolverError.name,
+          message: (message: any) => message.startsWith("Could not find resolver for"),
+          path: [],
+          source: (message: any) => message.endsWith("specs/resolvers/resolvers.yaml"),
+        },
+      ]);
+    }
+  });
+
+  it("should preserver capitalization", async () => {
+    const parser = new $RefParser();
+    let parsed: string | undefined;
+    await parser.dereference(
+      {
+        $ref: "custom://Path/Is/Case/Sensitive",
+      },
+      {
+        resolve: {
+          custom: {
+            order: 1,
+            canRead: /^custom:\/\//i,
+            read(file: FileInfo, callback?: (error: Error | null, data: string | null) => any) {
+              console.log(file.url);
+              parsed = file.url;
+              callback?.(null, "custom://Path/Is/Case/Sensitive");
+            },
+          },
+        },
+      } as ParserOptions,
+    );
+    expect(parsed).to.equal("custom://Path/Is/Case/Sensitive");
+  });
+
+  it("should resolve external refs with unescaped URI characters", async () => {
+    // Adapted from whitlockjc/json-refs test-json-refs.js:
+    // "should handle references with unescaped URI characters"
+    let receivedUrl: string | undefined;
+    const schema = await $RefParser.dereference(
+      {
+        $ref: "https://example.com/schemas/{id}/person schema.json",
+      },
+      {
+        resolve: {
+          http: {
+            order: 1,
+            canRead: /^https?:\/\//i,
+            safeUrlResolver: false,
+            read(file: FileInfo) {
+              receivedUrl = file.url;
+              return { type: "string" };
+            },
+          },
+        },
+      } as ParserOptions,
+    );
+
+    expect(receivedUrl).toBe("https://example.com/schemas/%7Bid%7D/person%20schema.json");
+    expect(schema).toEqual({ type: "string" });
+  });
+
+  it("should resolve external refs with escaped URI characters", async () => {
+    // Adapted from whitlockjc/json-refs test-json-refs.js:
+    // "should handle references with escaped URI characters"
+    const ref = "https://example.com/schemas/%7Bid%7D/person%20schema.json";
+    let receivedUrl: string | undefined;
+
+    const schema = await $RefParser.dereference(
+      {
+        $ref: ref,
+      },
+      {
+        resolve: {
+          http: {
+            order: 1,
+            canRead: /^https?:\/\//i,
+            safeUrlResolver: false,
+            read(file: FileInfo) {
+              receivedUrl = file.url;
+              return { type: "string" };
+            },
+          },
+        },
+      } as ParserOptions,
+    );
+
+    expect(receivedUrl).toBe(ref);
+    expect(schema).toEqual({ type: "string" });
+  });
+
+  it("should block unsafe URLs when safeUrlResolver is true (default)", async () => {
+    const unsafeUrls = [
+      "http://localhost/schema.json",
+      "http://127.0.0.1/schema.json",
+      "http://192.168.1.1/schema.json",
+      "http://10.0.0.1/schema.json",
+      "http://172.16.0.1/schema.json",
+    ];
+
+    // if we're in the browser, skip the test
+    if (typeof window !== "undefined") {
+      return;
+    }
+    for (const unsafeUrl of unsafeUrls) {
+      try {
+        await $RefParser.dereference({ $ref: unsafeUrl });
+        helper.shouldNotGetCalled();
+      } catch (err) {
+        expect(err).to.be.an.instanceOf(Error);
+        expect((err as Error).message).to.contain("Unable to resolve $ref pointer");
+      }
+    }
+  });
+
+  it("should allow unsafe URLs when safeUrlResolver is false", async () => {
+    const mockHttpResolver = {
+      order: 200,
+      canRead: /^https?:\/\//i,
+      safeUrlResolver: false,
+      read() {
+        return { type: "object", properties: { test: { type: "string" } } };
+      },
+    };
+
+    const schema = await $RefParser.dereference({ $ref: "http://localhost/schema.json" }, {
+      resolve: {
+        http: mockHttpResolver,
+      },
+    } as ParserOptions);
+
+    expect(schema).to.deep.equal({
+      type: "object",
+      properties: { test: { type: "string" } },
+    });
+  });
+
+  it("should properly resolve a remote schema", async () => {
+    const mockHttpResolver = {
+      order: 200,
+      canRead: true,
+      safeUrlResolver: false,
+      read() {
+        return {
+          type: "object",
+          properties: {
+            firstName: {
+              type: "string",
+            },
+          },
+        };
+      },
+    };
+
+    const schema = await $RefParser.dereference(
+      {
+        type: "object",
+        required: ["firstName"],
+        properties: {
+          firstName: {
+            $ref: "#/$defs/externalModel/properties/firstName",
+          },
+        },
+        $defs: {
+          externalModel: {
+            $ref: "http://localhost:5000/myModel",
+          },
+        },
+      },
+      {
+        resolve: {
+          http: mockHttpResolver,
+        },
+      } as ParserOptions,
+    );
+
+    expect(schema).to.deep.equal({
+      type: "object",
+      required: ["firstName"],
+      properties: {
+        firstName: {
+          type: "string",
+        },
+      },
+      $defs: {
+        externalModel: {
+          type: "object",
+          properties: {
+            firstName: {
+              type: "string",
+            },
+          },
+        },
+      },
+    });
+  });
+});

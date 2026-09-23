@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "react"],
+  "ignorePatterns": ["**/dist/**", "**/.turbo/**"],
+  "categories": {
+    "correctness": "error"
+  }
+}

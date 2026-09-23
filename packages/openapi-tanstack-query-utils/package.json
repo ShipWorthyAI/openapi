@@ -1,0 +1,30 @@
+{
+  "name": "@shipworthy/openapi-tanstack-query-utils",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "react-native": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-typescript-api": "workspace:*",
+    "effect": "catalog:",
+    "@shipworthy/openapi-fetch": "workspace:*",
+    "@shipworthy/openapi-typescript-helpers": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@types/node": "catalog:",
+    "react": "catalog:"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "catalog:",
+    "react": "^18.0.0 || ^19.0.0"
+  }
+}
