@@ -1,5 +1,6 @@
 import path from "node:path";
 import { performance } from "node:perf_hooks";
+import { fileURLToPath } from "node:url";
 import { execa } from "execa";
 import { multiFile, singleFile } from "./schemas.js";
 
@@ -24,7 +25,12 @@ async function generateSchemas() {
 
       // addiitonal flag tests (only for GitHub API, arbitrarily-chosen so we don’t have too much noise)
       if (name === "github-api") {
-        args.push([`./examples/${name}${ext}`, "--immutable", "-o", `./examples/${name}-immutable.ts`]);
+        args.push([
+          `./examples/${name}${ext}`,
+          "--immutable",
+          "-o",
+          `./examples/${name}-immutable.ts`,
+        ]);
         args.push([
           `./examples/${name}${ext}`,
           "--immutable",
@@ -38,10 +44,16 @@ async function generateSchemas() {
           "-o",
           `./examples/${name}-required.ts`,
         ]);
-        args.push([`./examples/${name}${ext}`, "--root-types", "-o", `./examples/${name}-root-types.ts`]);
+        args.push([
+          `./examples/${name}${ext}`,
+          "--root-types",
+          "-o",
+          `./examples/${name}-root-types.ts`,
+        ]);
       }
 
-      await Promise.all(args.map((a) => execa("./bin/cli.js", a, { cwd })));
+      const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
+      await Promise.all(args.map((a) => execa("bun", [cli, "typescript", ...a], { cwd })));
 
       schemasDoneCount++;
       const timeMs = Math.round(performance.now() - start);

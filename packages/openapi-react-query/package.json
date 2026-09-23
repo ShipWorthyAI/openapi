@@ -4,17 +4,14 @@
   "private": true,
   "type": "module",
   "react-native": "./src/index.ts",
-  "bin": {
-    "openapi-react-query": "./src/cli.ts"
-  },
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@shipworthy/openapi-typescript-api": "workspace:*",
-    "effect": "catalog:",
     "@shipworthy/openapi-fetch": "workspace:*",
+    "@shipworthy/openapi-typescript-api": "workspace:*",
     "@shipworthy/openapi-typescript-helpers": "workspace:*",
+    "effect": "catalog:",
     "typescript": "catalog:"
   },
   "devDependencies": {

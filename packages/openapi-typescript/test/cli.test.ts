@@ -7,8 +7,9 @@ import type { TestCase } from "./test-helpers.js";
 
 const root = new URL("../", import.meta.url);
 const cwd = os.platform() === "win32" ? fileURLToPath(root) : root; // execa bug: fileURLToPath required on Windows
-const cli = fileURLToPath(new URL("../bin/cli.js", import.meta.url));
-const run = (args: string[] = [], options: Record<string, unknown> = {}) => execa("bun", [cli, ...args], options);
+const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
+const run = (args: string[] = [], options: Record<string, unknown> = {}) =>
+  execa("bun", [cli, "typescript", ...args], options);
 const TIMEOUT = 90_000;
 
 describe("CLI", () => {
@@ -80,7 +81,12 @@ describe("CLI", () => {
     [
       "snapshot > enum root types filtering",
       {
-        given: ["./examples/enum-root-types.yaml", "--root-types", "--root-types-no-schema-prefix", "--enum"],
+        given: [
+          "./examples/enum-root-types.yaml",
+          "--root-types",
+          "--root-types-no-schema-prefix",
+          "--enum",
+        ],
         want: new URL("./examples/enum-root-types.ts", root),
         ci: { timeout: TIMEOUT },
       },
@@ -107,7 +113,9 @@ describe("CLI", () => {
     async () => {
       const input = fs.readFileSync(new URL("./examples/stripe-api.yaml", root));
       const { stdout } = await run([], { input, cwd, stripFinalNewline: false });
-      await expect(stdout).toMatchFileSnapshot(fileURLToPath(new URL("./examples/stripe-api.ts", root)));
+      await expect(stdout).toMatchFileSnapshot(
+        fileURLToPath(new URL("./examples/stripe-api.ts", root)),
+      );
     },
     TIMEOUT,
   );
@@ -115,22 +123,27 @@ describe("CLI", () => {
   describe("flags", () => {
     test("--help", async () => {
       const { stdout } = await run(["--help"], { cwd });
-      expect(stdout).toEqual(expect.stringMatching(/^Usage\n\s+\$ openapi-typescript \[input\] \[options\]/));
+      expect(stdout).toContain("Convert an OpenAPI schema to TypeScript.");
     });
 
     test("--version", async () => {
       const { stdout } = await run(["--version"], { cwd });
-      expect(stdout).toEqual(expect.stringMatching(/^v[\d.]+(-.*)?$/));
+      expect(stdout.trim()).toMatch(/^openapi v[\d.]+(-.*)?$/);
     });
 
     test(
       "--properties-required-by-default",
       async () => {
-        const { stdout } = await run(["--properties-required-by-default=true", "./examples/github-api.yaml"], {
-          cwd,
-          stripFinalNewline: false,
-        });
-        await expect(stdout).toMatchFileSnapshot(fileURLToPath(new URL("./examples/github-api-required.ts", root)));
+        const { stdout } = await run(
+          ["--properties-required-by-default=true", "./examples/github-api.yaml"],
+          {
+            cwd,
+            stripFinalNewline: false,
+          },
+        );
+        await expect(stdout).toMatchFileSnapshot(
+          fileURLToPath(new URL("./examples/github-api-required.ts", root)),
+        );
       },
       TIMEOUT,
     );
@@ -140,13 +153,13 @@ describe("CLI", () => {
     test.skipIf(os.platform() === "win32")("automatic config", async () => {
       const cwd = new URL("./fixtures/redocly/", import.meta.url);
 
-      await execa("bun", [cli], {
+      await execa("bun", [cli, "typescript"], {
         cwd: fileURLToPath(cwd),
       });
       for (const schema of ["a", "b", "c"]) {
-        await expect(fs.readFileSync(new URL(`./output/${schema}.ts`, cwd), "utf8")).toMatchFileSnapshot(
-          fileURLToPath(new URL("../../../examples/simple-example.ts", cwd)),
-        );
+        await expect(
+          fs.readFileSync(new URL(`./output/${schema}.ts`, cwd), "utf8"),
+        ).toMatchFileSnapshot(fileURLToPath(new URL("../../../examples/simple-example.ts", cwd)));
       }
     });
 
@@ -156,7 +169,10 @@ describe("CLI", () => {
       });
       for (const schema of ["a", "b", "c"]) {
         await expect(
-          fs.readFileSync(new URL(`./test/fixtures/redocly-flag/output/${schema}.ts`, root), "utf8"),
+          fs.readFileSync(
+            new URL(`./test/fixtures/redocly-flag/output/${schema}.ts`, root),
+            "utf8",
+          ),
         ).toMatchFileSnapshot(fileURLToPath(new URL("./examples/simple-example.ts", root)));
       }
     });
@@ -171,7 +187,10 @@ describe("CLI", () => {
 
       for (const schema of ["a", "b", "c"]) {
         await expect(
-          fs.readFileSync(new URL(`./test/fixtures/redocly-flag/output-alt/${schema}.ts`, root), "utf8"),
+          fs.readFileSync(
+            new URL(`./test/fixtures/redocly-flag/output-alt/${schema}.ts`, root),
+            "utf8",
+          ),
         ).toMatchFileSnapshot(fileURLToPath(new URL("./examples/simple-example.ts", root)));
       }
     });
@@ -180,7 +199,7 @@ describe("CLI", () => {
       const cwd = new URL("./fixtures/redocly-lint-error", import.meta.url);
 
       try {
-        await execa("bun", [cli], {
+        await execa("bun", [cli, "typescript"], {
           cwd: fileURLToPath(cwd),
         });
         throw new Error("Linting should have thrown an error");

@@ -4,7 +4,7 @@ A thin `openapi-fetch` adapter for TanStack Query. `openapi-typescript` supplies
 the types; generation adds only an operation-ID-to-method/path table.
 
 ```sh
-npx openapi-react-query http://hotels.shipworthy.localhost/docs/openapi.json -o src/generated --name hotels
+openapi tanstack-query-utils http://hotels.shipworthy.localhost/docs/openapi.json -o src/generated --name hotels
 ```
 
 The CLI accepts local JSON/YAML or remote schemas, including references. It writes

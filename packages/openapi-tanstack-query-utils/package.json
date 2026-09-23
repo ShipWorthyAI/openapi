@@ -5,16 +5,17 @@
   "type": "module",
   "react-native": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./generator": "./src/generator.ts"
   },
   "scripts": {
     "test": "bun test tests/*.test.ts"
   },
   "dependencies": {
-    "@shipworthy/openapi-typescript-api": "workspace:*",
-    "effect": "catalog:",
     "@shipworthy/openapi-fetch": "workspace:*",
+    "@shipworthy/openapi-typescript-api": "workspace:*",
     "@shipworthy/openapi-typescript-helpers": "workspace:*",
+    "effect": "catalog:",
     "typescript": "catalog:"
   },
   "devDependencies": {

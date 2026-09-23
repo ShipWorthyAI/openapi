@@ -7,7 +7,7 @@ Typesafe API client for the Shipworthy API.
 ### Generate types and a client from an OpenAPI spec
 
 ```bash
-npx openapi-react-query http://api.shipworthy.localhost/docs/demo.openapi.json -o ./src/generated --name demo
+openapi react-query http://api.shipworthy.localhost/docs/demo.openapi.json -o ./src/generated --name demo
 ```
 
 The CLI also accepts a local JSON or YAML file. It writes

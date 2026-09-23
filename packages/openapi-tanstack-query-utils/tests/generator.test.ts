@@ -10,9 +10,9 @@ import { test } from "node:test";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
-const cli = resolve(import.meta.dirname, "../src/cli.ts");
+const cli = resolve(import.meta.dirname, "../../openapi-cli/src/bin.ts");
 const generate = (input: string, output: string) =>
-  exec("bun", ["run", cli, input, "-o", output, "--name", "fixture"]);
+  exec("bun", ["run", cli, "tanstack-query-utils", input, "-o", output, "--name", "fixture"]);
 
 test("CLI generates a typed route table from local and remote referenced documents", async () => {
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
