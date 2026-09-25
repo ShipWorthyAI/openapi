@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 import type { Readable } from "node:stream";
-import { createConfig } from "@redocly/openapi-core";
+import { createConfig } from "@shipworthy/openapi-core";
 import type ts from "#compiler";
 import { validateAndBundle } from "./lib/redoc.js";
 import { debug, resolveRef, scanDiscriminators } from "./lib/utils.js";
@@ -62,7 +62,8 @@ export default async function openapiTS(
 
   const schema = await validateAndBundle(source, {
     redoc,
-    cwd: options.cwd instanceof URL ? options.cwd : new URL(`file://${options.cwd ?? process.cwd()}/`),
+    cwd:
+      options.cwd instanceof URL ? options.cwd : new URL(`file://${options.cwd ?? process.cwd()}/`),
     silent: options.silent ?? false,
   });
 
@@ -91,7 +92,8 @@ export default async function openapiTS(
     silent: options.silent ?? false,
     inject: options.inject ?? undefined,
     transform: typeof options.transform === "function" ? options.transform : undefined,
-    transformProperty: typeof options.transformProperty === "function" ? options.transformProperty : undefined,
+    transformProperty:
+      typeof options.transformProperty === "function" ? options.transformProperty : undefined,
     makePathsEnum: options.makePathsEnum ?? false,
     generatePathParams: options.generatePathParams ?? false,
     readWriteMarkers: options.readWriteMarkers ?? false,

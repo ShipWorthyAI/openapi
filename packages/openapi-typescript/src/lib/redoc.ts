@@ -9,7 +9,7 @@ import {
   type NormalizedProblem,
   type Config as RedoclyConfig,
   Source,
-} from "@redocly/openapi-core";
+} from "@shipworthy/openapi-core";
 import { $RefParser } from "@shipworthy/json-schema-ref-parser";
 import parseJson from "parse-json";
 import type { OpenAPI3 } from "../types.js";
@@ -26,7 +26,10 @@ interface ParseSchemaOptions {
   resolver: BaseResolver;
 }
 
-export async function parseSchema(schema: unknown, { absoluteRef, resolver }: ParseSchemaOptions): Promise<Document> {
+export async function parseSchema(
+  schema: unknown,
+  { absoluteRef, resolver }: ParseSchemaOptions,
+): Promise<Document> {
   if (!schema) {
     throw new Error("Can’t parse empty schema");
   }
@@ -56,7 +59,11 @@ export async function parseSchema(schema: unknown, { absoluteRef, resolver }: Pa
   }
   if (typeof schema === "string") {
     // URL
-    if (schema.startsWith("http://") || schema.startsWith("https://") || schema.startsWith("file://")) {
+    if (
+      schema.startsWith("http://") ||
+      schema.startsWith("https://") ||
+      schema.startsWith("file://")
+    ) {
       const url = new URL(schema);
       return parseSchema(url, {
         absoluteRef: url.protocol === "file:" ? fileURLToPath(url) : url.href,
@@ -79,7 +86,9 @@ export async function parseSchema(schema: unknown, { absoluteRef, resolver }: Pa
       parsed: schema,
     };
   }
-  throw new Error(`Expected string, object, or Buffer. Got ${Array.isArray(schema) ? "Array" : typeof schema}`);
+  throw new Error(
+    `Expected string, object, or Buffer. Got ${Array.isArray(schema) ? "Array" : typeof schema}`,
+  );
 }
 
 function _processProblems(problems: NormalizedProblem[], options: { silent: boolean }) {
@@ -87,7 +96,9 @@ function _processProblems(problems: NormalizedProblem[], options: { silent: bool
     let errorMessage: string | undefined;
     for (const problem of problems) {
       const problemLocation = problem.location?.[0].pointer;
-      const problemMessage = problemLocation ? `${problem.message} at ${problemLocation}` : problem.message;
+      const problemMessage = problemLocation
+        ? `${problem.message} at ${problemLocation}`
+        : problem.message;
       if (problem.severity === "error") {
         errorMessage = problemMessage;
         error(problemMessage);

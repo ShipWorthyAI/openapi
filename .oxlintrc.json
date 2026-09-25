@@ -5,7 +5,7 @@
     "typeCheck": true
   },
   "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "react"],
-  "ignorePatterns": ["**/dist/**", "**/.turbo/**"],
+  "ignorePatterns": ["**/dist/**", "**/.turbo/**", "packages/openapi-core/**"],
   "categories": {
     "correctness": "error"
   }

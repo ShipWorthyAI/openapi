@@ -36,7 +36,7 @@
     "version": "bun run build"
   },
   "dependencies": {
-    "@redocly/openapi-core": "^1.34.6",
+    "@shipworthy/openapi-core": "workspace:*",
     "@shipworthy/json-schema-ref-parser": "workspace:*",
     "ansi-colors": "^4.1.3",
     "change-case": "^5.4.4",

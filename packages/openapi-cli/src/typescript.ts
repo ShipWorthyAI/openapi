@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
 import type { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
-import { createConfig, findConfig, loadConfig, type Config } from "@redocly/openapi-core";
+import { createConfig, findConfig, loadConfig, type Config } from "@shipworthy/openapi-core";
 import openapiTS, {
   type OpenAPITSOptions,
   astToString,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import $RefParser from "../../../../lib";
 import path from "../../../utils/path";
-import { load } from "js-yaml";
+import * as Yaml from "effect/unstable/encoding/Yaml";
 import fsp from "fs/promises";
 import helper from "../../../utils/helper";
 import { JSONParserError } from "../../../../lib/util/errors";
@@ -16,7 +16,7 @@ describe("Working directory", () => {
     const parser = new $RefParser();
     const schema = path.rel("test/specs/working-directory/api/example.yaml");
     const contents = await fsp.readFile(schema, "utf-8");
-    const parsed = await load(contents);
+    const parsed = Yaml.parse(contents);
     try {
       await parser.dereference(parsed);
       helper.shouldNotGetCalled();

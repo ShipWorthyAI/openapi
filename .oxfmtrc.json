@@ -1,5 +1,5 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 100,
-  "ignorePatterns": [".turbo", "dist", "bun.lock"]
+  "ignorePatterns": [".turbo", "dist", "bun.lock", "packages/openapi-core"]
 }

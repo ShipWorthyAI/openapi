@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@effect/platform-bun": "catalog:",
-    "@redocly/openapi-core": "^1.34.6",
+    "@shipworthy/openapi-core": "workspace:*",
     "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-typescript-api": "workspace:*",

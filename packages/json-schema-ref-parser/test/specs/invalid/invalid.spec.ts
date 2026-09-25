@@ -54,7 +54,9 @@ describe("Invalid syntax", () => {
 
     it("should throw an error for an invalid JSON file with YAML disabled", async () => {
       try {
-        await $RefParser.dereference(path.rel("test/specs/invalid/invalid.json"), { parse: { yaml: false } });
+        await $RefParser.dereference(path.rel("test/specs/invalid/invalid.json"), {
+          parse: { yaml: false },
+        });
         helper.shouldNotGetCalled();
       } catch (err) {
         expect(err).to.be.an.instanceOf(ParserError);
@@ -98,10 +100,12 @@ describe("Invalid syntax", () => {
           expect(err.errors).to.containSubset([
             {
               name: ResolverError.name,
-              message: (message: any) => message.startsWith("Error opening file") || message.endsWith("HTTP ERROR 404"),
+              message: (message: any) =>
+                message.startsWith("Error opening file") || message.endsWith("HTTP ERROR 404"),
               path: [],
               source: (message: any) =>
-                message.endsWith("this file does not exist") || message.startsWith("http://localhost"),
+                message.endsWith("this file does not exist") ||
+                message.startsWith("http://localhost"),
             },
           ]);
         }
@@ -110,7 +114,9 @@ describe("Invalid syntax", () => {
       it("should throw a grouped error for an invalid YAML file", async () => {
         const parser = new $RefParser();
         try {
-          await parser.dereference(path.rel("test/specs/invalid/invalid.yaml"), { continueOnError: true });
+          await parser.dereference(path.rel("test/specs/invalid/invalid.yaml"), {
+            continueOnError: true,
+          });
           helper.shouldNotGetCalled();
         } catch (err) {
           expect(err).to.be.instanceof(JSONParserErrorGroup);
@@ -126,8 +132,8 @@ describe("Invalid syntax", () => {
           expect(err.errors).to.containSubset([
             {
               name: ParserError.name,
-              message: (message: any) =>
-                message.includes("invalid.yaml: deficient indentation") && message.includes("1 | foo: [bar"),
+              message: (message: string) =>
+                message.includes("invalid.yaml") && message.includes("Expected ','"),
               path: [],
               source: (message: any) => message.endsWith("test/specs/invalid/invalid.yaml"),
             },
@@ -138,7 +144,9 @@ describe("Invalid syntax", () => {
       it("should throw a grouped error for an invalid JSON file", async () => {
         const parser = new $RefParser();
         try {
-          await parser.dereference(path.rel("test/specs/invalid/invalid.json"), { continueOnError: true });
+          await parser.dereference(path.rel("test/specs/invalid/invalid.json"), {
+            continueOnError: true,
+          });
           helper.shouldNotGetCalled();
         } catch (err) {
           expect(err).to.be.instanceof(JSONParserErrorGroup);
@@ -154,8 +162,8 @@ describe("Invalid syntax", () => {
           expect(err.errors).to.containSubset([
             {
               name: ParserError.name,
-              message: (message: any) =>
-                message.includes("invalid.json: unexpected end of the stream within a flow collection (2:1)"),
+              message: (message: string) =>
+                message.includes("invalid.json") && message.includes("Expected ':'"),
               path: [],
               source: (message: any) => message.endsWith("test/specs/invalid/invalid.json"),
             },
@@ -188,7 +196,9 @@ describe("Invalid syntax", () => {
               message: (message: any) =>
                 message.includes("invalid.json: Unexpected end of JSON input") ||
                 message.includes("invalid.json: Expected property name or '}' in JSON") ||
-                message.includes("invalid.json: JSON.parse: end of data while reading object contents") || // Firefox
+                message.includes(
+                  "invalid.json: JSON.parse: end of data while reading object contents",
+                ) || // Firefox
                 message.includes("invalid.json: JSON Parse error: Expected '}'") || // Safari
                 message.includes("invalid.json: JSON.parse Error: Invalid character") || // Edge
                 message.includes("invalid.json: Syntax error") || // IE
@@ -215,7 +225,9 @@ describe("Invalid syntax", () => {
   describe("in referenced files", () => {
     it("should throw an error for an invalid YAML file", async () => {
       try {
-        await $RefParser.dereference({ foo: { $ref: path.rel("test/specs/invalid/invalid.yaml") } });
+        await $RefParser.dereference({
+          foo: { $ref: path.rel("test/specs/invalid/invalid.yaml") },
+        });
         helper.shouldNotGetCalled();
       } catch (err) {
         expect(err).to.be.an.instanceOf(ParserError);
@@ -228,7 +240,9 @@ describe("Invalid syntax", () => {
 
     it("should throw an error for an invalid JSON file", async () => {
       try {
-        await $RefParser.dereference({ foo: { $ref: path.rel("test/specs/invalid/invalid.json") } });
+        await $RefParser.dereference({
+          foo: { $ref: path.rel("test/specs/invalid/invalid.json") },
+        });
         helper.shouldNotGetCalled();
       } catch (err) {
         expect(err).to.be.an.instanceOf(ParserError);
@@ -276,7 +290,10 @@ describe("Invalid syntax", () => {
         try {
           const parser = new $RefParser();
 
-          await parser.dereference({ foo: { $ref: "this file does not exist" } }, { continueOnError: true });
+          await parser.dereference(
+            { foo: { $ref: "this file does not exist" } },
+            { continueOnError: true },
+          );
           helper.shouldNotGetCalled();
         } catch (err) {
           expect(err).to.be.instanceof(JSONParserErrorGroup);
@@ -288,7 +305,8 @@ describe("Invalid syntax", () => {
           expect(err.errors).to.containSubset([
             {
               name: ResolverError.name,
-              message: (message: any) => message.startsWith("Error opening file") || message.endsWith("HTTP ERROR 404"),
+              message: (message: any) =>
+                message.startsWith("Error opening file") || message.endsWith("HTTP ERROR 404"),
               path: ["foo"],
               // source: message => message.endsWith("/test/") || message.startsWith("http://localhost"),
             },
@@ -315,8 +333,8 @@ describe("Invalid syntax", () => {
           expect(err.errors).to.containSubset([
             {
               name: ParserError.name,
-              message: (message: any) =>
-                message.includes("invalid.yaml: deficient indentation") && message.includes("1 | foo: [bar"),
+              message: (message: string) =>
+                message.includes("invalid.yaml") && message.includes("Expected ','"),
               path: ["foo"],
               // source: message => message.endsWith("/test/") || message.startsWith("http://localhost"),
             },
@@ -343,8 +361,8 @@ describe("Invalid syntax", () => {
           expect(err.errors).to.containSubset([
             {
               name: ParserError.name,
-              message: (message: any) =>
-                message.includes("invalid.json: unexpected end of the stream within a flow collection (2:1)"),
+              message: (message: string) =>
+                message.includes("invalid.json") && message.includes("Expected ':'"),
               path: ["foo"],
               // source: message => message.endsWith("/test/") || message.startsWith("http://localhost"),
             },
@@ -374,7 +392,9 @@ describe("Invalid syntax", () => {
               message: (message: any) =>
                 message.includes("invalid.json: Unexpected end of JSON input") ||
                 message.includes("invalid.json: Expected property name or '}' in JSON") ||
-                message.includes("invalid.json: JSON.parse: end of data while reading object contents") || // Firefox
+                message.includes(
+                  "invalid.json: JSON.parse: end of data while reading object contents",
+                ) || // Firefox
                 message.includes("invalid.json: JSON Parse error: Expected '}'") || // Safari
                 message.includes("invalid.json: JSON.parse Error: Invalid character") || // Edge
                 message.includes("invalid.json: Syntax error") || // IE

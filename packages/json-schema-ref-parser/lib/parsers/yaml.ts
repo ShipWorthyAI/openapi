@@ -1,41 +1,52 @@
+import * as Yaml from "effect/unstable/encoding/Yaml";
+import type { FileInfo, Plugin } from "../types/index.js";
 import { ParserError } from "../util/errors.js";
-import { binaryTag, CORE_SCHEMA, load, loadAll, mergeTag, omapTag, pairsTag, setTag, timestampTag } from "js-yaml";
-import type { FileInfo } from "../types/index.js";
-import type { Plugin } from "../types/index.js";
 
-// Match js-yaml v4's default schema for the fallback parser. In v4, JSON_SCHEMA
-// and CORE_SCHEMA behaved identically; v5's CORE_SCHEMA preserves that behavior,
-// including null values for omitted mapping values and strings for date-like data.
-const legacyDefaultSchema = CORE_SCHEMA.withTags(timestampTag, mergeTag, binaryTag, omapTag, pairsTag, setTag);
+const mergeKeys = ["<<", "!!merge <<"] as const;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function applyYamlMerge(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (!isRecord(value) && !Array.isArray(value)) return value;
+  if (seen.has(value)) return value;
+  seen.add(value);
+  if (Array.isArray(value)) return value.map((item) => applyYamlMerge(item, seen));
+
+  const mergeKey = mergeKeys.find((key) => Object.prototype.hasOwnProperty.call(value, key));
+  const merged: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === mergeKey || key === "__proto__") continue;
+    merged[key] = applyYamlMerge(child, seen);
+  }
+  if (!mergeKey) return merged;
+
+  const raw = value[mergeKey];
+  const sources = Array.isArray(raw) ? raw : [raw];
+  for (const source of sources) {
+    const resolved = applyYamlMerge(source, seen);
+    if (!isRecord(resolved)) continue;
+    for (const [key, child] of Object.entries(resolved)) {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+      if (!Object.prototype.hasOwnProperty.call(merged, key)) merged[key] = child;
+    }
+  }
+  return merged;
+}
+
+function isBlankDocument(input: string): boolean {
+  return input.split("\n").every((line) => {
+    const trimmed = line.trim();
+    return trimmed === "" || trimmed === "---" || trimmed === "..." || trimmed.startsWith("#");
+  });
+}
 
 export default {
-  /**
-   * The order that this parser will run, in relation to other parsers.
-   */
   order: 200,
-
-  /**
-   * Whether to allow "empty" files. This includes zero-byte files, as well as empty JSON objects.
-   */
   allowEmpty: true,
+  canParse: [".yaml", ".yml", ".json"],
 
-  /**
-   * Determines whether this parser can parse a given file reference.
-   * Parsers that match will be tried, in order, until one successfully parses the file.
-   * Parsers that don't match will be skipped, UNLESS none of the parsers match, in which case
-   * every parser will be tried.
-   */
-  canParse: [".yaml", ".yml", ".json"], // JSON is valid YAML
-
-  /**
-   * Parses the given file as YAML
-   *
-   * @param file           - An object containing information about the referenced file
-   * @param file.url       - The full URL of the referenced file
-   * @param file.extension - The lowercased file extension (e.g. ".txt", ".html", etc.)
-   * @param file.data      - The file contents. This will be whatever data type was returned by the resolver
-   * @returns
-   */
   async parse(file: FileInfo) {
     let data = file.data;
     if (Buffer.isBuffer(data)) {
@@ -43,28 +54,24 @@ export default {
     }
 
     if (typeof data === "string") {
-      try {
-        return load(data, { schema: CORE_SCHEMA });
-      } catch {
-        try {
-          // Fall back to js-yaml v4's extended default schema.
-          return load(data, { schema: legacyDefaultSchema });
-        } catch (e: any) {
-          // js-yaml v5 throws for empty streams, whereas v4 returned undefined.
-          // Preserve the parser's allowEmpty behavior for blank/comment-only files.
-          try {
-            if (loadAll(data, { schema: CORE_SCHEMA }).length === 0) {
-              return undefined;
-            }
-          } catch {
-            // Preserve the more useful fallback parser error below.
-          }
-          throw new ParserError(e?.message || "Parser Error", file.url);
-        }
+      if (
+        file.extension &&
+        file.extension !== ".yaml" &&
+        file.extension !== ".yml" &&
+        file.extension !== ".json"
+      ) {
+        throw new ParserError("Not a YAML file", file.url);
       }
-    } else {
-      // data is already a JavaScript value (object, array, number, null, NaN, etc.)
-      return data;
+      try {
+        const parsed = applyYamlMerge(Yaml.parse(data));
+        if (parsed === null && isBlankDocument(data)) return undefined;
+        return parsed;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Parser Error";
+        throw new ParserError(message, file.url);
+      }
     }
+
+    return data;
   },
 } as Plugin;

@@ -1,4 +1,4 @@
-import { createConfig } from "@redocly/openapi-core";
+import { createConfig } from "@shipworthy/openapi-core";
 import { resolveRef } from "../src/lib/utils.js";
 import type { GlobalContext, TransformNodeOptions } from "../src/types.js";
 

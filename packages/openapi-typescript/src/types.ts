@@ -1,5 +1,5 @@
 import type { PathLike } from "node:fs";
-import type { Config as RedoclyConfig } from "@redocly/openapi-core";
+import type { Config as RedoclyConfig } from "@shipworthy/openapi-core";
 import type ts from "#compiler";
 
 // Many types allow for true “any” for inheritance to work
@@ -638,7 +638,10 @@ export interface OpenAPITSOptions {
   /** Exclude deprecated fields from types? (default: false) */
   excludeDeprecated?: boolean;
   /** Manually transform certain Schema Objects with a custom TypeScript type */
-  transform?: (schemaObject: SchemaObject, options: TransformNodeOptions) => ts.TypeNode | TransformObject | undefined;
+  transform?: (
+    schemaObject: SchemaObject,
+    options: TransformNodeOptions,
+  ) => ts.TypeNode | TransformObject | undefined;
   /** Modify TypeScript types built from Schema Objects */
   postTransform?: (type: ts.TypeNode, options: TransformNodeOptions) => ts.TypeNode | undefined;
   /** Modify property signatures for Schema Object properties */

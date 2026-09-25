@@ -16,7 +16,7 @@
       "name": "@shipworthy/json-schema-ref-parser",
       "version": "0.0.1",
       "dependencies": {
-        "js-yaml": "^5.4.2",
+        "effect": "catalog:",
         "undici": "^8.10.2",
       },
       "devDependencies": {
@@ -42,7 +42,7 @@
       },
       "dependencies": {
         "@effect/platform-bun": "catalog:",
-        "@redocly/openapi-core": "^1.34.6",
+        "@shipworthy/openapi-core": "workspace:*",
         "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/openapi-typescript-api": "workspace:*",
@@ -51,6 +51,22 @@
       "devDependencies": {
         "@shipworthy/openapi-typescript-config": "workspace:*",
         "@types/node": "catalog:",
+      },
+    },
+    "packages/openapi-core": {
+      "name": "@shipworthy/openapi-core",
+      "version": "0.0.1",
+      "dependencies": {
+        "@redocly/ajv": "8.11.2",
+        "@redocly/config": "0.22.0",
+        "colorette": "1.4.0",
+        "effect": "catalog:",
+        "https-proxy-agent": "7.0.6",
+        "js-levenshtein": "1.1.6",
+        "js-yaml": "4.3.2",
+        "minimatch": "5.1.9",
+        "pluralize": "8.0.0",
+        "yaml-ast-parser": "0.0.43",
       },
     },
     "packages/openapi-fetch": {
@@ -125,8 +141,8 @@
       "name": "@shipworthy/openapi-typescript",
       "version": "0.0.1",
       "dependencies": {
-        "@redocly/openapi-core": "^1.34.6",
         "@shipworthy/json-schema-ref-parser": "workspace:*",
+        "@shipworthy/openapi-core": "workspace:*",
         "ansi-colors": "^4.1.3",
         "change-case": "^5.4.4",
         "parse-json": "^8.3.0",
@@ -424,8 +440,6 @@
 
     "@redocly/config": ["@redocly/config@0.22.0", "", {}, "sha512-gAy93Ddo01Z3bHuVdPWfCwzgfaYgMdaZPcfL7JZ7hWJoK9V0lXDbigTWkhiPFAaLWzbOJ+kbUQG1+XwIm0KRGQ=="],
 
-    "@redocly/openapi-core": ["@redocly/openapi-core@1.34.20", "", { "dependencies": { "@redocly/ajv": "8.11.2", "@redocly/config": "0.22.0", "colorette": "1.4.0", "https-proxy-agent": "7.0.6", "js-levenshtein": "1.1.6", "js-yaml": "4.3.2", "minimatch": "5.1.9", "pluralize": "8.0.0", "yaml-ast-parser": "0.0.43" } }, "sha512-ypeBZ/6BKXR9+7/TtbKhbl4UgD7raHhPS12oknlKno2A8+lnFkxIwiE/Aklu6L2cd/ioH+fCWuMxi9/p3EyAPw=="],
-
     "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.63.4", "", { "os": "android", "cpu": "arm" }, "sha512-I+BSHzTAhKN2n7ZwGZsegGcZjDpLqFOMAtJz/u6uFGe0pUFbq56dEHjqJV/ZUdRJtNXNxA+hREUatZBvMR3Oiw=="],
 
     "@rollup/rollup-android-arm64": ["@rollup/rollup-android-arm64@4.63.4", "", { "os": "android", "cpu": "arm64" }, "sha512-pu3BdjS2LtEzRu2elmGzS3fIeWSZy4BMDIaLNwjorO76+k2d0LMluijhsDx3KQyQBQ/lLUZCQA9/s6csvUfuhw=="],
@@ -491,6 +505,8 @@
     "@shipworthy/json-schema-ref-parser": ["@shipworthy/json-schema-ref-parser@workspace:packages/json-schema-ref-parser"],
 
     "@shipworthy/openapi-cli": ["@shipworthy/openapi-cli@workspace:packages/openapi-cli"],
+
+    "@shipworthy/openapi-core": ["@shipworthy/openapi-core@workspace:packages/openapi-core"],
 
     "@shipworthy/openapi-fetch": ["@shipworthy/openapi-fetch@workspace:packages/openapi-fetch"],
 
@@ -922,7 +938,7 @@
 
     "js-tokens": ["js-tokens@10.0.0", "", {}, "sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q=="],
 
-    "js-yaml": ["js-yaml@5.4.2", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.mjs" } }, "sha512-m+aqu+LwO1O6sIopafj8HUVl5aawITwZQe/yHpMCKjaWBaA/d07B/QdMb3529REftiU+RMMHL3Vlsw3hON7vWg=="],
+    "js-yaml": ["js-yaml@4.3.2", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA=="],
 
     "jsdom": ["jsdom@30.1.0", "", { "dependencies": { "@asamuzakjp/css-color": "^7.0.0", "@asamuzakjp/dom-selector": "^9.1.2", "@bramus/specificity": "^2.4.2", "@csstools/css-syntax-patches-for-csstree": "^1.1.13", "@exodus/bytes": "^1.15.1", "css-tree": "^3.2.1", "data-urls": "^7.0.0", "decimal.js": "^10.6.0", "html-encoding-sniffer": "^6.0.0", "is-potential-custom-element-name": "^1.0.1", "lru-cache": "^11.5.2", "parse5": "^8.0.1", "saxes": "^6.0.0", "tough-cookie": "^6.0.2", "undici": "^8.10.2", "w3c-xmlserializer": "^5.0.0", "webidl-conversions": "^8.0.1", "whatwg-mimetype": "^5.0.0", "whatwg-url": "^17.1.1", "xml-name-validator": "^5.0.0" }, "peerDependencies": { "canvas": "^3.2.3" }, "optionalPeers": ["canvas"] }, "sha512-h/Q+H+KmlGf49ITw3TrykSVbg04S75S2O7ZtJc9gMGOWBrQRZmx5AJIKLtJ01e6Kszl+/tpFthCVqxNifxhoqg=="],
 
@@ -1344,8 +1360,6 @@
 
     "@actions/http-client/undici": ["undici@6.28.1", "", {}, "sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA=="],
 
-    "@apidevtools/json-schema-ref-parser/js-yaml": ["js-yaml@4.3.2", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA=="],
-
     "@babel/code-frame/js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
     "@octokit/plugin-paginate-rest/@octokit/types": ["@octokit/types@16.0.0", "", { "dependencies": { "@octokit/openapi-types": "^27.0.0" } }, "sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg=="],
@@ -1357,8 +1371,6 @@
     "@octokit/request/content-type": ["content-type@3.1.1", "", {}, "sha512-GW4qUsfFo59d0HbUibDlWv5wPz+vAAcaTWbKIuKCf0JkC7wWkSyf8f13IpXn5JkeMlB2P8iTSSIjwXljorg2vA=="],
 
     "@pnpm/network.ca-file/graceful-fs": ["graceful-fs@4.2.10", "", {}, "sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA=="],
-
-    "@redocly/openapi-core/js-yaml": ["js-yaml@4.3.2", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA=="],
 
     "@semantic-release/github/https-proxy-agent": ["https-proxy-agent@9.1.0", "", { "dependencies": { "agent-base": "9.0.0", "debug": "^4.3.4", "proxy-agent-negotiate": "1.1.0" } }, "sha512-ag87y7cJJ9/3+GxFr8Oy4O5faDsGRGnBGsJj/YjOSsSx/5eadKLYTMPlzuR6obgoCDDm0abAAZitXXQkMOPSpA=="],
 
@@ -1389,8 +1401,6 @@
     "cli-table3/string-width": ["string-width@4.2.3", "", { "dependencies": { "emoji-regex": "^8.0.0", "is-fullwidth-code-point": "^3.0.0", "strip-ansi": "^6.0.1" } }, "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g=="],
 
     "cliui/string-width": ["string-width@7.2.0", "", { "dependencies": { "emoji-regex": "^10.3.0", "get-east-asian-width": "^1.0.0", "strip-ansi": "^7.1.0" } }, "sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ=="],
-
-    "cosmiconfig/js-yaml": ["js-yaml@4.3.2", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA=="],
 
     "cosmiconfig/parse-json": ["parse-json@5.2.0", "", { "dependencies": { "@babel/code-frame": "^7.0.0", "error-ex": "^1.3.1", "json-parse-even-better-errors": "^2.3.0", "lines-and-columns": "^1.1.6" } }, "sha512-ayCKvm/phCGxOkYRSCM82iDwct8/EonSEgCSxWxD7ve6jHggsFl4fZVQBPRNgQoKiuV/odhFrGzQXZwbifC8Rg=="],
 
