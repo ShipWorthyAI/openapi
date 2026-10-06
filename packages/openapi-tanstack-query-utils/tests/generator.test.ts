@@ -1,3 +1,4 @@
+import { astToString } from "@shipworthy/openapi-typescript-api";
 import { generateSchema } from "../src/generator";
 import { schema } from "./fixtures";
 import { generatedFixture } from "./generated-fixture";
@@ -242,6 +243,23 @@ test("schema-less operations and referenced path items use the same generation p
     paths: {},
   });
   assert.deepEqual(Object.keys(empty.routes), []);
+});
+
+test("defaults do not make schema properties required", async () => {
+  const { nodes } = await generateSchema({
+    openapi: "3.1.0",
+    info: { title: "Defaults", version: "1" },
+    paths: {},
+    components: {
+      schemas: {
+        Item: {
+          type: "object",
+          properties: { count: { type: "integer", default: 1 } },
+        },
+      },
+    },
+  });
+  assert.match(astToString(nodes), /count\?: number/);
 });
 
 test("schema-less operations still require an operationId", async () => {

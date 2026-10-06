@@ -1,0 +1,22 @@
+{
+  "name": "@shipworthy/openapi-zod",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Generate Zod validators from OpenAPI 3.1 schemas.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-core": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@types/node": "catalog:"
+  }
+}

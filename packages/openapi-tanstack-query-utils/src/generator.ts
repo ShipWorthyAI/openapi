@@ -5,7 +5,8 @@ const methods = ["get", "put", "post", "delete", "options", "head", "patch", "tr
 
 /** Types stay in the AST; only operation names, methods and paths become runtime data. */
 export async function generateSchema(source: URL | OpenAPI3) {
-  const nodes = await openapiTS(source);
+  // A default does not make a property required.
+  const nodes = await openapiTS(source, { defaultNonNullable: false });
   const declarations = new Map(
     nodes.flatMap((node) =>
       ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)
