@@ -39,14 +39,12 @@ describe("Invalid schemas", () => {
           },
         },
       }),
-    ).rejects.toThrowError("Can't resolve $ref at #/components/schemas/Pet/properties/type");
+    ).rejects.toThrowError(/AnotherSchema/);
 
     expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Can't resolve $ref at #/components/schemas/Pet/properties/category"),
+      expect.stringContaining("#/components/schemas/NonExistingSchema"),
     );
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Can't resolve $ref at #/components/schemas/Pet/properties/type"),
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("#/components/schemas/AnotherSchema"));
   });
 });

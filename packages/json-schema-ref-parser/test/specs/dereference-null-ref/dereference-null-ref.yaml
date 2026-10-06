@@ -1,8 +1,0 @@
-components:
-  examples:
-    product:
-      value:
-        data:
-          admission:
-            $ref: "#/components/examples/product/value/data/pas"
-          pas: null

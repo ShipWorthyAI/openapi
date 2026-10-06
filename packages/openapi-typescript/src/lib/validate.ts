@@ -6,7 +6,7 @@ import { Document, Spectral, type RulesetDefinition } from "@stoplight/spectral-
 import { oas3 } from "@stoplight/spectral-formats";
 import { Json, parseYaml, Yaml } from "@stoplight/spectral-parsers";
 import { oas } from "@stoplight/spectral-rulesets";
-import { $RefParser, oas3BundleOptions } from "@shipworthy/json-schema-ref-parser";
+import { $RefParser } from "@shipworthy/openapi-ref-parser";
 import parseJson from "parse-json";
 import type { OpenAPI3 } from "../types.js";
 import { debug, error, warn } from "./utils.js";
@@ -157,11 +157,7 @@ export async function validateAndBundle(
   debug("Linted schema", "lint", performance.now() - lintT);
 
   const bundleT = performance.now();
-  const bundled = await $RefParser.bundle<OpenAPI3>(
-    document.absoluteRef,
-    document.parsed,
-    openApiBundleOptions(document.absoluteRef),
-  );
+  const bundled = (await $RefParser.bundle(document.absoluteRef, document.parsed)) as OpenAPI3;
   if (bundled && typeof bundled === "object" && !Array.isArray(bundled) && !("components" in bundled)) {
     (bundled as OpenAPI3).components = {};
   }
@@ -169,20 +165,3 @@ export async function validateAndBundle(
   return bundled;
 }
 
-function openApiBundleOptions(absoluteRef: string) {
-  const origin = requestedHttpOrigin(absoluteRef);
-  return {
-    bundle: oas3BundleOptions(),
-    ...(origin ? { resolve: { http: { allowedOrigins: [origin] } } } : {}),
-  };
-}
-
-function requestedHttpOrigin(absoluteRef: string): string | undefined {
-  try {
-    const parsed = new URL(absoluteRef);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
-    return parsed.origin;
-  } catch {
-    return undefined;
-  }
-}

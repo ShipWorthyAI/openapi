@@ -9,6 +9,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@shipworthy/json-schema-ref-parser": "workspace:*"
+    "@shipworthy/openapi-ref-parser": "workspace:*"
   }
 }

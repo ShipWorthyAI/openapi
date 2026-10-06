@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { $RefParser } from "@shipworthy/json-schema-ref-parser";
+import { dereference } from "@shipworthy/openapi-ref-parser";
 
 export const CONFIG_FILE_NAMES = [
   "shipworthy.yaml",
@@ -36,7 +36,7 @@ export async function loadConfig(options: { configPath?: string } = {}): Promise
   if (!configPath) return {};
 
   try {
-    const parsed = await $RefParser.dereference<Config>(configPath);
+    const parsed = (await dereference(configPath)) as Config;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("Config must be an object.");
     }
