@@ -47,7 +47,6 @@
     "@shipworthy/openapi-cli": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:^",
     "axios": "1.16.0",
-    "execa": "catalog:",
     "express": "5.2.1",
     "feature-fetch": "0.0.55",
     "node-forge": "1.4.0",

@@ -1,15 +1,15 @@
 import fs from "node:fs";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { execa } from "execa";
 import stripAnsi from "strip-ansi";
+import { type SpawnOptions, spawn } from "../scripts/spawn.js";
 import type { TestCase } from "./test-helpers.js";
 
 const root = new URL("../", import.meta.url);
-const cwd = os.platform() === "win32" ? fileURLToPath(root) : root; // execa bug: fileURLToPath required on Windows
+const cwd = fileURLToPath(root);
 const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
-const run = (args: string[] = [], options: Record<string, unknown> = {}) =>
-  execa("bun", [cli, "typescript", ...args], options);
+const run = (args: string[] = [], options: SpawnOptions = {}) =>
+  spawn(["bun", cli, "typescript", ...args], { cwd, ...options });
 const TIMEOUT = 90_000;
 
 describe("CLI", () => {
@@ -153,9 +153,7 @@ describe("CLI", () => {
     test.skipIf(os.platform() === "win32")("automatic config", async () => {
       const cwd = new URL("./fixtures/redocly/", import.meta.url);
 
-      await execa("bun", [cli, "typescript"], {
-        cwd: fileURLToPath(cwd),
-      });
+      await run([], { cwd: fileURLToPath(cwd) });
       for (const schema of ["a", "b", "c"]) {
         await expect(
           fs.readFileSync(new URL(`./output/${schema}.ts`, cwd), "utf8"),
@@ -199,9 +197,7 @@ describe("CLI", () => {
       const cwd = new URL("./fixtures/redocly-lint-error", import.meta.url);
 
       try {
-        await execa("bun", [cli, "typescript"], {
-          cwd: fileURLToPath(cwd),
-        });
+        await run([], { cwd: fileURLToPath(cwd) });
         throw new Error("Linting should have thrown an error");
       } catch (err) {
         expect(stripAnsi(String(err))).toMatch(/✘ {2}Servers must be present/);

@@ -1,11 +1,11 @@
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
-import { execa } from "execa";
 import { multiFile, singleFile } from "./schemas.js";
+import { spawn } from "./spawn.js";
 
 async function generateSchemas() {
-  const rootCWD = new URL("../", import.meta.url);
+  const cwd = fileURLToPath(new URL("../", import.meta.url));
   const singleFileSchemas = Object.entries(singleFile);
   const multiFileSchemas = Object.entries(multiFile);
 
@@ -14,12 +14,6 @@ async function generateSchemas() {
 
   const updateSchema = async (name: string, ext: string) => {
     const start = performance.now();
-    const cwd =
-      process.platform === "win32"
-        ? // execa/cross-spawn can not handle URL objects on Windows, so convert it to string and cut away the protocol
-          rootCWD.toString().slice("file:///".length)
-        : rootCWD;
-
     try {
       const args: string[][] = [[`./examples/${name}${ext}`, "-o", `./examples/${name}.ts`]];
 
@@ -53,7 +47,7 @@ async function generateSchemas() {
       }
 
       const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
-      await Promise.all(args.map((a) => execa("bun", [cli, "typescript", ...a], { cwd })));
+      await Promise.all(args.map((a) => spawn(["bun", cli, "typescript", ...a], { cwd })));
 
       schemasDoneCount++;
       const timeMs = Math.round(performance.now() - start);

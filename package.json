@@ -13,7 +13,6 @@
       "@types/react": "^19.0.0",
       "@effect/platform-bun": "4.0.0-rc.115",
       "effect": "4.0.0-rc.115",
-      "execa": "^9.6.0",
       "vite": "^6.3.5",
       "oxfmt": "^0.68.0",
       "oxlint": "^1.83.0",
