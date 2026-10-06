@@ -1,520 +1,185 @@
-import { BaseResolver, resolveDocument, makeRefId, makeDocumentFromString } from './resolve';
-import { normalizeVisitors } from './visitors';
-import { normalizeTypes } from './types';
-import { walkDocument } from './walk';
-import {
-  detectSpec,
-  getTypes,
-  getMajorSpecVersion,
-  SpecMajorVersion,
-  SpecVersion,
-} from './oas-types';
-import { isAbsoluteUrl, isExternalValue, isRef, refBaseName } from './ref-utils';
-import { initRules } from './config/rules';
-import { reportUnresolvedRef } from './rules/no-unresolved-refs';
-import { dequal, isPlainObject, isTruthy } from './utils';
-import { RemoveUnusedComponents as RemoveUnusedComponentsOas2 } from './decorators/oas2/remove-unused-components';
-import { RemoveUnusedComponents as RemoveUnusedComponentsOas3 } from './decorators/oas3/remove-unused-components';
-import { NormalizedConfigTypes } from './types/config-yaml';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { $RefParser, oas3BundleOptions, type BundleOptions } from "@shipworthy/json-schema-ref-parser";
 
-import type { Location } from './ref-utils';
-import type { Oas3Visitor, Oas2Visitor } from './visitors';
-import type { NormalizedNodeType, NodeType } from './types';
-import type { WalkContext, UserContext, ResolveResult, NormalizedProblem } from './walk';
-import type { Config, StyleguideConfig } from './config';
-import type { OasRef } from './typings/openapi';
-import type { Document, ResolvedRefMap } from './resolve';
-import type { CollectFn } from './utils';
+const MAPPING_REFS = "x-shipworthy-mapping-refs";
 
-export enum OasVersion {
-  Version2 = 'oas2',
-  Version3_0 = 'oas3_0',
-  Version3_1 = 'oas3_1',
+export interface BundleProblem {
+  message: string;
+  severity: "error" | "warn";
 }
-export type BundleOptions = {
-  externalRefResolver?: BaseResolver;
-  config: Config;
+
+export interface BundleResult {
+  bundle: { parsed: unknown };
+  problems: BundleProblem[];
+}
+
+export interface BundleInput {
+  ref?: string;
+  doc?: { parsed: unknown; source?: { absoluteRef?: string } };
   dereference?: boolean;
-  base?: string | null;
-  removeUnusedComponents?: boolean;
   keepUrlRefs?: boolean;
-};
+  base?: string | null;
+}
 
-const bundleVisitor = normalizeVisitors(
-  [
-    {
-      severity: 'error',
-      ruleId: 'configBundler',
-      visitor: {
-        ref: {
-          leave(node: OasRef, ctx: UserContext, resolved: ResolveResult<any>) {
-            replaceRef(node, resolved, ctx);
-          },
-        },
-      },
-    },
-  ],
-  NormalizedConfigTypes
-);
-
-export async function bundleConfig(document: Document, resolvedRefMap: ResolvedRefMap) {
-  const ctx: BundleContext = {
-    problems: [],
-    oasVersion: SpecVersion.OAS3_0,
-    refTypes: new Map<string, NormalizedNodeType>(),
-    visitorsData: {},
+export function makeDocumentFromString(source: string, absoluteRef: string) {
+  return {
+    source: { absoluteRef },
+    parsed: JSON.parse(source) as unknown,
   };
-
-  walkDocument({
-    document,
-    rootType: NormalizedConfigTypes.ConfigRoot,
-    normalizedVisitors: bundleVisitor,
-    resolvedRefMap,
-    ctx,
-  });
-
-  return document.parsed ?? {};
 }
 
-export async function bundle(
-  opts: {
-    ref?: string;
-    doc?: Document;
-    collectSpecData?: CollectFn;
-  } & BundleOptions
-) {
-  const {
-    ref,
-    doc,
-    externalRefResolver = new BaseResolver(opts.config.resolve),
-    base = null,
-  } = opts;
-  if (!(ref || doc)) {
-    throw new Error('Document or reference is required.\n');
+export async function bundle(opts: BundleInput): Promise<BundleResult> {
+  const absoluteRef = opts.ref ?? opts.doc?.source?.absoluteRef ?? opts.base ?? "/";
+  const parsed = opts.doc?.parsed;
+  if (!opts.ref && parsed === undefined) {
+    throw new Error("Document or reference is required.\n");
   }
 
-  const document =
-    doc === undefined ? await externalRefResolver.resolveDocument(base, ref!, true) : doc;
+  try {
+    const options = parserOptions(Boolean(opts.keepUrlRefs), absoluteRef);
+    const source = parsed === undefined ? await $RefParser.parse(absoluteRef, options) : parsed;
+    const input = source && typeof source === "object" ? structuredClone(source) : source;
+    if (input && typeof input === "object" && !opts.dereference) attachDiscriminatorRefs(input);
+    const bundled = opts.dereference
+      ? await $RefParser.dereference(absoluteRef, input, options)
+      : await $RefParser.bundle(absoluteRef, input, options);
 
-  if (document instanceof Error) {
-    throw document;
+    if (bundled && typeof bundled === "object") {
+      if (!opts.dereference) restoreDiscriminatorMappings(bundled);
+      await inlineExternalValues(bundled, absoluteRef, Boolean(opts.keepUrlRefs));
+    }
+
+    return { bundle: { parsed: bundled }, problems: [] };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { bundle: { parsed: undefined }, problems: [{ message, severity: "error" }] };
   }
-  opts.collectSpecData?.(document.parsed);
-
-  return bundleDocument({
-    document,
-    ...opts,
-    config: opts.config.styleguide,
-    externalRefResolver,
-  });
 }
 
-export async function bundleFromString(
-  opts: {
-    source: string;
-    absoluteRef?: string;
-  } & BundleOptions
-) {
-  const { source, absoluteRef, externalRefResolver = new BaseResolver(opts.config.resolve) } = opts;
-  const document = makeDocumentFromString(source, absoluteRef || '/');
-
-  return bundleDocument({
-    document,
-    ...opts,
-    externalRefResolver,
-    config: opts.config.styleguide,
-  });
-}
-
-type BundleContext = WalkContext;
-
-export type BundleResult = {
-  bundle: Document;
-  problems: NormalizedProblem[];
-  fileDependencies: Set<string>;
-  rootType: NormalizedNodeType;
-  refTypes?: Map<string, NormalizedNodeType>;
-  visitorsData: Record<string, Record<string, unknown>>;
-};
-
-export async function bundleDocument(opts: {
-  document: Document;
-  config: StyleguideConfig;
-  customTypes?: Record<string, NodeType>;
-  externalRefResolver: BaseResolver;
+export async function bundleFromString(opts: {
+  source: string;
+  absoluteRef?: string;
   dereference?: boolean;
-  removeUnusedComponents?: boolean;
   keepUrlRefs?: boolean;
 }): Promise<BundleResult> {
-  const {
-    document,
-    config,
-    customTypes,
-    externalRefResolver,
-    dereference = false,
-    removeUnusedComponents = false,
-    keepUrlRefs = false,
-  } = opts;
-  const specVersion = detectSpec(document.parsed);
-  const specMajorVersion = getMajorSpecVersion(specVersion);
-  const rules = config.getRulesForSpecVersion(specMajorVersion);
-  const types = normalizeTypes(
-    config.extendTypes(customTypes ?? getTypes(specVersion), specVersion),
-    config
-  );
-
-  const preprocessors = initRules(rules, config, 'preprocessors', specVersion);
-  const decorators = initRules(rules, config, 'decorators', specVersion);
-
-  const ctx: BundleContext = {
-    problems: [],
-    oasVersion: specVersion,
-    refTypes: new Map<string, NormalizedNodeType>(),
-    visitorsData: {},
-  };
-
-  if (removeUnusedComponents) {
-    decorators.push({
-      severity: 'error',
-      ruleId: 'remove-unused-components',
-      visitor:
-        specMajorVersion === SpecMajorVersion.OAS2
-          ? RemoveUnusedComponentsOas2({})
-          : RemoveUnusedComponentsOas3({}),
-    });
-  }
-
-  let resolvedRefMap = await resolveDocument({
-    rootDocument: document,
-    rootType: types.Root,
-    externalRefResolver,
+  return bundle({
+    doc: makeDocumentFromString(opts.source, opts.absoluteRef || "/"),
+    dereference: opts.dereference,
+    keepUrlRefs: opts.keepUrlRefs,
   });
-
-  if (preprocessors.length > 0) {
-    // Make additional pass to resolve refs defined in preprocessors.
-    walkDocument({
-      document,
-      rootType: types.Root as NormalizedNodeType,
-      normalizedVisitors: normalizeVisitors(preprocessors, types),
-      resolvedRefMap,
-      ctx,
-    });
-    resolvedRefMap = await resolveDocument({
-      rootDocument: document,
-      rootType: types.Root,
-      externalRefResolver,
-    });
-  }
-
-  const bundleVisitor = normalizeVisitors(
-    [
-      {
-        severity: 'error',
-        ruleId: 'bundler',
-        visitor: makeBundleVisitor(
-          specMajorVersion,
-          dereference,
-          document,
-          resolvedRefMap,
-          keepUrlRefs
-        ),
-      },
-      ...decorators,
-    ],
-    types
-  );
-
-  walkDocument({
-    document,
-    rootType: types.Root,
-    normalizedVisitors: bundleVisitor,
-    resolvedRefMap,
-    ctx,
-  });
-
-  return {
-    bundle: document,
-    problems: ctx.problems.map((problem) => config.addProblemToIgnore(problem)),
-    fileDependencies: externalRefResolver.getFiles(),
-    rootType: types.Root,
-    refTypes: ctx.refTypes,
-    visitorsData: ctx.visitorsData,
-  };
 }
 
-export function mapTypeToComponent(typeName: string, version: SpecMajorVersion) {
-  switch (version) {
-    case SpecMajorVersion.OAS3:
-      switch (typeName) {
-        case 'Schema':
-          return 'schemas';
-        case 'Parameter':
-          return 'parameters';
-        case 'Response':
-          return 'responses';
-        case 'Example':
-          return 'examples';
-        case 'RequestBody':
-          return 'requestBodies';
-        case 'Header':
-          return 'headers';
-        case 'SecuritySchema':
-          return 'securitySchemes';
-        case 'Link':
-          return 'links';
-        case 'Callback':
-          return 'callbacks';
-        default:
-          return null;
-      }
-    case SpecMajorVersion.OAS2:
-      switch (typeName) {
-        case 'Schema':
-          return 'definitions';
-        case 'Parameter':
-          return 'parameters';
-        case 'Response':
-          return 'responses';
-        default:
-          return null;
-      }
-    case SpecMajorVersion.Async2:
-      switch (typeName) {
-        case 'Schema':
-          return 'schemas';
-        case 'Parameter':
-          return 'parameters';
-        default:
-          return null;
-      }
-    case SpecMajorVersion.Async3:
-      switch (typeName) {
-        case 'Schema':
-          return 'schemas';
-        case 'Parameter':
-          return 'parameters';
-        default:
-          return null;
-      }
-    case SpecMajorVersion.Arazzo1:
-      switch (typeName) {
-        case 'Root.workflows_items.parameters_items':
-        case 'Root.workflows_items.steps_items.parameters_items':
-          return 'parameters';
-        default:
-          return null;
-      }
-    case SpecMajorVersion.Overlay1:
-      switch (typeName) {
-        default:
-          return null;
-      }
-  }
+export async function bundleDocument(opts: BundleInput): Promise<BundleResult> {
+  return bundle(opts);
 }
 
-function replaceRef(ref: OasRef, resolved: ResolveResult<any>, ctx: UserContext) {
-  if (!isPlainObject(resolved.node)) {
-    ctx.parent[ctx.key] = resolved.node;
-  } else {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    delete ref.$ref;
-    const obj = Object.assign({}, resolved.node, ref);
-    Object.assign(ref, obj); // assign ref itself again so ref fields take precedence
-  }
-}
-
-// function oas3Move
-
-function makeBundleVisitor(
-  version: SpecMajorVersion,
-  dereference: boolean,
-  rootDocument: Document,
-  resolvedRefMap: ResolvedRefMap,
-  keepUrlRefs: boolean
-) {
-  let components: Record<string, Record<string, any>>;
-  let rootLocation: Location;
-
-  const visitor: Oas3Visitor | Oas2Visitor = {
-    ref: {
-      leave(node, ctx, resolved) {
-        if (!resolved.location || resolved.node === undefined) {
-          reportUnresolvedRef(resolved, ctx.report, ctx.location);
-          return;
-        }
-        if (
-          resolved.location.source === rootDocument.source &&
-          resolved.location.source === ctx.location.source &&
-          ctx.type.name !== 'scalar' &&
-          !dereference
-        ) {
-          return;
-        }
-
-        if (keepUrlRefs && isAbsoluteUrl(node.$ref)) {
-          return;
-        }
-
-        const componentType = mapTypeToComponent(ctx.type.name, version);
-        if (!componentType) {
-          replaceRef(node, resolved, ctx);
-        } else {
-          if (dereference) {
-            saveComponent(componentType, resolved, ctx);
-            replaceRef(node, resolved, ctx);
-          } else {
-            node.$ref = saveComponent(componentType, resolved, ctx);
-            resolveBundledComponent(node, resolved, ctx);
-          }
-        }
-      },
-    },
-    Example: {
-      leave(node: any, ctx: UserContext) {
-        if (isExternalValue(node) && node.value === undefined) {
-          const resolved = ctx.resolve({ $ref: node.externalValue });
-
-          if (!resolved.location || resolved.node === undefined) {
-            reportUnresolvedRef(resolved, ctx.report, ctx.location);
-            return;
-          }
-
-          if (keepUrlRefs && isAbsoluteUrl(node.externalValue)) {
-            return;
-          }
-
-          node.value = ctx.resolve({ $ref: node.externalValue }).node;
-          delete node.externalValue;
-        }
-      },
-    },
-    Root: {
-      enter(root: any, ctx: UserContext) {
-        rootLocation = ctx.location;
-        if (version === SpecMajorVersion.OAS3) {
-          components = root.components = root.components || {};
-        } else if (version === SpecMajorVersion.OAS2) {
-          components = root;
-        } else if (version === SpecMajorVersion.Async2) {
-          components = root.components = root.components || {};
-        } else if (version === SpecMajorVersion.Async3) {
-          components = root.components = root.components || {};
-        } else if (version === SpecMajorVersion.Arazzo1) {
-          components = root.components = root.components || {};
-        }
-      },
-    },
-  };
-
-  if (version === SpecMajorVersion.OAS3) {
-    visitor.DiscriminatorMapping = {
-      leave(mapping: Record<string, string>, ctx: UserContext) {
-        for (const name of Object.keys(mapping)) {
-          const $ref = mapping[name];
-          const resolved = ctx.resolve({ $ref });
-          if (!resolved.location || resolved.node === undefined) {
-            reportUnresolvedRef(resolved, ctx.report, ctx.location.child(name));
-            return;
-          }
-
-          const componentType = mapTypeToComponent('Schema', version)!;
-          mapping[name] = saveComponent(componentType, resolved, ctx);
-        }
-      },
+function parserOptions(keepUrlRefs: boolean, absoluteRef: string) {
+  const bundleOptions: BundleOptions = { ...oas3BundleOptions() };
+  if (keepUrlRefs) {
+    bundleOptions.excludedPathMatcher = (_pointer, value) => {
+      if (!value || typeof value !== "object" || !("$ref" in value)) return false;
+      const ref = (value as { $ref?: unknown }).$ref;
+      return typeof ref === "string" && /^https?:\/\//.test(ref);
     };
   }
+  const origin = httpOrigin(absoluteRef);
+  return {
+    bundle: bundleOptions,
+    ...(origin ? { resolve: { http: { allowedOrigins: [origin] } } } : {}),
+  };
+}
 
-  function resolveBundledComponent(node: OasRef, resolved: ResolveResult<any>, ctx: UserContext) {
-    const newRefId = makeRefId(ctx.location.source.absoluteRef, node.$ref);
-    resolvedRefMap.set(newRefId, {
-      document: rootDocument,
-      isRemote: false,
-      node: resolved.node,
-      nodePointer: node.$ref,
-      resolved: true,
-    });
+function httpOrigin(absoluteRef: string): string | undefined {
+  try {
+    const parsed = new URL(absoluteRef);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    return parsed.origin;
+  } catch {
+    return undefined;
   }
+}
 
-  function saveComponent(
-    componentType: string,
-    target: { node: unknown; location: Location },
-    ctx: UserContext
-  ) {
-    components[componentType] = components[componentType] || {};
-    const name = getComponentName(target, componentType, ctx);
-    components[componentType][name] = target.node;
-    if (
-      version === SpecMajorVersion.OAS3 ||
-      version === SpecMajorVersion.Async2 ||
-      version === SpecMajorVersion.Async3
-    ) {
-      return `#/components/${componentType}/${name}`;
-    } else {
-      return `#/${componentType}/${name}`;
+function attachDiscriminatorRefs(node: unknown, seen = new Set<object>()) {
+  if (!node || typeof node !== "object" || seen.has(node)) return;
+  seen.add(node);
+  if (Array.isArray(node)) {
+    for (const item of node) attachDiscriminatorRefs(item, seen);
+    return;
+  }
+  const record = node as Record<string, unknown>;
+  const discriminator = record.discriminator;
+  if (discriminator && typeof discriminator === "object" && !Array.isArray(discriminator)) {
+    const mapping = (discriminator as { mapping?: unknown }).mapping;
+    if (mapping && typeof mapping === "object" && !Array.isArray(mapping)) {
+      const refs: Record<string, { $ref: string }> = {};
+      for (const [name, value] of Object.entries(mapping)) {
+        if (typeof value === "string") refs[name] = { $ref: value };
+      }
+      record[MAPPING_REFS] = refs;
     }
   }
+  for (const value of Object.values(record)) attachDiscriminatorRefs(value, seen);
+}
 
-  function isEqualOrEqualRef(
-    node: unknown,
-    target: { node: unknown; location: Location },
-    ctx: UserContext
-  ) {
-    if (
-      isRef(node) &&
-      ctx.resolve(node, rootLocation.absolutePointer).location?.absolutePointer ===
-        target.location.absolutePointer
-    ) {
-      return true;
-    }
-
-    return dequal(node, target.node);
+function restoreDiscriminatorMappings(node: unknown, seen = new Set<object>()) {
+  if (!node || typeof node !== "object" || seen.has(node)) return;
+  seen.add(node);
+  if (Array.isArray(node)) {
+    for (const item of node) restoreDiscriminatorMappings(item, seen);
+    return;
   }
-
-  function getComponentName(
-    target: { node: unknown; location: Location },
-    componentType: string,
-    ctx: UserContext
+  const record = node as Record<string, unknown>;
+  const refs = record[MAPPING_REFS];
+  const discriminator = record.discriminator;
+  if (
+    refs &&
+    typeof refs === "object" &&
+    !Array.isArray(refs) &&
+    discriminator &&
+    typeof discriminator === "object" &&
+    !Array.isArray(discriminator)
   ) {
-    const [fileRef, pointer] = [target.location.source.absoluteRef, target.location.pointer];
-    const componentsGroup = components[componentType];
-
-    let name = '';
-
-    const refParts = pointer.slice(2).split('/').filter(isTruthy); // slice(2) removes "#/"
-    while (refParts.length > 0) {
-      name = refParts.pop() + (name ? `-${name}` : '');
-      if (
-        !componentsGroup ||
-        !componentsGroup[name] ||
-        isEqualOrEqualRef(componentsGroup[name], target, ctx)
-      ) {
-        return name;
+    const mapping = ((discriminator as { mapping?: Record<string, string> }).mapping ??= {});
+    for (const [name, value] of Object.entries(refs)) {
+      if (value && typeof value === "object" && typeof (value as { $ref?: unknown }).$ref === "string") {
+        mapping[name] = (value as { $ref: string }).$ref;
       }
     }
-
-    name = refBaseName(fileRef) + (name ? `_${name}` : '');
-    if (!componentsGroup[name] || isEqualOrEqualRef(componentsGroup[name], target, ctx)) {
-      return name;
-    }
-
-    const prevName = name;
-    let serialId = 2;
-    while (componentsGroup[name] && !isEqualOrEqualRef(componentsGroup[name], target, ctx)) {
-      name = `${prevName}-${serialId}`;
-      serialId++;
-    }
-
-    if (!componentsGroup[name]) {
-      ctx.report({
-        message: `Two schemas are referenced with the same name but different content. Renamed ${prevName} to ${name}.`,
-        location: ctx.location,
-        forceSeverity: 'warn',
-      });
-    }
-
-    return name;
+    delete record[MAPPING_REFS];
   }
+  for (const value of Object.values(record)) {
+    if (value !== refs) restoreDiscriminatorMappings(value, seen);
+  }
+}
 
-  return visitor;
+async function inlineExternalValues(root: unknown, base: string, keepUrlRefs: boolean) {
+  const pending: Record<string, unknown>[] = [];
+  collectExternalValues(root, pending, new Set());
+  for (const node of pending) {
+    const externalValue = node.externalValue;
+    if (typeof externalValue !== "string" || node.value !== undefined) continue;
+    if (keepUrlRefs && /^https?:\/\//.test(externalValue)) continue;
+    node.value = await $RefParser.parse(resolveAgainst(base, externalValue));
+    delete node.externalValue;
+  }
+}
+
+function collectExternalValues(node: unknown, pending: Record<string, unknown>[], seen: Set<object>) {
+  if (!node || typeof node !== "object" || seen.has(node)) return;
+  seen.add(node);
+  if (Array.isArray(node)) {
+    for (const item of node) collectExternalValues(item, pending, seen);
+    return;
+  }
+  const record = node as Record<string, unknown>;
+  if (typeof record.externalValue === "string") pending.push(record);
+  for (const value of Object.values(record)) collectExternalValues(value, pending, seen);
+}
+
+function resolveAgainst(base: string, ref: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(ref)) return ref;
+  if (/^https?:\/\//.test(base)) return new URL(ref, base).href;
+  const file = base.startsWith("file:") ? fileURLToPath(base) : base;
+  return path.resolve(path.dirname(file), ref);
 }

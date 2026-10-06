@@ -1,0 +1,5 @@
+description: created
+content:
+  application/json:
+    schema:
+      type: string

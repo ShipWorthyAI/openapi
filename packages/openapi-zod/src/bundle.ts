@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { bundle, createConfig, makeDocumentFromString } from "@shipworthy/openapi-core";
+import { bundle, makeDocumentFromString } from "@shipworthy/openapi-core";
 import type { OpenAPI3 } from "@shipworthy/openapi-typescript";
 
 /**
@@ -10,9 +10,7 @@ import type { OpenAPI3 } from "@shipworthy/openapi-typescript";
  * other files; an in-memory document is parsed as JSON.
  */
 export async function bundleOpenApi(source: URL | OpenAPI3): Promise<OpenAPI3> {
-  const config = await createConfig({}, { extends: ["minimal"] });
   const result = await bundle({
-    config,
     dereference: false,
     ...(source instanceof URL
       ? { ref: source.protocol === "file:" ? fileURLToPath(source.href) : source.href }

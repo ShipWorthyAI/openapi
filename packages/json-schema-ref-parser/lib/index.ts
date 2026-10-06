@@ -21,8 +21,9 @@ import {
 } from "./util/errors.js";
 import maybe from "./util/maybe.js";
 import { getSchemaIdMode, registerSchemaResources, usesDynamicIdScope } from "./util/schema-resources.js";
-import type { ExcludedPathMatcher, ParserOptions } from "./options.js";
+import type { BundleOptions, ExcludedPathMatcher, ParserOptions } from "./options.js";
 import { getJsonSchemaRefParserDefaultOptions } from "./options.js";
+import { oas3BundleOptions } from "./bundle/openapi-roots.js";
 import type {
   $RefsCallback,
   JSONSchema,
@@ -478,6 +479,7 @@ export const parse = $RefParser.parse;
 export const resolve = $RefParser.resolve;
 export const bundle = $RefParser.bundle;
 export const dereference = $RefParser.dereference;
+export { oas3BundleOptions };
 
 export {
   UnmatchedResolverError,
@@ -489,6 +491,7 @@ export {
   ParserError,
   UnmatchedParserError,
   ParserOptions,
+  BundleOptions,
   ExcludedPathMatcher,
   $RefsCallback,
   isHandledError,

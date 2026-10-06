@@ -18,6 +18,24 @@ export type DeepPartial<T> = T extends (...args: never[]) => unknown
 /** Stops an operation from processing a root-relative schema occurrence and its descendants. */
 export type ExcludedPathMatcher = (path: string, value?: unknown) => boolean;
 
+/**
+ * Component map to prefer when hoisting external references.
+ * A function receives the pointer of the reference site and returns a root such as
+ * `#/components/schemas`, or null when that site should not be hoisted.
+ */
+export type BundleDefaultRoot = string | ((pathFromRoot: string) => string | null);
+
+/**
+ * Returns an internal JSON pointer where an external file or fragment should be placed.
+ * Return null to leave that reference on the default inline path.
+ */
+export type BundleGenerateKey = (
+  schema: object,
+  file: string,
+  hash: string,
+  pathFromRoot: string,
+) => string | null;
+
 export interface BundleOptions {
   /**
    * A function, called for each path, which can return true to stop this path and all
@@ -45,6 +63,18 @@ export interface BundleOptions {
    * Default: `true`
    */
   optimizeInternalRefs?: boolean;
+
+  /**
+   * Component map to crawl and sort first when hoisting external references.
+   * Omit this to keep the generic `definitions` / `$defs` bundling order.
+   */
+  defaultRoot?: BundleDefaultRoot;
+
+  /**
+   * When set, external references are copied to the returned pointer and rewritten
+   * to point there. Return null to inline that reference instead.
+   */
+  generateKey?: BundleGenerateKey;
 }
 
 export interface DereferenceOptions {

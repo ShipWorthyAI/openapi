@@ -1,6 +1,5 @@
 import { performance } from "node:perf_hooks";
 import type { Readable } from "node:stream";
-import { createConfig } from "@shipworthy/openapi-core";
 import type ts from "#compiler";
 import { validateAndBundle } from "./lib/validate.js";
 import { debug, resolveRef, scanDiscriminators } from "./lib/utils.js";
@@ -49,23 +48,12 @@ export default async function openapiTS(
     throw new Error("Empty schema. Please specify a URL, file path, or ShipWorthy config");
   }
 
-  const config =
-    options.config ??
-    (await createConfig(
-      {
-        rules: {
-          "operation-operationId-unique": { severity: "error" }, // throw error on duplicate operationIDs
-        },
-      },
-      { extends: ["minimal"] },
-    ));
-
   const schema = await validateAndBundle(source, {
-    config,
     cwd:
       options.cwd instanceof URL ? options.cwd : new URL(`file://${options.cwd ?? process.cwd()}/`),
     silent: options.silent ?? false,
   });
+  const config = options.config ?? {};
 
   const ctx: GlobalContext = {
     additionalProperties: options.additionalProperties ?? false,

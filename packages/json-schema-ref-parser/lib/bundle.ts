@@ -8,6 +8,9 @@ import type { ParserOptions } from "./index.js";
 import type { JSONSchema } from "./index.js";
 import type { BundleOptions } from "./options.js";
 
+type CustomRootMap = Map<string, Map<string, string | null>>;
+type HoistedValue = { pointer: string; value: unknown };
+
 export interface InventoryEntry {
   $ref: any;
   parent: any;
@@ -47,6 +50,8 @@ function bundle<S extends object = JSONSchema, O extends ParserOptions<S> = Pars
 
   // Build an inventory of all $ref pointers in the JSON Schema
   const inventory: InventoryEntry[] = [];
+  const customRoots: CustomRootMap = new Map();
+  const hoistedValues: HoistedValue[] = [];
   const embeddedResourcePaths = new Set([url.stripHash(parser.$refs._root$Ref.path!), url.stripHash(rootScopeBase)]);
   crawl<S, O>(
     parser,
@@ -63,13 +68,22 @@ function bundle<S extends object = JSONSchema, O extends ParserOptions<S> = Pars
     options,
     embeddedResourcePaths,
     new Set(),
+    customRoots,
+    hoistedValues,
   );
 
   // Get the root schema's $id (if any) for qualifying refs inside sub-schemas with their own $id
   const rootId = getSchemaId(parser.schema, parser.$refs._root$Ref.legacyIdScope);
 
   // Remap all $ref pointers
-  remap<S, O>(inventory, options, rootId, rootScopeBase);
+  if (parser.schema && typeof parser.schema === "object") {
+    for (const hoisted of hoistedValues) {
+      if (getAtPointer(parser.schema, hoisted.pointer) === undefined) {
+        setAtPointer(parser.schema, hoisted.pointer, hoisted.value);
+      }
+    }
+  }
+  remap<S, O>(parser.schema, inventory, options, customRoots, rootId, rootScopeBase);
 
   // Fix any $ref paths that traverse through other $refs (which is invalid per JSON Schema spec)
   const bundleOptions = (options.bundle || {}) as BundleOptions;
@@ -105,6 +119,8 @@ function crawl<S extends object = JSONSchema, O extends ParserOptions<S> = Parse
   options: O,
   embeddedResourcePaths: Set<string>,
   seen: Set<object>,
+  customRoots: CustomRootMap,
+  hoistedValues: HoistedValue[],
   matcherAlreadyChecked = false,
 ) {
   const obj = key === null ? parent : parent[key as keyof typeof parent];
@@ -140,24 +156,14 @@ function crawl<S extends object = JSONSchema, O extends ParserOptions<S> = Parse
         options,
         embeddedResourcePaths,
         seen,
+        customRoots,
+        hoistedValues,
       );
     } else {
       // Crawl the object in a specific order that's optimized for bundling.
       // This is important because it determines how `pathFromRoot` gets built,
       // which later determines which keys get dereferenced and which ones get remapped
-      const keys = Object.keys(obj).sort((a, b) => {
-        // Most people will expect references to be bundled into the the "definitions" property,
-        // so we always crawl that property first, if it exists.
-        if (a === "definitions" || a === "$defs") {
-          return -1;
-        } else if (b === "definitions" || b === "$defs") {
-          return 1;
-        } else {
-          // Otherwise, crawl the keys based on their length.
-          // This produces the shortest possible bundled references
-          return a.length - b.length;
-        }
-      }) as (keyof typeof obj)[];
+      const keys = Object.keys(obj).sort((a, b) => sortBundleKeys(a, b, pathFromRoot, bundleOptions)) as (keyof typeof obj)[];
 
       for (const key of keys) {
         const keyPath = Pointer.join(path, key);
@@ -200,6 +206,8 @@ function crawl<S extends object = JSONSchema, O extends ParserOptions<S> = Parse
             options,
             childEmbeddedResourcePaths,
             seen,
+            customRoots,
+            hoistedValues,
           );
         } else {
           crawl(
@@ -217,6 +225,8 @@ function crawl<S extends object = JSONSchema, O extends ParserOptions<S> = Parse
             options,
             childEmbeddedResourcePaths,
             seen,
+            customRoots,
+            hoistedValues,
             true,
           );
         }
@@ -260,6 +270,8 @@ function inventory$Ref<S extends object = JSONSchema, O extends ParserOptions<S>
   options: O,
   embeddedResourcePaths: Set<string>,
   seen: Set<object>,
+  customRoots: CustomRootMap,
+  hoistedValues: HoistedValue[],
 ) {
   const $ref = $refKey === null ? $refParent : $refParent[$refKey];
   const shouldResolveOnCwd = $Ref.isExternal$Ref($ref) && options.dereference?.externalReferenceResolution === "root";
@@ -285,6 +297,7 @@ function inventory$Ref<S extends object = JSONSchema, O extends ParserOptions<S>
       : pointer.$ref.path!;
   const extended = $Ref.isExtended$Ref($ref);
   indirections += pointer.indirections;
+  recordCustomRoot(customRoots, hoistedValues, $refs, options, external, file, hash, pathFromRoot, pointer.value);
 
   const existingEntry = findInInventory(inventory, $refParent, $refKey);
   if (existingEntry) {
@@ -342,6 +355,8 @@ function inventory$Ref<S extends object = JSONSchema, O extends ParserOptions<S>
       options,
       resolvedEmbeddedResourcePaths,
       seen,
+      customRoots,
+      hoistedValues,
     );
   }
 }
@@ -369,8 +384,10 @@ function inventory$Ref<S extends object = JSONSchema, O extends ParserOptions<S>
  * @param inventory
  */
 function remap<S extends object = JSONSchema, O extends ParserOptions<S> = ParserOptions<S>>(
+  schema: S | boolean | null,
   inventory: InventoryEntry[],
   options: O,
+  customRoots: CustomRootMap,
   rootId?: string,
   rootScopeBase?: string,
 ) {
@@ -395,24 +412,7 @@ function remap<S extends object = JSONSchema, O extends ParserOptions<S> = Parse
       // Sort $refs by how close they are to the JSON Schema root
       return a.depth - b.depth;
     } else {
-      // Determine how far each $ref is from the "definitions" property.
-      // Most people will expect references to be bundled into the the "definitions" property if possible.
-      const aDefinitionsIndex = Math.max(
-        a.pathFromRoot.lastIndexOf("/definitions"),
-        a.pathFromRoot.lastIndexOf("/$defs"),
-      );
-      const bDefinitionsIndex = Math.max(
-        b.pathFromRoot.lastIndexOf("/definitions"),
-        b.pathFromRoot.lastIndexOf("/$defs"),
-      );
-
-      if (aDefinitionsIndex !== bDefinitionsIndex) {
-        // Give higher priority to the $ref that's closer to the "definitions" property
-        return bDefinitionsIndex - aDefinitionsIndex;
-      } else {
-        // All else is equal, so use the shorter path, which will produce the shortest possible reference
-        return a.pathFromRoot.length - b.pathFromRoot.length;
-      }
+      return compareBundleProximity(a, b, options);
     }
   });
 
@@ -421,6 +421,9 @@ function remap<S extends object = JSONSchema, O extends ParserOptions<S> = Parse
     // console.log('Re-mapping $ref pointer "%s" at %s', entry.$ref.$ref, entry.pathFromRoot);
 
     const bundleOpts = (options.bundle || {}) as BundleOptions;
+    if (schema && typeof schema === "object" && hoistExternalRef(schema, entry, customRoots)) {
+      continue;
+    }
     if (!entry.external) {
       // This $ref already resolves to the main JSON Schema file.
       // When optimizeInternalRefs is false, preserve the original internal ref path
@@ -484,6 +487,145 @@ function remap<S extends object = JSONSchema, O extends ParserOptions<S> = Parse
 /**
  * TODO
  */
+function getDefaultRoot(pathFromRoot: string, defaultRoot: BundleOptions["defaultRoot"]): string | null {
+  if (typeof defaultRoot === "string") return defaultRoot;
+  if (typeof defaultRoot === "function") return defaultRoot(pathFromRoot);
+  return null;
+}
+
+function sortBundleKeys(a: string, b: string, pathFromRoot: string, bundleOptions: BundleOptions): number {
+  if (bundleOptions.defaultRoot) {
+    const defaultRoot = getDefaultRoot(pathFromRoot, bundleOptions.defaultRoot);
+    if (defaultRoot) {
+      const aIndex = `${pathFromRoot}/${a}`.lastIndexOf(defaultRoot);
+      const bIndex = `${pathFromRoot}/${b}`.lastIndexOf(defaultRoot);
+      if (aIndex !== bIndex) return bIndex - aIndex;
+    }
+    // OpenAPI component names should follow document order, not key length.
+    return 0;
+  }
+  if (a === "definitions" || a === "$defs") return -1;
+  if (b === "definitions" || b === "$defs") return 1;
+  return a.length - b.length;
+}
+
+function compareBundleProximity(
+  a: InventoryEntry,
+  b: InventoryEntry,
+  options: { bundle?: BundleOptions },
+): number {
+  const bundleOptions = (options.bundle || {}) as BundleOptions;
+  if (bundleOptions.defaultRoot) {
+    const aRoot = getDefaultRoot(a.pathFromRoot, bundleOptions.defaultRoot);
+    const bRoot = getDefaultRoot(b.pathFromRoot, bundleOptions.defaultRoot);
+    if (aRoot && bRoot) {
+      const aIndex = a.pathFromRoot.lastIndexOf(aRoot);
+      const bIndex = b.pathFromRoot.lastIndexOf(bRoot);
+      if (aIndex !== bIndex) return bIndex - aIndex;
+    } else if (aRoot) {
+      return -1;
+    } else if (bRoot) {
+      return 1;
+    }
+    return a.pathFromRoot.length - b.pathFromRoot.length;
+  }
+
+  const aDefinitionsIndex = Math.max(a.pathFromRoot.lastIndexOf("/definitions"), a.pathFromRoot.lastIndexOf("/$defs"));
+  const bDefinitionsIndex = Math.max(b.pathFromRoot.lastIndexOf("/definitions"), b.pathFromRoot.lastIndexOf("/$defs"));
+  if (aDefinitionsIndex !== bDefinitionsIndex) return bDefinitionsIndex - aDefinitionsIndex;
+  return a.pathFromRoot.length - b.pathFromRoot.length;
+}
+
+function recordCustomRoot<S extends object, O extends ParserOptions<S>>(
+  customRoots: CustomRootMap,
+  hoistedValues: HoistedValue[],
+  $refs: $Refs<S, O>,
+  options: O,
+  external: boolean,
+  file: string,
+  hash: string,
+  pathFromRoot: string,
+  value: unknown,
+) {
+  const bundleOptions = (options.bundle || {}) as BundleOptions;
+  if (!bundleOptions.generateKey || !external) return;
+  const schema = $refs._root$Ref.value;
+  if (!schema || typeof schema !== "object") return;
+
+  let fileRoots = customRoots.get(file);
+  if (!fileRoots) {
+    fileRoots = new Map();
+    customRoots.set(file, fileRoots);
+  }
+  if (fileRoots.has(hash)) return;
+  const generated = bundleOptions.generateKey(schema, file, hash, pathFromRoot);
+  fileRoots.set(hash, generated);
+  if (typeof generated === "string") hoistedValues.push({ pointer: generated, value });
+}
+
+function hoistExternalRef(schema: object, entry: InventoryEntry, customRoots: CustomRootMap): boolean {
+  if (!entry.external || !entry.$ref || typeof entry.$ref !== "object" || !("$ref" in entry.$ref)) return false;
+  const located = locateHoistedPointer(customRoots.get(entry.file), entry.hash);
+  if (!located) return false;
+  entry.$ref.$ref = located.pointer;
+  if (located.inject && getAtPointer(schema, located.pointer) === undefined) {
+    setAtPointer(schema, located.pointer, entry.value);
+  }
+  return true;
+}
+
+function locateHoistedPointer(
+  fileRoots: Map<string, string | null> | undefined,
+  hash: string,
+): { pointer: string; inject: boolean } | undefined {
+  if (!fileRoots) return undefined;
+  if (fileRoots.has(hash)) {
+    const exact = fileRoots.get(hash);
+    if (typeof exact === "string") return { pointer: exact, inject: true };
+  }
+
+  let bestHash = "";
+  let bestPointer: string | undefined;
+  for (const [candidate, pointer] of fileRoots) {
+    if (typeof pointer !== "string" || candidate === hash) continue;
+    const isPrefix = candidate === "#" ? hash.startsWith("#/") : hash.startsWith(`${candidate}/`);
+    if (!isPrefix) continue;
+    if (candidate.length >= bestHash.length) {
+      bestHash = candidate;
+      bestPointer = pointer;
+    }
+  }
+  if (!bestPointer) return undefined;
+  const suffix = bestHash === "#" ? hash : `#${hash.slice(bestHash.length)}`;
+  return { pointer: Pointer.join(bestPointer, Pointer.parse(suffix)), inject: false };
+}
+
+const unsafePointerTokens = new Set(["__proto__", "constructor", "prototype"]);
+
+function getAtPointer(root: object, pointer: string): unknown {
+  let current: unknown = root;
+  for (const token of Pointer.parse(pointer)) {
+    if (current === null || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[token];
+  }
+  return current;
+}
+
+function setAtPointer(root: object, pointer: string, value: unknown) {
+  const tokens = Pointer.parse(pointer);
+  if (tokens.length === 0 || tokens.some((token) => unsafePointerTokens.has(token))) return;
+  let current = root as Record<string, unknown>;
+  for (let index = 0; index < tokens.length - 1; index++) {
+    const token = tokens[index]!;
+    const next = current[token];
+    if (next === null || typeof next !== "object" || Array.isArray(next)) {
+      current[token] = {};
+    }
+    current = current[token] as Record<string, unknown>;
+  }
+  current[tokens[tokens.length - 1]!] = value;
+}
+
 function findInInventory(inventory: InventoryEntry[], $refParent: any, $refKey: any) {
   for (const existingEntry of inventory) {
     if (existingEntry && existingEntry.parent === $refParent && existingEntry.key === $refKey) {

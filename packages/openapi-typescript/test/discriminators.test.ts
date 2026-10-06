@@ -101,7 +101,7 @@ export interface components {
         } & Omit<components["schemas"]["Pet"], "petType">;
         LizardDog: {
             petType: "LizardDog";
-        } & (Omit<components["schemas"]["Dog"], "petType"> & Omit<components["schemas"]["Lizard"], "petType">);
+        } & Omit<components["schemas"]["Dog"], "petType"> & Omit<components["schemas"]["Lizard"], "petType">;
         AnimalSighting: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
         Beast: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
     };
@@ -166,9 +166,9 @@ export interface components {
         } & Omit<components["schemas"]["Pet"], "petType">;
         Dog: {
             petType: "Dog";
-        } & (Omit<components["schemas"]["Pet"], "petType"> & {
+        } & Omit<components["schemas"]["Pet"], "petType"> & {
             bark?: string;
-        });
+        };
         Lizard: {
             petType: "Lizard";
             lovesRocks?: boolean;

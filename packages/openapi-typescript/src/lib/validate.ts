@@ -1,44 +1,61 @@
+import { readFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
-import {
-  BaseResolver,
-  type Document,
-  lintDocument,
-  makeDocumentFromString,
-  type NormalizedProblem,
-  type ShipWorthyConfig,
-  Source,
-} from "@shipworthy/openapi-core";
-import { $RefParser } from "@shipworthy/json-schema-ref-parser";
+import { Document, Spectral, type RulesetDefinition } from "@stoplight/spectral-core";
+import { oas3 } from "@stoplight/spectral-formats";
+import { Json, parseYaml, Yaml } from "@stoplight/spectral-parsers";
+import { oas } from "@stoplight/spectral-rulesets";
+import { $RefParser, oas3BundleOptions } from "@shipworthy/json-schema-ref-parser";
 import parseJson from "parse-json";
 import type { OpenAPI3 } from "../types.js";
 import { debug, error, warn } from "./utils.js";
 
+const spectral = new Spectral();
+spectral.setRuleset({
+  extends: [oas as unknown as RulesetDefinition],
+  formats: [oas3],
+  parserOptions: {
+    // OpenAPI status codes are YAML numbers (`200:`). Spectral's parser can flag that.
+    incompatibleValues: "off",
+  },
+  rules: spectralRules(),
+});
+
+function spectralRules(): Record<string, "off" | "warn" | "error"> {
+  const rules: Record<string, "off" | "warn" | "error"> = {
+    // Partial documents and versions such as "3.1" are valid generator input.
+    "oas3-schema": "off",
+  };
+  for (const [id, rule] of Object.entries(oas.rules ?? {})) {
+    if (id === "operation-operationId-unique") continue;
+    if (rule && typeof rule === "object" && "severity" in rule && rule.severity === 0) {
+      rules[id] = "warn";
+    }
+  }
+  return rules;
+}
+
 export interface ValidateAndBundleOptions {
-  config: ShipWorthyConfig;
   silent: boolean;
   cwd?: URL;
 }
 
-interface ParseSchemaOptions {
+interface ParsedSchema {
+  parsed: OpenAPI3;
   absoluteRef: string;
-  resolver: BaseResolver;
+  sourceText?: string;
 }
 
-export async function parseSchema(
-  schema: unknown,
-  { absoluteRef, resolver }: ParseSchemaOptions,
-): Promise<Document> {
+export async function parseSchema(schema: unknown, absoluteRef: string): Promise<ParsedSchema> {
   if (!schema) {
     throw new Error("Can’t parse empty schema");
   }
   if (schema instanceof URL) {
-    const result = await resolver.resolveDocument(null, absoluteRef, true);
-    if ("parsed" in result) {
-      return result;
-    }
-    throw result.originalError;
+    const ref = schema.protocol === "file:" ? fileURLToPath(schema) : schema.href;
+    const sourceText =
+      schema.protocol === "file:" ? await readFile(ref, "utf8") : await (await fetch(ref)).text();
+    return { parsed: (await $RefParser.parse(ref)) as OpenAPI3, absoluteRef: ref, sourceText };
   }
   if (schema instanceof Readable) {
     const contents = await new Promise<string>((resolve) => {
@@ -52,140 +69,118 @@ export async function parseSchema(
         resolve(content.trim());
       });
     });
-    return parseSchema(contents, { absoluteRef, resolver });
+    return parseSchema(contents, absoluteRef);
   }
   if (schema instanceof Buffer) {
-    return parseSchema(schema.toString("utf8"), { absoluteRef, resolver });
+    return parseSchema(schema.toString("utf8"), absoluteRef);
   }
   if (typeof schema === "string") {
-    // URL
     if (
       schema.startsWith("http://") ||
       schema.startsWith("https://") ||
       schema.startsWith("file://")
     ) {
-      const url = new URL(schema);
-      return parseSchema(url, {
-        absoluteRef: url.protocol === "file:" ? fileURLToPath(url) : url.href,
-        resolver,
-      });
+      return parseSchema(new URL(schema), absoluteRef);
     }
-    // JSON
     if (schema[0] === "{") {
-      return {
-        source: new Source(absoluteRef, schema, "application/json"),
-        parsed: parseJson(schema),
-      };
+      return { parsed: parseJson(schema) as unknown as OpenAPI3, absoluteRef, sourceText: schema };
     }
-    // YAML
-    return makeDocumentFromString(schema, absoluteRef);
+    return {
+      parsed: parseYaml(schema).data as unknown as OpenAPI3,
+      absoluteRef,
+      sourceText: schema,
+    };
   }
   if (typeof schema === "object" && !Array.isArray(schema)) {
-    return {
-      source: new Source(absoluteRef, JSON.stringify(schema), "application/json"),
-      parsed: schema,
-    };
+    return { parsed: schema as OpenAPI3, absoluteRef };
   }
   throw new Error(
     `Expected string, object, or Buffer. Got ${Array.isArray(schema) ? "Array" : typeof schema}`,
   );
 }
 
-function _processProblems(problems: NormalizedProblem[], options: { silent: boolean }) {
-  if (problems.length) {
-    let errorMessage: string | undefined;
-    for (const problem of problems) {
-      const problemLocation = problem.location?.[0].pointer;
-      const problemMessage = problemLocation
-        ? `${problem.message} at ${problemLocation}`
-        : problem.message;
-      if (problem.severity === "error") {
-        errorMessage = problemMessage;
-        error(problemMessage);
-      } else {
-        warn(problemMessage, options.silent);
-      }
-    }
-    if (errorMessage) {
-      throw new Error(errorMessage);
-    }
+function spectralTarget(document: ParsedSchema) {
+  if (!document.sourceText) return document.parsed as unknown as Record<string, unknown>;
+  if (document.sourceText.trimStart().startsWith("{")) {
+    return new Document(document.sourceText, Json, document.absoluteRef);
   }
+  return new Document(document.sourceText, Yaml, document.absoluteRef);
 }
 
 /**
- * Validate an OpenAPI schema and flatten into a single schema
+ * Validate an OpenAPI schema and flatten external refs into component maps.
  */
 export async function validateAndBundle(
   source: string | URL | OpenAPI3 | Readable | Buffer,
   options: ValidateAndBundleOptions,
 ) {
-  const configT = performance.now();
-  debug("Loaded config", "config", performance.now() - configT);
   const parseT = performance.now();
   let absoluteRef = fileURLToPath(new URL(options?.cwd ?? `file://${process.cwd()}/`));
   if (source instanceof URL) {
     absoluteRef = source.protocol === "file:" ? fileURLToPath(source) : source.href;
   }
-  const resolver = new BaseResolver(options.config.resolve);
-  const document = await parseSchema(source, {
-    absoluteRef,
-    resolver,
-  });
+  const document = await parseSchema(source, absoluteRef);
   debug("Parsed schema", "config", performance.now() - parseT);
 
-  // 1. check for OpenAPI 3 or greater
-  const openapiVersion = Number.parseFloat(document.parsed.openapi);
+  const parsed = document.parsed as OpenAPI3 & { swagger?: unknown };
+  const openapiVersion = Number.parseFloat(parsed.openapi);
   if (
-    document.parsed.swagger ||
-    !document.parsed.openapi ||
+    parsed.swagger ||
+    !parsed.openapi ||
     Number.isNaN(openapiVersion) ||
     openapiVersion < 3 ||
     openapiVersion >= 4
   ) {
-    if (document.parsed.swagger) {
+    if (parsed.swagger) {
       throw new Error("Unsupported Swagger version: 2.x. Use OpenAPI 3.x instead.");
     }
-    if (document.parsed.openapi || openapiVersion < 3 || openapiVersion >= 4) {
-      throw new Error(`Unsupported OpenAPI version: ${document.parsed.openapi}`);
+    if (parsed.openapi || openapiVersion < 3 || openapiVersion >= 4) {
+      throw new Error(`Unsupported OpenAPI version: ${parsed.openapi}`);
     }
     throw new Error("Unsupported schema format, expected `openapi: 3.x`");
   }
 
-  // 2. lint
   const lintT = performance.now();
-  const problems = await lintDocument({
-    document,
-    config: options.config.styleguide,
-    externalRefResolver: resolver,
-  });
-  _processProblems(problems, options);
+  const results = await spectral.run(spectralTarget(document));
+  let errorMessage: string | undefined;
+  for (const result of results) {
+    const location = result.path.length ? ` at #/${result.path.join("/")}` : "";
+    const message = `${result.message}${location}`;
+    if (result.severity === 0) {
+      errorMessage = message;
+      error(message);
+    } else {
+      warn(message, options.silent);
+    }
+  }
+  if (errorMessage) throw new Error(errorMessage);
   debug("Linted schema", "lint", performance.now() - lintT);
 
-  // Bundle external $refs into internal pointers. Dereferencing stays available
-  // through the same parser when a caller needs a fully expanded document.
   const bundleT = performance.now();
   const bundled = await $RefParser.bundle<OpenAPI3>(
-    absoluteRef,
-    document.parsed as OpenAPI3,
-    bundleOptions(absoluteRef),
+    document.absoluteRef,
+    document.parsed,
+    openApiBundleOptions(document.absoluteRef),
   );
+  if (bundled && typeof bundled === "object" && !Array.isArray(bundled) && !("components" in bundled)) {
+    (bundled as OpenAPI3).components = {};
+  }
   debug("Bundled schema", "bundle", performance.now() - bundleT);
-
   return bundled;
 }
 
-/** Allow external refs on the schema URL the caller supplied, and nowhere else internal. */
-function bundleOptions(absoluteRef: string) {
+function openApiBundleOptions(absoluteRef: string) {
   const origin = requestedHttpOrigin(absoluteRef);
-  return origin ? { resolve: { http: { allowedOrigins: [origin] } } } : {};
+  return {
+    bundle: oas3BundleOptions(),
+    ...(origin ? { resolve: { http: { allowedOrigins: [origin] } } } : {}),
+  };
 }
 
 function requestedHttpOrigin(absoluteRef: string): string | undefined {
   try {
     const parsed = new URL(absoluteRef);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return undefined;
-    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
     return parsed.origin;
   } catch {
     return undefined;

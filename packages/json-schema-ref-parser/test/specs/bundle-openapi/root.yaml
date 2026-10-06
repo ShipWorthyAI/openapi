@@ -1,0 +1,55 @@
+openapi: 3.0.3
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      parameters:
+        - $ref: ./limit.yaml
+      responses:
+        "200":
+          description: ok
+          headers:
+            X-Rate:
+              $ref: ./rate.yaml
+          content:
+            application/json:
+              schema:
+                $ref: ./models/pet.yaml
+              examples:
+                sample:
+                  $ref: ./pet-example.yaml
+        "201":
+          $ref: ./created.yaml
+    post:
+      requestBody:
+        $ref: ./pet-body.yaml
+      callbacks:
+        onPet:
+          $ref: ./pet-callback.yaml
+      responses:
+        "200":
+          description: ok
+          links:
+            next:
+              $ref: ./pet-link.yaml
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Local"
+    put:
+      responses:
+        "200":
+          description: other pet
+          content:
+            application/json:
+              schema:
+                $ref: ./extras/pet.yaml
+components:
+  schemas:
+    Local:
+      type: string
+  securitySchemes:
+    ApiKey:
+      $ref: ./api-key.yaml

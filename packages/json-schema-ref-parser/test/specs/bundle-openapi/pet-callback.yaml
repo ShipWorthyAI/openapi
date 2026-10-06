@@ -1,0 +1,5 @@
+"{$request.body#/id}":
+  post:
+    responses:
+      "200":
+        description: ok

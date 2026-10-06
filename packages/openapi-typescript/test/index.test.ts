@@ -315,11 +315,11 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         obj: components["schemas"]["anchorTest"];
-        metadata: {
-            [key: string]: unknown;
-        };
         anchorTest: {
             metadata?: components["schemas"]["metadata"];
+        };
+        metadata: {
+            [key: string]: unknown;
         };
     };
     responses: never;

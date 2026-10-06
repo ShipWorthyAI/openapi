@@ -195,13 +195,8 @@ describe("CLI", () => {
 
     test.skipIf(os.platform() === "win32")("lint error", async () => {
       const cwd = new URL("./fixtures/redocly-lint-error", import.meta.url);
-
-      try {
-        await run([], { cwd: fileURLToPath(cwd) });
-        throw new Error("Linting should have thrown an error");
-      } catch (err) {
-        expect(stripAnsi(String(err))).toMatch(/✘ {2}Servers must be present/);
-      }
+      const { stderr } = await run([], { cwd: fileURLToPath(cwd) });
+      expect(stripAnsi(stderr)).toMatch(/OpenAPI "servers" must be present/);
     });
   });
 });
