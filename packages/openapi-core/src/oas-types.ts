@@ -15,7 +15,7 @@ import type {
   BuiltInOAS2RuleId,
   BuiltInOAS3RuleId,
   BuiltInOverlay1RuleId,
-} from './types/redocly-yaml';
+} from './types/config-yaml';
 import type {
   Oas3Rule,
   Oas3Preprocessor,

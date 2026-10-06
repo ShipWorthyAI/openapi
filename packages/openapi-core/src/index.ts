@@ -13,7 +13,7 @@ export { Oas3Types } from './types/oas3';
 export { Oas2Types } from './types/oas2';
 export { AsyncApi2Types } from './types/asyncapi2';
 export { AsyncApi3Types } from './types/asyncapi3';
-export { ConfigTypes } from './types/redocly-yaml';
+export { ConfigTypes } from './types/config-yaml';
 export type {
   Oas3Definition,
   Oas3_1Definition,
@@ -53,10 +53,6 @@ export type {
   ResolvedApi,
 } from './config';
 export type { Config as ShipWorthyConfig } from './config';
-
-export { RedoclyClient } from './redocly';
-
-export * from './redocly/domains';
 
 export {
   Source,

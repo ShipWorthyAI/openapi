@@ -2,7 +2,7 @@ import { listOf, mapOf } from '.';
 import { isMappingRef } from '../ref-utils';
 
 import type { NodeType } from '.';
-import type { Oas3NodeType } from './redocly-yaml';
+import type { Oas3NodeType } from './config-yaml';
 
 const responseCodeRegexp = /^[0-9][0-9Xx]{2}$/;
 

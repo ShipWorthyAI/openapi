@@ -6,7 +6,7 @@ import { initRules } from './config';
 import { normalizeTypes } from './types';
 import { releaseAjvInstance } from './rules/ajv';
 import { SpecVersion, getMajorSpecVersion, detectSpec, getTypes } from './oas-types';
-import { createConfigTypes } from './types/redocly-yaml';
+import { createConfigTypes } from './types/config-yaml';
 import { Struct } from './rules/common/struct';
 import { NoUnresolvedRefs } from './rules/no-unresolved-refs';
 

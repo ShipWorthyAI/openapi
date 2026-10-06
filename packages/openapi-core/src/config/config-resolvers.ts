@@ -19,7 +19,7 @@ import { isBrowser } from '../env';
 import { Config } from './config';
 import { colorize, logger } from '../logger';
 import { asserts, buildAssertCustomFunction } from '../rules/common/assertions/asserts';
-import { NormalizedConfigTypes } from '../types/redocly-yaml';
+import { NormalizedConfigTypes } from '../types/config-yaml';
 
 import type {
   StyleguideRawConfig,

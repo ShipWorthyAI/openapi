@@ -16,7 +16,7 @@ import { Argument, Command, Flag } from "effect/unstable/cli";
 import { version } from "./version";
 import { fail, userError } from "./user-error";
 
-const REDOC_CONFIG_KEY = "x-openapi-ts";
+const OPENAPI_TS_CONFIG_KEY = "x-openapi-ts";
 
 const BOOLEAN_OPTIONS = [
   "additionalProperties",
@@ -49,8 +49,6 @@ const DEPRECATED_FLAGS: readonly (readonly [string, string])[] = [
     'The --support-array-length flag has been renamed to "--array-length".',
   ],
   ["-it", 'The -it alias has been deprecated. Use "--immutable-types" instead.'],
-  ["--redoc", 'The --redoc config flag has been renamed to "--config" (or -c as shorthand).'],
-  ["--redocly", 'The --redocly config flag has been renamed to "--config" (or -c as shorthand).'],
 ];
 
 export function deprecatedTypescriptFlag(args: readonly string[]): string | undefined {
@@ -344,10 +342,10 @@ function generateApi(
     if (!isRecord(api) || typeof api.root !== "string") {
       return yield* fail(`API ${name} is missing a root document.`);
     }
-    const extension = api[REDOC_CONFIG_KEY];
+    const extension = api[OPENAPI_TS_CONFIG_KEY];
     const output = isRecord(extension) ? extension.output : undefined;
     if (typeof output !== "string") {
-      return yield* fail(`API ${name} is missing an \`${REDOC_CONFIG_KEY}.output\` key.`);
+      return yield* fail(`API ${name} is missing an \`${OPENAPI_TS_CONFIG_KEY}.output\` key.`);
     }
     const options = generatorOptions(flags, loadedConfig, false);
     if (isRecord(extension)) applyBooleanOverrides(options, extension);
