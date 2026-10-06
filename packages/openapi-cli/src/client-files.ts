@@ -1,5 +1,5 @@
 import { Console, Effect, FileSystem, Path } from "effect";
-import { Argument, Flag } from "effect/unstable/cli";
+import { Argument, Flag } from "effect/cli";
 import { fail, userError } from "./user-error";
 
 const namePattern = /^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$/;

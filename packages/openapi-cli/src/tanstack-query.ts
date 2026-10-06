@@ -1,6 +1,6 @@
 import { clientSource, generateSchema } from "@shipworthy/openapi-tanstack-query-utils/generator";
 import { Effect } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { clientFlags, requireClientName, schemaUrl, writeClient } from "./client-files";
 import { pascalCase, prefixTypes } from "./prefix-types";
 import { userError } from "./user-error";

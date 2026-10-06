@@ -2,7 +2,7 @@
 import { BunRuntime, BunServices } from "@effect/platform-bun";
 import { error } from "@shipworthy/openapi-typescript";
 import { Effect } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { openapi } from "./cli";
 import { deprecatedTypescriptFlag } from "./typescript";
 import { version } from "./version";

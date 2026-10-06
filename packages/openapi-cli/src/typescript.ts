@@ -12,7 +12,7 @@ import openapiTS, {
   warn,
 } from "@shipworthy/openapi-typescript";
 import { Effect, FileSystem, Option, Path } from "effect";
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Argument, Command, Flag } from "effect/cli";
 import { version } from "./version";
 import { fail, userError } from "./user-error";
 

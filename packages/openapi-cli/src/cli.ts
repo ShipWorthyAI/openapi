@@ -1,4 +1,4 @@
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { reactQuery } from "./react-query";
 import { tanstackQuery } from "./tanstack-query";
 import { typescript } from "./typescript";

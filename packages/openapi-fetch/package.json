@@ -16,18 +16,31 @@
     "vue"
   ],
   "license": "MIT",
+  "files": [
+    "dist"
+  ],
   "type": "module",
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./src/index.d.ts",
-      "import": "./src/index.js",
-      "default": "./src/index.js"
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
     }
   },
   "scripts": {
-    "build": "unbuild",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "generate-types": "openapi typescript -c test/shipworthy.yaml",
     "prepack": "bun run build",
     "pretest": "bun run generate-types",
@@ -55,6 +68,7 @@
     "superagent": "10.3.0",
     "typescript": "catalog:",
     "undici": "7.25.0",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "^5.0.1"
   }
 }

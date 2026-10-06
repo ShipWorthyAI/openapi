@@ -1,4 +1,4 @@
-import * as Yaml from "effect/unstable/encoding/Yaml";
+import * as Yaml from "effect/encoding/Yaml";
 import { dump, type DumpOptions } from "js-yaml";
 
 const mergeKeys = ["<<", "!!merge <<"] as const;

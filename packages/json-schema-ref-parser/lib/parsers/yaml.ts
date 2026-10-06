@@ -1,4 +1,4 @@
-import * as Yaml from "effect/unstable/encoding/Yaml";
+import * as Yaml from "effect/encoding/Yaml";
 import type { FileInfo, Plugin } from "../types/index.js";
 import { ParserError } from "../util/errors.js";
 

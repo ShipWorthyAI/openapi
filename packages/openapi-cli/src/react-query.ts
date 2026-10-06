@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import openapiTS from "@shipworthy/openapi-typescript";
 import { clientFlags, requireClientName, schemaUrl, writeClient } from "./client-files";
 import { pascalCase, prefixTypes } from "./prefix-types";

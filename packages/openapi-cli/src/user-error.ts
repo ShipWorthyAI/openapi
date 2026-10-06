@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { CliError } from "effect/unstable/cli";
+import { CliError } from "effect/cli";
 
 export function userError(cause: unknown, userMessage?: string): CliError.UserError {
   const message =

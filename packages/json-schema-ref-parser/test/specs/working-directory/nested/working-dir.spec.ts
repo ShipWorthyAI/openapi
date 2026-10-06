@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import $RefParser from "../../../../lib";
 import path from "../../../utils/path";
-import * as Yaml from "effect/unstable/encoding/Yaml";
+import * as Yaml from "effect/encoding/Yaml";
 import fsp from "fs/promises";
 import helper from "../../../utils/helper";
 import { JSONParserError } from "../../../../lib/util/errors";
