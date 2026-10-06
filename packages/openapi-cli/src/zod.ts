@@ -1,4 +1,4 @@
-import { openapiTS } from "@shipworthy/openapi-typescript-api";
+import openapiTS from "@shipworthy/openapi-typescript";
 import { generateZodSources } from "@shipworthy/openapi-zod";
 import { Effect } from "effect";
 import { Command } from "effect/unstable/cli";

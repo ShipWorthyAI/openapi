@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "unbuild",
-    "generate-types": "openapi typescript -c test/redocly.yaml",
+    "generate-types": "openapi typescript -c test/shipworthy.yaml",
     "prepack": "bun run build",
     "pretest": "bun run generate-types",
     "test": "bun run test:js && bun run test:exports",

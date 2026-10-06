@@ -49,7 +49,8 @@ const DEPRECATED_FLAGS: readonly (readonly [string, string])[] = [
     'The --support-array-length flag has been renamed to "--array-length".',
   ],
   ["-it", 'The -it alias has been deprecated. Use "--immutable-types" instead.'],
-  ["--redoc", 'The --redoc config flag has been renamed to "--redocly" (or -c as shorthand).'],
+  ["--redoc", 'The --redoc config flag has been renamed to "--config" (or -c as shorthand).'],
+  ["--redocly", 'The --redocly config flag has been renamed to "--config" (or -c as shorthand).'],
 ];
 
 export function deprecatedTypescriptFlag(args: readonly string[]): string | undefined {
@@ -109,9 +110,9 @@ export const typescript = Command.make(
       Flag.withDescription("Output file. Writes the generated types to stdout when omitted."),
       Flag.optional,
     ),
-    redocly: Flag.String("redocly").pipe(
+    config: Flag.String("config").pipe(
       Flag.withAlias("c"),
-      Flag.withDescription("Path to a Redocly config. Defaults to redocly.yaml."),
+      Flag.withDescription("Path to a ShipWorthy config. Defaults to shipworthy.yaml."),
       Flag.optional,
     ),
     check: flag("check", "Check that the generated types are up-to-date."),
@@ -168,31 +169,32 @@ export const typescript = Command.make(
       "Generate path params from the path template even when the schema omits them.",
     ),
   },
-  (config) =>
+  (flags) =>
     Effect.gen(function* () {
-      if (config.rootTypesNoSchemaPrefix && !config.rootTypes) {
+      if (flags.rootTypesNoSchemaPrefix && !flags.rootTypes) {
         console.warn("--root-types-no-schema-prefix has no effect without --root-types flag");
       }
-      if (config.rootTypesKeepCasing && !config.rootTypes) {
+      if (flags.rootTypesKeepCasing && !flags.rootTypes) {
         console.warn("--root-types-keep-casing has no effect without --root-types flag");
       }
 
-      const output = optionValue(config.output);
-      const input = optionValue(config.input);
-      const redoclyFlag = optionValue(config.redocly);
+      const output = optionValue(flags.output);
+      const input = optionValue(flags.input);
+      const configFlag = optionValue(flags.config);
       const started = performance.now();
       if (output) {
         console.info(`✨ ${c.bold(`openapi typescript ${version}`)}`);
       }
 
-      const redocly = yield* loadRedocly(redoclyFlag);
-      const apis = isRecord(redocly.apis) ? redocly.apis : {};
-      const configFile = typeof redocly.configFile === "string" ? redocly.configFile : undefined;
+      const loadedConfig = yield* loadShipWorthyConfig(configFlag);
+      const apis = isRecord(loadedConfig.apis) ? loadedConfig.apis : {};
+      const configFile =
+        typeof loadedConfig.configFile === "string" ? loadedConfig.configFile : undefined;
 
       if (Object.keys(apis).length > 0) {
         if (input) {
           warn(
-            "APIs are specified both in Redocly Config and CLI argument. Only using Redocly config.",
+            "APIs are specified both in ShipWorthy config and CLI argument. Only using ShipWorthy config.",
           );
         }
         const path = yield* Path.Path;
@@ -202,38 +204,33 @@ export const typescript = Command.make(
             ? new URL(`file://${configFile}`)
             : new URL(configFile, cwdUrl());
         for (const [name, api] of Object.entries(apis)) {
-          yield* generateApi(name, api, config, redocly, configRoot, started);
+          yield* generateApi(name, api, flags, loadedConfig, configRoot, started);
         }
         return;
       }
 
-      const options = generatorOptions(config, redocly, output === undefined);
+      const options = generatorOptions(flags, loadedConfig, output === undefined);
       if (!input) {
         const result = yield* renderSchema(process.stdin, options);
         if (!output) {
           process.stdout.write(result);
           return;
         }
-        yield* publish(
-          result,
-          yield* resolveOutput(output),
-          config.check,
-          "stdin",
-          output,
-          started,
-        );
+        yield* publish(result, yield* resolveOutput(output), flags.check, "stdin", output, started);
         return;
       }
 
       if (input.includes("*")) {
-        return yield* fail("Globbing has been deprecated in favor of redocly.yaml’s `apis` keys.");
+        return yield* fail(
+          "Globbing has been deprecated in favor of shipworthy.yaml’s `apis` keys.",
+        );
       }
       const result = yield* renderSchema(new URL(input, cwdUrl()), options);
       if (!output) {
         process.stdout.write(result);
         return;
       }
-      yield* publish(result, yield* resolveOutput(output), config.check, input, output, started);
+      yield* publish(result, yield* resolveOutput(output), flags.check, input, output, started);
     }),
 ).pipe(
   Command.withDescription("Convert an OpenAPI schema to TypeScript."),
@@ -244,14 +241,14 @@ export const typescript = Command.make(
       description: "Write TypeScript types for a local schema",
     },
     {
-      command: "openapi typescript --redocly redocly.yaml",
-      description: "Generate every API declared in a Redocly config",
+      command: "openapi typescript --config shipworthy.yaml",
+      description: "Generate every API declared in a ShipWorthy config",
     },
   ]),
 );
 
 function generatorOptions(
-  config: {
+  flags: {
     readonly additionalProperties: boolean;
     readonly alphabetize: boolean;
     readonly arrayLength: boolean;
@@ -273,42 +270,42 @@ function generatorOptions(
     readonly rootTypesKeepCasing: boolean;
     readonly rootTypesNoSchemaPrefix: boolean;
   },
-  redocly: Config,
+  config: Config,
   silent: boolean,
 ): OpenAPITSOptions {
   return {
-    additionalProperties: config.additionalProperties,
-    alphabetize: config.alphabetize,
-    arrayLength: config.arrayLength,
-    conditionalEnums: config.conditionalEnums,
-    dedupeEnums: config.dedupeEnums,
-    defaultNonNullable: config.defaultNonNullable,
-    emptyObjectsUnknown: config.emptyObjectsUnknown,
-    enum: config.enum,
-    enumValues: config.enumValues,
-    excludeDeprecated: config.excludeDeprecated,
-    exportType: config.exportType,
-    generatePathParams: config.generatePathParams,
-    immutable: config.immutable,
-    makePathsEnum: config.makePathsEnum,
-    pathParamsAsTypes: config.pathParamsAsTypes,
-    propertiesRequiredByDefault: config.propertiesRequiredByDefault,
-    readWriteMarkers: config.readWriteMarkers,
-    rootTypes: config.rootTypes,
-    rootTypesKeepCasing: config.rootTypesKeepCasing,
-    rootTypesNoSchemaPrefix: config.rootTypesNoSchemaPrefix,
-    redocly,
+    additionalProperties: flags.additionalProperties,
+    alphabetize: flags.alphabetize,
+    arrayLength: flags.arrayLength,
+    conditionalEnums: flags.conditionalEnums,
+    dedupeEnums: flags.dedupeEnums,
+    defaultNonNullable: flags.defaultNonNullable,
+    emptyObjectsUnknown: flags.emptyObjectsUnknown,
+    enum: flags.enum,
+    enumValues: flags.enumValues,
+    excludeDeprecated: flags.excludeDeprecated,
+    exportType: flags.exportType,
+    generatePathParams: flags.generatePathParams,
+    immutable: flags.immutable,
+    makePathsEnum: flags.makePathsEnum,
+    pathParamsAsTypes: flags.pathParamsAsTypes,
+    propertiesRequiredByDefault: flags.propertiesRequiredByDefault,
+    readWriteMarkers: flags.readWriteMarkers,
+    rootTypes: flags.rootTypes,
+    rootTypesKeepCasing: flags.rootTypesKeepCasing,
+    rootTypesNoSchemaPrefix: flags.rootTypesNoSchemaPrefix,
+    config,
     silent,
   };
 }
 
-function loadRedocly(explicit: string | undefined) {
+function loadShipWorthyConfig(explicit: string | undefined) {
   return Effect.gen(function* () {
     const located = yield* explicit === undefined
       ? Effect.sync(() => findConfig())
       : locateConfig(explicit);
     if (explicit !== undefined && !located) {
-      return yield* fail(`Redocly config not found at: ${explicit}`);
+      return yield* fail(`ShipWorthy config not found at: ${explicit}`);
     }
     return yield* Effect.tryPromise({
       try: async () =>
@@ -338,8 +335,8 @@ function locateConfig(explicit: string) {
 function generateApi(
   name: string,
   api: unknown,
-  config: Parameters<typeof generatorOptions>[0] & { readonly check: boolean },
-  redocly: Config,
+  flags: Parameters<typeof generatorOptions>[0] & { readonly check: boolean },
+  loadedConfig: Config,
   configRoot: URL,
   started: number,
 ) {
@@ -352,13 +349,13 @@ function generateApi(
     if (typeof output !== "string") {
       return yield* fail(`API ${name} is missing an \`${REDOC_CONFIG_KEY}.output\` key.`);
     }
-    const options = generatorOptions(config, redocly, false);
+    const options = generatorOptions(flags, loadedConfig, false);
     if (isRecord(extension)) applyBooleanOverrides(options, extension);
     const result = yield* renderSchema(new URL(api.root, configRoot), options);
     yield* publish(
       result,
       fileURLToPath(new URL(output, configRoot)),
-      config.check,
+      flags.check,
       name,
       output,
       started,

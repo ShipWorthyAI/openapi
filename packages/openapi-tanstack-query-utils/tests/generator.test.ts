@@ -1,4 +1,4 @@
-import { astToString } from "@shipworthy/openapi-typescript-api";
+import { astToString } from "@shipworthy/openapi-typescript";
 import { generateSchema } from "../src/generator";
 import { schema } from "./fixtures";
 import { generatedFixture } from "./generated-fixture";

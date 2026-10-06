@@ -15,7 +15,6 @@
     "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
-    "@shipworthy/openapi-typescript-api": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

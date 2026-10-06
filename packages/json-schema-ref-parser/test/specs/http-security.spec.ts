@@ -48,6 +48,73 @@ describe.skipIf(isBrowser)("HTTP request security", () => {
     undiciMock.agents.length = 0;
   });
 
+  it("allows an explicitly requested private origin and blocks every other internal origin", async () => {
+    const item = { type: "object", properties: { name: { type: "string" } } };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      expect(String(input)).toBe("http://127.0.0.1:9/item.json");
+      return new Response(JSON.stringify(item), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const options = { resolve: { http: { allowedOrigins: ["http://127.0.0.1:9"] } } };
+
+    await expect(
+      $RefParser.bundle(
+        "http://127.0.0.1:9/schema.json",
+        { properties: { item: { $ref: "./item.json" } } },
+        options,
+      ),
+    ).resolves.toEqual({ properties: { item } });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(lookupMock).not.toHaveBeenCalled();
+    expect(undiciMock.fetch).not.toHaveBeenCalled();
+
+    await expect(
+      $RefParser.bundle(
+        "http://127.0.0.1:9/schema.json",
+        { properties: { secret: { $ref: "http://127.0.0.1:10/secret.json" } } },
+        options,
+      ),
+    ).rejects.toThrow('Unable to resolve $ref pointer "http://127.0.0.1:10/secret.json"');
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("blocks a redirect from an allowed origin to a different internal host", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { location: "http://169.254.169.254/latest" },
+      }),
+    );
+
+    await expect(
+      $RefParser.parse("http://127.0.0.1:9/schema.json", {
+        resolve: { http: { allowedOrigins: ["http://127.0.0.1:9"] } },
+      }),
+    ).rejects.toThrow("Unsafe URL blocked by safeUrlResolver: http://169.254.169.254/latest");
+    expect(undiciMock.fetch).not.toHaveBeenCalled();
+  });
+
+  it("still validates DNS for an explicitly requested public origin", async () => {
+    lookupMock.mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    await expect(
+      $RefParser.parse("https://public-looking.example/schema.json", {
+        resolve: { http: { allowedOrigins: ["https://public-looking.example"] } },
+      }),
+    ).rejects.toThrow("Unsafe URL blocked by safeUrlResolver");
+
+    expect(lookupMock).toHaveBeenCalledWith("public-looking.example", {
+      all: true,
+      verbatim: true,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(undiciMock.fetch).not.toHaveBeenCalled();
+  });
+
   it("blocks hostnames that resolve to a private address before fetching", async () => {
     lookupMock.mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
     const fetchMock = vi.spyOn(globalThis, "fetch");
@@ -57,7 +124,10 @@ describe.skipIf(isBrowser)("HTTP request security", () => {
       "Unsafe URL blocked by safeUrlResolver",
     );
 
-    expect(lookupMock).toHaveBeenCalledWith("public-looking.example", { all: true, verbatim: true });
+    expect(lookupMock).toHaveBeenCalledWith("public-looking.example", {
+      all: true,
+      verbatim: true,
+    });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(undiciMock.fetch).not.toHaveBeenCalled();
   });
@@ -78,7 +148,10 @@ describe.skipIf(isBrowser)("HTTP request security", () => {
       "Unsafe URL blocked by safeUrlResolver",
     );
 
-    expect(lookupMock).toHaveBeenNthCalledWith(2, "rebinding.example", { all: true, verbatim: true });
+    expect(lookupMock).toHaveBeenNthCalledWith(2, "rebinding.example", {
+      all: true,
+      verbatim: true,
+    });
     expect(undiciMock.fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -136,7 +209,9 @@ describe.skipIf(isBrowser)("HTTP request security", () => {
     );
 
     const parser = new $RefParser();
-    await expect(parser.parse("https://trusted.example/schema.json")).resolves.toEqual({ type: "string" });
+    await expect(parser.parse("https://trusted.example/schema.json")).resolves.toEqual({
+      type: "string",
+    });
 
     const lookup = undiciMock.agentOptions[0]?.connect?.lookup as (
       hostname: string,
@@ -147,17 +222,19 @@ describe.skipIf(isBrowser)("HTTP request security", () => {
         family?: number,
       ) => void,
     ) => void;
-    const pinnedAddresses = await new Promise<Array<{ address: string; family: number }>>((resolve, reject) => {
-      lookup("trusted.example", { all: true, family: 0 }, (error, addresses) => {
-        if (error) {
-          reject(error);
-        } else if (Array.isArray(addresses)) {
-          resolve(addresses);
-        } else {
-          reject(new Error("Expected the pinned lookup to return all addresses"));
-        }
-      });
-    });
+    const pinnedAddresses = await new Promise<Array<{ address: string; family: number }>>(
+      (resolve, reject) => {
+        lookup("trusted.example", { all: true, family: 0 }, (error, addresses) => {
+          if (error) {
+            reject(error);
+          } else if (Array.isArray(addresses)) {
+            resolve(addresses);
+          } else {
+            reject(new Error("Expected the pinned lookup to return all addresses"));
+          }
+        });
+      },
+    );
 
     expect(pinnedAddresses).toEqual([
       { address: "93.184.216.34", family: 4 },
@@ -177,7 +254,11 @@ describe.skipIf(isBrowser)("HTTP request security", () => {
         new Response(
           new ReadableStream({
             start(controller) {
-              requestSignal?.addEventListener("abort", () => controller.error(requestSignal?.reason), { once: true });
+              requestSignal?.addEventListener(
+                "abort",
+                () => controller.error(requestSignal?.reason),
+                { once: true },
+              );
             },
           }),
           { headers: { "content-type": "application/json" } },
@@ -195,7 +276,9 @@ describe.skipIf(isBrowser)("HTTP request security", () => {
     const error = await rejection;
 
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toContain("Error downloading https://example.com/stalled.json");
+    expect((error as Error).message).toContain(
+      "Error downloading https://example.com/stalled.json",
+    );
     expect(requestSignal?.aborted).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
   });

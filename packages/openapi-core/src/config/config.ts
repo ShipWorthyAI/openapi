@@ -32,10 +32,9 @@ import type {
   ThemeRawConfig,
 } from './types';
 
-export const IGNORE_FILE = '.redocly.lint-ignore.yaml';
+export const IGNORE_FILE = '.shipworthy.lint-ignore.yaml';
 const IGNORE_BANNER =
-  `# This file instructs Redocly's linter to ignore the rules contained for specific parts of your API.\n` +
-  `# See https://redocly.com/docs/cli/ for more information.\n`;
+  `# This file instructs ShipWorthy's linter to ignore the rules contained for specific parts of your API.\n`;
 
 function getIgnoreFilePath(configFile?: string): string | undefined {
   if (configFile) {

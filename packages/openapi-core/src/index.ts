@@ -52,6 +52,7 @@ export type {
   RuleSeverity,
   ResolvedApi,
 } from './config';
+export type { Config as ShipWorthyConfig } from './config';
 
 export { RedoclyClient } from './redocly';
 

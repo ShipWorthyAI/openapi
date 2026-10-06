@@ -7,7 +7,7 @@ import {
   lintDocument,
   makeDocumentFromString,
   type NormalizedProblem,
-  type Config as RedoclyConfig,
+  type ShipWorthyConfig,
   Source,
 } from "@shipworthy/openapi-core";
 import { $RefParser } from "@shipworthy/json-schema-ref-parser";
@@ -16,7 +16,7 @@ import type { OpenAPI3 } from "../types.js";
 import { debug, error, warn } from "./utils.js";
 
 export interface ValidateAndBundleOptions {
-  redoc: RedoclyConfig;
+  config: ShipWorthyConfig;
   silent: boolean;
   cwd?: URL;
 }
@@ -113,25 +113,25 @@ function _processProblems(problems: NormalizedProblem[], options: { silent: bool
 }
 
 /**
- * Validate an OpenAPI schema and flatten into a single schema using Redocly CLI
+ * Validate an OpenAPI schema and flatten into a single schema
  */
 export async function validateAndBundle(
   source: string | URL | OpenAPI3 | Readable | Buffer,
   options: ValidateAndBundleOptions,
 ) {
-  const redocConfigT = performance.now();
-  debug("Loaded Redoc config", "redoc", performance.now() - redocConfigT);
-  const redocParseT = performance.now();
+  const configT = performance.now();
+  debug("Loaded config", "config", performance.now() - configT);
+  const parseT = performance.now();
   let absoluteRef = fileURLToPath(new URL(options?.cwd ?? `file://${process.cwd()}/`));
   if (source instanceof URL) {
     absoluteRef = source.protocol === "file:" ? fileURLToPath(source) : source.href;
   }
-  const resolver = new BaseResolver(options.redoc.resolve);
+  const resolver = new BaseResolver(options.config.resolve);
   const document = await parseSchema(source, {
     absoluteRef,
     resolver,
   });
-  debug("Parsed schema", "redoc", performance.now() - redocParseT);
+  debug("Parsed schema", "config", performance.now() - parseT);
 
   // 1. check for OpenAPI 3 or greater
   const openapiVersion = Number.parseFloat(document.parsed.openapi);
@@ -152,20 +152,42 @@ export async function validateAndBundle(
   }
 
   // 2. lint
-  const redocLintT = performance.now();
+  const lintT = performance.now();
   const problems = await lintDocument({
     document,
-    config: options.redoc.styleguide,
+    config: options.config.styleguide,
     externalRefResolver: resolver,
   });
   _processProblems(problems, options);
-  debug("Linted schema", "lint", performance.now() - redocLintT);
+  debug("Linted schema", "lint", performance.now() - lintT);
 
   // Bundle external $refs into internal pointers. Dereferencing stays available
   // through the same parser when a caller needs a fully expanded document.
   const bundleT = performance.now();
-  const bundled = await $RefParser.bundle<OpenAPI3>(absoluteRef, document.parsed as OpenAPI3, {});
+  const bundled = await $RefParser.bundle<OpenAPI3>(
+    absoluteRef,
+    document.parsed as OpenAPI3,
+    bundleOptions(absoluteRef),
+  );
   debug("Bundled schema", "bundle", performance.now() - bundleT);
 
   return bundled;
+}
+
+/** Allow external refs on the schema URL the caller supplied, and nowhere else internal. */
+function bundleOptions(absoluteRef: string) {
+  const origin = requestedHttpOrigin(absoluteRef);
+  return origin ? { resolve: { http: { allowedOrigins: [origin] } } } : {};
+}
+
+function requestedHttpOrigin(absoluteRef: string): string | undefined {
+  try {
+    const parsed = new URL(absoluteRef);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return undefined;
+    }
+    return parsed.origin;
+  } catch {
+    return undefined;
+  }
 }

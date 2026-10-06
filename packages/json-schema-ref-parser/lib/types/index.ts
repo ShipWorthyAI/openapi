@@ -15,16 +15,18 @@ export type SchemaCallback<S extends object = JSONSchema> = (
   err: Error | null,
   schema?: S | object | boolean | null,
 ) => any;
-export type $RefsCallback<S extends object = JSONSchema, O extends ParserOptions<S> = ParserOptions<S>> = (
-  err: Error | null,
-  $refs?: $Refs<S, O>,
-) => any;
+export type $RefsCallback<
+  S extends object = JSONSchema,
+  O extends ParserOptions<S> = ParserOptions<S>,
+> = (err: Error | null, $refs?: $Refs<S, O>) => any;
 
 /**
  * See https://apidevtools.com/json-schema-ref-parser/docs/options.html
  */
 
-export interface HTTPResolverOptions<S extends object = JSONSchema> extends Partial<ResolverOptions<S>> {
+export interface HTTPResolverOptions<S extends object = JSONSchema> extends Partial<
+  ResolverOptions<S>
+> {
   /**
    * You can specify any HTTP headers that should be sent when downloading files. For example, some servers may require you to set the `Accept` or `Referrer` header.
    */
@@ -49,6 +51,14 @@ export interface HTTPResolverOptions<S extends object = JSONSchema> extends Part
    * Set this to `false` if you want to allow unsafe URLs (e.g., `127.0.0.1`, localhost, and other internal URLs).
    */
   safeUrlResolver?: boolean;
+
+  /**
+   * Origins the caller explicitly requested, such as the schema URL being bundled.
+   * References on these origins are allowed even when the host is loopback or private.
+   * Every other internal host stays blocked, including a redirect away from an allowed origin.
+   * A public hostname in this list is still checked for DNS rebinding.
+   */
+  allowedOrigins?: readonly string[];
 }
 
 /**
@@ -124,7 +134,10 @@ export interface Plugin {
    * Unlike the `canParse` function, the `parse` method can also be asynchronous. This might be important if your parser needs to retrieve data from a database or if it relies on an external HTTP service to return the parsed value.  You can return your asynchronous value via a [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) or a Node.js-style error-first callback.  Here are examples of both approaches:
    */
   parse:
-    | ((file: FileInfo, callback?: (error: Error | null, data: string | null) => any) => unknown | Promise<unknown>)
+    | ((
+        file: FileInfo,
+        callback?: (error: Error | null, data: string | null) => any,
+      ) => unknown | Promise<unknown>)
     | number
     | string;
 }

@@ -1,5 +1,6 @@
 import type { OperationRoute } from "./query-utils";
-import { openapiTS, ts, type OpenAPI3 } from "@shipworthy/openapi-typescript-api";
+import openapiTS, { type OpenAPI3 } from "@shipworthy/openapi-typescript";
+import ts from "@shipworthy/openapi-typescript/compiler";
 
 const methods = ["get", "put", "post", "delete", "options", "head", "patch", "trace"] as const;
 

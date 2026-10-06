@@ -149,7 +149,7 @@ describe("CLI", () => {
     );
   });
 
-  describe("Redocly config", () => {
+  describe("ShipWorthy config", () => {
     test.skipIf(os.platform() === "win32")("automatic config", async () => {
       const cwd = new URL("./fixtures/redocly/", import.meta.url);
 
@@ -161,8 +161,8 @@ describe("CLI", () => {
       }
     });
 
-    test("--redocly config", async () => {
-      await run(["--redocly", "test/fixtures/redocly-flag/redocly.yaml"], {
+    test("--config", async () => {
+      await run(["--config", "test/fixtures/redocly-flag/shipworthy.yaml"], {
         cwd,
       });
       for (const schema of ["a", "b", "c"]) {
@@ -175,11 +175,11 @@ describe("CLI", () => {
       }
     });
 
-    test("--redocly explicit config path", async () => {
+    test("--config explicit path", async () => {
       const altOutput = new URL("./test/fixtures/redocly-flag/output-alt/", root);
       fs.rmSync(altOutput, { recursive: true, force: true });
 
-      await run(["--redocly", "test/fixtures/redocly-flag/redocly.alt.yaml"], {
+      await run(["--config", "test/fixtures/redocly-flag/shipworthy.alt.yaml"], {
         cwd,
       });
 

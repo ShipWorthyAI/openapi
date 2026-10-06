@@ -2,7 +2,7 @@ import { performance } from "node:perf_hooks";
 import type { Readable } from "node:stream";
 import { createConfig } from "@shipworthy/openapi-core";
 import type ts from "#compiler";
-import { validateAndBundle } from "./lib/redoc.js";
+import { validateAndBundle } from "./lib/validate.js";
 import { debug, resolveRef, scanDiscriminators } from "./lib/utils.js";
 import transformSchema from "./transform/index.js";
 import type { GlobalContext, OpenAPI3, OpenAPITSOptions } from "./types.js";
@@ -46,11 +46,11 @@ export default async function openapiTS(
   options: OpenAPITSOptions = {} as Partial<OpenAPITSOptions>,
 ): Promise<ts.Node[]> {
   if (!source) {
-    throw new Error("Empty schema. Please specify a URL, file path, or Redocly Config");
+    throw new Error("Empty schema. Please specify a URL, file path, or ShipWorthy config");
   }
 
-  const redoc =
-    options.redocly ??
+  const config =
+    options.config ??
     (await createConfig(
       {
         rules: {
@@ -61,7 +61,7 @@ export default async function openapiTS(
     ));
 
   const schema = await validateAndBundle(source, {
-    redoc,
+    config,
     cwd:
       options.cwd instanceof URL ? options.cwd : new URL(`file://${options.cwd ?? process.cwd()}/`),
     silent: options.silent ?? false,
@@ -88,7 +88,7 @@ export default async function openapiTS(
     pathParamsAsTypes: options.pathParamsAsTypes ?? false,
     postTransform: typeof options.postTransform === "function" ? options.postTransform : undefined,
     propertiesRequiredByDefault: options.propertiesRequiredByDefault ?? false,
-    redoc,
+    config,
     silent: options.silent ?? false,
     inject: options.inject ?? undefined,
     transform: typeof options.transform === "function" ? options.transform : undefined,

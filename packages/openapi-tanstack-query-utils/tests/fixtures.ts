@@ -1,4 +1,4 @@
-import type { OpenAPI3 } from "@shipworthy/openapi-typescript-api";
+import type { OpenAPI3 } from "@shipworthy/openapi-typescript";
 
 export const schema = {
   openapi: "3.0.3",

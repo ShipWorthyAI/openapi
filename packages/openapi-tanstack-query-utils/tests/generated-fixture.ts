@@ -10,7 +10,7 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import type { OpenAPI3 } from "@shipworthy/openapi-typescript-api";
+import type { OpenAPI3 } from "@shipworthy/openapi-typescript";
 
 type FixtureUtils = {
   getItem: OperationQueryUtils<ItemOperation>;

@@ -5,7 +5,10 @@ import type { LookupFunction } from "node:net";
 import type { Agent } from "undici";
 
 interface UndiciModule {
-  Agent: new (options?: { connect?: { lookup: LookupFunction }; autoSelectFamily?: boolean }) => Agent;
+  Agent: new (options?: {
+    connect?: { lookup: LookupFunction };
+    autoSelectFamily?: boolean;
+  }) => Agent;
   fetch(input: URL | string, init?: RequestInit & { dispatcher?: Agent }): Promise<unknown>;
 }
 
@@ -58,14 +61,19 @@ export default {
    * Resolvers that return true will be tried in order, until one successfully resolves the file.
    * Resolvers that return false will not be given a chance to resolve the file.
    */
-  canRead(file: FileInfo) {
-    return url.isHttp(file.url) && (!this.safeUrlResolver || !url.isUnsafeUrl(file.url));
+  canRead(this: HTTPResolverOptions<JSONSchema>, file: FileInfo) {
+    return (
+      url.isHttp(file.url) &&
+      (!this.safeUrlResolver ||
+        isAllowedOrigin(file.url, this.allowedOrigins) ||
+        !url.isUnsafeUrl(file.url))
+    );
   },
 
   /**
    * Reads the given URL and returns its raw contents as a Buffer.
    */
-  read(file: FileInfo) {
+  read(this: HTTPResolverOptions<JSONSchema>, file: FileInfo) {
     const u = url.parse(file.url);
 
     if (typeof window !== "undefined" && !u.protocol) {
@@ -94,7 +102,11 @@ async function download<S extends object = JSONSchema>(
 
   try {
     let resolvedAddresses: url.ResolvedUrlAddress[] | undefined;
-    if (httpOptions.safeUrlResolver) {
+    // A caller-requested private origin is fetched as given. Public hostnames still
+    // go through DNS validation, so an allowlist entry cannot skip the address pin.
+    const requestedPrivateOrigin =
+      isAllowedOrigin(u.href, httpOptions.allowedOrigins) && url.isUnsafeUrl(u.href);
+    if (httpOptions.safeUrlResolver && !requestedPrivateOrigin) {
       const safety = await url.resolveUrlSafety(u.href);
       if (safety.unsafe) {
         throw new Error(`Unsafe URL blocked by safeUrlResolver: ${u.href}`);
@@ -119,14 +131,18 @@ async function download<S extends object = JSONSchema>(
         const location = getHeader(res, "location");
 
         if (!location) {
-          const error = new Error(`HTTP ${res.status} redirect with no location header`) as Error & { status?: number };
+          const error = new Error(
+            `HTTP ${res.status} redirect with no location header`,
+          ) as Error & { status?: number };
           error.status = res.status;
           throw error;
         }
 
         const redirectTo = url.resolve(u.href, location);
         const redirectOptions =
-          url.parse(redirectTo).origin === u.origin ? httpOptions : withoutSensitiveHeaders(httpOptions);
+          url.parse(redirectTo).origin === u.origin
+            ? httpOptions
+            : withoutSensitiveHeaders(httpOptions);
         return download(redirectTo, redirectOptions, redirects);
       }
     } else {
@@ -171,7 +187,9 @@ async function get<S extends object = JSONSchema>(
   resolvedAddresses?: readonly url.ResolvedUrlAddress[],
 ): Promise<PendingResponse> {
   const pinnedTransport =
-    resolvedAddresses && resolvedAddresses.length > 0 ? await createPinnedTransport(u, resolvedAddresses) : undefined;
+    resolvedAddresses && resolvedAddresses.length > 0
+      ? await createPinnedTransport(u, resolvedAddresses)
+      : undefined;
   const dispatcher = pinnedTransport?.dispatcher;
   let controller: AbortController | undefined;
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -231,11 +249,16 @@ async function createPinnedTransport(
 
   const lookup: LookupFunction = (hostname, options, callback) => {
     const normalizedHostname = normalizeLookupHostname(hostname);
-    const requestedFamily = options.family === "IPv4" ? 4 : options.family === "IPv6" ? 6 : options.family || 0;
-    const candidates = pinnedAddresses.filter(({ family }) => requestedFamily === 0 || family === requestedFamily);
+    const requestedFamily =
+      options.family === "IPv4" ? 4 : options.family === "IPv6" ? 6 : options.family || 0;
+    const candidates = pinnedAddresses.filter(
+      ({ family }) => requestedFamily === 0 || family === requestedFamily,
+    );
 
     if (normalizedHostname !== expectedHostname || candidates.length === 0) {
-      const error = new Error(`No validated address is available for ${hostname}`) as NodeJS.ErrnoException;
+      const error = new Error(
+        `No validated address is available for ${hostname}`,
+      ) as NodeJS.ErrnoException;
       error.code = "ENOTFOUND";
       callback(error, "", 0);
     } else if (options.all) {
@@ -255,6 +278,26 @@ async function createPinnedTransport(
   };
 }
 
+function isAllowedOrigin(href: string, allowedOrigins: readonly string[] | undefined): boolean {
+  const origin = httpOrigin(href);
+  if (!origin || !allowedOrigins?.length) {
+    return false;
+  }
+  return allowedOrigins.some((allowed) => httpOrigin(allowed) === origin);
+}
+
+function httpOrigin(value: string): string | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return undefined;
+    }
+    return parsed.origin;
+  } catch {
+    return undefined;
+  }
+}
+
 function normalizeLookupHostname(hostname: string): string {
   return hostname
     .replace(/^\[|\]$/g, "")
@@ -266,7 +309,9 @@ function getHeader(response: Response, name: string): string | null {
   return response.headers.get(name);
 }
 
-function withoutSensitiveHeaders<S extends object>(httpOptions: HTTPResolverOptions<S>): HTTPResolverOptions<S> {
+function withoutSensitiveHeaders<S extends object>(
+  httpOptions: HTTPResolverOptions<S>,
+): HTTPResolverOptions<S> {
   if (!httpOptions.headers) {
     return httpOptions;
   }
