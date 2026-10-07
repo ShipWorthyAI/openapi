@@ -11,8 +11,6 @@ export function openapiTS(source: unknown, options: OpenAPITSOptions = {}) {
       plugin: "typescript",
       source,
       cwd: options.cwd instanceof URL || typeof options.cwd === "string" ? options.cwd : undefined,
-      silent: options.silent,
-      lint: true,
       pluginOptions: options,
     }).pipe(Effect.provide(NodeServices.layer)),
   ) as Promise<ts.Node[]>;

@@ -23,8 +23,6 @@ describe("Invalid schemas", () => {
   });
 
   test("Unresolved $ref error messages", async () => {
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     await expect(() =>
       openapiTS({
         openapi: "3.1",
@@ -41,16 +39,6 @@ describe("Invalid schemas", () => {
           },
         },
       }),
-    ).rejects.toThrowError(/AnotherSchema/);
-
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
-
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("#/components/schemas/NonExistingSchema"),
-    );
-
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("#/components/schemas/AnotherSchema"),
-    );
+    ).rejects.toThrowError(/NonExistingSchema/);
   });
 });

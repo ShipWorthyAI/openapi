@@ -13,7 +13,7 @@
     "typescript": "catalog:"
   },
   "devDependencies": {
-    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

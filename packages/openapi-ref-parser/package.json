@@ -16,7 +16,7 @@
     "undici": "^8.10.2"
   },
   "devDependencies": {
-    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "5.0.3"

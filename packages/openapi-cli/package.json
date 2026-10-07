@@ -11,14 +11,16 @@
   },
   "dependencies": {
     "@effect/platform-bun": "catalog:",
+    "@shipworthy/openapi-parser": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
+    "@shipworthy/openapi-validator": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {
     "@shipworthy/openapi-standard-schema": "workspace:*",
     "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
-    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
     "@types/node": "catalog:"
   },

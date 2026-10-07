@@ -1,8 +1,8 @@
+import type { LoadedDocument } from "@shipworthy/openapi-parser";
 import { Document, Spectral, type RulesetDefinition } from "@stoplight/spectral-core";
 import { oas3 } from "@stoplight/spectral-formats";
 import { Json, Yaml } from "@stoplight/spectral-parsers";
 import { oas } from "@stoplight/spectral-rulesets";
-import type { LoadedDocument } from "@shipworthy/openapi-parser";
 import c from "ansi-colors";
 import { Effect } from "effect";
 import supportsColor from "supports-color";
@@ -69,7 +69,7 @@ function spectralTarget(document: LoadedDocument) {
   return new Document(document.sourceText, Yaml, document.absoluteRef);
 }
 
-export const lintDocument = Effect.fn("openapi-transformer.lintDocument")(function* (
+export const lintDocument = Effect.fn("openapi-validator.lintDocument")(function* (
   document: LoadedDocument,
   silent = false,
 ) {

@@ -1,0 +1,29 @@
+{
+  "name": "@shipworthy/openapi-validator",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Lint an OpenAPI document.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-parser": "workspace:*",
+    "@stoplight/spectral-core": "1.24.0",
+    "@stoplight/spectral-formats": "1.9.0",
+    "@stoplight/spectral-parsers": "1.0.5",
+    "@stoplight/spectral-rulesets": "1.23.0",
+    "ansi-colors": "^4.1.3",
+    "effect": "catalog:",
+    "supports-color": "^10.2.2"
+  },
+  "devDependencies": {
+    "@shipworthy/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "5.0.3"
+  }
+}

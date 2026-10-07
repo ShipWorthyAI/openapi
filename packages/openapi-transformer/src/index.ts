@@ -1,5 +1,4 @@
-export { LintError, MissingPlugin, ResolveError, TransformError, UnknownPlugin } from "./errors.js";
-export { error, warn } from "./lint.js";
+export { MissingPlugin, ResolveError, TransformError, UnknownPlugin } from "./errors.js";
 export {
   generate,
   type GenerateError,

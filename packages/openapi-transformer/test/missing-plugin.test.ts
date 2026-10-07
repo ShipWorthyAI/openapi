@@ -9,7 +9,6 @@ describe("missing plugin", () => {
     const program = generate({
       plugin: "typescript",
       source: { openapi: "3.1.0", info: { title: "Pets", version: "1.0.0" }, paths: {} },
-      lint: false,
       loadModule: () => Promise.reject(new Error("Cannot find package")),
     }).pipe(Effect.provide(layer));
 

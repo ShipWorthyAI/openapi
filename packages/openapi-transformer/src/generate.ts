@@ -15,16 +15,12 @@ import {
   type MissingPlugin,
   type UnknownPlugin,
 } from "./errors.js";
-import { lintDocument } from "./lint.js";
 import { importPlugin, type ModuleLoader, type PluginName } from "./plugins.js";
 
 export interface GenerateOptions {
   readonly plugin: PluginName | (string & {});
   readonly source: unknown;
   readonly cwd?: URL | string;
-  readonly silent?: boolean;
-  /** Spectral runs for `typescript` and for `tanstack-query`, which also emits types. */
-  readonly lint?: boolean;
   readonly pluginOptions?: Readonly<Record<string, unknown>>;
   readonly loadModule?: ModuleLoader;
 }
@@ -38,7 +34,7 @@ export const generate = Effect.fn("openapi-transformer.generate")(function* (
   options: GenerateOptions,
 ) {
   const loaded = yield* loadDocument(options.source, { cwd: options.cwd });
-  if (options.lint) yield* lintDocument(loaded, options.silent ?? false);
+
   const document = yield* bundleDocument(loaded);
 
   const model = yield* Effect.try({

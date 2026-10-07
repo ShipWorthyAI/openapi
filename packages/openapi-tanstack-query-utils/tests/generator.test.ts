@@ -305,7 +305,6 @@ test("defaults do not make schema properties required", async () => {
           },
         },
       },
-      lint: false,
       pluginOptions: { prefix: "Fixture", name: "fixture" },
     }).pipe(Effect.provide(NodeServices.layer)),
   )) as { nodes: Parameters<typeof astToString>[0] };

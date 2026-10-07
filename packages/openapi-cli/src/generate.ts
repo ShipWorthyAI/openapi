@@ -228,14 +228,12 @@ export const generate = Command.make(
         const validators = (yield* transform({
           plugin: "zod",
           source,
-          lint: false,
           pluginOptions: { prefix },
         }).pipe(Effect.mapError(userError))) as ZodSources;
 
         const nodes = yield* transform({
           plugin: "typescript",
           source,
-          lint: false,
           pluginOptions: { ...pluginOptions(flags), defaultNonNullable: false },
         }).pipe(Effect.mapError(userError));
 
@@ -260,8 +258,6 @@ export const generate = Command.make(
         const generated = (yield* transform({
           plugin: "tanstack-query",
           source,
-          lint: true,
-          silent: false,
           pluginOptions: { ...pluginOptions(flags), prefix, name, defaultNonNullable: false },
         }).pipe(Effect.mapError(userError))) as { nodes: readonly unknown[]; client: string };
 
@@ -271,7 +267,7 @@ export const generate = Command.make(
       }
 
       if (flags.plugin === "standard-schema") {
-        const text = yield* transform({ plugin: "standard-schema", source, lint: false }).pipe(
+        const text = yield* transform({ plugin: "standard-schema", source }).pipe(
           Effect.mapError(userError),
         );
 
@@ -324,8 +320,6 @@ function generateTypescript(
     const nodes = yield* transform({
       plugin: "typescript",
       source,
-      lint: true,
-      silent: output === undefined,
       pluginOptions: pluginOptions({ ...flags, silent: output === undefined }),
     }).pipe(Effect.mapError(userError));
 

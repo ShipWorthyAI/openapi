@@ -78,7 +78,7 @@ function sourcesFor(schema: OpenAPI3, prefix = "Fixture") {
 
 async function generateZodSources(source: URL, prefix: string) {
   return Effect.runPromise(
-    generate({ plugin: "zod", source, lint: false, pluginOptions: { prefix } }).pipe(
+    generate({ plugin: "zod", source, pluginOptions: { prefix } }).pipe(
       Effect.provide(NodeServices.layer),
     ),
   ) as Promise<ZodSources>;

@@ -21,7 +21,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** The same version gate `invalid.test.ts` asserts, before lint. */
+/** The same version gate `invalid.test.ts` asserts. */
 export function versionMessage(document: unknown): string | undefined {
   if (!isRecord(document)) return "Unsupported schema format, expected `openapi: 3.x`";
   const openapi = typeof document.openapi === "string" ? document.openapi : undefined;

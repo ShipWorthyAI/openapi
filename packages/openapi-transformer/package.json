@@ -13,19 +13,13 @@
   "dependencies": {
     "@shipworthy/openapi-parser": "workspace:*",
     "@shipworthy/openapi-ref-parser": "workspace:*",
-    "@stoplight/spectral-core": "1.24.0",
-    "@stoplight/spectral-formats": "1.9.0",
-    "@stoplight/spectral-parsers": "1.0.5",
-    "@stoplight/spectral-rulesets": "1.23.0",
-    "ansi-colors": "^4.1.3",
-    "effect": "catalog:",
-    "supports-color": "^10.2.2"
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@shipworthy/openapi-standard-schema": "workspace:*",
     "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
-    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",

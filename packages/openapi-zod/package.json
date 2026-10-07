@@ -18,7 +18,7 @@
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@shipworthy/openapi-transformer": "workspace:*",
-    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "effect": "catalog:"
   }

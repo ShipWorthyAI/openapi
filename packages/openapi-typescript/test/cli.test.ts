@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import stripAnsi from "strip-ansi";
 import { type SpawnOptions, spawn } from "../scripts/spawn.js";
@@ -153,16 +155,24 @@ describe("CLI", () => {
     );
   });
 
-  test("lint error", async () => {
-    const output = fileURLToPath(
-      new URL("./fixtures/redocly-lint-error/output.ts", import.meta.url),
-    );
+  test(
+    "lint",
+    async () => {
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), "openapi-lint-"));
+      const schema = path.join(directory, "openapi.yaml");
 
-    const { stderr } = await run(
-      ["test/fixtures/redocly-lint-error/openapi/openapi.yaml", "-o", output],
-      { cwd },
-    );
+      fs.writeFileSync(
+        schema,
+        "openapi: 3.1.0\ninfo:\n  title: Test\n  version: 1.0.0\npaths: {}\n",
+      );
 
-    expect(stripAnsi(stderr)).toMatch(/OpenAPI "servers" must be present/);
-  });
+      try {
+        const { stderr } = await spawn(["bun", cli, "lint", schema], { cwd });
+        expect(stripAnsi(stderr)).toMatch(/OpenAPI "servers" must be present/);
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    },
+    TIMEOUT,
+  );
 });
