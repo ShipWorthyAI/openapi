@@ -1,5 +1,4 @@
-import type { MediaType } from "@shipworthy/openapi-typescript-helpers";
-import createClient from "../src/index.js";
+import createClient, { type MediaType } from "../src/index.js";
 
 /**
  * Create a client instance where all requests use a custom fetch implementation.

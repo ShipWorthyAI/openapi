@@ -10,9 +10,7 @@ import {
   type UseMutationOptions,
   type UseQueryOptions,
 } from "@tanstack/react-query";
-import type { Client } from "@shipworthy/openapi-fetch";
-import type { HttpMethod } from "@shipworthy/openapi-typescript-helpers";
-import type { RequiredKeysOf } from "@shipworthy/openapi-typescript-helpers";
+import type { Client, HttpMethod, RequiredKeysOf } from "@shipworthy/openapi-fetch";
 
 type InputOf<O> = OperationInput<O>;
 type DataOf<O> = OperationData<O>;

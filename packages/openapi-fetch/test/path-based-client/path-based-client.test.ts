@@ -1,6 +1,5 @@
-import type { MediaType } from "@shipworthy/openapi-typescript-helpers";
 import { describe, expect, expectTypeOf, test } from "vitest";
-import { createPathBasedClient, type PathBasedClient } from "../../src/index.js";
+import { createPathBasedClient, type MediaType, type PathBasedClient } from "../../src/index.js";
 import type { paths } from "./schemas/path-based-client.js";
 
 // identical to helper, but for createObservedPathBasedClient

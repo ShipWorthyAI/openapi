@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@shipworthy/openapi-fetch": "workspace:*",
-    "@shipworthy/openapi-typescript-helpers": "workspace:*",
     "effect": "catalog:",
     "typescript": "catalog:"
   },

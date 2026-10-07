@@ -1,10 +1,10 @@
-import type { RequestBodyOption } from "@shipworthy/openapi-fetch";
 import type {
   ErrorResponse,
   MediaType,
+  RequestBodyOption,
   ResponseObjectMap,
   SuccessResponse,
-} from "@shipworthy/openapi-typescript-helpers";
+} from "@shipworthy/openapi-fetch";
 
 /** Preserve OpenAPI's parameter groups and add its typed request body. */
 export type OperationInput<Op> = (Op extends { parameters: infer Parameters } ? Parameters : {}) &

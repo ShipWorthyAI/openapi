@@ -4,13 +4,14 @@ import {
   type UseSuspenseQueryResult,
   useSuspenseQuery as useTanstackSuspenseQuery,
 } from "@tanstack/react-query";
-import type { FetchResponse, MaybeOptionalInit } from "@shipworthy/openapi-fetch";
 import type {
+  FetchResponse,
   HttpMethod,
+  MaybeOptionalInit,
   MediaType,
   PathsWithMethod,
   RequiredKeysOf,
-} from "@shipworthy/openapi-typescript-helpers";
+} from "@shipworthy/openapi-fetch";
 import { useApiClient } from "../provider";
 import {
   type InferSelectReturnType,

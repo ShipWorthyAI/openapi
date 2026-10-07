@@ -1,6 +1,6 @@
 import createClient from "./client.js";
+import type { MediaType } from "./helpers.js";
 import type { Client, ClientOptions, PathBasedClient } from "./types.js";
-import type { MediaType } from "@shipworthy/openapi-typescript-helpers";
 
 type CoreClient = {
   GET: (url: string, init?: unknown) => unknown;

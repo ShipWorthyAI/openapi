@@ -11,7 +11,7 @@ import type {
   ResponseObjectMap,
   SuccessResponse,
   Writable,
-} from "@shipworthy/openapi-typescript-helpers";
+} from "./helpers.js";
 
 /** Options for each client instance */
 export interface ClientOptions extends Omit<RequestInit, "headers"> {

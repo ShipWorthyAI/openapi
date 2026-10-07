@@ -49,9 +49,6 @@
     "packages/openapi-fetch": {
       "name": "@shipworthy/openapi-fetch",
       "version": "0.0.1",
-      "dependencies": {
-        "@shipworthy/openapi-typescript-helpers": "workspace:^",
-      },
       "devDependencies": {
         "@shipworthy/openapi-cli": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:^",
@@ -87,7 +84,6 @@
       "version": "0.0.1",
       "dependencies": {
         "@shipworthy/openapi-fetch": "workspace:*",
-        "@shipworthy/openapi-typescript-helpers": "workspace:*",
         "effect": "catalog:",
         "typescript": "catalog:",
       },
@@ -136,7 +132,6 @@
       "dependencies": {
         "@shipworthy/openapi-fetch": "workspace:*",
         "@shipworthy/openapi-parser": "workspace:*",
-        "@shipworthy/openapi-typescript-helpers": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -201,13 +196,6 @@
       },
       "peerDependencies": {
         "typescript": "^7.0.0",
-      },
-    },
-    "packages/openapi-typescript-helpers": {
-      "name": "@shipworthy/openapi-typescript-helpers",
-      "version": "0.0.1",
-      "devDependencies": {
-        "typescript": "catalog:",
       },
     },
     "packages/openapi-zod": {
@@ -551,8 +539,6 @@
     "@shipworthy/openapi-typescript": ["@shipworthy/openapi-typescript@workspace:packages/openapi-typescript"],
 
     "@shipworthy/openapi-typescript-config": ["@shipworthy/openapi-typescript-config@workspace:packages/typescript-config"],
-
-    "@shipworthy/openapi-typescript-helpers": ["@shipworthy/openapi-typescript-helpers@workspace:packages/openapi-typescript-helpers"],
 
     "@shipworthy/openapi-zod": ["@shipworthy/openapi-zod@workspace:packages/openapi-zod"],
 

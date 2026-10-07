@@ -1,3 +1,4 @@
+import type { MediaType } from "./helpers.js";
 import { mergeHeaders } from "./headers.js";
 import { defaultBodySerializer } from "./serializers/body.js";
 import { defaultPathSerializer } from "./serializers/path.js";
@@ -15,7 +16,6 @@ import type {
   QuerySerializer,
   QuerySerializerOptions,
 } from "./types.js";
-import type { MediaType } from "@shipworthy/openapi-typescript-helpers";
 
 interface RequestParams {
   query?: Record<string, unknown>;

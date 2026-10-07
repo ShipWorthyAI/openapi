@@ -1,5 +1,9 @@
-import type { Client, MaybeOptionalInit } from "@shipworthy/openapi-fetch";
-import type { HttpMethod, PathsWithMethod } from "@shipworthy/openapi-typescript-helpers";
+import type {
+  Client,
+  HttpMethod,
+  MaybeOptionalInit,
+  PathsWithMethod,
+} from "@shipworthy/openapi-fetch";
 
 export type InferSelectReturnType<TData, TSelect> = TSelect extends (data: TData) => infer R
   ? R

@@ -53,9 +53,6 @@
     "e2e-vite-start": "vite preview test/e2e/app",
     "version": "bun run build"
   },
-  "dependencies": {
-    "@shipworthy/openapi-typescript-helpers": "workspace:^"
-  },
   "devDependencies": {
     "@shipworthy/openapi-cli": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:^",

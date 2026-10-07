@@ -1,9 +1,4 @@
-import type {
-  ErrorResponse,
-  GetResponseContent,
-  OkStatus,
-  SuccessResponse,
-} from "@shipworthy/openapi-typescript-helpers";
+import type { ErrorResponse, GetResponseContent, OkStatus, SuccessResponse } from "../src/index.js";
 import { assertType, describe, test } from "vitest";
 
 describe("types", () => {
