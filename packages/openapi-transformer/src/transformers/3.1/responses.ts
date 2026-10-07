@@ -1,79 +1,99 @@
-import { Predicate, Schema } from "effect";
-import type { OpenAPIDocument } from "@shipworthy/openapi-parser";
+import {
+  OpenApiLink,
+  OpenApiResponse,
+  type OpenApiComponents,
+  type OpenApiOperation,
+  type OpenApiReference,
+  type ParsedOpenApi,
+} from "@shipworthy/openapi-parser";
+import { Effect } from "effect";
 import { child, resolve } from "./pointer.js";
-import { readEntries, readExtensions, readString } from "./read.js";
-import { ParsedLink, ParsedOperationResponse, ParsedResponse } from "../../model/index.js";
-import { parseBodyContent } from "./content.js";
-import { parseHeaderList } from "./headers.js";
+import { readExtensions } from "./read.js";
+import type { ParsedLink, ParsedOperationResponse, ParsedResponse } from "../../model/index.js";
+import { transformBodyContent } from "./content.js";
+import { transformHeaderList } from "./headers.js";
 
-export function parseLink(document: OpenAPIDocument, key: string, value: unknown, at: string) {
-  const { value: link, id, reference } = resolve(document, value, at);
+export const transformLink = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  key: string,
+  value: OpenApiLink | OpenApiReference,
+  at: string,
+) {
+  const { value: link, id, reference } = yield* resolve(document, OpenApiLink, value, at);
 
-  if (!Predicate.isObject(link)) {
-    return Schema.decodeSync(ParsedLink)({ id, key, reference, extensions: {} });
-  }
-
-  return Schema.decodeSync(ParsedLink)({
+  return {
     id,
     key,
     reference,
-    operationRef: readString(link.operationRef),
-    operationId: readString(link.operationId),
-    parameters: Predicate.isObject(link.parameters) ? link.parameters : undefined,
+    operationRef: link.operationRef,
+    operationId: link.operationId,
+    parameters: link.parameters,
     ...("requestBody" in link ? { requestBody: link.requestBody } : {}),
-    description: readString(link.description),
+    description: reference?.description ?? link.description,
     extensions: readExtensions(link),
-  });
-}
+  } satisfies typeof ParsedLink.Encoded;
+});
 
-export function parseLinkMap(document: OpenAPIDocument, value: unknown, at: string) {
+export const transformLinkMap = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiComponents["links"],
+  at: string,
+) {
   return Object.fromEntries(
-    readEntries(value).map(([key, entry]) => [
-      key,
-      parseLink(document, key, entry, child(at, key)),
-    ]),
+    yield* Effect.forEach(
+      Object.entries(value ?? {}),
+      Effect.fnUntraced(function* ([key, entry]) {
+        return [key, yield* transformLink(document, key, entry, child(at, key))] as const;
+      }),
+    ),
   );
-}
+});
 
-/** The fields of a response, or `undefined` when it is neither a Response Object nor a `$ref`. */
-function responseFields(document: OpenAPIDocument, value: unknown, at: string) {
-  const { value: response, id, reference } = resolve(document, value, at);
-
-  if (!Predicate.isObject(response)) {
-    if (reference === undefined) return undefined;
-    return { id, reference, headers: [], contents: [], links: [], extensions: {} };
-  }
+export const transformResponse = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiResponse | OpenApiReference,
+  at: string,
+) {
+  const { value: response, id, reference } = yield* resolve(document, OpenApiResponse, value, at);
 
   return {
     id,
     reference,
-    description: readString(response.description),
-    headers: parseHeaderList(document, response.headers, child(id, "headers")),
-    contents: parseBodyContent(document, response.content, child(id, "content")),
-    links: Object.values(parseLinkMap(document, response.links, child(id, "links"))),
+    description: reference?.description ?? response.description,
+    headers: yield* transformHeaderList(document, response.headers, child(id, "headers")),
+    contents: yield* transformBodyContent(document, response.content, child(id, "content")),
+    links: Object.values(yield* transformLinkMap(document, response.links, child(id, "links"))),
     extensions: readExtensions(response),
-  };
-}
+  } satisfies typeof ParsedResponse.Encoded;
+});
 
-export function parseResponse(document: OpenAPIDocument, value: unknown, at: string) {
-  const fields = responseFields(document, value, at);
-  return fields && Schema.decodeSync(ParsedResponse)(fields);
-}
-
-export function parseResponseMap(document: OpenAPIDocument, value: unknown, at: string) {
+export const transformResponseMap = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiComponents["responses"],
+  at: string,
+) {
   return Object.fromEntries(
-    readEntries(value).flatMap(([key, entry]) => {
-      const response = parseResponse(document, entry, child(at, key));
-      return response ? [[key, response] as const] : [];
+    yield* Effect.forEach(
+      Object.entries(value ?? {}),
+      Effect.fnUntraced(function* ([key, entry]) {
+        return [key, yield* transformResponse(document, entry, child(at, key))] as const;
+      }),
+    ),
+  );
+});
+
+export const transformOperationResponses = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiOperation["responses"],
+  at: string,
+) {
+  const entries = Object.entries(value ?? {}).filter(([code]) => !code.startsWith("x-"));
+
+  return yield* Effect.forEach(
+    entries,
+    Effect.fnUntraced(function* ([code, entry]) {
+      const fields = yield* transformResponse(document, entry, child(at, code));
+      return { ...fields, code } satisfies typeof ParsedOperationResponse.Encoded;
     }),
   );
-}
-
-/** An operation's responses in key order, `default` included. */
-export function parseOperationResponses(document: OpenAPIDocument, value: unknown, at: string) {
-  return readEntries(value).flatMap(([code, entry]) => {
-    if (code.startsWith("x-")) return [];
-    const fields = responseFields(document, entry, child(at, code));
-    return fields ? [Schema.decodeSync(ParsedOperationResponse)({ ...fields, code })] : [];
-  });
-}
+});

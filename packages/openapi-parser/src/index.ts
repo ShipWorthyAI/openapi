@@ -74,19 +74,19 @@ export class $RefParser {
     return this.finish("dereference", args);
   }
 
-  static parse(...args: unknown[]): Promise<unknown> {
+  static parse(this: void, ...args: unknown[]): Promise<unknown> {
     return run("parse", args);
   }
 
-  static resolve(...args: unknown[]): Promise<unknown> {
+  static resolve(this: void, ...args: unknown[]): Promise<unknown> {
     return run("resolve", args);
   }
 
-  static bundle(...args: unknown[]): Promise<unknown> {
+  static bundle(this: void, ...args: unknown[]): Promise<unknown> {
     return run("bundle", args);
   }
 
-  static dereference(...args: unknown[]): Promise<unknown> {
+  static dereference(this: void, ...args: unknown[]): Promise<unknown> {
     return run("dereference", args);
   }
 
@@ -102,7 +102,8 @@ export class $RefParser {
 }
 
 export { bundleDocument } from "./bundle.js";
-export { OpenAPIDocument } from "./document.js";
+export { OpenApiSource, ParsedOpenApiFromString } from "./codec.js";
+export * from "./schemas/3.1/index.js";
 export {
   EmptySource,
   InvalidSource,

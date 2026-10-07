@@ -1,6 +1,6 @@
-import { decode } from "@shipworthy/openapi-transformer";
+import { ParsedServiceFromParsedOpenApi } from "@shipworthy/openapi-transformer";
 import { it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -29,11 +29,11 @@ function sourceFor(
   defs?: Record<string, unknown>,
 ) {
   const generated = standardSchema.generate(
-    Effect.runSync(decode(document(openapi, schemas, defs))),
+    Effect.runSync(
+      Schema.decodeUnknownEffect(ParsedServiceFromParsedOpenApi)(document(openapi, schemas, defs)),
+    ),
     {},
   );
-
-
 
   if (Effect.isEffect(generated)) return generated;
   return Effect.succeed(generated);

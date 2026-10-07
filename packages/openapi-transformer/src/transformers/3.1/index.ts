@@ -1,80 +1,86 @@
-import { Predicate, Schema } from "effect";
-import type { OpenAPIDocument } from "@shipworthy/openapi-parser";
-import { ParsedService } from "../../model/index.js";
-import { parseCallbackMap } from "./callbacks.js";
-import type { ParseContext } from "./context.js";
-import { parseExampleMap } from "./examples.js";
-import { parseHeaderMap } from "./headers.js";
-import { parseParameterMap } from "./parameters.js";
-import { parsePathItemMap } from "./paths.js";
-import { readExtensions, readString } from "./read.js";
-import { parseRequestBodyMap } from "./request.js";
-import { parseLinkMap, parseResponseMap } from "./responses.js";
-import { parseSchemaMap } from "./schemas.js";
-import { parseSecurityRequirements, parseSecuritySchemeMap } from "./securities.js";
-import { parseExternalDocs, parseServerList } from "./servers.js";
-import { parseContact, parseLicense, parseTagList } from "./service.js";
+import { Effect } from "effect";
+import type { OpenApiComponents, ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { ParsedService } from "../../model/index.js";
+import { transformCallbackMap } from "./callbacks.js";
+import type { TransformContext } from "./context.js";
+import { transformExampleMap } from "./examples.js";
+import { transformHeaderMap } from "./headers.js";
+import { transformParameterMap } from "./parameters.js";
+import { transformPathItemMap } from "./paths.js";
+import { readExtensions } from "./read.js";
+import { transformRequestBodyMap } from "./request.js";
+import { transformLinkMap, transformResponseMap } from "./responses.js";
+import { transformSchemaMap } from "./schemas.js";
+import { transformSecurityRequirements, transformSecuritySchemeMap } from "./securities.js";
+import { transformExternalDocs, transformServerList } from "./servers.js";
+import { transformContact, transformLicense, transformTagList } from "./service.js";
 
-/**
- * Parse an OpenAPI 3.1 document into the HTTP meta model. Throws `InvalidSchema` when a schema
- * position holds something that is not a schema.
- */
-export function parseOpenApi3_1(doc: OpenAPIDocument) {
-  const info = Predicate.isObject(doc.info) ? doc.info : {};
-  const components = Predicate.isObject(doc.components) ? doc.components : {};
+/** Build the encoded model; the enclosing codec performs model validation once. */
+export const transformService = Effect.fnUntraced(function* (doc: ParsedOpenApi) {
+  const info = doc.info;
+  const components: OpenApiComponents = doc.components ?? {};
 
-  const securitySchemes = parseSecuritySchemeMap(
+  const securitySchemes = yield* transformSecuritySchemeMap(
     doc,
     components.securitySchemes,
     "#/components/securitySchemes",
   );
 
-  const ctx: ParseContext = {
+  const ctx: TransformContext = {
     document: doc,
     securitySchemes,
-    security: parseSecurityRequirements(doc.security, securitySchemes),
-    tags: parseTagList(doc.tags, "#/tags"),
-    servers: parseServerList(doc.servers, "#/servers") ?? [],
+    security: yield* transformSecurityRequirements(doc.security, securitySchemes),
+    tags: yield* transformTagList(doc.tags, "#/tags"),
+    servers: (yield* transformServerList(doc.servers, "#/servers")) ?? [],
   };
 
-  const paths = parsePathItemMap(ctx, doc.paths, "#/paths", true);
+  const paths = yield* transformPathItemMap(ctx, doc.paths, "#/paths", true);
 
-  return Schema.decodeSync(ParsedService)({
+  return {
     id: "#",
     openapi: doc.openapi,
-    jsonSchemaDialect: readString(doc.jsonSchemaDialect),
-    name: readString(info.title) ?? "",
-    version: readString(info.version) ?? "",
-    summary: readString(info.summary),
-    description: readString(info.description),
-    termsOfService: readString(info.termsOfService),
-    contact: parseContact(info.contact),
-    license: parseLicense(info.license),
+    jsonSchemaDialect: doc.jsonSchemaDialect,
+    name: info.title,
+    version: info.version,
+    summary: info.summary,
+    description: info.description,
+    termsOfService: info.termsOfService,
+    contact: yield* transformContact(info.contact),
+    license: yield* transformLicense(info.license),
     infoExtensions: readExtensions(info),
-    externalDocs: parseExternalDocs(doc.externalDocs),
+    externalDocs: yield* transformExternalDocs(doc.externalDocs),
     servers: ctx.servers,
     tags: ctx.tags,
     security: ctx.security,
     securitySchemes,
     operations: Object.values(paths).flatMap((item) => item.operations),
     paths,
-    webhooks: parsePathItemMap(ctx, doc.webhooks, "#/webhooks", false),
+    webhooks: yield* transformPathItemMap(ctx, doc.webhooks, "#/webhooks", false),
     components: {
-      schemas: parseSchemaMap(components.schemas, "#/components/schemas"),
-      responses: parseResponseMap(doc, components.responses, "#/components/responses"),
-      parameters: parseParameterMap(doc, components.parameters, "#/components/parameters"),
-      requestBodies: parseRequestBodyMap(
+      schemas: transformSchemaMap(components.schemas),
+      responses: yield* transformResponseMap(doc, components.responses, "#/components/responses"),
+      parameters: yield* transformParameterMap(
+        doc,
+        components.parameters,
+        "#/components/parameters",
+      ),
+      requestBodies: yield* transformRequestBodyMap(
         doc,
         components.requestBodies,
         "#/components/requestBodies",
       ),
-      headers: parseHeaderMap(doc, components.headers, "#/components/headers"),
-      examples: parseExampleMap(doc, components.examples, "#/components/examples"),
-      links: parseLinkMap(doc, components.links, "#/components/links"),
-      callbacks: parseCallbackMap(ctx, components.callbacks, "#/components/callbacks"),
-      pathItems: parsePathItemMap(ctx, components.pathItems, "#/components/pathItems", false),
+      headers: yield* transformHeaderMap(doc, components.headers, "#/components/headers"),
+      examples: yield* transformExampleMap(doc, components.examples, "#/components/examples"),
+      links: yield* transformLinkMap(doc, components.links, "#/components/links"),
+      callbacks: yield* transformCallbackMap(ctx, components.callbacks, "#/components/callbacks"),
+      pathItems: yield* transformPathItemMap(
+        ctx,
+        components.pathItems,
+        "#/components/pathItems",
+        false,
+      ),
     },
-    $defs: parseSchemaMap(doc.$defs, "#/$defs"),
+    $defs: transformSchemaMap(doc.$defs),
     extensions: readExtensions(doc),
-  });
-}
+  } satisfies typeof ParsedService.Encoded;
+});

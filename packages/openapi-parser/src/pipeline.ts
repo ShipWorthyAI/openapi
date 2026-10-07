@@ -2,7 +2,12 @@ import { JsonPointer, JsonSchema, Predicate } from "effect";
 import type { DereferenceHooks } from "./plugins.js";
 import { getAt, joinPointer } from "./pointer.js";
 import { componentSchemas, schemaSlots } from "./upgraders/3.0-to-3.1.js";
-import { circularAliasFailure, invalidPointerFailure, missingPointerFailure } from "./errors.js";
+import {
+  bundleFailure,
+  circularAliasFailure,
+  invalidPointerFailure,
+  missingPointerFailure,
+} from "./errors.js";
 
 const ANNOTATIONS = ["example", "discriminator", "xml", "externalDocs", "nullable"] as const;
 
@@ -42,10 +47,16 @@ export function runSchemaPipeline(
 ): void {
   const definitions: Record<string, JsonSchema.JsonSchema> = {};
   const definitionOrder: string[] = [];
+  const booleanDefinitions = new Map<string, boolean>();
 
   for (const slot of componentSchemas(document)) {
+    const value = slot.parent[slot.key];
+
+    if (typeof value === "boolean") {
+      booleanDefinitions.set(slot.key, value);
+    }
+
     const normalized = normalizeSchema(slot.parent[slot.key]);
-    if (!normalized) continue;
     definitions[slot.key] = normalized.schema;
     rememberDefinition(definitionOrder, slot.key);
     mergeDefinitions(definitions, normalized.definitions, normalized.schema, definitionOrder);
@@ -54,13 +65,13 @@ export function runSchemaPipeline(
   const others = schemaSlots(document, false);
   const slotSchemas: JsonSchema.JsonSchema[] = [];
 
+  const booleanSlots = others.map((slot) => {
+    const value = slot.parent[slot.key];
+    return typeof value === "boolean" ? value : undefined;
+  });
+
   for (const slot of others) {
     const normalized = normalizeSchema(slot.parent[slot.key]);
-
-    if (!normalized) {
-      slotSchemas.push({} as JsonSchema.JsonSchema);
-      continue;
-    }
 
     mergeDefinitions(definitions, normalized.definitions, normalized.schema, definitionOrder);
     slot.parent[slot.key] = normalized.schema;
@@ -124,8 +135,13 @@ export function runSchemaPipeline(
   document.components = components;
   components.schemas = orderDefinitions(converted.definitions, definitionOrder);
 
+  for (const slot of componentSchemas(document)) {
+    const value = booleanDefinitions.get(slot.key);
+    if (value !== undefined) slot.parent[slot.key] = value;
+  }
+
   others.forEach((slot, index) => {
-    slot.parent[slot.key] = converted.schemas[index];
+    slot.parent[slot.key] = booleanSlots[index] ?? converted.schemas[index];
   });
 
   rewriteLeftoverDefinitionRefs(document);
@@ -134,10 +150,13 @@ export function runSchemaPipeline(
   if (mode === "dereference") inlineRemaining(document, recursive, hooks);
 }
 
-function normalizeSchema(value: unknown): JsonSchema.Document<"draft-2020-12"> | undefined {
-  if (typeof value === "boolean") return { dialect: "draft-2020-12", schema: {}, definitions: {} };
+function normalizeSchema(value: unknown): JsonSchema.Document<"draft-2020-12"> {
+  if (typeof value === "boolean") {
+    return { dialect: "draft-2020-12", schema: value ? {} : { not: {} }, definitions: {} };
+  }
+
   const record = asRecord(value);
-  if (!record) return undefined;
+  if (!record) throw bundleFailure("A schema position must contain an object or a boolean");
   const normalized = JsonSchema.fromSchemaOpenApi3_1(liftSiblings(record) as JsonSchema.JsonSchema);
   // A schema $id is its own resource, so its $defs join the shared pool.
   // Nested $defs on a schema without $id stay on that schema.

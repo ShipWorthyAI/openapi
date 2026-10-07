@@ -1,19 +1,21 @@
-import { Predicate, Schema } from "effect";
-import type { OpenAPIDocument } from "@shipworthy/openapi-parser";
-import { child, resolve } from "./pointer.js";
-import { parseRef, readBoolean, readEntries, readExtensions, readString } from "./read.js";
 import {
+  OpenApiParameter,
+  type OpenApiComponents,
+  type OpenApiOperation,
+  type OpenApiReference,
+  type ParsedOpenApi,
+} from "@shipworthy/openapi-parser";
+import { Effect } from "effect";
+import { child, resolve } from "./pointer.js";
+import { readExtensions } from "./read.js";
+import type {
   ParameterLocation,
-  type ParamStyle,
+  ParamStyle,
   ParsedParameter,
   ParsedParameters,
-  type ParsedRef,
 } from "../../model/index.js";
-import { parseContent, readStyle } from "./content.js";
-import { parseExampleList } from "./examples.js";
-import { parseSchema } from "./schemas.js";
-
-const isParameterLocation = Schema.is(ParameterLocation);
+import { transformContent } from "./content.js";
+import { transformExampleList } from "./examples.js";
 
 const defaultStyles: Record<ParameterLocation, ParamStyle> = {
   path: "simple",
@@ -22,86 +24,81 @@ const defaultStyles: Record<ParameterLocation, ParamStyle> = {
   cookie: "form",
 };
 
-/** A parameter, or `undefined` when it has no name or location, such as a `$ref` that points at nothing. */
-export function parseParameter(document: OpenAPIDocument, value: unknown, at: string) {
-  const { value: parameter, id, reference } = resolve(document, value, at);
-  if (!Predicate.isObject(parameter)) return undefined;
-  const name = readString(parameter.name);
-  const location = parameter.in;
-  if (name === undefined || !isParameterLocation(location)) return undefined;
+export const transformParameter = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiParameter | OpenApiReference,
+  at: string,
+) {
+  const { value: parameter, id, reference } = yield* resolve(document, OpenApiParameter, value, at);
 
-  return Schema.decodeSync(ParsedParameter)({
+  return {
     id,
     reference,
-    name,
-    in: location,
-    style: readStyle(parameter.style, defaultStyles[location]),
-    explode: readBoolean(parameter.explode),
-    required: parameter.required === true || location === "path",
+    name: parameter.name,
+    in: parameter.in,
+    style: parameter.style ?? defaultStyles[parameter.in],
+    explode: parameter.explode,
+    required: parameter.required === true || parameter.in === "path",
     deprecated: parameter.deprecated === true,
-    description: readString(parameter.description),
-    allowEmptyValue: readBoolean(parameter.allowEmptyValue),
-    allowReserved: readBoolean(parameter.allowReserved),
-    schema: parseSchema(parameter.schema, child(id, "schema")),
-    contents: parseContent(document, parameter.content, child(id, "content")),
-    examples: parseExampleList(document, parameter, id),
+    description: reference?.description ?? parameter.description,
+    allowEmptyValue: parameter.allowEmptyValue,
+    allowReserved: parameter.allowReserved,
+    schema: parameter.schema,
+    contents: yield* transformContent(document, parameter.content, child(id, "content")),
+    examples: yield* transformExampleList(document, parameter, id),
     extensions: readExtensions(parameter),
-  });
-}
+  } satisfies typeof ParsedParameter.Encoded;
+});
 
-/** The parameters of an array, in order. Unresolvable entries are left out. */
-export function parseParameterList(document: OpenAPIDocument, value: unknown, at: string) {
-  if (!Array.isArray(value)) return [];
-
-  return value.flatMap((entry, index) => {
-    const parameter = parseParameter(document, entry, child(at, index));
-    return parameter ? [parameter] : [];
-  });
-}
-
-export function parseParameterMap(document: OpenAPIDocument, value: unknown, at: string) {
-  return Object.fromEntries(
-    readEntries(value).flatMap(([key, entry]) => {
-      const parameter = parseParameter(document, entry, child(at, key));
-      return parameter ? [[key, parameter] as const] : [];
-    }),
+export const transformParameterList = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiOperation["parameters"],
+  at: string,
+) {
+  return yield* Effect.forEach(value ?? [], (entry, index) =>
+    transformParameter(document, entry, child(at, index)),
   );
-}
+});
+
+export const transformParameterMap = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiComponents["parameters"],
+  at: string,
+) {
+  return Object.fromEntries(
+    yield* Effect.forEach(
+      Object.entries(value ?? {}),
+      Effect.fnUntraced(function* ([key, entry]) {
+        return [key, yield* transformParameter(document, entry, child(at, key))] as const;
+      }),
+    ),
+  );
+});
 
 const groups = { path: "path", query: "query", header: "headers", cookie: "cookie" } as const;
 
-/** Merge path-level and operation-level parameters. A later parameter with the same name and location replaces an earlier one in place. */
-export function parseParameters(
-  document: OpenAPIDocument,
-  sources: readonly (readonly [value: unknown, at: string])[],
+/** Operation parameters replace matching path-item parameters without reordering the group. */
+export const transformParameters = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  sources: readonly (readonly [value: OpenApiOperation["parameters"], at: string])[],
 ) {
-  const grouped: Record<(typeof groups)[ParameterLocation], ParsedParameter[]> = {
+  const grouped: Record<(typeof groups)[ParameterLocation], (typeof ParsedParameter.Encoded)[]> = {
     path: [],
     query: [],
     headers: [],
     cookie: [],
   };
 
-  const unknown: ParsedRef[] = [];
-
   for (const [source, at] of sources) {
-    if (!Array.isArray(source)) continue;
+    const parameters = yield* transformParameterList(document, source, at);
 
-    source.forEach((entry, index) => {
-      const parsed = parseParameter(document, entry, child(at, index));
-
-      if (!parsed) {
-        const ref = parseRef(entry);
-        if (ref && !unknown.some((item) => item.$ref === ref.$ref)) unknown.push(ref);
-        return;
-      }
-
+    for (const parsed of parameters) {
       const list = grouped[groups[parsed.in]];
       const existing = list.findIndex((item) => item.name === parsed.name);
       if (existing >= 0) list[existing] = parsed;
       else list.push(parsed);
-    });
+    }
   }
 
-  return Schema.decodeSync(ParsedParameters)({ ...grouped, unknown });
-}
+  return { ...grouped, unknown: [] } satisfies typeof ParsedParameters.Encoded;
+});

@@ -1,60 +1,72 @@
-import { Predicate, Schema } from "effect";
-import type { ParseContext } from "./context.js";
-import { parseOperation } from "./operation.js";
-import { child, expandPathRef, resolve } from "./pointer.js";
-import { readEntries, readExtensions, readString } from "./read.js";
-import { httpMethods, ParsedPathItem } from "../../model/index.js";
-import { parseParameterList } from "./parameters.js";
-import { parseServerList } from "./servers.js";
+import { OpenApiPathItem } from "@shipworthy/openapi-parser";
+import { Effect } from "effect";
+import type { TransformContext } from "./context.js";
+import { transformOperation } from "./operation.js";
+import { child, resolve } from "./pointer.js";
+import { readExtensions } from "./read.js";
+import { httpMethods, type ParsedPathItem } from "../../model/index.js";
+import { transformParameterList } from "./parameters.js";
+import { transformServerList } from "./servers.js";
 
-/** A path item. `key` is the URL template, webhook name, callback expression, or component name it is declared under. */
-export function parsePathItem(ctx: ParseContext, key: string, value: unknown, at: string) {
+export const transformPathItem = Effect.fnUntraced(function* (
+  ctx: TransformContext,
+  key: string,
+  value: OpenApiPathItem,
+  at: string,
+  includeCallbacks: boolean,
+) {
+  const expand =
+    value.$ref !== undefined &&
+    (value.$ref.startsWith("#/paths/") || Object.keys(value).some((key) => key !== "$ref"));
+
   const {
     value: item,
     id,
     reference,
-  } = resolve(ctx.document, expandPathRef(ctx.document, value), at);
+  } = yield* resolve(ctx.document, OpenApiPathItem, value, at, expand);
 
-  if (!Predicate.isObject(item)) {
-    return Schema.decodeSync(ParsedPathItem)({
-      id,
-      reference,
-      parameters: [],
-      operations: [],
-      servers: [],
-      extensions: {},
-    });
-  }
+  const servers = yield* transformServerList(item.servers, child(id, "servers"));
 
-  const servers = parseServerList(item.servers, child(id, "servers"));
+  const operations = yield* Effect.forEach(httpMethods, (method) =>
+    transformOperation(ctx, key, method, item, id, servers, includeCallbacks),
+  );
 
-  return Schema.decodeSync(ParsedPathItem)({
+  return {
     id,
     reference,
-    summary: readString(item.summary),
-    description: readString(item.description),
-    parameters: parseParameterList(ctx.document, item.parameters, child(id, "parameters")),
-    operations: httpMethods.flatMap((method) => {
-      if (item[method] === undefined) return [];
-      const operation = parseOperation(ctx, key, method, item, id, servers);
-      return operation ? [operation] : [];
-    }),
+    summary: item.summary,
+    description: item.description,
+    parameters: yield* transformParameterList(
+      ctx.document,
+      item.parameters,
+      child(id, "parameters"),
+    ),
+    operations: operations.filter((operation) => operation !== undefined),
     servers: servers ?? [],
     extensions: readExtensions(item),
-  });
-}
+  } satisfies typeof ParsedPathItem.Encoded;
+});
 
-/** A map of path items. `paths` and callbacks set `skipExtensions`, since their `x-` keys are extensions. */
-export function parsePathItemMap(
-  ctx: ParseContext,
-  value: unknown,
+export const transformPathItemMap = Effect.fnUntraced(function* (
+  ctx: TransformContext,
+  value: Readonly<Record<string, OpenApiPathItem>> | undefined,
   at: string,
   skipExtensions: boolean,
+  includeCallbacks = true,
 ) {
-  return Object.fromEntries(
-    readEntries(value).flatMap(([key, entry]) => {
-      if ((skipExtensions && key.startsWith("x-")) || !Predicate.isObject(entry)) return [];
-      return [[key, parsePathItem(ctx, key, entry, child(at, key))] as const];
-    }),
+  const entries = Object.entries(value ?? {}).filter(
+    ([key]) => !skipExtensions || !key.startsWith("x-"),
   );
-}
+
+  return Object.fromEntries(
+    yield* Effect.forEach(
+      entries,
+      Effect.fnUntraced(function* ([key, entry]) {
+        return [
+          key,
+          yield* transformPathItem(ctx, key, entry, child(at, key), includeCallbacks),
+        ] as const;
+      }),
+    ),
+  );
+});

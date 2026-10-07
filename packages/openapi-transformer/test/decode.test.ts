@@ -1,14 +1,17 @@
 import { describe, it } from "@effect/vitest";
 import { strict as assert } from "node:assert";
-import { Effect, Schema } from "effect";
-import type { OpenAPIDocument } from "@shipworthy/openapi-parser";
-import { decode, InvalidSchema, ParsedService } from "../src/index.js";
+import { Effect, FileSystem, Layer, Schema } from "effect";
+import { FetchHttpClient } from "effect/http";
+import { OpenApiSource, ParsedOpenApi, ParsedOpenApiFromString } from "@shipworthy/openapi-parser";
+import { decode, ParsedService, ParsedServiceFromParsedOpenApi } from "../src/index.js";
 
 /** Decode a document that is expected to succeed. */
-const decodeModel = (document: OpenAPIDocument) => Effect.runSync(decode(document));
+const decodeModel = (document: unknown) =>
+  Effect.runSync(Schema.decodeUnknownEffect(ParsedServiceFromParsedOpenApi)(document));
 
 /** The error decoding a document fails with. */
-const decodeError = (document: OpenAPIDocument) => Effect.runSync(Effect.flip(decode(document)));
+const decodeError = (document: unknown) =>
+  Effect.runSync(Effect.flip(Schema.decodeUnknownEffect(ParsedServiceFromParsedOpenApi)(document)));
 
 const info = { title: "Pets", version: "1.0.0" };
 
@@ -47,7 +50,6 @@ describe("decode service", () => {
           },
           oidc: { type: "openIdConnect", openIdConnectUrl: "https://example.com/oidc" },
           mtls: { type: "mutualTLS", description: "Client cert" },
-          broken: { type: "apiKey", in: "path", name: "nope" },
         },
       },
       "x-root": 1,
@@ -101,7 +103,6 @@ describe("decode service", () => {
 
     assert.strictEqual(model.securitySchemes.mtls?.description, "Client cert");
     assert.strictEqual(model.securitySchemes.oidc?.type, "openIdConnect");
-    assert.strictEqual(model.securitySchemes.broken, undefined);
 
     assert.deepStrictEqual(
       model.security.map((requirement) =>
@@ -125,7 +126,7 @@ describe("decode operations", () => {
         bearer: { type: "http", scheme: "bearer" },
       },
       parameters: {
-        Id: { name: "id", in: "path", schema: { type: "string" } },
+        Id: { name: "id", in: "path", required: true, schema: { type: "string" } },
         Limit: { name: "limit", in: "query", schema: { type: "integer" } },
       },
       requestBodies: {
@@ -145,7 +146,6 @@ describe("decode operations", () => {
         parameters: [
           { $ref: "#/components/parameters/Id" },
           { name: "limit", in: "query", schema: { type: "number" } },
-          { $ref: "#/components/parameters/Missing" },
         ],
         get: {
           operationId: "getPet",
@@ -154,7 +154,7 @@ describe("decode operations", () => {
           tags: ["pets", "other"],
           parameters: [
             { $ref: "#/components/parameters/Limit" },
-            { name: "X-Trace", in: "header" },
+            { name: "X-Trace", in: "header", schema: { type: "string" } },
           ],
           responses: {
             "200": {
@@ -232,7 +232,7 @@ describe("decode operations", () => {
     assert.strictEqual(request?.query[0]?.reference?.$ref, "#/components/parameters/Limit");
     assert.strictEqual(request?.query[0]?.style, "form");
     assert.strictEqual(request?.headers[0]?.name, "X-Trace");
-    assert.deepStrictEqual(request?.unknown, [{ $ref: "#/components/parameters/Missing" }]);
+    assert.deepStrictEqual(request?.unknown, []);
     assert.strictEqual(model.paths["/pets/{id}"]?.parameters.length, 2);
   });
 
@@ -318,10 +318,16 @@ describe("decode components and path items", () => {
         headers: { Rate: { schema: { type: "integer" } } },
         examples: { Fido: { summary: "A dog", value: { name: "Fido" } } },
         links: { Next: { operationId: "getPet" } },
-        callbacks: { onPet: { "{$url}": { post: { responses: {} } } } },
+        callbacks: {
+          onPet: { "{$url}": { post: { responses: { default: { description: "response" } } } } },
+        },
         pathItems: { Health: { get: { responses: { "204": { description: "ok" } } } } },
       },
-      webhooks: { newPet: { post: { operationId: "newPet", responses: {} } } },
+      webhooks: {
+        newPet: {
+          post: { operationId: "newPet", responses: { default: { description: "response" } } },
+        },
+      },
       $defs: { Name: { type: "string" } },
     });
 
@@ -359,13 +365,19 @@ describe("decode components and path items", () => {
       openapi: "3.1.0",
       info,
       components: {
-        pathItems: { Health: { summary: "Health", get: { operationId: "health", responses: {} } } },
+        pathItems: {
+          Health: {
+            summary: "Health",
+            get: { operationId: "health", responses: { default: { description: "response" } } },
+          },
+        },
       },
       paths: {
         "/health": { $ref: "#/components/pathItems/Health" },
-        "/foo bar": { get: { operationId: "spaced", responses: {} } },
+        "/foo bar": {
+          get: { operationId: "spaced", responses: { default: { description: "response" } } },
+        },
         "/alias": { $ref: "#/paths/~1foo bar" },
-        "/missing": { $ref: "#/components/pathItems/Missing" },
       },
     });
 
@@ -374,8 +386,6 @@ describe("decode components and path items", () => {
     assert.strictEqual(model.paths["/health"]?.operations[0]?.path, "/health");
     assert.strictEqual(model.paths["/alias"]?.reference?.$ref, undefined);
     assert.strictEqual(model.paths["/alias"]?.operations[0]?.operationId, "spaced");
-    assert.strictEqual(model.paths["/missing"]?.reference?.$ref, "#/components/pathItems/Missing");
-    assert.deepStrictEqual(model.paths["/missing"]?.operations, []);
     assert.strictEqual(model.components.pathItems.Health?.reference?.$ref, undefined);
   });
 
@@ -398,19 +408,23 @@ describe("decode references", () => {
     const model = decodeModel({
       openapi: "3.1.0",
       info,
-      components: { parameters: { Id: { name: "id", in: "query", description: "An id" } } },
+      components: {
+        parameters: {
+          Id: { name: "id", in: "query", description: "An id", schema: { type: "string" } },
+        },
+      },
       paths: {
         "/pets": {
           get: {
             parameters: [{ $ref: "#/components/parameters/Id", description: "The pet's id" }],
-            responses: {},
+            responses: { default: { description: "response" } },
           },
         },
       },
     });
 
     const parameter = model.operations[0]?.request.query[0];
-    assert.strictEqual(parameter?.description, "An id");
+    assert.strictEqual(parameter?.description, "The pet's id");
 
     assert.deepStrictEqual(parameter?.reference, {
       $ref: "#/components/parameters/Id",
@@ -442,13 +456,13 @@ describe("decode schemas", () => {
     assert.strictEqual(schemaOf(true), true);
   });
 
-  it("fails with InvalidSchema for a schema that is not an object or a boolean", () => {
+  it("fails with SchemaError for a schema that is not an object or a boolean", () => {
     const error = decodeError({ openapi: "3.1.0", info, components: { schemas: { S: "string" } } });
-    assert.ok(error instanceof InvalidSchema);
-    assert.ok(error.message.startsWith("#/components/schemas/S: "));
+    assert.equal(error._tag, "SchemaError");
+    assert.match(error.message, /components.*schemas.*S/s);
 
     const list = decodeError({ openapi: "3.1.0", info, components: { schemas: { S: [] } } });
-    assert.ok(list instanceof InvalidSchema);
+    assert.equal(list._tag, "SchemaError");
   });
 
   it("trusts the keywords of a bundled schema", () => {
@@ -458,18 +472,156 @@ describe("decode schemas", () => {
 });
 
 describe("ParsedService schema", () => {
+  it.effect("composes the text and service codecs", () =>
+    Effect.gen(function* () {
+      const codec = ParsedOpenApiFromString.pipe(Schema.decodeTo(ParsedServiceFromParsedOpenApi));
+
+      const model = yield* Schema.decodeEffect(codec)(
+        "openapi: 3.0.3\ninfo: { title: Pets, version: '1' }\npaths: {}\n",
+      ).pipe(
+        Effect.provideService(OpenApiSource, "file:///specs/openapi.yaml"),
+        Effect.provide(Layer.mergeAll(FileSystem.layerNoop({}), FetchHttpClient.layer)),
+      );
+
+      assert.equal(model.openapi, "3.1.0");
+      assert.equal(model.name, "Pets");
+      assert.deepEqual(model.operations, []);
+    }),
+  );
+
+  it("exposes the same transformation through the codec and decode convenience function", () => {
+    const document = Schema.decodeSync(ParsedOpenApi)({ openapi: "3.1.0", info, paths: {} });
+    assert.deepStrictEqual(Effect.runSync(decode(document)), decodeModel(document));
+  });
+
+  it("converts OpenAPI input through Standard Schema", async () => {
+    const input = {
+      openapi: "3.1.0",
+      info,
+      paths: { "/pets": { get: { operationId: "getPets" } } },
+    };
+
+    const standard = Schema.toStandardSchemaV1(ParsedServiceFromParsedOpenApi);
+
+    assert.deepStrictEqual(await standard["~standard"].validate(input), {
+      value: decodeModel(input),
+    });
+
+    const invalid = await standard["~standard"].validate({ ...input, info: { title: "Pets" } });
+    assert.ok(invalid.issues && invalid.issues.length > 0);
+  });
+
+  it("forbids encoding the service back into OpenAPI", () => {
+    const model = decodeModel({ openapi: "3.1.0", info, paths: {} });
+
+    const error = Effect.runSync(
+      Effect.flip(Schema.encodeEffect(ParsedServiceFromParsedOpenApi)(model)),
+    );
+
+    assert.equal(error._tag, "SchemaError");
+    assert.match(error.message, /cannot be encoded back to OpenAPI/);
+  });
+
   it("validates a model as a Standard Schema", () => {
     const standard = Schema.toStandardSchemaV1(ParsedService);
 
     const model = decodeModel({
       openapi: "3.1.0",
       info,
-      paths: { "/pets": { get: { responses: {} } } },
+      paths: { "/pets": { get: { responses: { default: { description: "response" } } } } },
     });
 
     assert.deepStrictEqual(standard["~standard"].validate(model), { value: model });
 
     const result = standard["~standard"].validate({ ...model, operations: [{ method: "FETCH" }] });
     assert.ok("issues" in result && result.issues !== undefined && result.issues.length > 0);
+  });
+});
+
+describe("transformation failures", () => {
+  it("reports unresolved, circular, and wrong-kind references as schema issues", () => {
+    const documents = [
+      { openapi: "3.1.0", info, paths: { "/pets": { $ref: "#/components/pathItems/Missing" } } },
+      {
+        openapi: "3.1.0",
+        info,
+        components: {
+          responses: {
+            A: { $ref: "#/components/responses/B" },
+            B: { $ref: "#/components/responses/A" },
+          },
+        },
+      },
+      {
+        openapi: "3.1.0",
+        info,
+        components: {
+          schemas: { Wrong: true },
+          headers: { H: { $ref: "#/components/schemas/Wrong" } },
+        },
+      },
+    ];
+
+    for (const document of documents) {
+      const error = decodeError(document);
+      assert.equal(error._tag, "SchemaError");
+      assert.match(error.message, /paths|components/);
+    }
+  });
+
+  it("validates missing required fields before the transform runs", () => {
+    const error = decodeError({
+      openapi: "3.1.0",
+      info,
+      components: { securitySchemes: { invalid: { type: "apiKey", name: "key", in: "path" } } },
+    });
+
+    assert.equal(error._tag, "SchemaError");
+    assert.match(error.message, /securitySchemes/);
+  });
+});
+
+describe("recursive callbacks and inheritance", () => {
+  it("flattens recursive callbacks without recursively building callback collections", () => {
+    const model = decodeModel({
+      openapi: "3.1.0",
+      info,
+      components: {
+        pathItems: {
+          Loop: {
+            post: {
+              callbacks: {
+                again: { "{$request.body#/url}": { $ref: "#/components/pathItems/Loop" } },
+              },
+            },
+          },
+        },
+      },
+      paths: { "/loop": { $ref: "#/components/pathItems/Loop" } },
+    });
+
+    assert.equal(model.operations[0]?.callbacks[0]?.key, "again");
+    assert.equal(Object.hasOwn(model.operations[0]?.callbacks[0] ?? {}, "callbacks"), false);
+  });
+
+  it("distinguishes absent, empty, and anonymous security declarations", () => {
+    const model = decodeModel({
+      openapi: "3.1.0",
+      info,
+      components: { securitySchemes: { key: { type: "apiKey", in: "header", name: "X-Key" } } },
+      security: [{ key: [] }],
+      servers: [{ url: "/root" }],
+      paths: { "/pets": { get: {}, post: { security: [], servers: [] }, put: { security: [{}] } } },
+    });
+
+    const byMethod = Object.fromEntries(
+      model.operations.map((operation) => [operation.method, operation]),
+    );
+
+    assert.equal(byMethod.GET?.securityDeclaration, "inheritedFromService");
+    assert.equal(byMethod.POST?.securityDeclaration, "none");
+    assert.deepEqual(byMethod.POST?.servers, []);
+    assert.equal(byMethod.PUT?.securityDeclaration, "declared");
+    assert.deepEqual(byMethod.PUT?.security, [[]]);
   });
 });

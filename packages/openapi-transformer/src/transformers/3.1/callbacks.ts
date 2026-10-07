@@ -1,42 +1,56 @@
-import { Schema } from "effect";
-import type { ParseContext } from "./context.js";
+import {
+  OpenApiCallback,
+  type OpenApiComponents,
+  type OpenApiOperation,
+  type OpenApiReference,
+} from "@shipworthy/openapi-parser";
+import { Effect, type SchemaIssue } from "effect";
+import type { TransformContext } from "./context.js";
 import { child, resolve } from "./pointer.js";
-import { readEntries } from "./read.js";
-import { ParsedCallbackOperation } from "../../model/index.js";
-import { parsePathItemMap } from "./paths.js";
+import type { ParsedCallbackOperation } from "../../model/index.js";
+import { transformPathItemMap } from "./paths.js";
 
-/**
- * The operations of one callback. Each keeps the callback's name in `key` and its expression in
- * `path`. The result type is named because callbacks parse path items, which parse operations,
- * which parse callbacks.
- */
-export function parseCallback(
-  ctx: ParseContext,
+/** The meta model flattens callbacks into operations without nested callback collections. */
+const transformCallback = Effect.fnUntraced(function* (
+  ctx: TransformContext,
   key: string,
-  value: unknown,
+  value: OpenApiCallback | OpenApiReference,
   at: string,
-): readonly ParsedCallbackOperation[] {
-  const { value: callback, id } = resolve(ctx.document, value, at);
+): Effect.fn.Return<readonly (typeof ParsedCallbackOperation.Encoded)[], SchemaIssue.Issue> {
+  const { value: callback, id } = yield* resolve(ctx.document, OpenApiCallback, value, at);
+  const paths = yield* transformPathItemMap(ctx, callback, id, true, false);
 
-  return Object.values(parsePathItemMap(ctx, callback, id, true)).flatMap((item) =>
-    item.operations.map((operation) =>
-      Schema.decodeSync(ParsedCallbackOperation)({ ...operation, key }),
+  return Object.values(paths).flatMap((item) =>
+    item.operations.map(
+      ({ callbacks: _callbacks, ...operation }) =>
+        ({ ...operation, key }) satisfies typeof ParsedCallbackOperation.Encoded,
     ),
   );
-}
+});
 
-/** The operations of every callback in a map, in document order. */
-export function parseCallbackList(ctx: ParseContext, value: unknown, at: string) {
-  return readEntries(value).flatMap(([key, entry]) =>
-    parseCallback(ctx, key, entry, child(at, key)),
+export const transformCallbackList = Effect.fnUntraced(function* (
+  ctx: TransformContext,
+  value: OpenApiOperation["callbacks"],
+  at: string,
+) {
+  const callbacks = yield* Effect.forEach(Object.entries(value ?? {}), ([key, entry]) =>
+    transformCallback(ctx, key, entry, child(at, key)),
   );
-}
 
-export function parseCallbackMap(ctx: ParseContext, value: unknown, at: string) {
+  return callbacks.flat();
+});
+
+export const transformCallbackMap = Effect.fnUntraced(function* (
+  ctx: TransformContext,
+  value: OpenApiComponents["callbacks"],
+  at: string,
+) {
   return Object.fromEntries(
-    readEntries(value).flatMap(([key, entry]) => {
-      const operations = parseCallback(ctx, key, entry, child(at, key));
-      return operations.length > 0 ? [[key, operations] as const] : [];
-    }),
+    yield* Effect.forEach(
+      Object.entries(value ?? {}),
+      Effect.fnUntraced(function* ([key, entry]) {
+        return [key, yield* transformCallback(ctx, key, entry, child(at, key))] as const;
+      }),
+    ),
   );
-}
+});

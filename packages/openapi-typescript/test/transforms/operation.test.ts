@@ -35,13 +35,18 @@ describe("transformOperation", () => {
     Effect.gen(function* () {
       expect(
         yield* operationType({
-          parameters: [{ name: "id", in: "path", schema: { type: "string" } }],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
           get: {
             parameters: [
               { $ref: "#/components/parameters/Limit" },
-              { name: "X-Trace", in: "header", required: true, description: "Trace id" },
+              {
+                name: "X-Trace",
+                in: "header",
+                required: true,
+                description: "Trace id",
+                schema: { type: "string" },
+              },
             ],
-            responses: {},
           },
         }),
       ).toMatchInlineSnapshot(`
@@ -133,7 +138,7 @@ describe("transformOperation", () => {
     Effect.gen(function* () {
       expect(
         yield* operationType({
-          get: { requestBody: { $ref: "#/components/requestBodies/Pet" }, responses: {} },
+          get: { requestBody: { $ref: "#/components/requestBodies/Pet" } },
         }),
       ).toContain('requestBody: components["requestBodies"]["Pet"];');
     }),
@@ -141,9 +146,9 @@ describe("transformOperation", () => {
 
   it.effect("adds undeclared path parameters with generatePathParams", () =>
     Effect.gen(function* () {
-      expect(
-        yield* operationType({ get: { responses: {} } }, { generatePathParams: true }),
-      ).toContain("path: {\n      id: string;\n    };");
+      expect(yield* operationType({ get: {} }, { generatePathParams: true })).toContain(
+        "path: {\n      id: string;\n    };",
+      );
     }),
   );
 });

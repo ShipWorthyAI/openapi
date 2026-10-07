@@ -1,3 +1,2 @@
-export { decode } from "./decode.js";
-export { InvalidSchema } from "./errors.js";
+export { decode, ParsedServiceFromParsedOpenApi } from "./decode.js";
 export * from "./model/index.js";

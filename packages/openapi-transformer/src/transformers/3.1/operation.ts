@@ -1,54 +1,62 @@
-import { Predicate, Schema } from "effect";
-import type { ParseContext } from "./context.js";
-import { parseCallbackList } from "./callbacks.js";
-import { parseParameters } from "./parameters.js";
-import { parseRequestBody } from "./request.js";
-import { parseOperationResponses } from "./responses.js";
-import { parseSecurityRequirements } from "./securities.js";
-import { parseExternalDocs, parseServerList } from "./servers.js";
-import { child, resolve } from "./pointer.js";
-import { readExtensions, readString } from "./read.js";
-import {
+import type { OpenApiPathItem } from "@shipworthy/openapi-parser";
+import { Effect } from "effect";
+import type { TransformContext } from "./context.js";
+import { transformCallbackList } from "./callbacks.js";
+import { transformParameters } from "./parameters.js";
+import { transformRequestBody } from "./request.js";
+import { transformOperationResponses } from "./responses.js";
+import { transformSecurityRequirements } from "./securities.js";
+import { transformExternalDocs, transformServerList } from "./servers.js";
+import { child } from "./pointer.js";
+import { readExtensions } from "./read.js";
+import type {
   HttpMethodName,
   ParsedOperation,
-  type ParsedServer,
+  ParsedServer,
   ParsedTag,
-  type SecurityDeclaration,
+  SecurityDeclaration,
 } from "../../model/index.js";
 
-const decodeMethod = Schema.decodeUnknownSync(HttpMethodName);
+const methods = {
+  get: "GET",
+  put: "PUT",
+  post: "POST",
+  delete: "DELETE",
+  options: "OPTIONS",
+  head: "HEAD",
+  patch: "PATCH",
+  trace: "TRACE",
+} as const satisfies Record<Lowercase<HttpMethodName>, HttpMethodName>;
 
-/** An operation's tags: the document's declaration when there is one, else just the name. */
-function parseOperationTags(ctx: ParseContext, value: unknown, at: string) {
-  if (!Array.isArray(value)) return [];
-
-  return value.flatMap((name, index) => {
-    if (typeof name !== "string") return [];
-    const declared = ctx.tags.find((tag) => tag.name === name);
-
-    return [
-      declared ?? Schema.decodeSync(ParsedTag)({ id: child(at, index), name, extensions: {} }),
-    ];
-  });
+function transformOperationTags(
+  ctx: TransformContext,
+  value: readonly string[] | undefined,
+  at: string,
+) {
+  return (value ?? []).map(
+    (name, index) =>
+      ctx.tags.find((tag) => tag.name === name) ??
+      ({ id: child(at, index), name, extensions: {} } satisfies typeof ParsedTag.Encoded),
+  );
 }
 
-/** One operation of a resolved path item. */
-export function parseOperation(
-  ctx: ParseContext,
+export const transformOperation = Effect.fnUntraced(function* (
+  ctx: TransformContext,
   path: string,
   method: Lowercase<HttpMethodName>,
-  pathItem: Record<string, unknown>,
+  pathItem: OpenApiPathItem,
   pathItemId: string,
-  pathServers: readonly ParsedServer[] | undefined,
+  pathServers: readonly (typeof ParsedServer.Encoded)[] | undefined,
+  includeCallbacks: boolean,
 ) {
+  const operation = pathItem[method];
+  if (operation === undefined) return undefined;
+  const id = child(pathItemId, method);
   const { document } = ctx;
-  const { value: operation, id } = resolve(document, pathItem[method], child(pathItemId, method));
-  if (!Predicate.isObject(operation)) return undefined;
-  const body = parseRequestBody(document, operation.requestBody, child(id, "requestBody"));
-  const declared = Object.hasOwn(operation, "security");
+  const declared = operation.security !== undefined;
 
   const security = declared
-    ? parseSecurityRequirements(operation.security, ctx.securitySchemes)
+    ? yield* transformSecurityRequirements(operation.security, ctx.securitySchemes)
     : ctx.security;
 
   const securityDeclaration: SecurityDeclaration = declared
@@ -59,28 +67,37 @@ export function parseOperation(
       ? "inheritedFromService"
       : "none";
 
-  return Schema.decodeSync(ParsedOperation)({
+  return {
     id,
-    operationId: readString(operation.operationId),
-    method: decodeMethod(method.toUpperCase()),
+    operationId: operation.operationId,
+    method: methods[method],
     path,
-    summary: readString(operation.summary),
-    description: readString(operation.description),
+    summary: operation.summary,
+    description: operation.description,
     deprecated: operation.deprecated === true,
-    tags: parseOperationTags(ctx, operation.tags, child(id, "tags")),
-    externalDocs: parseExternalDocs(operation.externalDocs),
+    tags: transformOperationTags(ctx, operation.tags, child(id, "tags")),
+    externalDocs: yield* transformExternalDocs(operation.externalDocs),
     request: {
-      ...parseParameters(document, [
+      ...(yield* transformParameters(document, [
         [pathItem.parameters, child(pathItemId, "parameters")],
         [operation.parameters, child(id, "parameters")],
-      ]),
-      body,
+      ])),
+      body: yield* transformRequestBody(document, operation.requestBody, child(id, "requestBody")),
     },
-    responses: parseOperationResponses(document, operation.responses, child(id, "responses")),
-    servers: parseServerList(operation.servers, child(id, "servers")) ?? pathServers ?? ctx.servers,
-    callbacks: parseCallbackList(ctx, operation.callbacks, child(id, "callbacks")),
+    responses: yield* transformOperationResponses(
+      document,
+      operation.responses,
+      child(id, "responses"),
+    ),
+    servers:
+      (yield* transformServerList(operation.servers, child(id, "servers"))) ??
+      pathServers ??
+      ctx.servers,
+    callbacks: includeCallbacks
+      ? yield* transformCallbackList(ctx, operation.callbacks, child(id, "callbacks"))
+      : [],
     security,
     securityDeclaration,
     extensions: readExtensions(operation),
-  });
-}
+  } satisfies typeof ParsedOperation.Encoded;
+});

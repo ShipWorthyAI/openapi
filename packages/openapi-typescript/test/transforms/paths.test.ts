@@ -8,6 +8,20 @@ import { document, print } from "../helpers.js";
 const ok = { "200": { description: "OK" } };
 
 describe("transformPaths", () => {
+  it.effect("keeps sibling operations when expanding a referenced path item", () =>
+    Effect.gen(function* () {
+      const model = document({
+        components: { pathItems: { Health: { get: { responses: ok } } } },
+        paths: { "/custom": { $ref: "#/components/pathItems/Health", post: { responses: ok } } },
+      });
+
+      const printed = yield* print(model, transformPaths(model.paths));
+      expect(printed).toContain("get: {");
+      expect(printed).toContain("post: {");
+      expect(printed).not.toContain('"/custom": components["pathItems"]');
+    }),
+  );
+
   it.effect(
     "prints each path item with every method, and moves operations with ids to `operations`",
     () =>
@@ -79,7 +93,7 @@ describe("transformPaths", () => {
         paths: {
           "/pets/{id}": {
             get: {
-              parameters: [{ name: "id", in: "path", schema: { type: "integer" } }],
+              parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
               responses: ok,
             },
           },

@@ -1,5 +1,5 @@
 import { NodeServices } from "@effect/platform-node";
-import { generate } from "@shipworthy/openapi-generator";
+import { generate, ModuleLoader } from "@shipworthy/openapi-generator";
 import { decode, type ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
@@ -37,6 +37,7 @@ export function generateTypes(source: unknown, options: Record<string, unknown> 
     source,
     pluginOptions: options,
   }).pipe(
+    Effect.provideService(ModuleLoader, { load: () => import("../src/index.js") }),
     Effect.map((nodes) => astToString(nodes as ts.Node[]).trim()),
     Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
   );

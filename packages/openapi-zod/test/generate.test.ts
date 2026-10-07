@@ -1,6 +1,6 @@
 import { decode } from "@shipworthy/openapi-transformer";
 import { NodeServices } from "@effect/platform-node";
-import { generate } from "@shipworthy/openapi-generator";
+import { generate, ModuleLoader } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { zod, type ZodSources } from "../src/index";
@@ -81,6 +81,7 @@ function sourcesFor(schema: Parameters<typeof decode>[0]) {
 async function generateZodSources(source: URL) {
   return Effect.runPromise(
     generate({ specifier: "@shipworthy/openapi-zod", exportName: "zod", source }).pipe(
+      Effect.provideService(ModuleLoader, { load: () => import("../src/index.js") }),
       Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
     ),
   ) as Promise<ZodSources>;
@@ -321,7 +322,7 @@ void test("unsupported documents and schemas fail before files are written", () 
   const externalRef = structuredClone(document) as any;
 
   externalRef.components.parameters = {
-    Id: { name: "id", in: "path", schema: { type: "string" } },
+    Id: { name: "id", in: "path", required: true, schema: { type: "string" } },
   };
 
   externalRef.components.schemas.Item = { $ref: "#/components/parameters/Id" };

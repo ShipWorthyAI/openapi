@@ -96,11 +96,15 @@ const parseSource = Effect.fnUntraced(function* (
 
 function resolveCwd(path: Path.Path, cwd: LoadOptions["cwd"]) {
   if (cwd instanceof URL) {
-    if (cwd.protocol !== "file:") return Effect.succeed(cwd.href);
-    return path.fromFileUrl(cwd).pipe(Effect.mapError(parseFailure));
+    return Effect.succeed(cwd.href);
   }
 
-  return Effect.succeed(typeof cwd === "string" ? path.resolve(cwd) : path.resolve("."));
+  const directory = typeof cwd === "string" ? path.resolve(cwd) : path.resolve(".");
+
+  return path.toFileUrl(directory).pipe(
+    Effect.map((url) => (url.href.endsWith("/") ? url.href : `${url.href}/`)),
+    Effect.mapError(parseFailure),
+  );
 }
 
 const filePath = Effect.fnUntraced(function* (
@@ -139,18 +143,19 @@ function readReadable(source: Readable) {
   );
 }
 
-const parseText = Effect.fnUntraced(function* (source: string) {
-  if (source[0] === "{") {
+export const parseText = Effect.fnUntraced(function* (source: string) {
+  const text = source.replace(/^\uFEFF/, "");
+  const first = text.trimStart()[0];
+  const yaml = () => Effect.try({ try: () => parseYamlDocument(text), catch: parseFailure });
+
+  if (first === "{" || first === "[") {
     return yield* Effect.try({
-      try: () => JSON.parse(source) as unknown,
+      try: () => JSON.parse(text) as unknown,
       catch: parseFailure,
-    });
+    }).pipe(Effect.catch(yaml));
   }
 
-  return yield* Effect.try({
-    try: () => parseYamlDocument(source),
-    catch: parseFailure,
-  });
+  return yield* yaml();
 });
 
 const requireDocument = Effect.fnUntraced(function* (

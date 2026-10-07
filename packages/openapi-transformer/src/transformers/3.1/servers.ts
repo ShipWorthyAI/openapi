@@ -1,64 +1,56 @@
-import { Predicate, Schema } from "effect";
+import type {
+  OpenApiExternalDocs,
+  OpenApiServer,
+  OpenApiServerVariable,
+} from "@shipworthy/openapi-parser";
+import { Effect } from "effect";
 import { child } from "./pointer.js";
-import { readEntries, readExtensions, readString } from "./read.js";
-import { ParsedExternalDocs, ParsedServer, ParsedServerVariable } from "../../model/index.js";
+import { readExtensions } from "./read.js";
+import type { ParsedExternalDocs, ParsedServer, ParsedServerVariable } from "../../model/index.js";
 
-export function parseExternalDocs(value: unknown) {
-  if (!Predicate.isObject(value)) return undefined;
-  const url = readString(value.url);
-  if (url === undefined) return undefined;
+export const transformExternalDocs = (value: OpenApiExternalDocs | undefined) =>
+  Effect.sync(() => {
+    if (value === undefined) return undefined;
 
-  return Schema.decodeSync(ParsedExternalDocs)({
-    url,
-    description: readString(value.description),
-    extensions: readExtensions(value),
+    return {
+      url: value.url,
+      description: value.description,
+      extensions: readExtensions(value),
+    } satisfies typeof ParsedExternalDocs.Encoded;
   });
-}
 
-function parseServerVariable(value: unknown) {
-  if (!Predicate.isObject(value)) return undefined;
-  const fallback = readString(value.default);
-  if (fallback === undefined) return undefined;
-
-  const values = Array.isArray(value.enum)
-    ? value.enum.filter((entry): entry is string => typeof entry === "string")
-    : [];
-
-  return Schema.decodeSync(ParsedServerVariable)({
-    default: fallback,
-    enum: values.length > 0 ? values : undefined,
-    description: readString(value.description),
-    extensions: readExtensions(value),
+const transformServerVariable = (value: OpenApiServerVariable) =>
+  Effect.sync(() => {
+    return {
+      default: value.default,
+      enum: value.enum,
+      description: value.description,
+      extensions: readExtensions(value),
+    } satisfies typeof ParsedServerVariable.Encoded;
   });
-}
 
-export function parseServer(value: unknown, at: string) {
-  if (!Predicate.isObject(value)) return undefined;
-  const url = readString(value.url);
-  if (url === undefined) return undefined;
-  const variables: Record<string, ParsedServerVariable> = {};
+export const transformServer = Effect.fnUntraced(function* (value: OpenApiServer, at: string) {
+  const variables = Object.fromEntries(
+    yield* Effect.forEach(Object.entries(value.variables ?? {}), ([name, entry]) =>
+      transformServerVariable(entry).pipe(Effect.map((variable) => [name, variable] as const)),
+    ),
+  );
 
-  for (const [name, entry] of readEntries(value.variables)) {
-    const variable = parseServerVariable(entry);
-    if (variable) variables[name] = variable;
-  }
-
-  return Schema.decodeSync(ParsedServer)({
+  return {
     id: at,
-    url,
-    name: readString(value.name),
-    description: readString(value.description),
-    variables: Object.keys(variables).length > 0 ? variables : undefined,
+    url: value.url,
+    name: typeof value.name === "string" ? value.name : undefined,
+    description: value.description,
+    variables: value.variables === undefined ? undefined : variables,
     extensions: readExtensions(value),
-  });
-}
+  } satisfies typeof ParsedServer.Encoded;
+});
 
-/** The servers declared at `at`, or `undefined` when there is no `servers` array. */
-export function parseServerList(value: unknown, at: string) {
-  if (!Array.isArray(value)) return undefined;
-
-  return value.flatMap((entry, index) => {
-    const server = parseServer(entry, child(at, index));
-    return server ? [server] : [];
-  });
-}
+/** Absence is preserved so operation and path-item inheritance remains explicit. */
+export const transformServerList = Effect.fnUntraced(function* (
+  value: readonly OpenApiServer[] | undefined,
+  at: string,
+) {
+  if (value === undefined) return undefined;
+  return yield* Effect.forEach(value, (entry, index) => transformServer(entry, child(at, index)));
+});

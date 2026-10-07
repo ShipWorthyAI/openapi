@@ -1,99 +1,105 @@
-import { Option, Predicate, Schema } from "effect";
-import type { OpenAPIDocument } from "@shipworthy/openapi-parser";
-import { child, resolve } from "./pointer.js";
-import { readEntries, readExtensions, readString } from "./read.js";
 import {
+  OpenApiSecurityScheme,
+  type OpenApiComponents,
+  type OpenApiOAuthFlow,
+  type OpenApiOAuthFlows,
+  type OpenApiReference,
+  type OpenApiSecurityRequirement,
+  type ParsedOpenApi,
+} from "@shipworthy/openapi-parser";
+import { Effect } from "effect";
+import { child, resolve } from "./pointer.js";
+import { readExtensions } from "./read.js";
+import type {
   ParsedOAuthFlow,
   ParsedOAuthFlows,
-  type ParsedSecurityRequirement,
+  ParsedSecurityRequirement,
   ParsedSecurityScheme,
-  type ParsedSecurityUse,
+  ParsedSecurityUse,
 } from "../../model/index.js";
 
-function parseScopes(value: unknown) {
-  return Object.fromEntries(
-    readEntries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-  );
-}
+const transformOAuthFlow = (value: OpenApiOAuthFlow | undefined) =>
+  Effect.sync(() => {
+    if (value === undefined) return undefined;
 
-function parseOAuthFlow(value: unknown) {
-  if (!Predicate.isObject(value)) return undefined;
+    return {
+      authorizationUrl: value.authorizationUrl,
+      tokenUrl: value.tokenUrl,
+      refreshUrl: value.refreshUrl,
+      scopes: value.scopes,
+      extensions: readExtensions(value),
+    } satisfies typeof ParsedOAuthFlow.Encoded;
+  });
 
-  return Schema.decodeSync(ParsedOAuthFlow)({
-    authorizationUrl: readString(value.authorizationUrl),
-    tokenUrl: readString(value.tokenUrl),
-    refreshUrl: readString(value.refreshUrl),
-    scopes: parseScopes(value.scopes),
+const transformOAuthFlows = Effect.fnUntraced(function* (value: OpenApiOAuthFlows) {
+  return {
+    implicit: yield* transformOAuthFlow(value.implicit),
+    password: yield* transformOAuthFlow(value.password),
+    clientCredentials: yield* transformOAuthFlow(value.clientCredentials),
+    authorizationCode: yield* transformOAuthFlow(value.authorizationCode),
     extensions: readExtensions(value),
-  });
-}
+  } satisfies typeof ParsedOAuthFlows.Encoded;
+});
 
-function parseOAuthFlows(value: unknown) {
-  const source = Predicate.isObject(value) ? value : {};
-
-  return Schema.decodeSync(ParsedOAuthFlows)({
-    implicit: parseOAuthFlow(source.implicit),
-    password: parseOAuthFlow(source.password),
-    clientCredentials: parseOAuthFlow(source.clientCredentials),
-    authorizationCode: parseOAuthFlow(source.authorizationCode),
-    extensions: readExtensions(source),
-  });
-}
-
-const decodeScheme = Schema.decodeUnknownOption(ParsedSecurityScheme);
-
-/** A security scheme, or `undefined` when its type or required fields are missing. */
-export function parseSecurityScheme(
-  document: OpenAPIDocument,
+const transformSecurityScheme = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
   key: string,
-  value: unknown,
+  value: OpenApiSecurityScheme | OpenApiReference,
   at: string,
 ) {
-  const { value: scheme, id, reference } = resolve(document, value, at);
-  if (!Predicate.isObject(scheme)) return undefined;
+  const {
+    value: scheme,
+    id,
+    reference,
+  } = yield* resolve(document, OpenApiSecurityScheme, value, at);
 
-  // the scheme's own fields decide which member of the union it is
-  return decodeScheme({
-    ...scheme,
+  const common = {
     id,
     key,
     reference,
-    description: readString(scheme.description),
-    flows: scheme.type === "oauth2" ? parseOAuthFlows(scheme.flows) : undefined,
+    description: reference?.description ?? scheme.description,
     extensions: readExtensions(scheme),
-  }).pipe(Option.getOrUndefined);
-}
+  };
 
-export function parseSecuritySchemeMap(document: OpenAPIDocument, value: unknown, at: string) {
+  if (scheme.type === "oauth2") {
+    return {
+      ...common,
+      type: scheme.type,
+      flows: yield* transformOAuthFlows(scheme.flows),
+    } satisfies typeof ParsedSecurityScheme.Encoded;
+  }
+
+  return { ...scheme, ...common } satisfies typeof ParsedSecurityScheme.Encoded;
+});
+
+export const transformSecuritySchemeMap = Effect.fnUntraced(function* (
+  document: ParsedOpenApi,
+  value: OpenApiComponents["securitySchemes"],
+  at: string,
+) {
   return Object.fromEntries(
-    readEntries(value).flatMap(([key, entry]) => {
-      const scheme = parseSecurityScheme(document, key, entry, child(at, key));
-      return scheme ? [[key, scheme] as const] : [];
-    }),
+    yield* Effect.forEach(
+      Object.entries(value ?? {}),
+      Effect.fnUntraced(function* ([key, entry]) {
+        return [key, yield* transformSecurityScheme(document, key, entry, child(at, key))] as const;
+      }),
+    ),
   );
-}
+});
 
-/** Security requirements. Schemes the document does not declare are left out. */
-export function parseSecurityRequirements(
-  value: unknown,
-  schemes: Readonly<Record<string, ParsedSecurityScheme>>,
-): readonly ParsedSecurityRequirement[] {
-  if (!Array.isArray(value)) return [];
+export const transformSecurityRequirements = (
+  value: readonly OpenApiSecurityRequirement[] | undefined,
+  schemes: Readonly<Record<string, typeof ParsedSecurityScheme.Encoded>>,
+) =>
+  Effect.sync(() => {
+    return (value ?? []).map((entry) => {
+      const uses: (typeof ParsedSecurityUse.Encoded)[] = [];
 
-  return value.flatMap((entry) => {
-    if (!Predicate.isObject(entry)) return [];
-    const uses: ParsedSecurityUse[] = [];
+      for (const [key, scopes] of Object.entries(entry)) {
+        const scheme = schemes[key];
+        if (scheme) uses.push({ scheme, scopes });
+      }
 
-    for (const [key, scopes] of Object.entries(entry)) {
-      const scheme = schemes[key];
-      if (!scheme || !Array.isArray(scopes)) continue;
-
-      uses.push({
-        scheme,
-        scopes: scopes.filter((scope): scope is string => typeof scope === "string"),
-      });
-    }
-
-    return [uses];
+      return uses;
+    }) satisfies readonly (typeof ParsedSecurityRequirement.Encoded)[];
   });
-}

@@ -172,6 +172,18 @@ describe("typescript plugin", () => {
 });
 
 describe("generating from a raw document", () => {
+  it.effect("keeps false schemas as never through preparation and generation", () =>
+    Effect.gen(function* () {
+      const printed = yield* generateTypes({
+        openapi: "3.1.0",
+        info: { title: "Test", version: "1.0.0" },
+        components: { schemas: { Impossible: false } },
+      });
+
+      expect(printed).toContain("Impossible: never;");
+    }),
+  );
+
   it.effect("bundles an OpenAPI 3.0 document first, so nullable becomes null", () =>
     Effect.gen(function* () {
       const printed = yield* generateTypes({

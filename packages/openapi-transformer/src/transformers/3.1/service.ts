@@ -1,49 +1,48 @@
-import { Predicate, Schema } from "effect";
-import { parseExternalDocs } from "./servers.js";
+import type { OpenApiContact, OpenApiLicense, OpenApiTag } from "@shipworthy/openapi-parser";
+import { Effect } from "effect";
+import { transformExternalDocs } from "./servers.js";
 import { child } from "./pointer.js";
-import { readExtensions, readString } from "./read.js";
-import { ParsedContact, ParsedLicense, ParsedTag } from "../../model/index.js";
+import { readExtensions } from "./read.js";
+import type { ParsedContact, ParsedLicense, ParsedTag } from "../../model/index.js";
 
-export function parseContact(value: unknown) {
-  if (!Predicate.isObject(value)) return undefined;
+export const transformContact = (value: OpenApiContact | undefined) =>
+  Effect.sync(() => {
+    if (value === undefined) return undefined;
 
-  return Schema.decodeSync(ParsedContact)({
-    name: readString(value.name),
-    url: readString(value.url),
-    email: readString(value.email),
-    extensions: readExtensions(value),
+    return {
+      name: value.name,
+      url: value.url,
+      email: value.email,
+      extensions: readExtensions(value),
+    } satisfies typeof ParsedContact.Encoded;
   });
-}
 
-export function parseLicense(value: unknown) {
-  if (!Predicate.isObject(value)) return undefined;
-  const name = readString(value.name);
-  if (name === undefined) return undefined;
+export const transformLicense = (value: OpenApiLicense | undefined) =>
+  Effect.sync(() => {
+    if (value === undefined) return undefined;
 
-  return Schema.decodeSync(ParsedLicense)({
-    name,
-    url: readString(value.url),
-    identifier: readString(value.identifier),
-    extensions: readExtensions(value),
+    return {
+      name: value.name,
+      url: value.url,
+      identifier: value.identifier,
+      extensions: readExtensions(value),
+    } satisfies typeof ParsedLicense.Encoded;
   });
-}
 
-export function parseTagList(value: unknown, at: string) {
-  if (!Array.isArray(value)) return [];
-
-  return value.flatMap((entry, index) => {
-    if (!Predicate.isObject(entry)) return [];
-    const name = readString(entry.name);
-    if (name === undefined) return [];
-
-    return [
-      Schema.decodeSync(ParsedTag)({
+export const transformTagList = Effect.fnUntraced(function* (
+  value: readonly OpenApiTag[] | undefined,
+  at: string,
+) {
+  return yield* Effect.forEach(
+    value ?? [],
+    Effect.fnUntraced(function* (entry, index) {
+      return {
         id: child(at, index),
-        name,
-        description: readString(entry.description),
-        externalDocs: parseExternalDocs(entry.externalDocs),
+        name: entry.name,
+        description: entry.description,
+        externalDocs: yield* transformExternalDocs(entry.externalDocs),
         extensions: readExtensions(entry),
-      }),
-    ];
-  });
-}
+      } satisfies typeof ParsedTag.Encoded;
+    }),
+  );
+});
