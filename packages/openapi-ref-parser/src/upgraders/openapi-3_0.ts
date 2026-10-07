@@ -201,8 +201,23 @@ function upgradeSchema(value: unknown): unknown {
     }
   }
   if (typeof record.$ref === "string" && Object.keys(record).some((key) => key !== "$ref")) {
+    const nullable = record.nullable === true;
+    const readOnly = record.readOnly === true;
+    const writeOnly = record.writeOnly === true;
     const { $ref, ...siblings } = record;
-    return { allOf: [{ $ref }, siblings] };
+    delete siblings.nullable;
+    if (readOnly) delete siblings.readOnly;
+    if (writeOnly) delete siblings.writeOnly;
+    const lifted: Record<string, unknown> =
+      Object.keys(siblings).length > 0 ? { allOf: [{ $ref }, siblings] } : { $ref };
+    if (nullable && Object.keys(siblings).length === 0) {
+      lifted.allOf = [{ $ref }];
+      delete lifted.$ref;
+    }
+    if (nullable) lifted.nullable = true;
+    if (readOnly) lifted.readOnly = true;
+    if (writeOnly) lifted.writeOnly = true;
+    return lifted;
   }
   applyOpenApi30Keywords(record);
   return record;
@@ -216,7 +231,7 @@ function applyOpenApi30Keywords(schema: Record<string, unknown>): void {
     }).schema;
     delete schema.nullable;
     schema.type = converted.type;
-  } else if ("nullable" in schema) {
+  } else if (schema.nullable !== true) {
     delete schema.nullable;
   }
 

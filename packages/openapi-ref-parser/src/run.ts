@@ -152,6 +152,15 @@ const loadClosure = Effect.fnUntraced(function* (
   }
 });
 
+const referenceKeys = new Set(["$ref", "summary", "description"]);
+
+/** HTTP `$ref` fields inside example payloads are data, not OpenAPI references. */
+function isBundledRef(record: Record<string, unknown>): boolean {
+  const ref = record.$ref;
+  if (typeof ref !== "string" || !isHttp(ref)) return true;
+  return Object.keys(record).every((key) => referenceKeys.has(key));
+}
+
 function* externalRefs(node: unknown, kept: Set<string>): Generator<string> {
   const seen = new Set<object>();
   const stack = [node];
@@ -164,7 +173,9 @@ function* externalRefs(node: unknown, kept: Set<string>): Generator<string> {
       continue;
     }
     const record = current as Record<string, unknown>;
-    if (typeof record.$ref === "string" && !record.$ref.startsWith("#") && !kept.has(record.$ref)) yield record.$ref;
+    if (typeof record.$ref === "string" && !record.$ref.startsWith("#") && !kept.has(record.$ref) && isBundledRef(record)) {
+      yield record.$ref;
+    }
     if (typeof record.externalValue === "string" && !kept.has(record.externalValue)) yield record.externalValue;
     stack.push(...Object.values(record));
   }

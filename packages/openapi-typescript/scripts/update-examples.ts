@@ -47,7 +47,7 @@ async function generateSchemas() {
       }
 
       const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
-      await Promise.all(args.map((a) => spawn(["bun", cli, "typescript", ...a], { cwd })));
+      await Promise.all(args.map((a) => spawn(["bun", cli, "generate", "typescript", ...a], { cwd })));
 
       schemasDoneCount++;
       const timeMs = Math.round(performance.now() - start);

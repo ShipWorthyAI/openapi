@@ -4,6 +4,7 @@ import { asRecord, cloneData, getAt, joinPointer, parsePointer, setAt } from "./
 import { getHash, isFileSystemPath, isHttp, stripHash } from "./url.js";
 
 const MAX_ATTEMPTS = 1000;
+const MAX_PASSES = 100_000;
 
 type NameBucket = { taken: Set<string>; generated: Map<string, string | null> };
 
@@ -71,9 +72,10 @@ export function hoistExternalRefs(
   keep: (ref: string) => boolean,
 ): Map<string, string> {
   const placed = new Map<string, string>();
+  const componentSource = new Map<string, string>();
   const buckets = new Map<string, NameBucket>();
   const abandoned = new Set<string>();
-  for (let pass = 0; pass < MAX_ATTEMPTS; pass++) {
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
     const found = findExternalRef(root, keep, abandoned);
     if (!found) {
       collapseRefChains(root);
@@ -86,17 +88,35 @@ export function hoistExternalRefs(
       abandoned.add(found.pointer);
       continue;
     }
-    const existing = placed.get(placeKey) ?? placedPrefix(placed, url, hash);
+    // Some documents put `$ref` under `properties`, so the map itself is the reference.
+    // Rewriting that to a component `$ref` leaves a string where a schema object is required.
+    if (found.key === "properties" || found.key === "patternProperties") {
+      const inlined = cloneData(valueAt(readValue(url), hash, found.ref));
+      rebaseInternalRefs(inlined, url);
+      inlineRef(found, inlined, hooks);
+      continue;
+    }
+    const existing = placed.get(placeKey);
     if (existing) {
       rewriteRef(found, existing, hooks);
       continue;
     }
     const value = cloneData(valueAt(readValue(url), hash, found.ref));
     rebaseInternalRefs(value, url);
-    const target = generateKey(root, url, hash, found.pointer, buckets);
+    const rootName = oas3DefaultRoot(found.pointer);
+    const identical = rootName ? matchingComponent(root, rootName, value, url, componentSource) : undefined;
+    if (identical) {
+      placed.set(placeKey, identical);
+      rewriteRef(found, identical, hooks);
+      continue;
+    }
+    const reserveName =
+      rootName === "#/components/schemas" && childReservesName(value, fileBaseName(url));
+    const target = generateKey(root, url, hash, found.pointer, buckets, reserveName);
     if (target) {
       setAt(root, target, value);
       placed.set(placeKey, target);
+      componentSource.set(target, url);
       rewriteRef(found, target, hooks);
     } else {
       inlineRef(found, value, hooks);
@@ -104,21 +124,6 @@ export function hoistExternalRefs(
     }
   }
   throw new Error("Could not finish bundling external references.");
-}
-
-function placedPrefix(placed: Map<string, string>, url: string, hash: string): string | undefined {
-  let best = "";
-  let pointer: string | undefined;
-  for (const [key, value] of placed) {
-    if (!key.startsWith(url)) continue;
-    const candidate = key.slice(url.length);
-    const isPrefix = candidate === "#" ? hash.startsWith("#/") : hash.startsWith(`${candidate}/`);
-    if (!isPrefix || candidate.length < best.length) continue;
-    best = candidate;
-    const suffix = candidate === "#" ? hash : `#${hash.slice(candidate.length)}`;
-    pointer = joinPointer(value, parsePointer(suffix));
-  }
-  return pointer;
 }
 
 function valueAt(document: unknown, hash: string, ref: string): unknown {
@@ -197,23 +202,32 @@ function generateKey(
   hash: string,
   pathFromRoot: string,
   buckets: Map<string, NameBucket>,
+  childReservesBase = false,
 ): string | null {
   if (!isOpenApiDocument(schema)) return null;
   const root = oas3DefaultRoot(pathFromRoot);
   if (!root) return null;
   if (!isFileSystemPath(file) && !isHttp(file) && !file.includes("://")) return null;
   if (hash === "#" && isUnderDirectRoot(pathFromRoot, root)) return null;
+  const existing = existingComponentPointer(schema, file, hash, root);
+  if (existing && existing !== pathFromRoot) return existing;
   if (hash !== "#") {
     if (isUnderDirectRoot(hash, root) || !isInRoot(hash, root)) {
       const token = pointerTokens(hash).at(-1);
       if (!token) return null;
-      return register(schema, root, `${file}${hash}`, suggest(bucket(schema, root, buckets).taken, token), buckets);
+      return register(
+        schema,
+        root,
+        `${file}${hash}`,
+        suggest(bucket(schema, root, buckets).taken, token, fileBaseName(file)),
+        buckets,
+      );
     }
     const filePointer = keyForFile(schema, file, root, buckets);
     if (filePointer == null) return null;
     return keyForPointer(schema, filePointer + hash.slice(1), root, buckets);
   }
-  return keyForFile(schema, file, root, buckets);
+  return keyForFile(schema, file, root, buckets, hash === "#" && childReservesBase);
 }
 
 function isOpenApiDocument(schema: object): boolean {
@@ -235,33 +249,27 @@ export function oas3DefaultRoot(pathFromRoot: string): string | null {
 }
 
 function canReferenceSchema(path: string[]): boolean {
-  return (
-    (path.length > 3 && path[1] === "paths" && path.includes("schema")) ||
-    (path[1] === "components" && path[2] === "schemas")
-  );
+  return path.includes("schema") || (path[1] === "components" && path[2] === "schemas");
 }
 
 function canReferenceParameter(path: string[]): boolean {
-  return (
-    (path.length === 5 && path[1] === "paths" && path[3] === "parameters") ||
-    (path.length === 6 && path[1] === "paths" && path[4] === "parameters")
-  );
+  return path.at(-2) === "parameters";
 }
 
 function canReferenceResponse(path: string[]): boolean {
-  return path.length === 6 && path[1] === "paths" && path[4] === "responses";
+  return path.at(-2) === "responses";
 }
 
 function canReferenceRequestBody(path: string[]): boolean {
-  return path.length === 5 && path[1] === "paths" && path[4] === "requestBody";
+  return path.at(-1) === "requestBody";
 }
 
 function canReferenceHeader(path: string[]): boolean {
-  return path.length === 8 && path[1] === "paths" && path[4] === "responses" && path[6] === "headers";
+  return path.at(-2) === "headers";
 }
 
 function canReferenceExample(path: string[]): boolean {
-  return (path[1] === "components" && path[2] === "examples") || (path[1] === "paths" && path.includes("examples"));
+  return path.at(-2) === "examples";
 }
 
 function canReferenceSecurityScheme(path: string[]): boolean {
@@ -297,12 +305,55 @@ function pointerTokens(pointer: string): string[] {
   }
 }
 
-function keyForFile(schema: object, file: string, root: string, buckets: Map<string, NameBucket>): string | null {
+function existingComponentPointer(schema: object, file: string, hash: string, root: string): string | undefined {
+  const map = asRecord(valueAtSafe(schema, root));
+  if (!map) return undefined;
+  for (const [key, child] of Object.entries(map)) {
+    const record = asRecord(child);
+    if (!record || typeof record.$ref !== "string") continue;
+    const extras = Object.keys(record).filter((name) => name !== "$ref" && name !== "summary" && name !== "description");
+    if (extras.length > 0) continue;
+    if (stripHash(record.$ref) !== file || getHash(record.$ref) !== hash) continue;
+    return joinPointer(root, key);
+  }
+  return undefined;
+}
+
+function keyForFile(
+  schema: object,
+  file: string,
+  root: string,
+  buckets: Map<string, NameBucket>,
+  childReservesBase = false,
+): string | null {
   const names = bucket(schema, root, buckets);
   if (names.generated.has(file)) return names.generated.get(file) ?? null;
   const base = prettify(fileBaseName(file));
   if (!base) return register(schema, root, file, null, buckets);
-  return register(schema, root, file, suggest(names.taken, base), buckets);
+  const taken = childReservesBase ? new Set(names.taken).add(base) : names.taken;
+  return register(schema, root, file, suggest(taken, base), buckets);
+}
+
+function childReservesName(value: unknown, base: string): boolean {
+  if (!base) return false;
+  const stack = [value];
+  const seen = new Set<object>();
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (typeof current !== "object" || current === null || seen.has(current)) continue;
+    seen.add(current);
+    if (Array.isArray(current)) {
+      stack.push(...current);
+      continue;
+    }
+    const record = current as Record<string, unknown>;
+    if (typeof record.$ref === "string" && !record.$ref.startsWith("#")) {
+      const token = getHash(record.$ref).split("/").at(-1);
+      if (token === base) return true;
+    }
+    stack.push(...Object.values(record));
+  }
+  return false;
 }
 
 function keyForPointer(schema: object, pointer: string, root: string, buckets: Map<string, NameBucket>): string | null {
@@ -356,13 +407,35 @@ function valueAtSafe(root: object, pointer: string): unknown {
   }
 }
 
-function suggest(taken: Set<string>, key: string): string {
+function suggest(taken: Set<string>, key: string, fileBase?: string): string {
   if (!taken.has(key)) return key;
+  if (fileBase && fileBase !== key) {
+    const prefixed = `${fileBase}_${key}`;
+    if (!taken.has(prefixed)) return prefixed;
+  }
   for (let attempt = 2; attempt <= MAX_ATTEMPTS; attempt++) {
-    const candidate = `${key}_${attempt}`;
+    const candidate = `${key}-${attempt}`;
     if (!taken.has(candidate)) return candidate;
   }
   throw new Error(`Could not generate a unique component name for ${key}.`);
+}
+
+function matchingComponent(
+  schema: object,
+  root: string,
+  value: unknown,
+  source: string,
+  componentSource: Map<string, string>,
+): string | undefined {
+  const map = asRecord(valueAtSafe(schema, root));
+  if (!map) return undefined;
+  const serialized = JSON.stringify(value);
+  for (const [key, child] of Object.entries(map)) {
+    const pointer = joinPointer(root, key);
+    if (componentSource.get(pointer) === source) continue;
+    if (JSON.stringify(child) === serialized) return pointer;
+  }
+  return undefined;
 }
 
 function prettify(key: string): string {
@@ -370,8 +443,7 @@ function prettify(key: string): string {
     if (letter === undefined) return index === 0 ? "" : "_";
     return `_${letter.toUpperCase()}`;
   });
-  if (!pretty) return pretty;
-  return pretty.charAt(0).toUpperCase() + pretty.slice(1);
+  return pretty;
 }
 
 function fileBaseName(file: string): string {

@@ -1,0 +1,23 @@
+{
+  "name": "@shipworthy/openapi-parser",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Load an OpenAPI 3 document and parse it into ParsedOpenApi.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-ref-parser": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "5.0.3"
+  }
+}

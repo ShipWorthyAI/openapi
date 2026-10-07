@@ -11,12 +11,15 @@
     "test": "bun test tests/*.test.ts"
   },
   "dependencies": {
-    "@shipworthy/openapi-core": "workspace:*",
+    "@shipworthy/openapi-parser": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "@shipworthy/openapi-typescript-config": "workspace:*",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "effect": "catalog:"
   }
 }

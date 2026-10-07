@@ -1,8 +1,5 @@
 import type { PathLike } from "node:fs";
-import type { ShipWorthyConfig } from "@shipworthy/openapi-core";
 import type ts from "#compiler";
-
-export type { ShipWorthyConfig };
 
 // Many types allow for true “any” for inheritance to work
 
@@ -678,8 +675,6 @@ export interface OpenAPITSOptions {
   rootTypesNoSchemaPrefix?: boolean;
   /** (optional) Keep casing of root types */
   rootTypesKeepCasing?: boolean;
-  /** Config for validation, schema fetching, and bundling */
-  config?: ShipWorthyConfig;
   /** Inject arbitrary TypeScript types into the start of the file */
   inject?: string;
   /** Generate ApiPaths enum */
@@ -716,7 +711,6 @@ export interface GlobalContext {
   rootTypes: boolean;
   rootTypesNoSchemaPrefix: boolean;
   rootTypesKeepCasing: boolean;
-  config: ShipWorthyConfig;
   silent: boolean;
   transform: OpenAPITSOptions["transform"];
   transformProperty: OpenAPITSOptions["transformProperty"];

@@ -30,34 +30,34 @@ describe("openapi bundle", () => {
     };
 
     expect(bundled.openapi).toBe("3.1.0");
-    expect(bundled.paths["/pets"].get.parameters[0].$ref).toBe("#/components/parameters/Limit");
-    expect(bundled.components.parameters.Limit).toEqual({
+    expect(bundled.paths["/pets"].get.parameters[0].$ref).toBe("#/components/parameters/limit");
+    expect(bundled.components.parameters.limit).toEqual({
       name: "limit",
       in: "query",
       schema: { type: "integer" },
     });
-    expect(bundled.paths["/pets"].get.responses["201"].$ref).toBe("#/components/responses/Created");
-    expect(bundled.components.responses.Created.description).toBe("created");
-    expect(bundled.paths["/pets"].post.requestBody.$ref).toBe("#/components/requestBodies/Pet-body");
-    expect(bundled.components.requestBodies["Pet-body"].required).toBe(true);
-    expect(bundled.paths["/pets"].get.responses["200"].headers["X-Rate"].$ref).toBe("#/components/headers/Rate");
-    expect(bundled.components.headers.Rate.schema).toEqual({ type: "integer" });
+    expect(bundled.paths["/pets"].get.responses["201"].$ref).toBe("#/components/responses/created");
+    expect(bundled.components.responses.created.description).toBe("created");
+    expect(bundled.paths["/pets"].post.requestBody.$ref).toBe("#/components/requestBodies/pet-body");
+    expect(bundled.components.requestBodies["pet-body"].required).toBe(true);
+    expect(bundled.paths["/pets"].get.responses["200"].headers["X-Rate"].$ref).toBe("#/components/headers/rate");
+    expect(bundled.components.headers.rate.schema).toEqual({ type: "integer" });
     expect(bundled.paths["/pets"].get.responses["200"].content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/Pet",
+      "#/components/schemas/pet",
     );
-    expect(bundled.components.schemas.Pet.properties.owner.$ref).toBe("#/components/schemas/Owner");
-    expect(bundled.components.schemas.Owner.properties.id).toEqual({ type: "string" });
+    expect(bundled.components.schemas.pet.properties.owner.$ref).toBe("#/components/schemas/owner");
+    expect(bundled.components.schemas.owner.properties.id).toEqual({ type: "string" });
     expect(bundled.paths["/pets"].put.responses["200"].content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/Pet_2",
+      "#/components/schemas/pet-2",
     );
-    expect(bundled.components.schemas.Pet_2.properties.sku).toEqual({ type: "string" });
+    expect(bundled.components.schemas["pet-2"].properties.sku).toEqual({ type: "string" });
     expect(bundled.paths["/pets"].get.responses["200"].content["application/json"].examples.sample.$ref).toBe(
-      "#/components/examples/Pet-example",
+      "#/components/examples/pet-example",
     );
-    expect(bundled.components.examples["Pet-example"].value).toEqual({ name: "Rex" });
-    expect(bundled.paths["/pets"].post.responses["200"].links.next.$ref).toBe("#/components/links/Pet-link");
-    expect(bundled.components.links["Pet-link"].operationId).toBe("getPet");
-    expect(bundled.paths["/pets"].post.callbacks.onPet.$ref).toBe("#/components/callbacks/Pet-callback");
+    expect(bundled.components.examples["pet-example"].value).toEqual({ name: "Rex" });
+    expect(bundled.paths["/pets"].post.responses["200"].links.next.$ref).toBe("#/components/links/pet-link");
+    expect(bundled.components.links["pet-link"].operationId).toBe("getPet");
+    expect(bundled.paths["/pets"].post.callbacks.onPet.$ref).toBe("#/components/callbacks/pet-callback");
     expect(bundled.components.securitySchemes.ApiKey).toEqual({
       type: "apiKey",
       name: "X-Api-Key",
@@ -283,8 +283,8 @@ describe("openapi bundle", () => {
       },
     };
     const bundled = (await bundle(path.join(directory, "root.json"), root)) as any;
-    expect(bundled.components.schemas.Pet.discriminator.mapping.dog).toBe("#/components/schemas/Dog");
-    expect(bundled.components.schemas.Pet.oneOf[1].$ref).toBe("#/components/schemas/Dog");
+    expect(bundled.components.schemas.Pet.discriminator.mapping.dog).toBe("#/components/schemas/dog");
+    expect(bundled.components.schemas.Pet.oneOf[1].$ref).toBe("#/components/schemas/dog");
     expect(bundled.components.examples.sample).toEqual({ value: { name: "Rex" } });
   });
 
@@ -327,6 +327,67 @@ describe("openapi bundle", () => {
     };
     expect(config.apis.main.root).toBe("./openapi.yaml");
     expect(config.apis.main.meta).toEqual({ name: "extra" });
+  });
+
+  it("reuses an existing component name for the same external file", async () => {
+    const directory = await tempDir();
+    await writeFile(path.join(directory, "unauthorized.yaml"), "description: no\n");
+    await writeFile(
+      path.join(directory, "root.yaml"),
+      [
+        "openapi: 3.1.0",
+        "info: { title: Names, version: '1' }",
+        "paths:",
+        "  /pets:",
+        "    get:",
+        "      responses:",
+        "        '401':",
+        "          $ref: ./unauthorized.yaml",
+        "components:",
+        "  responses:",
+        "    unauthorized:",
+        "      $ref: ./unauthorized.yaml",
+        "",
+      ].join("\n"),
+    );
+    const bundled = (await bundle(path.join(directory, "root.yaml"))) as {
+      paths: { "/pets": { get: { responses: { "401": { $ref?: string; description?: string } } } } };
+      components: { responses: Record<string, { description?: string; $ref?: string }> };
+    };
+    expect(bundled.components.responses.unauthorized).toEqual({ description: "no" });
+    expect(bundled.components.responses.Unauthorized).toBeUndefined();
+    expect(bundled.paths["/pets"].get.responses["401"].$ref).toBe("#/components/responses/unauthorized");
+  });
+
+  it("keeps readOnly and writeOnly on a schema $ref", async () => {
+    const bundled = (await bundle({
+      openapi: "3.1.0",
+      info: { title: "Markers", version: "1" },
+      paths: {},
+      components: {
+        schemas: {
+          Nested: { type: "object" },
+          Item: {
+            type: "object",
+            properties: {
+              nested: { readOnly: true, $ref: "#/components/schemas/Nested" },
+              secret: { writeOnly: true, type: "string" },
+            },
+          },
+        },
+      },
+    })) as {
+      components: { schemas: { Item: { properties: { nested: unknown; secret: unknown } } } };
+    };
+
+    expect(bundled.components.schemas.Item.properties.nested).toEqual({
+      $ref: "#/components/schemas/Nested",
+      readOnly: true,
+    });
+    expect(bundled.components.schemas.Item.properties.secret).toEqual({
+      writeOnly: true,
+      type: "string",
+    });
   });
 
   it("reports a missing pointer and an invalid pointer", async () => {

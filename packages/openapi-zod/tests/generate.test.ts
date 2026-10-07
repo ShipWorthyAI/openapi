@@ -1,5 +1,9 @@
-import { generateZodSources, operationRoutes, zodSources, type ZodSources } from "../src/index";
+import { parseModel } from "@shipworthy/openapi-parser";
+import { NodeServices } from "@effect/platform-node";
+import { generate } from "@shipworthy/openapi-transformer";
 import type { OpenAPI3 } from "@shipworthy/openapi-typescript";
+import { Effect } from "effect";
+import { zod, zodSources, type ZodSources } from "../src/index";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -69,7 +73,15 @@ const document = {
 } as unknown as OpenAPI3;
 
 function sourcesFor(schema: OpenAPI3, prefix = "Fixture") {
-  return zodSources(schema, prefix, operationRoutes(schema));
+  return zod.generate(parseModel(schema), { prefix });
+}
+
+async function generateZodSources(source: URL, prefix: string) {
+  return Effect.runPromise(
+    generate({ plugin: "zod", source, lint: false, pluginOptions: { prefix } }).pipe(
+      Effect.provide(NodeServices.layer),
+    ),
+  ) as Promise<ZodSources>;
 }
 
 async function loadGenerated(sources: ZodSources) {

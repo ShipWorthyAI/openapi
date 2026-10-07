@@ -1,5 +1,9 @@
+import { parseModel } from "@shipworthy/openapi-parser";
 import { astToString } from "@shipworthy/openapi-typescript";
-import { generateSchema } from "../src/generator";
+import { NodeServices } from "@effect/platform-node";
+import { generate as transform } from "@shipworthy/openapi-transformer";
+import { Effect } from "effect";
+import { operationRoutes } from "../src/generator";
 import { schema } from "./fixtures";
 import { generatedFixture } from "./generated-fixture";
 import assert from "node:assert/strict";
@@ -13,7 +17,7 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 const cli = resolve(import.meta.dirname, "../../openapi-cli/src/bin.ts");
 const generate = (input: string, output: string) =>
-  exec("bun", ["run", cli, "tanstack-query-utils", input, "-o", output, "--name", "fixture"]);
+  exec("bun", ["run", cli, "generate", "tanstack-query", input, "-o", output, "--name", "fixture"]);
 
 test("CLI generates a typed route table from local and remote referenced documents", async () => {
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
@@ -82,7 +86,7 @@ test("CLI generates a typed route table from local and remote referenced documen
     await writeFile(resolve(directory, "schema.json"), JSON.stringify(document));
     await assert.rejects(
       generate(resolve(directory, "schema.json"), directory),
-      /unique `operationId`/,
+      /unique "operationId"/,
     );
     assert.equal(await readFile(resolve(directory, "fixture/client.ts"), "utf8"), local);
   } finally {
@@ -96,13 +100,13 @@ test("CLI generates a typed route table from local and remote referenced documen
 test("generator requires operation IDs without inspecting body schemas", async () => {
   const missing = structuredClone(schema) as any;
   delete missing.paths["/items"].get.operationId;
-  await assert.rejects(generateSchema(missing), /GET \/items: Missing operationId/);
+  assert.throws(() => operationRoutes(parseModel(missing)), /GET \/items: Missing operationId/);
   const arrays = structuredClone(schema) as any;
   arrays.paths["/items/{id}"].post.requestBody.content["application/json"].schema = {
     type: "array",
     items: { type: "string" },
   };
-  const { routes } = await generateSchema(arrays);
+  const routes = operationRoutes(parseModel(arrays));
   assert.deepEqual(routes.updateItem, ["POST", "/items/{id}"]);
 });
 
@@ -229,7 +233,7 @@ test("schema-less operations and referenced path items use the same generation p
       },
     },
   };
-  const { routes } = await generateSchema(document);
+  const routes = operationRoutes(parseModel(document));
   assert.deepEqual(
     { ...routes },
     {
@@ -237,40 +241,52 @@ test("schema-less operations and referenced path items use the same generation p
       ready: ["GET", "/ready"],
     },
   );
-  const empty = await generateSchema({
-    openapi: "3.0.3",
-    info: document.info,
-    paths: {},
-  });
-  assert.deepEqual(Object.keys(empty.routes), []);
+  const empty = operationRoutes(
+    parseModel({
+      openapi: "3.0.3",
+      info: document.info,
+      paths: {},
+    }),
+  );
+  assert.deepEqual(Object.keys(empty), []);
 });
 
 test("defaults do not make schema properties required", async () => {
-  const { nodes } = await generateSchema({
-    openapi: "3.1.0",
-    info: { title: "Defaults", version: "1" },
-    paths: {},
-    components: {
-      schemas: {
-        Item: {
-          type: "object",
-          properties: { count: { type: "integer", default: 1 } },
+  const generated = (await Effect.runPromise(
+    transform({
+      plugin: "tanstack-query",
+      source: {
+        openapi: "3.1.0",
+        info: { title: "Defaults", version: "1" },
+        paths: {},
+        components: {
+          schemas: {
+            Item: {
+              type: "object",
+              properties: { count: { type: "integer", default: 1 } },
+            },
+          },
         },
       },
-    },
-  });
-  assert.match(astToString(nodes), /count\?: number/);
+      lint: false,
+      pluginOptions: { prefix: "Fixture", name: "fixture" },
+    }).pipe(Effect.provide(NodeServices.layer)),
+  )) as { nodes: Parameters<typeof astToString>[0] };
+  assert.match(astToString(generated.nodes), /count\?: number/);
 });
 
 test("schema-less operations still require an operationId", async () => {
-  await assert.rejects(
-    generateSchema({
-      openapi: "3.0.3",
-      info: { title: "Missing ID", version: "1" },
-      paths: {
-        "/health": { get: { responses: { 204: { description: "OK" } } } },
-      },
-    }),
+  assert.throws(
+    () =>
+      operationRoutes(
+        parseModel({
+          openapi: "3.0.3",
+          info: { title: "Missing ID", version: "1" },
+          paths: {
+            "/health": { get: { responses: { 204: { description: "OK" } } } },
+          },
+        }),
+      ),
     /GET \/health: Missing operationId/,
   );
 });

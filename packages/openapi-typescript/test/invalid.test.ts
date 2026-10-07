@@ -1,4 +1,4 @@
-import openapiTS from "../src/index.js";
+import { openapiTS } from "./openapi-ts.js";
 
 describe("Invalid schemas", () => {
   test("Swagger 2.0 throws", async () => {

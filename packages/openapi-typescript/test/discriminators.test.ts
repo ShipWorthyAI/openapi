@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
-import openapiTS, { astToString, type OpenAPITSOptions } from "../src/index.js";
+import { astToString, type OpenAPITSOptions } from "../src/index.js";
+import { openapiTS } from "./openapi-ts.js";
 import type { TestCase } from "./test-helpers.js";
 
 describe("3.1 discriminators", () => {

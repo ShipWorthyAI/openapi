@@ -1,14 +1,14 @@
-import type { OpenAPI3 } from "@shipworthy/openapi-typescript";
-import { bundleOpenApi } from "./bundle";
-import { zodSources } from "./generate";
-import { operationRoutes } from "./routes";
+import type { Generator } from "@shipworthy/openapi-parser";
+import { documentOf, operationRoutes } from "./routes.js";
+import { zodSources, type ZodSources } from "./generate.js";
 
-export { bundleOpenApi } from "./bundle";
-export { zodSources, type ZodSources } from "./generate";
-export { operationRoutes, type HttpMethod, type OperationRoute } from "./routes";
+export { zodSources, type ZodSources } from "./generate.js";
+export { operationRoutes, type HttpMethod, type OperationRoute } from "./routes.js";
 
-/** Bundle `source`, read its operations, and generate the three Zod files. */
-export async function generateZodSources(source: URL | OpenAPI3, prefix: string) {
-  const document = await bundleOpenApi(source);
-  return zodSources(document, prefix, operationRoutes(document));
-}
+export const zod: Generator<ZodSources> = {
+  id: "zod",
+  generate(model, options) {
+    const prefix = typeof options.prefix === "string" ? options.prefix : "";
+    return zodSources(documentOf(model), prefix, operationRoutes(model));
+  },
+};

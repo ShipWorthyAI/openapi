@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import { fileURLToPath } from "node:url";
 import stripAnsi from "strip-ansi";
 import { type SpawnOptions, spawn } from "../scripts/spawn.js";
@@ -9,7 +8,7 @@ const root = new URL("../", import.meta.url);
 const cwd = fileURLToPath(root);
 const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
 const run = (args: string[] = [], options: SpawnOptions = {}) =>
-  spawn(["bun", cli, "typescript", ...args], { cwd, ...options });
+  spawn(["bun", cli, "generate", "typescript", ...args], { cwd, ...options });
 const TIMEOUT = 90_000;
 
 describe("CLI", () => {
@@ -149,54 +148,12 @@ describe("CLI", () => {
     );
   });
 
-  describe("ShipWorthy config", () => {
-    test.skipIf(os.platform() === "win32")("automatic config", async () => {
-      const cwd = new URL("./fixtures/redocly/", import.meta.url);
-
-      await run([], { cwd: fileURLToPath(cwd) });
-      for (const schema of ["a", "b", "c"]) {
-        await expect(
-          fs.readFileSync(new URL(`./output/${schema}.ts`, cwd), "utf8"),
-        ).toMatchFileSnapshot(fileURLToPath(new URL("../../../examples/simple-example.ts", cwd)));
-      }
-    });
-
-    test("--config", async () => {
-      await run(["--config", "test/fixtures/redocly-flag/shipworthy.yaml"], {
-        cwd,
-      });
-      for (const schema of ["a", "b", "c"]) {
-        await expect(
-          fs.readFileSync(
-            new URL(`./test/fixtures/redocly-flag/output/${schema}.ts`, root),
-            "utf8",
-          ),
-        ).toMatchFileSnapshot(fileURLToPath(new URL("./examples/simple-example.ts", root)));
-      }
-    });
-
-    test("--config explicit path", async () => {
-      const altOutput = new URL("./test/fixtures/redocly-flag/output-alt/", root);
-      fs.rmSync(altOutput, { recursive: true, force: true });
-
-      await run(["--config", "test/fixtures/redocly-flag/shipworthy.alt.yaml"], {
-        cwd,
-      });
-
-      for (const schema of ["a", "b", "c"]) {
-        await expect(
-          fs.readFileSync(
-            new URL(`./test/fixtures/redocly-flag/output-alt/${schema}.ts`, root),
-            "utf8",
-          ),
-        ).toMatchFileSnapshot(fileURLToPath(new URL("./examples/simple-example.ts", root)));
-      }
-    });
-
-    test.skipIf(os.platform() === "win32")("lint error", async () => {
-      const cwd = new URL("./fixtures/redocly-lint-error", import.meta.url);
-      const { stderr } = await run([], { cwd: fileURLToPath(cwd) });
-      expect(stripAnsi(stderr)).toMatch(/OpenAPI "servers" must be present/);
-    });
+  test("lint error", async () => {
+    const output = fileURLToPath(new URL("./fixtures/redocly-lint-error/output.ts", import.meta.url));
+    const { stderr } = await run(
+      ["test/fixtures/redocly-lint-error/openapi/openapi.yaml", "-o", output],
+      { cwd },
+    );
+    expect(stripAnsi(stderr)).toMatch(/OpenAPI "servers" must be present/);
   });
 });

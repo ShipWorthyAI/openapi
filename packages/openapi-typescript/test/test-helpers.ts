@@ -1,4 +1,3 @@
-import { createConfig } from "@shipworthy/openapi-core";
 import { resolveRef } from "../src/lib/utils.js";
 import type { GlobalContext, TransformNodeOptions } from "../src/types.js";
 
@@ -27,7 +26,6 @@ export const DEFAULT_CTX: GlobalContext = {
   rootTypes: false,
   rootTypesNoSchemaPrefix: false,
   rootTypesKeepCasing: false,
-  config: await createConfig({}, { extends: ["minimal"] }),
   resolve($ref) {
     return resolveRef({}, $ref, { silent: false });
   },

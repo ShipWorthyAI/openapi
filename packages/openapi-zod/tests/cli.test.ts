@@ -47,7 +47,7 @@ void test("CLI writes types and Zod validators", async () => {
   const input = resolve(directory, "schema.json");
   await writeFile(input, JSON.stringify(schema));
   try {
-    await exec("bun", ["run", cli, "zod", input, "-o", directory, "--name", "fixture"]);
+    await exec("bun", ["run", cli, "generate", "zod", input, "-o", directory, "--name", "fixture"]);
     const schemas = await readFile(resolve(directory, "fixture/schemas.ts"), "utf8");
     const types = await readFile(resolve(directory, "fixture/types.ts"), "utf8");
     assert.match(schemas, /export const Item/);

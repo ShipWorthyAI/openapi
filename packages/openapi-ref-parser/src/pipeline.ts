@@ -4,7 +4,7 @@ import { asRecord, getAt, joinPointer } from "./pointer.js";
 import { componentSchemas, schemaSlots } from "./upgraders/openapi-3_0.js";
 import { InvalidPointerError, MissingPointerError } from "./errors.js";
 
-const ANNOTATIONS = ["example", "discriminator", "xml", "externalDocs"] as const;
+const ANNOTATIONS = ["example", "discriminator", "xml", "externalDocs", "nullable"] as const;
 const NESTED_SINGLE = [
   "additionalProperties",
   "unevaluatedProperties",
@@ -166,8 +166,16 @@ function liftSiblings(value: unknown): unknown {
   if (typeof lifted.$ref !== "string") return lifted;
   const siblings = { ...lifted };
   delete siblings.$ref;
-  if (Object.keys(siblings).length === 0) return lifted;
-  return { allOf: [{ $ref: lifted.$ref }, siblings] };
+  // readOnly/writeOnly stay beside $ref so generators can wrap the reference itself.
+  const flags: Record<string, unknown> = {};
+  for (const key of ["readOnly", "writeOnly"] as const) {
+    if (siblings[key] === true) {
+      flags[key] = true;
+      delete siblings[key];
+    }
+  }
+  if (Object.keys(siblings).length === 0) return { $ref: lifted.$ref, ...flags };
+  return { allOf: [{ $ref: lifted.$ref }, siblings], ...flags };
 }
 
 function recursiveNames(definitions: Record<string, JsonSchema.JsonSchema>): Set<string> {

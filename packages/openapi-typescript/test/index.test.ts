@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, test, vi } from "vitest";
-import openapiTS, { astToString } from "../src/index.js";
+import { astToString } from "../src/index.js";
+import { openapiTS } from "./openapi-ts.js";
 import type { OpenAPI3, OpenAPITSOptions } from "../src/types.js";
 import type { TestCase } from "./test-helpers.js";
 

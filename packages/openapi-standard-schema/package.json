@@ -1,0 +1,19 @@
+{
+  "name": "@shipworthy/openapi-standard-schema",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Generate Standard Schema validators from an OpenAPI document.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-parser": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

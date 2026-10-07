@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
-import type { Readable } from "node:stream";
-import type ts from "#compiler";
-import { validateAndBundle } from "./lib/validate.js";
+import type { Generator } from "@shipworthy/openapi-parser";
+import ts from "#compiler";
+import { astToString } from "./lib/ts.js";
 import { debug, resolveRef, scanDiscriminators } from "./lib/utils.js";
 import transformSchema from "./transform/index.js";
 import type { GlobalContext, OpenAPI3, OpenAPITSOptions } from "./types.js";
@@ -32,67 +32,130 @@ export const COMMENT_HEADER = `/**
 
 `;
 
-/**
- * Convert an OpenAPI schema to TypesScript AST
- * @param {string|URL|object|Readable} source OpenAPI schema source:
- *   - YAML: string
- *   - JSON: parsed object
- *   - URL: URL to a YAML or JSON file (local or remote)
- *   - Readable: Readable stream of YAML or JSON
- */
-export default async function openapiTS(
-  source: string | URL | OpenAPI3 | Buffer | Readable,
-  options: OpenAPITSOptions = {} as Partial<OpenAPITSOptions>,
-): Promise<ts.Node[]> {
-  if (!source) {
-    throw new Error("Empty schema. Please specify a URL, file path, or ShipWorthy config");
+function pascalCase(value: string): string {
+  return value.replace(/(?:^|[-_])([a-zA-Z0-9])/g, (_, letter: string) => letter.toUpperCase());
+}
+
+/** Rename generated top-level declarations and the references that point at them. */
+export function prefixTypes(nodes: readonly ts.Node[], prefix: string): string {
+  const names = new Map<string, string>();
+  for (const node of nodes) {
+    if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
+      names.set(node.name.text, `${prefix}Api${pascalCase(node.name.text.replace(/^\$/, ""))}`);
+    }
   }
 
-  const schema = await validateAndBundle(source, {
-    cwd:
-      options.cwd instanceof URL ? options.cwd : new URL(`file://${options.cwd ?? process.cwd()}/`),
-    silent: options.silent ?? false,
-  });
-  const config = options.config ?? {};
-
-  const ctx: GlobalContext = {
-    additionalProperties: options.additionalProperties ?? false,
-    alphabetize: options.alphabetize ?? false,
-    arrayLength: options.arrayLength ?? false,
-    defaultNonNullable: options.defaultNonNullable ?? true,
-    discriminators: scanDiscriminators(schema, options),
-    emptyObjectsUnknown: options.emptyObjectsUnknown ?? false,
-    enum: options.enum ?? false,
-    enumValues: options.enumValues ?? false,
-    conditionalEnums: options.conditionalEnums ?? false,
-    dedupeEnums: options.dedupeEnums ?? false,
-    excludeDeprecated: options.excludeDeprecated ?? false,
-    exportType: options.exportType ?? false,
-    immutable: options.immutable ?? false,
-    rootTypes: options.rootTypes ?? false,
-    rootTypesNoSchemaPrefix: options.rootTypesNoSchemaPrefix ?? false,
-    rootTypesKeepCasing: options.rootTypesKeepCasing ?? false,
-    injectFooter: [],
-    pathParamsAsTypes: options.pathParamsAsTypes ?? false,
-    postTransform: typeof options.postTransform === "function" ? options.postTransform : undefined,
-    propertiesRequiredByDefault: options.propertiesRequiredByDefault ?? false,
-    config,
-    silent: options.silent ?? false,
-    inject: options.inject ?? undefined,
-    transform: typeof options.transform === "function" ? options.transform : undefined,
-    transformProperty:
-      typeof options.transformProperty === "function" ? options.transformProperty : undefined,
-    makePathsEnum: options.makePathsEnum ?? false,
-    generatePathParams: options.generatePathParams ?? false,
-    readWriteMarkers: options.readWriteMarkers ?? false,
-    resolve($ref) {
-      return resolveRef(schema, $ref, { silent: options.silent ?? false });
+  const result = ts.transform([...nodes], [
+    () => {
+      const visit: ts.Visitor = (node) => {
+        const name =
+          ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)
+            ? node.name
+            : ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)
+              ? node.typeName
+              : undefined;
+        const replacement = name && names.get(name.text);
+        return ts.visitEachChild(node, (child) =>
+          child === name && replacement ? ts.factory.createIdentifier(replacement) : visit(child),
+        );
+      };
+      return (node) => ts.visitNode(node, visit) as ts.Node;
     },
-  };
+  ]);
+  try {
+    return COMMENT_HEADER + astToString(result.transformed);
+  } finally {
+    result.dispose();
+  }
+}
 
-  const transformT = performance.now();
-  const result = transformSchema(schema, ctx);
-  debug("Completed AST transformation for entire document", "ts", performance.now() - transformT);
+/** TypeScript plugin. `generate` prints `paths`, `webhooks`, `components`, and `operations`. */
+export const typescript: Generator<ts.Node[]> = {
+  id: "typescript",
+  generate(model, raw) {
+    const options = raw as OpenAPITSOptions;
+    const schema = expandPathItemRefs(model.document as OpenAPI3);
+    const ctx: GlobalContext = {
+      additionalProperties: options.additionalProperties ?? false,
+      alphabetize: options.alphabetize ?? false,
+      arrayLength: options.arrayLength ?? false,
+      defaultNonNullable: options.defaultNonNullable ?? true,
+      discriminators: scanDiscriminators(schema, options),
+      emptyObjectsUnknown: options.emptyObjectsUnknown ?? false,
+      enum: options.enum ?? false,
+      enumValues: options.enumValues ?? false,
+      conditionalEnums: options.conditionalEnums ?? false,
+      dedupeEnums: options.dedupeEnums ?? false,
+      excludeDeprecated: options.excludeDeprecated ?? false,
+      exportType: options.exportType ?? false,
+      immutable: options.immutable ?? false,
+      rootTypes: options.rootTypes ?? false,
+      rootTypesNoSchemaPrefix: options.rootTypesNoSchemaPrefix ?? false,
+      rootTypesKeepCasing: options.rootTypesKeepCasing ?? false,
+      injectFooter: [],
+      pathParamsAsTypes: options.pathParamsAsTypes ?? false,
+      postTransform: typeof options.postTransform === "function" ? options.postTransform : undefined,
+      propertiesRequiredByDefault: options.propertiesRequiredByDefault ?? false,
+      silent: options.silent ?? false,
+      inject: options.inject ?? undefined,
+      transform: typeof options.transform === "function" ? options.transform : undefined,
+      transformProperty:
+        typeof options.transformProperty === "function" ? options.transformProperty : undefined,
+      makePathsEnum: options.makePathsEnum ?? false,
+      generatePathParams: options.generatePathParams ?? false,
+      readWriteMarkers: options.readWriteMarkers ?? false,
+      resolve($ref) {
+        return resolveRef(schema, $ref, { silent: options.silent ?? false });
+      },
+    };
 
-  return result;
+    const transformT = performance.now();
+    const result = transformSchema(schema, ctx);
+    debug("Completed AST transformation for entire document", "ts", performance.now() - transformT);
+    return result;
+  },
+};
+
+/** Bundle keeps one copy of a shared path item and points later paths at it. Generation inlines those. */
+function expandPathItemRefs(schema: OpenAPI3): OpenAPI3 {
+  const paths = schema.paths;
+  if (!paths) return schema;
+  let changed = false;
+  const expanded: Record<string, unknown> = {};
+  for (const [path, item] of Object.entries(paths)) {
+    const next = expandPathItem(schema, item, new Set<string>());
+    if (next !== item) changed = true;
+    expanded[path] = next;
+  }
+  if (!changed) return schema;
+  return { ...schema, paths: expanded as OpenAPI3["paths"] };
+}
+
+function expandPathItem(schema: OpenAPI3, item: unknown, seen: Set<string>): unknown {
+  if (!isRecord(item)) return item;
+  const ref = item.$ref;
+  if (typeof ref !== "string" || !ref.startsWith("#/paths/")) return item;
+  if (seen.has(ref)) return item;
+  const target = readPointer(schema, ref);
+  if (!isRecord(target)) return item;
+  seen.add(ref);
+  const resolved = expandPathItem(schema, target, seen);
+  const base = isRecord(resolved) ? resolved : target;
+  const siblings: Record<string, unknown> = { ...item };
+  delete siblings.$ref;
+  return { ...base, ...siblings };
+}
+
+function readPointer(root: unknown, ref: string): unknown {
+  let node = root;
+  for (const token of ref.slice(2).split("/")) {
+    if (Array.isArray(node)) node = node[Number(token)];
+    else if (isRecord(node)) node = node[token.replace(/~1/g, "/").replace(/~0/g, "~")];
+    else return undefined;
+  }
+  return node;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -11,7 +11,7 @@ describe("YAML features", () => {
   test(
     "merge",
     async () => {
-      const result = await spawn(["bun", cli, "typescript", "./test/fixtures/yaml-merge.yaml"], {
+      const result = await spawn(["bun", cli, "generate", "typescript", "./test/fixtures/yaml-merge.yaml"], {
         cwd,
       });
       expect(result.stdout).toBe(`/**
@@ -95,7 +95,7 @@ export interface operations {
     "not ignore path item components in paths",
     async () => {
       const result = await spawn(
-        ["bun", cli, "typescript", "./test/fixtures/path-item-components.yaml"],
+        ["bun", cli, "generate", "typescript", "./test/fixtures/path-item-components.yaml"],
         { cwd },
       );
       expect(result.stdout).toBe(`/**

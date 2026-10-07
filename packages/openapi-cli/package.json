@@ -11,14 +11,27 @@
   },
   "dependencies": {
     "@effect/platform-bun": "catalog:",
-    "@shipworthy/openapi-core": "workspace:*",
-    "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
-    "@shipworthy/openapi-typescript": "workspace:*",
-    "@shipworthy/openapi-zod": "workspace:*",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "effect": "catalog:"
   },
+  "peerDependencies": {
+    "@shipworthy/openapi-standard-schema": "workspace:*",
+    "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
+    "@shipworthy/openapi-zod": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@shipworthy/openapi-standard-schema": { "optional": true },
+    "@shipworthy/openapi-tanstack-query-utils": { "optional": true },
+    "@shipworthy/openapi-typescript": { "optional": true },
+    "@shipworthy/openapi-zod": { "optional": true }
+  },
   "devDependencies": {
+    "@shipworthy/openapi-standard-schema": "workspace:*",
+    "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-typescript-config": "workspace:*",
+    "@shipworthy/openapi-zod": "workspace:*",
     "@types/node": "catalog:"
   }
 }

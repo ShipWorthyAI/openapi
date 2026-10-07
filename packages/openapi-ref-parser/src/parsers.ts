@@ -1,9 +1,9 @@
 import { Effect } from "effect";
-import * as Yaml from "effect/encoding/Yaml";
 import { ParserFailure } from "./errors.js";
 import type { EffectPlugin, FileInfo, Options, ParserPlugin } from "./plugins.js";
 import { promisePlugin } from "./plugins.js";
 import { extensionOf } from "./url.js";
+import { parseYamlDocument } from "./yaml.js";
 
 export function decodeData(data: Uint8Array | string | undefined): string {
   if (data === undefined) return "";
@@ -69,9 +69,7 @@ function yamlParser(): EffectPlugin<unknown> {
 }
 
 function parseYaml(file: FileInfo): unknown {
-  const text = stripBom(decodeData(file.data));
-  if (text.trim().length === 0) return null;
-  return Yaml.parse(text);
+  return parseYamlDocument(stripBom(decodeData(file.data)));
 }
 
 function customParser(plugin: ParserPlugin, index: number): EffectPlugin<unknown> {

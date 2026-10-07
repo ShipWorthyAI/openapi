@@ -7,9 +7,20 @@ export function parsePointer(pointer: string, source = pointer): string[] {
   const hash = pointer.includes("#") ? pointer.slice(pointer.indexOf("#")) : pointer;
   if (hash === "" || hash === "#") return [];
   const fragment = hash.startsWith("#") ? hash : `#${hash}`;
-  const tokens = JsonPointer.parseUriFragment(fragment);
+  const tokens = JsonPointer.parseUriFragment(fragment) ?? splitPointer(fragment);
   if (tokens === undefined) throw new InvalidPointerError(fragment, source);
   return [...tokens];
+}
+
+/** Effect's URI-fragment parser rejects spaces. JSON Pointer tokens may contain them. */
+function splitPointer(fragment: string): string[] | undefined {
+  const body = fragment.startsWith("#") ? fragment.slice(1) : fragment;
+  if (body === "") return [];
+  if (!body.startsWith("/")) return undefined;
+  return body
+    .slice(1)
+    .split("/")
+    .map((token) => token.replace(/~1/g, "/").replace(/~0/g, "~"));
 }
 
 /** Join pointer tokens without percent-encoding, so `$` stays literal. */

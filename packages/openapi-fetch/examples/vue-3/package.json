@@ -7,7 +7,7 @@
     "dev": "vite",
     "preview": "vite preview",
     "build-only": "vite build",
-    "generate": "openapi typescript src/schema/catfact.json -o src/generated/catfact.d.ts"
+    "generate": "openapi generate typescript src/schema/catfact.json -o src/generated/catfact.d.ts"
   },
   "dependencies": {
     "@shipworthy/openapi-fetch": "workspace:^",

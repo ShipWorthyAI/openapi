@@ -13,13 +13,16 @@
   },
   "dependencies": {
     "@shipworthy/openapi-fetch": "workspace:*",
-    "@shipworthy/openapi-typescript": "workspace:*",
+    "@shipworthy/openapi-parser": "workspace:*",
     "@shipworthy/openapi-typescript-helpers": "workspace:*",
-    "effect": "catalog:",
-    "typescript": "catalog:"
+    "effect": "catalog:"
   },
   "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@shipworthy/openapi-transformer": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-typescript-config": "workspace:*",
+    "typescript": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
     "react": "catalog:"

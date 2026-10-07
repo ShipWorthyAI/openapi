@@ -1,10 +1,10 @@
-// important: MUST use require()!
-const { fileURLToPath } = require("node:url");
-const { astToString, default: openapiTS } = require("../dist/index.cjs");
+import { astToString } from "../src/index.js";
+import { openapiTS } from "./openapi-ts.js";
+import { fileURLToPath } from "node:url";
 
-const TIMEOUT = 10_000;
+const TIMEOUT = 60_000;
 
-describe("CJS bundle", () => {
+describe("typescript plugin", () => {
   test(
     "basic",
     async () => {

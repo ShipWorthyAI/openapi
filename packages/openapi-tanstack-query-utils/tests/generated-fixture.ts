@@ -27,7 +27,8 @@ export async function generatedFixture(schema: OpenAPI3) {
     await promisify(execFile)("bun", [
       "run",
       resolve(import.meta.dirname, "../../openapi-cli/src/bin.ts"),
-      "tanstack-query-utils",
+      "generate",
+      "tanstack-query",
       resolve(directory, "schema.json"),
       "-o",
       directory,
