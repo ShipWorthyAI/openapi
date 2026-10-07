@@ -5,11 +5,11 @@ description: >-
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -20,13 +20,13 @@ content:
             domains:
               type: array
               items:
-                $ref: '../models/domain.yml'
+                $ref: "../models/domain.yml"
               description: Array of volumes.
           required:
             - domains
 
-        - $ref: '../../../shared/pages.yml#/pagination'
-        - $ref: '../../../shared/meta.yml'
+        - $ref: "../../../shared/pages.yml#/pagination"
+        - $ref: "../../../shared/meta.yml"
 
       example:
         domains:

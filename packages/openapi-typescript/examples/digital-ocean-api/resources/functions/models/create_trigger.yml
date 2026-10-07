@@ -14,14 +14,14 @@ properties:
     type: string
     example: SCHEDULED
     description: One of different type of triggers. Currently only SCHEDULED is supported.
-  
+
   is_enabled:
     type: boolean
     example: true
     description: Indicates weather the trigger is paused or unpaused.
-  
+
   scheduled_details:
-    $ref: './scheduled_details.yml'
+    $ref: "./scheduled_details.yml"
 
 required:
   - name

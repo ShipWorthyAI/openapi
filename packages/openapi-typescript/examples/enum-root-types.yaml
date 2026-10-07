@@ -16,6 +16,6 @@ components:
         name:
           type: string
         status:
-          $ref: '#/components/schemas/Status'
+          $ref: "#/components/schemas/Status"
         priority:
-          $ref: '#/components/schemas/Priority'
+          $ref: "#/components/schemas/Priority"

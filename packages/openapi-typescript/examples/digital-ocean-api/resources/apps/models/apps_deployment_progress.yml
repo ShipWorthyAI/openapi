@@ -3,7 +3,7 @@ properties:
     format: int32
     title: Number of unsuccessful steps
     type: integer
-    example: 3 
+    example: 3
   pending_steps:
     format: int32
     title: Number of pending steps

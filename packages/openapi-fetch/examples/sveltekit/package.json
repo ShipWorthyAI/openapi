@@ -7,11 +7,11 @@
     "dev": "vite dev"
   },
   "devDependencies": {
+    "@shipworthy/openapi-fetch": "workspace:^",
+    "@shipworthy/openapi-typescript": "workspace:^",
     "@sveltejs/adapter-auto": "^6.1.1",
     "@sveltejs/kit": "^2.52.2",
     "@sveltejs/vite-plugin-svelte": "^5.1.1",
-    "@shipworthy/openapi-fetch": "workspace:^",
-    "@shipworthy/openapi-typescript": "workspace:^",
     "svelte": "^5.53.5",
     "svelte-check": "^4.3.6",
     "typescript": "catalog:",

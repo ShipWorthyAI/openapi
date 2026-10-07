@@ -5,13 +5,20 @@ import type { paths } from "./schemas/post.js";
 describe("POST", () => {
   test("sends the correct method", async () => {
     let method = "";
+
     const client = createObservedClient<paths>({}, async (req) => {
       method = req.method;
       return Response.json({});
     });
+
     await client.POST("/posts", {
-      body: { title: "My Post", body: "Post body", publish_date: new Date("2024-06-06T12:00:00Z").getTime() },
+      body: {
+        title: "My Post",
+        body: "Post body",
+        publish_date: new Date("2024-06-06T12:00:00Z").getTime(),
+      },
     });
+
     expect(method).toBe("POST");
   });
 
@@ -101,6 +108,7 @@ describe("POST", () => {
   test("sends correct options, returns success", async () => {
     const mockData = { status: "success" };
     let actualPathname = "";
+
     const client = createObservedClient<paths>({}, async (rqq) => {
       actualPathname = new URL(rqq.url).pathname;
       return Response.json(mockData, { status: 201 });
@@ -128,22 +136,27 @@ describe("POST", () => {
   describe("multipart/form-data", () => {
     test("simple", async () => {
       let actualRequest = new Request("https://fakeurl.example");
+
       const client = createObservedClient<paths>({}, async (req) => {
         actualRequest = req.clone();
         return Response.json({});
       });
+
       const reqBody = {
         title: "My Post",
         body: "Post body",
         publish_date: new Date("2024-06-06T12:00:00Z").getTime(),
       };
+
       await client.POST("/posts", {
         body: reqBody,
         bodySerializer(body) {
           const fd = new FormData();
+
           for (const name in body) {
             fd.append(name, body[name as keyof typeof body] as string);
           }
+
           return fd;
         },
       });

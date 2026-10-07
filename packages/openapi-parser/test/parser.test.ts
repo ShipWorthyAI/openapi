@@ -62,7 +62,9 @@ describe("parseModel", () => {
           },
         },
       },
-      webhooks: { newPet: { post: { operationId: "newPet", responses: { "200": { description: "ok" } } } } },
+      webhooks: {
+        newPet: { post: { operationId: "newPet", responses: { "200": { description: "ok" } } } },
+      },
       $defs: { Name: { type: "string" } },
     });
 
@@ -73,6 +75,7 @@ describe("parseModel", () => {
     expect(model.components.schemas.Pet).toMatchObject({ type: "object" });
     expect(model.webhooks.newPet).toBeTypeOf("object");
     expect(model.$defs.Name).toEqual({ type: "string" });
+
     expect(model.operations).toEqual([
       expect.objectContaining({
         id: "getPet",
@@ -81,12 +84,15 @@ describe("parseModel", () => {
         path: "/pets/{id}",
       }),
     ]);
+
     expect(model.operations[0]?.parameters.path).toEqual([
       expect.objectContaining({ name: "id", required: true }),
     ]);
+
     expect(model.operations[0]?.parameters.query).toEqual([
       expect.objectContaining({ name: "limit", schema: { type: "integer" } }),
     ]);
+
     expect(model.operations[0]?.responses[0]?.content["application/json"]?.schema).toEqual({
       $ref: "#/components/schemas/Pet",
     });

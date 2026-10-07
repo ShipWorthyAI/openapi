@@ -3,9 +3,9 @@ required:
   - urn
 properties:
   destination:
-    $ref: '../models/destination.yml'
+    $ref: "../models/destination.yml"
   resources:
     type: array
     description: "List of resources identified by their URNs."
     items:
-      $ref: '../models/sink_resource.yml'
+      $ref: "../models/sink_resource.yml"

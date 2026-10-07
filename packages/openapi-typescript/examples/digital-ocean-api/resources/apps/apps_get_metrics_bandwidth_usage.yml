@@ -1,8 +1,8 @@
 operationId: apps_get_metrics_bandwidth_daily
 
-summary: 'Retrieve App Daily Bandwidth Metrics'
+summary: "Retrieve App Daily Bandwidth Metrics"
 
-description: 'Retrieve daily bandwidth usage metrics for a single app.'
+description: "Retrieve daily bandwidth usage metrics for a single app."
 
 tags:
   - Apps
@@ -10,7 +10,7 @@ tags:
 parameters:
   - $ref: parameters.yml#/app_id
   - name: date
-    description: 'Optional day to query. Only the date component of the timestamp will be considered. Default: yesterday.'
+    description: "Optional day to query. Only the date component of the timestamp will be considered. Default: yesterday."
     in: query
     schema:
       type: string
@@ -20,7 +20,7 @@ parameters:
 responses:
   "200":
     $ref: responses/get_metrics_bandwidth_usage.yml
-  
+
   "401":
     $ref: ../../shared/responses/unauthorized.yml
 

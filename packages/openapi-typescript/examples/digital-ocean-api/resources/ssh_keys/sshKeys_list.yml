@@ -12,31 +12,31 @@ tags:
   - SSH Keys
 
 parameters:
-  - $ref: '../../shared/parameters.yml#/per_page'
-  - $ref: '../../shared/parameters.yml#/page'
+  - $ref: "../../shared/parameters.yml#/per_page"
+  - $ref: "../../shared/parameters.yml#/page"
 
 responses:
-  '200':
-    $ref: 'responses/sshKeys_all.yml'
+  "200":
+    $ref: "responses/sshKeys_all.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/sshKeys_list.yml'
-  - $ref: 'examples/go/sshKeys_list.yml'
-  - $ref: 'examples/ruby/sshKeys_list.yml'
-  - $ref: 'examples/python/sshKeys_list.yml'
+  - $ref: "examples/curl/sshKeys_list.yml"
+  - $ref: "examples/go/sshKeys_list.yml"
+  - $ref: "examples/ruby/sshKeys_list.yml"
+  - $ref: "examples/python/sshKeys_list.yml"
 
 security:
   - bearer_auth:
-    - 'ssh_key:read'
+      - "ssh_key:read"

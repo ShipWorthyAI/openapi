@@ -10,7 +10,7 @@ description: |
   The concept of tiers will be retired in the future.
 
 tags:
-- Apps
+  - Apps
 
 parameters:
   - $ref: parameters.yml#/slug_tier
@@ -22,8 +22,8 @@ responses:
   "401":
     $ref: ../../shared/responses/unauthorized.yml
 
-  '404':
-    $ref: '../../shared/responses/not_found.yml'
+  "404":
+    $ref: "../../shared/responses/not_found.yml"
 
   "429":
     $ref: "../../shared/responses/too_many_requests.yml"
@@ -35,10 +35,9 @@ responses:
     $ref: ../../shared/responses/unexpected_error.yml
 
 x-codeSamples:
-  - $ref: 'examples/curl/apps_get_tier.yml'
-  - $ref: 'examples/python/apps_get_tier.yml'
+  - $ref: "examples/curl/apps_get_tier.yml"
+  - $ref: "examples/python/apps_get_tier.yml"
 
 security:
   - bearer_auth:
-    - 'app:read'
-
+      - "app:read"

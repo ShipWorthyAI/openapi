@@ -5,18 +5,18 @@ components:
       type: object
       properties:
         rootDef:
-          $ref: '#/$defs/StringType'
+          $ref: "#/$defs/StringType"
         nestedDef:
-          $ref: '#/components/schemas/OtherObject/$defs/nestedDef'
+          $ref: "#/components/schemas/OtherObject/$defs/nestedDef"
         remoteDef:
-          $ref: '#/components/schemas/RemoteDefs/$defs/remoteDef'
+          $ref: "#/components/schemas/RemoteDefs/$defs/remoteDef"
       $defs:
         hasDefs:
           type: boolean
     ArrayOfDefs:
       type: array
       items:
-        $ref: '#/$defs/StringType'
+        $ref: "#/$defs/StringType"
     OtherObject:
       type: object
       $defs:
@@ -26,7 +26,7 @@ components:
       type: object
       $defs:
         remoteDef:
-          $ref: './_jsonschema-remote-obj.yaml#/RemoteObject/$defs/remoteDef'
+          $ref: "./_jsonschema-remote-obj.yaml#/RemoteObject/$defs/remoteDef"
 $defs:
   StringType:
     type: string

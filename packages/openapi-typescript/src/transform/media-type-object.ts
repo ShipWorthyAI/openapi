@@ -14,5 +14,6 @@ export default function transformMediaTypeObject(
   if (!mediaTypeObject.schema) {
     return UNKNOWN;
   }
+
   return transformSchemaObject(mediaTypeObject.schema, options);
 }

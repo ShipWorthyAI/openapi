@@ -22,8 +22,10 @@ type FixtureUtils = {
 export async function generatedFixture(schema: OpenAPI3) {
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generated-"));
   const dispose = () => rm(directory, { recursive: true, force: true });
+
   try {
     await writeFile(resolve(directory, "schema.json"), JSON.stringify(schema));
+
     await promisify(execFile)("bun", [
       "run",
       resolve(import.meta.dirname, "../../openapi-cli/src/bin.ts"),
@@ -35,6 +37,7 @@ export async function generatedFixture(schema: OpenAPI3) {
       "--name",
       "fixture",
     ]);
+
     const client = (await import(pathToFileURL(resolve(directory, "fixture/client.ts")).href)) as {
       createFixtureApiClient: typeof createApiClient;
       createFixtureApiQueryUtils: (
@@ -42,6 +45,7 @@ export async function generatedFixture(schema: OpenAPI3) {
         options?: Partial<TanstackQueryUtilsOptions>,
       ) => FixtureUtils;
     };
+
     return { ...client, dispose };
   } catch (error) {
     await dispose();

@@ -3,8 +3,8 @@ type: string
 readOnly: true
 default: UNKNOWN
 enum:
-- UNKNOWN
-- ASSIGNING
-- ASSIGNED
-- REMOVED
+  - UNKNOWN
+  - ASSIGNING
+  - ASSIGNED
+  - REMOVED
 example: ASSIGNED

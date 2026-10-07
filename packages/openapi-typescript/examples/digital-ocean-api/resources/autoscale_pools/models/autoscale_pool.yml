@@ -26,12 +26,12 @@ properties:
 
   current_utilization:
     $ref: ../models/current_utilization.yml
- 
+
   created_at:
     format: date-time
     title: The creation time of the autoscale pool
     type: string
-    example: 2020-07-28T18:00:00Z  
+    example: 2020-07-28T18:00:00Z
     description: A time value given in ISO8601 combined date and time format
       that represents when the autoscale pool was created.
 

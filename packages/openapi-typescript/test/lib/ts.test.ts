@@ -19,6 +19,7 @@ describe("addJSDocComment", () => {
   test("single-line comment", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
     addJSDocComment({ description: "Single-line comment" }, property);
+
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
     /** @description Single-line comment */
     comment: boolean;
@@ -27,6 +28,7 @@ describe("addJSDocComment", () => {
 
   test("multi-line comment", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
+
     addJSDocComment(
       {
         summary: "This is the summary",
@@ -35,6 +37,7 @@ describe("addJSDocComment", () => {
       },
       property,
     );
+
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
     /**
      * This is the summary
@@ -48,7 +51,11 @@ describe("addJSDocComment", () => {
 
   test("escapes internal comments", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
-    addJSDocComment({ title: "This is a comment with `/* an example comment */` within" }, property);
+    addJSDocComment(
+      { title: "This is a comment with `/* an example comment */` within" },
+      property,
+    );
+
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
     /** This is a comment with \`/* an example comment *\\/\` within */
     comment: boolean;
@@ -57,12 +64,14 @@ describe("addJSDocComment", () => {
 
   test("single example", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
+
     addJSDocComment(
       {
         example: "an-example",
       },
       property,
     );
+
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
     /** @example an-example */
     comment: boolean;
@@ -71,12 +80,14 @@ describe("addJSDocComment", () => {
 
   test("array of examples", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
+
     addJSDocComment(
       {
         examples: ["an-example", "another-example"],
       },
       property,
     );
+
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
     /**
      * @example an-example
@@ -88,6 +99,7 @@ describe("addJSDocComment", () => {
 
   test("single example and array of examples", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
+
     addJSDocComment(
       {
         example: "old-example",
@@ -95,6 +107,7 @@ describe("addJSDocComment", () => {
       },
       property,
     );
+
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
     /**
      * @example old-example
@@ -107,6 +120,7 @@ describe("addJSDocComment", () => {
 
   test("complex examples", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
+
     addJSDocComment(
       {
         examples: [
@@ -122,6 +136,7 @@ describe("addJSDocComment", () => {
       },
       property,
     );
+
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
     /**
      * @example {
@@ -152,7 +167,9 @@ describe("oapiRef", () => {
   });
 
   test("multiple parts", () => {
-    expect(astToString(oapiRef("#/components/schemas/User")).trim()).toBe(`components["schemas"]["User"]`);
+    expect(astToString(oapiRef("#/components/schemas/User")).trim()).toBe(
+      `components["schemas"]["User"]`,
+    );
   });
 
   test("`properties` of component schema `properties`", () => {
@@ -162,7 +179,9 @@ describe("oapiRef", () => {
   });
 
   test("component schema named `properties`", () => {
-    expect(astToString(oapiRef("#/components/schemas/properties")).trim()).toBe(`components["schemas"]["properties"]`);
+    expect(astToString(oapiRef("#/components/schemas/properties")).trim()).toBe(
+      `components["schemas"]["properties"]`,
+    );
   });
 
   test("reference into paths parameters", () => {
@@ -264,7 +283,9 @@ describe("tsEnum", () => {
 
   test("x-enum-varnames with numeric prefix", () => {
     expect(
-      astToString(tsEnum(".Error.code.", [100, 101, 102], [{ name: "0a" }, { name: "1b" }, { name: "2c" }])).trim(),
+      astToString(
+        tsEnum(".Error.code.", [100, 101, 102], [{ name: "0a" }, { name: "1b" }, { name: "2c" }]),
+      ).trim(),
     ).toBe(`enum ErrorCode {
     Value0a = 100,
     Value1b = 101,
@@ -320,7 +341,8 @@ describe("tsEnum", () => {
   });
 
   test("replace special character", () => {
-    expect(astToString(tsEnum("FOO_ENUM", ["Etc/GMT+0", "Etc/GMT+1", "Etc/GMT-1"])).trim()).toBe(`enum FOO_ENUM {
+    expect(astToString(tsEnum("FOO_ENUM", ["Etc/GMT+0", "Etc/GMT+1", "Etc/GMT-1"])).trim())
+      .toBe(`enum FOO_ENUM {
     Etc_GMTPlus0 = "Etc/GMT+0",
     Etc_GMTPlus1 = "Etc/GMT+1",
     Etc_GMT_1 = "Etc/GMT-1"
@@ -332,7 +354,11 @@ describe("tsArrayLiteralExpression", () => {
   test("string members", () => {
     expect(
       astToString(
-        tsArrayLiteralExpression("-my-color-Values", oapiRef("#/components/schemas/Color"), ["green", "red", "blue"]),
+        tsArrayLiteralExpression("-my-color-Values", oapiRef("#/components/schemas/Color"), [
+          "green",
+          "red",
+          "blue",
+        ]),
       ).trim(),
     ).toBe(`const myColorValues: components["schemas"]["Color"][] = ["green", "red", "blue"];`);
   });
@@ -340,21 +366,35 @@ describe("tsArrayLiteralExpression", () => {
   test("with setting: export", () => {
     expect(
       astToString(
-        tsArrayLiteralExpression("-my-color-Values", oapiRef("#/components/schemas/Color"), ["green", "red", "blue"], {
-          export: true,
-        }),
+        tsArrayLiteralExpression(
+          "-my-color-Values",
+          oapiRef("#/components/schemas/Color"),
+          ["green", "red", "blue"],
+          {
+            export: true,
+          },
+        ),
       ).trim(),
-    ).toBe(`export const myColorValues: components["schemas"]["Color"][] = ["green", "red", "blue"];`);
+    ).toBe(
+      `export const myColorValues: components["schemas"]["Color"][] = ["green", "red", "blue"];`,
+    );
   });
 
   test("with setting: readonly", () => {
     expect(
       astToString(
-        tsArrayLiteralExpression("-my-color-Values", oapiRef("#/components/schemas/Color"), ["green", "red", "blue"], {
-          readonly: true,
-        }),
+        tsArrayLiteralExpression(
+          "-my-color-Values",
+          oapiRef("#/components/schemas/Color"),
+          ["green", "red", "blue"],
+          {
+            readonly: true,
+          },
+        ),
       ).trim(),
-    ).toBe(`const myColorValues: ReadonlyArray<components["schemas"]["Color"]> = ["green", "red", "blue"];`);
+    ).toBe(
+      `const myColorValues: ReadonlyArray<components["schemas"]["Color"]> = ["green", "red", "blue"];`,
+    );
   });
 
   test("name from path", () => {
@@ -366,7 +406,9 @@ describe("tsArrayLiteralExpression", () => {
           ["active", "inactive"],
         ),
       ).trim(),
-    ).toBe(`const pathsUrlGetParametersQueryStatusValues: components["schemas"]["Status"][] = ["active", "inactive"];`);
+    ).toBe(
+      `const pathsUrlGetParametersQueryStatusValues: components["schemas"]["Status"][] = ["active", "inactive"];`,
+    );
   });
 
   test("number members", () => {
@@ -434,7 +476,9 @@ describe("tsIsPrimitive", () => {
   test("object", () => {
     expect(
       tsIsPrimitive(
-        ts.factory.createTypeLiteralNode([ts.factory.createPropertySignature(undefined, "foo", undefined, STRING)]),
+        ts.factory.createTypeLiteralNode([
+          ts.factory.createPropertySignature(undefined, "foo", undefined, STRING),
+        ]),
       ),
     ).toBe(false);
   });
@@ -450,19 +494,22 @@ describe("tsUnion", () => {
   });
 
   test("multiple (primitive)", () => {
-    expect(astToString(tsUnion([STRING, STRING, NUMBER, NULL, NUMBER, NULL])).trim()).toBe("string | number | null");
+    expect(astToString(tsUnion([STRING, STRING, NUMBER, NULL, NUMBER, NULL])).trim()).toBe(
+      "string | number | null",
+    );
   });
 
   test("multiple (const)", () => {
-    expect(astToString(tsUnion([NULL, tsLiteral("red"), tsLiteral(42), tsLiteral(false)])).trim()).toBe(
-      `null | "red" | 42 | false`,
-    );
+    expect(
+      astToString(tsUnion([NULL, tsLiteral("red"), tsLiteral(42), tsLiteral(false)])).trim(),
+    ).toBe(`null | "red" | 42 | false`);
   });
 
   test("multiple (object types)", () => {
     const obj = ts.factory.createTypeLiteralNode([
       ts.factory.createPropertySignature(undefined, "foo", undefined, STRING),
     ]);
+
     expect(astToString(tsUnion([obj, obj, NULL])).trim()).toBe(`{
     foo: string;
 } | {

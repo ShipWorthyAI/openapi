@@ -30,7 +30,7 @@ properties:
   updated_at:
     type: string
     format: date-time
-    example: '2020-04-09T23:54:25Z'
+    example: "2020-04-09T23:54:25Z"
     description: The time the manifest was last updated.
 
   tags:
@@ -38,13 +38,13 @@ properties:
     items:
       type: string
     example:
-    - latest
-    - v1
-    - v2
+      - latest
+      - v1
+      - v2
     description: All tags associated with this manifest
 
   blobs:
     type: array
     items:
-      $ref: 'repository_blob.yml'
+      $ref: "repository_blob.yml"
     description: All blobs associated with this manifest

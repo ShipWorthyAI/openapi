@@ -675,18 +675,23 @@ export type operations = Record<string, never>;`,
             if (schema.minLength !== undefined) {
               validationTags.push(`@minLength ${schema.minLength}`);
             }
+
             if (schema.maxLength !== undefined) {
               validationTags.push(`@maxLength ${schema.maxLength}`);
             }
+
             if (schema.minimum !== undefined) {
               validationTags.push(`@minimum ${schema.minimum}`);
             }
+
             if (schema.maximum !== undefined) {
               validationTags.push(`@maximum ${schema.maximum}`);
             }
+
             if (schema.pattern !== undefined) {
               validationTags.push(`@pattern ${schema.pattern}`);
             }
+
             if (schema.format !== undefined) {
               validationTags.push(`@format ${schema.format}`);
             }
@@ -704,7 +709,12 @@ export type operations = Record<string, never>;`,
               // Add JSDoc comment using the same format as addJSDocComment
               const jsDocText = `*\n * ${validationTags.join("\n * ")}\n `;
 
-              ts.addSyntheticLeadingComment(newProperty, ts.SyntaxKind.MultiLineCommentTrivia, jsDocText, true);
+              ts.addSyntheticLeadingComment(
+                newProperty,
+                ts.SyntaxKind.MultiLineCommentTrivia,
+                jsDocText,
+                true,
+              );
 
               return newProperty;
             }
@@ -754,10 +764,12 @@ export type operations = Record<string, never>;`,
         options: {
           transformProperty(property, schemaObject, _options) {
             const schema = schemaObject as any; // Cast to access validation properties
+
             // Only transform properties with minLength, return undefined for others
             if (schema.minLength === undefined) {
               return undefined; // Should leave property unchanged
             }
+
             return property;
           },
         },
@@ -1811,6 +1823,7 @@ export type operations = Record<string, never>;`,
       testName,
       async () => {
         const result = astToString(await openapiTS(given, options));
+
         if (want instanceof URL) {
           await expect(`${COMMENT_HEADER}${result}`).toMatchFileSnapshot(fileURLToPath(want));
         } else {

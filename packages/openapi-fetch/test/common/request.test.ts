@@ -13,16 +13,19 @@ describe("request", () => {
   describe("headers", () => {
     test("default headers are preserved", async () => {
       let headers = new Headers();
+
       const client = createObservedClient<paths>({ headers: { foo: "bar" } }, async (req) => {
         headers = req.headers;
         return Response.json([resource1, resource2, resource3]);
       });
+
       await client.GET("/resources");
       expect(headersToObj(headers)).toEqual({ foo: "bar" });
     });
 
     test("default headers can be overridden", async () => {
       let headers = new Headers();
+
       const client = createObservedClient<paths>(
         {
           headers: {
@@ -37,6 +40,7 @@ describe("request", () => {
           return Response.json([resource1, resource2, resource3]);
         },
       );
+
       await client.GET("/resources", {
         headers: {
           foo: "",
@@ -45,16 +49,23 @@ describe("request", () => {
           box: false,
         },
       });
+
       expect(headersToObj(headers)).toEqual({ foo: "", bar: "0", baz: "bat", box: "false" });
     });
 
     test('default headers are unset with "null"', async () => {
       let headers = new Headers();
-      const client = createObservedClient<paths>({ headers: { foo: "bar", bar: "baz" } }, async (req) => {
-        headers = req.headers;
-        return Response.json([resource1, resource2, resource3]);
-      });
+
+      const client = createObservedClient<paths>(
+        { headers: { foo: "bar", bar: "baz" } },
+        async (req) => {
+          headers = req.headers;
+          return Response.json([resource1, resource2, resource3]);
+        },
+      );
+
       await client.GET("/resources", { headers: { foo: null } });
+
       expect(headersToObj(headers)).toEqual({
         // "foo" removed!
         bar: "baz",
@@ -63,10 +74,12 @@ describe("request", () => {
 
     test("arbitrary headers are allowed on any request", async () => {
       let headers = new Headers();
+
       const client = createObservedClient<paths>({}, async (req) => {
         headers = req.headers;
         return Response.json([resource1, resource2, resource3]);
       });
+
       await client.GET("/resources", {
         headers: {
           foo: "bar",
@@ -74,11 +87,13 @@ describe("request", () => {
           baz: true,
         },
       });
+
       expect(headersToObj(headers)).toEqual({ foo: "bar", bar: "123", baz: "true" });
     });
 
     test("supports arrays", async () => {
       let headers = new Headers();
+
       const client = createObservedClient<paths>({}, async (req) => {
         headers = req.headers;
         return Response.json([resource1, resource2, resource3]);
@@ -102,10 +117,15 @@ describe("request", () => {
       fetchOptions: FetchOptions<any>;
     }) {
       let actualRequest = new Request("https://fakeurl.example");
-      const client = createObservedClient<any>({ bodySerializer: options.bodySerializer }, async (req) => {
-        actualRequest = req.clone();
-        return Response.json([]);
-      });
+
+      const client = createObservedClient<any>(
+        { bodySerializer: options.bodySerializer },
+        async (req) => {
+          actualRequest = req.clone();
+          return Response.json([]);
+        },
+      );
+
       await client[options.method]("/blogposts-optional", options.fetchOptions as any);
       const bodyText = await actualRequest.text();
       return { bodyUsed: actualRequest.bodyUsed, bodyText };
@@ -113,6 +133,7 @@ describe("request", () => {
 
     test.each(ALL_METHODS)("missing body (with body serializer) - %s", async (method) => {
       const bodySerializer = vi.fn((body) => `Serialized: ${JSON.stringify(body)}`);
+
       const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
         bodySerializer,
         method,
@@ -125,7 +146,10 @@ describe("request", () => {
     });
 
     test.each(ALL_METHODS)("missing body (without body serializer) - %s", async (method) => {
-      const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({ method, fetchOptions: {} });
+      const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
+        method,
+        fetchOptions: {},
+      });
 
       expect(bodyUsed).toBe(false);
       expect(bodyText).toBe("");
@@ -133,6 +157,7 @@ describe("request", () => {
 
     test.each(ALL_METHODS)("`undefined` body (with body serializer) - %s", async (method) => {
       const bodySerializer = vi.fn((body) => `Serialized: ${JSON.stringify(body)}`);
+
       const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
         bodySerializer,
         method,
@@ -160,6 +185,7 @@ describe("request", () => {
 
     test.each(BODY_ACCEPTING_METHODS)("`null` body (with body serializer) - %s", async (method) => {
       const bodySerializer = vi.fn((body) => `Serialized: ${JSON.stringify(body)}`);
+
       const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
         bodySerializer,
         method,
@@ -173,47 +199,58 @@ describe("request", () => {
       expect(bodySerializer).toBeCalled();
     });
 
-    test.each(BODY_ACCEPTING_METHODS)("`null` body (without body serializer) - %s", async (method) => {
-      const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
-        method,
-        fetchOptions: {
-          body: null,
-        },
-      });
+    test.each(BODY_ACCEPTING_METHODS)(
+      "`null` body (without body serializer) - %s",
+      async (method) => {
+        const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
+          method,
+          fetchOptions: {
+            body: null,
+          },
+        });
 
-      expect(bodyUsed).toBe(true);
-      expect(bodyText).toBe("null");
-    });
+        expect(bodyUsed).toBe(true);
+        expect(bodyText).toBe("null");
+      },
+    );
 
-    test.each(BODY_ACCEPTING_METHODS)("`false` body (with body serializer) - %s", async (method) => {
-      const bodySerializer = vi.fn((body) => `Serialized: ${JSON.stringify(body)}`);
-      const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
-        bodySerializer,
-        method,
-        fetchOptions: {
-          body: false,
-        },
-      });
+    test.each(BODY_ACCEPTING_METHODS)(
+      "`false` body (with body serializer) - %s",
+      async (method) => {
+        const bodySerializer = vi.fn((body) => `Serialized: ${JSON.stringify(body)}`);
 
-      expect(bodyUsed).toBe(true);
-      expect(bodyText).toBe("Serialized: false");
-      expect(bodySerializer).toBeCalled();
-    });
+        const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
+          bodySerializer,
+          method,
+          fetchOptions: {
+            body: false,
+          },
+        });
 
-    test.each(BODY_ACCEPTING_METHODS)("`false` body (without body serializer) - %s", async (method) => {
-      const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
-        method,
-        fetchOptions: {
-          body: false,
-        },
-      });
+        expect(bodyUsed).toBe(true);
+        expect(bodyText).toBe("Serialized: false");
+        expect(bodySerializer).toBeCalled();
+      },
+    );
 
-      expect(bodyUsed).toBe(true);
-      expect(bodyText).toBe("false");
-    });
+    test.each(BODY_ACCEPTING_METHODS)(
+      "`false` body (without body serializer) - %s",
+      async (method) => {
+        const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
+          method,
+          fetchOptions: {
+            body: false,
+          },
+        });
+
+        expect(bodyUsed).toBe(true);
+        expect(bodyText).toBe("false");
+      },
+    );
 
     test.each(BODY_ACCEPTING_METHODS)("`''` body (with body serializer) - %s", async (method) => {
       const bodySerializer = vi.fn((body) => `Serialized: ${JSON.stringify(body)}`);
+
       const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
         bodySerializer,
         method,
@@ -227,20 +264,24 @@ describe("request", () => {
       expect(bodySerializer).toBeCalled();
     });
 
-    test.each(BODY_ACCEPTING_METHODS)("`''` body (without body serializer) - %s", async (method) => {
-      const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
-        method,
-        fetchOptions: {
-          body: "",
-        },
-      });
+    test.each(BODY_ACCEPTING_METHODS)(
+      "`''` body (without body serializer) - %s",
+      async (method) => {
+        const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
+          method,
+          fetchOptions: {
+            body: "",
+          },
+        });
 
-      expect(bodyUsed).toBe(true);
-      expect(bodyText).toBe('""');
-    });
+        expect(bodyUsed).toBe(true);
+        expect(bodyText).toBe('""');
+      },
+    );
 
     test.each(BODY_ACCEPTING_METHODS)("`0` body (with body serializer) - %s", async (method) => {
       const bodySerializer = vi.fn((body) => `Serialized: ${JSON.stringify(body)}`);
+
       const { bodyUsed, bodyText } = await fireRequestAndGetBodyInformation({
         bodySerializer,
         method,
@@ -282,16 +323,19 @@ describe("request", () => {
 
   test("cookie header is preserved", async () => {
     let headers = new Headers();
+
     const client = createObservedClient<paths>({}, async (req) => {
       headers = req.headers;
       return Response.json({});
     });
+
     await client.GET("/resources", {
       credentials: "include",
       headers: {
         Cookie: "session=1234",
       },
     });
+
     expect(headers.get("cookie")).toEqual("session=1234");
   });
 
@@ -346,6 +390,7 @@ describe("request", () => {
         status: 200,
         ok: true,
       } as Response;
+
       return async (input: Request) => {
         expect(input).toHaveProperty("customProperty", "value");
         return Promise.resolve(response);
@@ -354,6 +399,7 @@ describe("request", () => {
 
     const customFetch = createCustomFetch({});
     const client = createClient<paths>({ baseUrl: "https://fakeurl.example", fetch: customFetch });
+
     client.GET("/resources", {
       customProperty: "value",
     });

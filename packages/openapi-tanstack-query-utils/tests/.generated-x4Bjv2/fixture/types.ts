@@ -4,150 +4,150 @@
  */
 
 export interface FixtureApiPaths {
-    "/items/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: FixtureApiComponents["parameters"]["Id"];
-            };
-            cookie?: never;
-        };
-        get: FixtureApiOperations["getItem"];
-        put?: never;
-        post: FixtureApiOperations["updateItem"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/items/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: FixtureApiComponents["parameters"]["Id"];
+      };
+      cookie?: never;
     };
-    "/items": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: FixtureApiOperations["listItems"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: FixtureApiOperations["getItem"];
+    put?: never;
+    post: FixtureApiOperations["updateItem"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/items": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: FixtureApiOperations["listItems"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type FixtureApiWebhooks = Record<string, never>;
 export interface FixtureApiComponents {
-    schemas: {
-        Item: {
-            name: string;
-        };
+  schemas: {
+    Item: {
+      name: string;
     };
-    responses: never;
-    parameters: {
-        Id: string;
-    };
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: {
+    Id: string;
+  };
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type FixtureApiDefs = Record<string, never>;
 export interface FixtureApiOperations {
-    getItem: {
-        parameters: {
-            query?: {
-                tags?: string[];
-                filter?: {
-                    country?: string;
-                };
-            };
-            header?: never;
-            path: {
-                id: FixtureApiComponents["parameters"]["Id"];
-            };
-            cookie?: never;
+  getItem: {
+    parameters: {
+      query?: {
+        tags?: string[];
+        filter?: {
+          country?: string;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": FixtureApiComponents["schemas"]["Item"];
-                };
-            };
-            /** @description OK */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        message: string;
-                    };
-                };
-            };
-        };
+      };
+      header?: never;
+      path: {
+        id: FixtureApiComponents["parameters"]["Id"];
+      };
+      cookie?: never;
     };
-    updateItem: {
-        parameters: {
-            query?: {
-                revision?: number;
-                id?: string;
-            };
-            header: {
-                "Idempotency-Key": string;
-            };
-            path: {
-                id: FixtureApiComponents["parameters"]["Id"];
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: {
-            content: {
-                "application/json": {
-                    id?: number;
-                } & {
-                    [key: string]: unknown;
-                };
-            };
+        content: {
+          "application/json": FixtureApiComponents["schemas"]["Item"];
         };
-        responses: {
-            /** @description Updated */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+      };
+      /** @description OK */
+      404: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          "application/json": {
+            message: string;
+          };
+        };
+      };
     };
-    listItems: {
-        parameters: {
-            query?: {
-                cursor?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        next?: number;
-                    };
-                };
-            };
-        };
+  };
+  updateItem: {
+    parameters: {
+      query?: {
+        revision?: number;
+        id?: string;
+      };
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        id: FixtureApiComponents["parameters"]["Id"];
+      };
+      cookie?: never;
     };
+    requestBody?: {
+      content: {
+        "application/json": {
+          id?: number;
+        } & {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  listItems: {
+    parameters: {
+      query?: {
+        cursor?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            next?: number;
+          };
+        };
+      };
+    };
+  };
 }

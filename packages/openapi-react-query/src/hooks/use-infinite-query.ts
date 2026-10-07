@@ -6,7 +6,11 @@ import {
   useInfiniteQuery as useTanstackInfiniteQuery,
 } from "@tanstack/react-query";
 import type { FetchResponse, MaybeOptionalInit } from "@shipworthy/openapi-fetch";
-import type { HttpMethod, MediaType, PathsWithMethod } from "@shipworthy/openapi-typescript-helpers";
+import type {
+  HttpMethod,
+  MediaType,
+  PathsWithMethod,
+} from "@shipworthy/openapi-typescript-helpers";
 import { useApiClient } from "../provider";
 import {
   type InferSelectReturnType,
@@ -90,6 +94,7 @@ function useInfiniteQuery(path: any, ...args: any[]) {
       queryFn: async ({ pageParam = 0, signal }: { pageParam?: unknown; signal: AbortSignal }) => {
         const mth = method.toUpperCase() as Uppercase<HttpMethod>;
         const fn = (client as any)[mth];
+
         const mergedInit = {
           ...((init as any) ?? {}),
           signal,
@@ -101,6 +106,7 @@ function useInfiniteQuery(path: any, ...args: any[]) {
             },
           },
         };
+
         const { data, error } = await fn(path, mergedInit);
         if (error) throw error;
         return data;

@@ -10,7 +10,7 @@ properties:
       - resize
     example: attach
   region:
-    $ref: '../../../shared/attributes/region_slug.yml'
+    $ref: "../../../shared/attributes/region_slug.yml"
 
 required:
   - type

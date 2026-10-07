@@ -5,7 +5,7 @@ content:
   application/json:
     schema:
       $ref: ../models/apps_list_tiers_response.yml
-    examples:     
+    examples:
       tiers:
         $ref: examples.yml#/tiers
 headers:
@@ -15,4 +15,3 @@ headers:
     $ref: ../../../shared/headers.yml#/ratelimit-remaining
   ratelimit-reset:
     $ref: ../../../shared/headers.yml#/ratelimit-reset
-

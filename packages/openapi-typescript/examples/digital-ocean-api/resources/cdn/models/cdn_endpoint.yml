@@ -29,11 +29,11 @@ properties:
     type: integer
     example: 3600
     enum:
-    - 60
-    - 600
-    - 3600
-    - 86400
-    - 604800
+      - 60
+      - 600
+      - 3600
+      - 86400
+      - 604800
     default: 3600
     description: The amount of time the content is cached by the CDN's edge
       servers in seconds. TTL must be one of 60, 600, 3600, 86400, or 604800.
@@ -57,9 +57,9 @@ properties:
     type: string
     format: date-time
     readOnly: true
-    example: '2018-03-21T16:02:37Z'
+    example: "2018-03-21T16:02:37Z"
     description: A time value given in ISO8601 combined date and time format
       that represents when the CDN endpoint was created.
 
 required:
-- origin
+  - origin

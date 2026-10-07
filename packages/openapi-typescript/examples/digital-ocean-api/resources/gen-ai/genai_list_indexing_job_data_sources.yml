@@ -1,13 +1,13 @@
 description: To list all datasources for an indexing job, send a GET request to `/v2/gen-ai/indexing_jobs/{indexing_job_uuid}/data_sources`.
 operationId: genai_list_indexing_job_data_sources
 parameters:
-- description: Uuid of the indexing job
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: indexing_job_uuid
-  required: true
-  schema:
-    type: string
+  - description: Uuid of the indexing job
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: indexing_job_uuid
+    required: true
+    schema:
+      type: string
 responses:
   "200":
     content:
@@ -33,10 +33,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:read
+  - bearer_auth:
+      - genai:read
 summary: List Data Sources for Indexing Job for a Knowledge Base
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_list_indexing_job_data_sources.yml
+  - $ref: examples/curl/genai_list_indexing_job_data_sources.yml

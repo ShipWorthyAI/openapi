@@ -4,14 +4,14 @@ properties:
   api_host:
     type: string
     example: https://api_host.io
-    description: |- 
+    description: |-
       The namespace's API hostname. Each function in a namespace is provided an endpoint at the namespace's hostname.
 
   namespace:
     type: string
     example: fn-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     description: A unique string format of UUID with a prefix fn-.
-  
+
   created_at:
     type: string
     example: 2022-09-14T04:16:45Z
@@ -40,6 +40,6 @@ properties:
   key:
     type: string
     example: d1zcd455h01mqjfs4s2eaewyejehi5f2uj4etqq3h7cera8iwkub6xg5of1wdde2
-    description: |- 
+    description: |-
       A random alpha numeric string. This key is used in conjunction with the namespace's UUID to authenticate 
       a user to use the namespace via `doctl`, DigitalOcean's official CLI.

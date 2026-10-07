@@ -36,6 +36,7 @@ interface TestPaths {
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
 function expectType<T extends true>() {}
 
 // This function is never run. The package typecheck checks every assertion,
@@ -48,9 +49,11 @@ function useQueryTypeTests() {
   expectType<Equal<typeof list.data, { items: string[] } | undefined>>();
   expectType<Equal<typeof list.error, { message: string } | null>>();
   useQuery("/items", { params: { query: { limit: 5 } } });
+
   const detail = useQuery("/items/{id}", {
     params: { path: { id: 1 }, query: { locale: "en" } },
   });
+
   expectType<Equal<typeof detail.data, { name: string } | undefined>>();
 
   const created = useQuery("/items", "post", { body: { name: "Item" } });
@@ -63,7 +66,9 @@ function useQueryTypeTests() {
       return data.items.length;
     },
   });
+
   expectType<Equal<typeof selected.data, number | undefined>>();
+
   const selectedPost = useQuery(
     "/items",
     "post",
@@ -72,20 +77,25 @@ function useQueryTypeTests() {
       select: (data) => data.id.toString(),
     },
   );
+
   expectType<Equal<typeof selectedPost.data, string | undefined>>();
 
   const text = useQuery("/items", { parseAs: "text" });
   expectType<Equal<typeof text.data, string | undefined>>();
+
   const options = useQueryOptions("/items", undefined, {
     select: (data) => data.items.length,
   });
+
   const fromOptions = useTanstackQuery(options);
   expectType<Equal<typeof fromOptions.data, number | undefined>>();
   expectType<Equal<(typeof options.queryKey)[0], "get">>();
   expectType<Equal<(typeof options.queryKey)[1], "/items">>();
+
   const postOptions = useQueryOptions("/items", "post", {
     body: { name: "Item" },
   });
+
   const fromPostOptions = useTanstackQuery(postOptions);
   expectType<Equal<typeof fromPostOptions.data, { id: number } | undefined>>();
 
@@ -99,10 +109,12 @@ function useQueryTypeTests() {
   useQuery("/items/{id}");
   // @ts-expect-error Required query parameters cannot be omitted.
   useQuery("/items/{id}", { params: { path: { id: 1 } } });
+
   // @ts-expect-error Path parameter types must match the schema.
   useQuery("/items/{id}", {
     params: { path: { id: "1" }, query: { locale: "en" } },
   });
+
   // @ts-expect-error Query parameter types must match the schema.
   useQuery("/items", { params: { query: { limit: "5" } } });
   // @ts-expect-error A POST body is required.
@@ -133,18 +145,23 @@ function useQueryTypeTests() {
     "/items/{id}",
     { params: { path: { id: 1 }, query: { locale: "en" } } },
   ];
+
   expectType<Equal<(typeof key)[2]["params"]["path"]["id"], number>>();
 
   const useSuspenseQuery = useApiClientSuspenseQuery<TestPaths>();
   const suspense = useSuspenseQuery("/items");
   expectType<Equal<typeof suspense.data, { items: string[] }>>();
+
   const suspensePost = useSuspenseQuery("/items", "post", {
     body: { name: "Item" },
   });
+
   expectType<Equal<typeof suspensePost.data, { id: number }>>();
+
   const suspenseSelected = useSuspenseQuery("/items", undefined, {
     select: (data) => data.items.length,
   });
+
   expectType<Equal<typeof suspenseSelected.data, number>>();
   // @ts-expect-error Suspense queries enforce required parameters.
   useSuspenseQuery("/items/{id}");
@@ -152,6 +169,7 @@ function useQueryTypeTests() {
   useSuspenseQuery("/items", "delete");
 
   const useInfiniteQuery = useApiClientInfiniteQuery<TestPaths>();
+
   const infinite = useInfiniteQuery(
     "/items",
     {},
@@ -163,7 +181,9 @@ function useQueryTypeTests() {
       },
     },
   );
+
   expectType<Equal<NonNullable<typeof infinite.data>["pages"][number], { items: string[] }>>();
+
   const infinitePost = useInfiniteQuery(
     "/items",
     "post",
@@ -174,13 +194,16 @@ function useQueryTypeTests() {
       select: (data) => data.pages.map((page) => page.id),
     },
   );
+
   expectType<Equal<typeof infinitePost.data, number[] | undefined>>();
+
   useInfiniteQuery(
     "/items/{id}",
     // @ts-expect-error Infinite queries enforce required parameters.
     {},
     { initialPageParam: 0, getNextPageParam: () => undefined },
   );
+
   useInfiniteQuery(
     // @ts-expect-error Infinite queries reject unknown endpoints.
     "/missing",

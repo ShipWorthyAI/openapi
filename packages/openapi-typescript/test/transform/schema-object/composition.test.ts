@@ -190,6 +190,7 @@ describe("composition", () => {
                     properties: { name: { type: "string" } },
                   };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -245,6 +246,7 @@ describe("composition", () => {
                     },
                   };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -287,6 +289,7 @@ describe("composition", () => {
                     oneOf: ["#/components/schemas/Cat"],
                   };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -337,6 +340,7 @@ describe("composition", () => {
                     oneOf: ["#/components/schemas/Cat"],
                   };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -373,6 +377,7 @@ describe("composition", () => {
                 case "#/components/schemas/parent": {
                   return { propertyName: "operation" };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -428,6 +433,7 @@ describe("composition", () => {
                     },
                   };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -472,6 +478,7 @@ describe("composition", () => {
                 case "#/components/schemas/Pet": {
                   return { propertyName: "_petType" };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -561,6 +568,7 @@ describe("composition", () => {
                     required: ["value", "currency"],
                   };
                 }
+
                 case "#/components/schemas/Product": {
                   return {
                     type: "object",
@@ -571,6 +579,7 @@ describe("composition", () => {
                     },
                   };
                 }
+
                 default: {
                   return undefined as any;
                 }
@@ -619,6 +628,7 @@ describe("composition", () => {
       testName,
       async () => {
         const result = astToString(transformSchemaObject(given, options));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {

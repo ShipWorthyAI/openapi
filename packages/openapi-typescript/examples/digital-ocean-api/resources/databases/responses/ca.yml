@@ -2,11 +2,11 @@ description: A JSON object with a key of `ca`.
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -14,7 +14,7 @@ content:
       type: object
       properties:
         ca:
-          $ref: '../models/ca.yml'
+          $ref: "../models/ca.yml"
       required:
         - ca
     example:

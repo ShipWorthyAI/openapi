@@ -21,7 +21,7 @@ properties:
   type:
     type: string
     enum:
-    - public
+      - public
     example: public
     description: |
       The type of the IPv6 network interface.

@@ -6,14 +6,13 @@ description: |
   If the cluster is up-to-date (i.e. there are no upgrades currently available)
   `available_upgrade_versions` will be `null`.
 
-
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -24,5 +23,4 @@ content:
           type: array
           nullable: true
           items:
-            $ref: '../models/options.yml#/kubernetes_version'
-
+            $ref: "../models/options.yml#/kubernetes_version"

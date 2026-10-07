@@ -17,7 +17,9 @@ describe("Invalid schemas", () => {
   });
 
   test("Other missing required fields", async () => {
-    await expect(() => openapiTS({} as any)).rejects.toThrowError("Unsupported schema format, expected `openapi: 3.x`");
+    await expect(() => openapiTS({} as any)).rejects.toThrowError(
+      "Unsupported schema format, expected `openapi: 3.x`",
+    );
   });
 
   test("Unresolved $ref error messages", async () => {
@@ -42,9 +44,13 @@ describe("Invalid schemas", () => {
     ).rejects.toThrowError(/AnotherSchema/);
 
     expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("#/components/schemas/NonExistingSchema"),
     );
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("#/components/schemas/AnotherSchema"));
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("#/components/schemas/AnotherSchema"),
+    );
   });
 });

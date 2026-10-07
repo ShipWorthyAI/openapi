@@ -49,7 +49,11 @@ export interface ParsedOperation {
 
 export interface ParsedOpenApi {
   readonly openapi: string;
-  readonly info: { readonly title: string; readonly version: string; readonly [key: string]: unknown };
+  readonly info: {
+    readonly title: string;
+    readonly version: string;
+    readonly [key: string]: unknown;
+  };
   readonly tags: readonly unknown[];
   readonly security: readonly unknown[];
   readonly securitySchemes: Readonly<Record<string, unknown>>;
@@ -71,6 +75,7 @@ export function parseModel(document: unknown): ParsedOpenApi {
   const doc = document as OpenAPIDocument;
   const components = isRecord(doc.components) ? doc.components : {};
   const info = isRecord(doc.info) ? doc.info : {};
+
   return {
     openapi: doc.openapi,
     info: {
@@ -92,16 +97,20 @@ export function parseModel(document: unknown): ParsedOpenApi {
 function operationsOf(document: OpenAPIDocument): ParsedOperation[] {
   const paths = isRecord(document.paths) ? document.paths : {};
   const operations: ParsedOperation[] = [];
+
   for (const [path, item] of Object.entries(paths)) {
     if (path.startsWith("x-")) continue;
     const pathItem = resolveLocal(document, item);
     if (!isRecord(pathItem)) continue;
+
     for (const method of methods) {
       const raw = pathItem[method];
       if (raw === undefined) continue;
       const operation = resolveLocal(document, raw);
       if (!isRecord(operation)) continue;
-      const operationId = typeof operation.operationId === "string" ? operation.operationId : undefined;
+      const operationId =
+        typeof operation.operationId === "string" ? operation.operationId : undefined;
+
       operations.push({
         id: operationId,
         operationId,
@@ -114,6 +123,7 @@ function operationsOf(document: OpenAPIDocument): ParsedOperation[] {
       });
     }
   }
+
   return operations;
 }
 
@@ -124,28 +134,41 @@ function groupParameters(document: OpenAPIDocument, pathLevel: unknown, operatio
     header: [],
     cookie: [],
   };
+
   for (const source of [pathLevel, operationLevel]) {
     if (!Array.isArray(source)) continue;
+
     for (const entry of source) {
       const parameter = resolveLocal(document, entry);
       if (!isRecord(parameter) || typeof parameter.name !== "string") continue;
       const location = parameter.in;
-      if (location !== "path" && location !== "query" && location !== "header" && location !== "cookie") {
+
+      if (
+        location !== "path" &&
+        location !== "query" &&
+        location !== "header" &&
+        location !== "cookie"
+      ) {
         continue;
       }
+
       const parsed: ParsedParameter = {
         name: parameter.name,
         required: parameter.required === true || location === "path",
         schema: parameter.schema,
-        ...(typeof parameter.description === "string" ? { description: parameter.description } : {}),
+        ...(typeof parameter.description === "string"
+          ? { description: parameter.description }
+          : {}),
         raw: parameter,
       };
+
       const list = grouped[location];
       const index = list.findIndex((item) => item.name === parsed.name);
       if (index >= 0) list[index] = parsed;
       else list.push(parsed);
     }
   }
+
   return grouped;
 }
 
@@ -153,16 +176,22 @@ function requestBody(document: OpenAPIDocument, value: unknown): ParsedRequestBo
   if (value === undefined) return undefined;
   const body = resolveLocal(document, value);
   if (!isRecord(body)) return undefined;
-  return { required: body.required === true, content: mediaTypes(document, body.content), raw: body };
+  return {
+    required: body.required === true,
+    content: mediaTypes(document, body.content),
+    raw: body,
+  };
 }
 
 function responses(document: OpenAPIDocument, value: unknown): ParsedResponse[] {
   if (!isRecord(value)) return [];
   const parsed: ParsedResponse[] = [];
+
   for (const [status, entry] of Object.entries(value)) {
     if (status.startsWith("x-")) continue;
     const response = resolveLocal(document, entry);
     if (!isRecord(response)) continue;
+
     parsed.push({
       status,
       ...(typeof response.description === "string" ? { description: response.description } : {}),
@@ -170,32 +199,47 @@ function responses(document: OpenAPIDocument, value: unknown): ParsedResponse[] 
       raw: response,
     });
   }
+
   return parsed;
 }
 
 function mediaTypes(document: OpenAPIDocument, value: unknown): Record<string, ParsedMediaType> {
   if (!isRecord(value)) return {};
   const content: Record<string, ParsedMediaType> = {};
+
   for (const [type, entry] of Object.entries(value)) {
     const media = resolveLocal(document, entry);
-    content[type] = { ...(isRecord(media) && "schema" in media ? { schema: media.schema } : {}), raw: media };
+    content[type] = {
+      ...(isRecord(media) && "schema" in media ? { schema: media.schema } : {}),
+      raw: media,
+    };
   }
+
   return content;
 }
 
-function resolveLocal(document: OpenAPIDocument, value: unknown, seen = new Set<unknown>()): unknown {
-  if (!isRecord(value) || typeof value.$ref !== "string" || !value.$ref.startsWith("#/")) return value;
+function resolveLocal(
+  document: OpenAPIDocument,
+  value: unknown,
+  seen = new Set<unknown>(),
+): unknown {
+  if (!isRecord(value) || typeof value.$ref !== "string" || !value.$ref.startsWith("#/"))
+    return value;
   if (seen.has(value)) return value;
   seen.add(value);
   let node: unknown = document;
+
   for (const token of value.$ref.slice(2).split("/")) {
     const key = decodePointer(token);
+
     if (Array.isArray(node)) {
       node = node[Number(key)];
       continue;
     }
+
     if (!isRecord(node)) return value;
     node = node[key];
   }
+
   return resolveLocal(document, node, seen);
 }

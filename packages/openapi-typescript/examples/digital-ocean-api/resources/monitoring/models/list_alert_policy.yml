@@ -5,4 +5,4 @@ properties:
   policies:
     type: array
     items:
-      $ref: 'alert_policy.yml'
+      $ref: "alert_policy.yml"

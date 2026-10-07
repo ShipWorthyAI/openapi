@@ -16,4 +16,3 @@ source: |-
   }
 
   post_resp = client.apps.assign_alert_destinations("12345", "24556", req)
-

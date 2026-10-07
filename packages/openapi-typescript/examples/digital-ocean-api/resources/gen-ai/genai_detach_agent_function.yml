@@ -1,21 +1,21 @@
 description: To delete a function route from an agent, send a DELETE request to `/v2/gen-ai/agents/{agent_uuid}/functions/{function_uuid}`.
 operationId: genai_detach_agent_function
 parameters:
-- description: The id of the agent the function route belongs to.
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: agent_uuid
-  required: true
-  schema:
-    type: string
-- description: The function route to be destroyed. This does not destroy the function
-    itself.
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: function_uuid
-  required: true
-  schema:
-    type: string
+  - description: The id of the agent the function route belongs to.
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: agent_uuid
+    required: true
+    schema:
+      type: string
+  - description: The function route to be destroyed. This does not destroy the function
+      itself.
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: function_uuid
+    required: true
+    schema:
+      type: string
 responses:
   "200":
     content:
@@ -41,10 +41,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:delete
+  - bearer_auth:
+      - genai:delete
 summary: Delete Function Route for an Agent
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_detach_agent_function.yml
+  - $ref: examples/curl/genai_detach_agent_function.yml

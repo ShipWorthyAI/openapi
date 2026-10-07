@@ -4,13 +4,13 @@ deprecated: true
 
 summary: List App Tiers
 
-description: | 
+description: |
   List all app tiers. 
   This endpoint has been deprecated because app tiers are not tied to instance sizes anymore. 
   The concept of tiers will be retired in the future.
 
 tags:
-- Apps
+  - Apps
 
 responses:
   "200":
@@ -29,10 +29,9 @@ responses:
     $ref: ../../shared/responses/unexpected_error.yml
 
 x-codeSamples:
-  - $ref: 'examples/curl/apps_list_tiers.yml'
-  - $ref: 'examples/python/apps_list_tiers.yml'
+  - $ref: "examples/curl/apps_list_tiers.yml"
+  - $ref: "examples/python/apps_list_tiers.yml"
 
 security:
   - bearer_auth:
-    - 'app:read'
-
+      - "app:read"

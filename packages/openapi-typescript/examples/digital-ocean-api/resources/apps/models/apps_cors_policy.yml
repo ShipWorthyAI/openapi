@@ -7,8 +7,8 @@ properties:
       $ref: apps_string_match.yml
 
     example:
-    - exact: https://www.example.com
-    - regex: ^.*example.com
+      - exact: https://www.example.com
+      - regex: ^.*example.com
 
   allow_methods:
     type: array
@@ -17,12 +17,12 @@ properties:
     description: The set of allowed HTTP methods. This configures the
       `Access-Control-Allow-Methods` header.
     example:
-    - GET
-    - OPTIONS
-    - POST
-    - PUT
-    - PATCH
-    - DELETE
+      - GET
+      - OPTIONS
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
 
   allow_headers:
     type: array
@@ -31,8 +31,8 @@ properties:
     description: The set of allowed HTTP request headers. This configures the
       `Access-Control-Allow-Headers` header.
     example:
-    - Content-Type
-    - X-Custom-Header
+      - Content-Type
+      - X-Custom-Header
 
   expose_headers:
     type: array
@@ -41,8 +41,8 @@ properties:
     description: The set of HTTP response headers that browsers are allowed to
       access. This configures the `Access-Control-Expose-Headers` header.
     example:
-    - Content-Encoding
-    - X-Custom-Header
+      - Content-Encoding
+      - X-Custom-Header
 
   max_age:
     type: string

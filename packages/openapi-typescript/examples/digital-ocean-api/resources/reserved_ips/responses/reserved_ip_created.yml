@@ -8,11 +8,11 @@ description: The response will be a JSON object with a key called `reserved_ip`.
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -20,21 +20,21 @@ content:
       type: object
       properties:
         reserved_ip:
-          $ref: '../models/reserved_ip.yml'
+          $ref: "../models/reserved_ip.yml"
         links:
           type: object
           properties:
             droplets:
               type: array
               items:
-                $ref: '../../../shared/models/action_link.yml'
+                $ref: "../../../shared/models/action_link.yml"
             actions:
               type: array
               items:
-                $ref: '../../../shared/models/action_link.yml'
+                $ref: "../../../shared/models/action_link.yml"
 
     examples:
       reserved_ip_assigning:
-        $ref: 'examples.yml#/reserved_ip_assigning'
+        $ref: "examples.yml#/reserved_ip_assigning"
       reserved_ip_reserving:
-        $ref: 'examples.yml#/reserved_ip_reserving'
+        $ref: "examples.yml#/reserved_ip_reserving"

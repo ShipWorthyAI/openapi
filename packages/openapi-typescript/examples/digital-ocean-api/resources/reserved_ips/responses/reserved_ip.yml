@@ -4,11 +4,11 @@ description: The response will be a JSON object with a key called `reserved_ip`.
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -16,10 +16,10 @@ content:
       type: object
       properties:
         reserved_ip:
-          $ref: '../models/reserved_ip.yml'
+          $ref: "../models/reserved_ip.yml"
 
     examples:
       reserved_ip_assigned:
-        $ref: 'examples.yml#/reserved_ip_assigned'
+        $ref: "examples.yml#/reserved_ip_assigned"
       reserved_ip_reserved:
-        $ref: 'examples.yml#/reserved_ip_reserved'
+        $ref: "examples.yml#/reserved_ip_reserved"

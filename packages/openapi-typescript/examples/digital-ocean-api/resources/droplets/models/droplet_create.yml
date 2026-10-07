@@ -18,8 +18,8 @@ properties:
 
   image:
     oneOf:
-    - type: string
-    - type: integer
+      - type: string
+      - type: integer
     example: ubuntu-20-04-x64
     description: The image ID of a public or private image or the slug
       identifier for a public image. This image will be the base image for
@@ -29,11 +29,11 @@ properties:
     type: array
     items:
       anyOf:
-      - type: string
-      - type: integer
+        - type: string
+        - type: integer
     example:
-    - 289794
-    - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
+      - 289794
+      - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
     default: []
     description: An array containing the IDs or fingerprints of the SSH keys
       that you wish to embed in the Droplet's root account upon creation.
@@ -47,7 +47,7 @@ properties:
 
   backup_policy:
     allOf:
-      - $ref: 'droplet_backup_policy.yml'
+      - $ref: "droplet_backup_policy.yml"
       - description: An object specifying the backup policy for the Droplet. If
           omitted and `backups` is `true`, the backup plan will default to daily.
 
@@ -70,8 +70,8 @@ properties:
       type: string
     nullable: true
     example:
-    - env:prod
-    - web
+      - env:prod
+      - web
     default: []
     description: A flat array of tag names as strings to apply to the Droplet
       after it is created. Tag names can either be existing or new tags.
@@ -100,7 +100,7 @@ properties:
     items:
       type: string
     example:
-    - 12e97116-7280-11ed-b3d0-0a58ac146812
+      - 12e97116-7280-11ed-b3d0-0a58ac146812
     default: []
     description: An array of IDs for block storage volumes that will be attached
       to the Droplet once created. The volumes must not already be attached to
@@ -124,5 +124,5 @@ properties:
       to `true`.
 
 required:
-- size
-- image
+  - size
+  - image

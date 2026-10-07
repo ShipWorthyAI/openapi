@@ -31,6 +31,7 @@ export function createDiscriminatorProperty(
 ): ts.TypeElement {
   // get the inferred propertyName value from the last section of the path (as the spec suggests to do)
   let value = parseRef(path).pointer.pop();
+
   // if mapping, and there’s a match, use this rather than the inferred name
   if (discriminator.mapping) {
     // Mapping value can either be a fully-qualified ref (#/components/schemas/XYZ) or a schema name (XYZ)
@@ -39,10 +40,12 @@ export function createDiscriminatorProperty(
         (!v.startsWith("#") && v === value) ||
         (v.startsWith("#") && parseRef(v).pointer.pop() === value),
     );
+
     if (matchedValue) {
       value = matchedValue[0]; // why was this designed backwards!?
     }
   }
+
   return ts.factory.createPropertySignature(
     /* modifiers     */ tsModifiers({
       readonly,
@@ -56,11 +59,14 @@ export function createDiscriminatorProperty(
 /** Create a $ref pointer (even from other $refs) */
 export function createRef(parts: (number | string | undefined | null)[]): string {
   let pointer = "#";
+
   for (const part of parts) {
     if (part === undefined || part === null || part === "") {
       continue;
     }
+
     const maybeRef = parseRef(String(part)).pointer;
+
     if (maybeRef.length) {
       for (const refPart of maybeRef) {
         pointer += `/${escapePointer(refPart)}`;
@@ -69,6 +75,7 @@ export function createRef(parts: (number | string | undefined | null)[]): string
       pointer += `/${escapePointer(String(part))}`;
     }
   }
+
   return pointer;
 }
 
@@ -84,9 +91,11 @@ export function debug(msg: string, group?: string, time?: number) {
     const groupColor = (group && DEBUG_GROUPS[group]) || c.whiteBright;
     const groupName = groupColor(`openapi-ts:${group ?? "info"}`);
     let timeFormatted = "";
+
     if (typeof time === "number") {
       timeFormatted = c.green(` ${formatTime(time)} `);
     }
+
     // biome-ignore lint/suspicious/noConsole: this is a CLI
     console.debug(`  ${c.bold(groupName)}${timeFormatted}${msg}`);
   }
@@ -104,11 +113,14 @@ export function formatTime(t: number) {
     if (t < 1000) {
       return `${Math.round(10 * t) / 10}ms`;
     }
+
     if (t < 60000) {
       return `${Math.round(t / 100) / 10}s`;
     }
+
     return `${Math.round(t / 6000) / 10}m`;
   }
+
   return t;
 }
 
@@ -121,14 +133,17 @@ export function getEntries<T>(
   },
 ) {
   let entries = Object.entries(obj);
+
   if (options?.alphabetize) {
     entries.sort(([a], [b]) => a.localeCompare(b, "en-us", { numeric: true }));
   }
+
   if (options?.excludeDeprecated) {
     entries = entries.filter(
       ([, v]) => !(v && typeof v === "object" && "deprecated" in v && v.deprecated),
     );
   }
+
   return entries;
 }
 
@@ -139,10 +154,13 @@ export function resolveRef<T>(
   { silent = false, visited = [] }: { silent: boolean; visited?: string[] },
 ): T | undefined {
   const { pointer } = parseRef($ref);
+
   if (!pointer.length) {
     return undefined;
   }
+
   let node = schema;
+
   for (const key of pointer) {
     if (node && typeof node === "object" && node[key]) {
       node = node[key];
@@ -158,6 +176,7 @@ export function resolveRef<T>(
       warn(`Could not resolve circular $ref "${$ref}"`, silent);
       return undefined;
     }
+
     return resolveRef(schema, node.$ref, {
       silent,
       visited: [...visited, node.$ref],
@@ -251,6 +270,7 @@ export function scanDiscriminators(schema: OpenAPI3, options: OpenAPITSOptions) 
   // perform 2 passes: first, collect all discriminator definitions and handle oneOf and mappings
   walk(schema, (obj, path) => {
     const discriminator = obj?.discriminator as DiscriminatorObject | undefined;
+
     if (!discriminator?.propertyName) {
       return;
     }
@@ -289,6 +309,7 @@ export function scanDiscriminators(schema: OpenAPI3, options: OpenAPITSOptions) 
     if (discriminator.mapping) {
       for (const mappedValue in discriminator.mapping) {
         const mappedRef = discriminator.mapping[mappedValue];
+
         if (!mappedRef) {
           continue;
         }
@@ -394,13 +415,17 @@ export function walk(
   if (!obj || typeof obj !== "object") {
     return;
   }
+
   if (Array.isArray(obj)) {
     for (let i = 0; i < obj.length; i++) {
       walk(obj[i], cb, path.concat(i));
     }
+
     return;
   }
+
   cb(obj as Record<string, unknown>, path);
+
   for (const k of Object.keys(obj)) {
     walk((obj as Record<string, unknown>)[k], cb, path.concat(k));
   }

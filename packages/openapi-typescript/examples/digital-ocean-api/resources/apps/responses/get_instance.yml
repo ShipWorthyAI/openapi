@@ -1,4 +1,4 @@
-description: A JSON with key `instance_size` 
+description: A JSON with key `instance_size`
 
 content:
   application/json:

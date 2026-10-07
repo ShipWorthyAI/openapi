@@ -32,7 +32,7 @@ properties:
         default: apps-s-1vcpu-0.5gb
         example: apps-s-1vcpu-0.5gb
       - title: "Deprecated"
-        description: | 
+        description: |
           Deprecated size slugs for legacy plans. We strongly encourage customers
           to use the new plans when creating or upgrading apps.
         type: string

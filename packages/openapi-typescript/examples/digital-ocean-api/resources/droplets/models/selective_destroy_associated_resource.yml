@@ -11,7 +11,7 @@ properties:
     items:
       type: string
     example:
-      - '6186916'
+      - "6186916"
 
   reserved_ips:
     type: array
@@ -19,7 +19,7 @@ properties:
     items:
       type: string
     example:
-      - '6186916'
+      - "6186916"
 
   snapshots:
     type: array
@@ -27,13 +27,13 @@ properties:
     items:
       type: string
     example:
-      - '61486916'
+      - "61486916"
 
   volumes:
     type: array
     description: An array of unique identifiers for the volumes to be scheduled for deletion.
     items:
-       type: string
+      type: string
     example:
       - ba49449a-7435-11ea-b89e-0a58ac14480f
 

@@ -6,10 +6,10 @@ properties:
     items:
       type: string
     example:
-    - path/to/image.png
-    - path/to/css/*
+      - path/to/image.png
+      - path/to/css/*
     description: An array of strings containing the path to the content to be
       purged from the CDN cache.
 
 required:
-- files
+  - files

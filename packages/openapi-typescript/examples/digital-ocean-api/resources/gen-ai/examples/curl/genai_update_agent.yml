@@ -19,4 +19,3 @@ source: |-
       "top_p": 1,
       "max_tokens": 250
     }'
-

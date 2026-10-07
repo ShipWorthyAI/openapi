@@ -289,6 +289,7 @@ responses: {
       testName,
       async () => {
         const result = astToString(transformOperationObject(given, options));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {

@@ -4,8 +4,8 @@ properties:
   plan:
     type: string
     enum:
-    - daily
-    - weekly
+      - daily
+      - weekly
     example: daily
     description: The backup plan used for the Droplet. The plan can be either
       `daily` or `weekly`.
@@ -13,25 +13,25 @@ properties:
   weekday:
     type: string
     enum:
-    - SUN
-    - MON
-    - TUE
-    - WED
-    - THU
-    - FRI
-    - SAT
+      - SUN
+      - MON
+      - TUE
+      - WED
+      - THU
+      - FRI
+      - SAT
     example: SUN
     description: The day of the week on which the backup will occur.
 
   hour:
     type: integer
     enum:
-    - 0
-    - 4
-    - 8
-    - 12
-    - 16
-    - 20
+      - 0
+      - 4
+      - 8
+      - 12
+      - 16
+      - 20
     example: 0
     description: The hour of the day that the backup window will start.
 

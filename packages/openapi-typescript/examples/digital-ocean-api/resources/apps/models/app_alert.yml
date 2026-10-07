@@ -16,7 +16,7 @@ properties:
     items:
       $ref: app_alert_email.yml
     example:
-    - "sammy@digitalocean.com"
+      - "sammy@digitalocean.com"
   slack_webhooks:
     title: Slack Webhooks to send alerts to
     type: array

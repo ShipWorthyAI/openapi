@@ -20,7 +20,8 @@ export function nodeFileSystem(): FileSystem.FileSystem {
 }
 
 function systemTag(cause: unknown): "NotFound" | "PermissionDenied" | "Unknown" {
-  const code = typeof cause === "object" && cause !== null && "code" in cause ? cause.code : undefined;
+  const code =
+    typeof cause === "object" && cause !== null && "code" in cause ? cause.code : undefined;
   if (code === "ENOENT") return "NotFound";
   if (code === "EACCES" || code === "EPERM") return "PermissionDenied";
   return "Unknown";

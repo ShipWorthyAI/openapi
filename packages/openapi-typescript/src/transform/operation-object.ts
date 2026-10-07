@@ -1,5 +1,12 @@
 import ts from "#compiler";
-import { addJSDocComment, NEVER, oapiRef, QUESTION_TOKEN, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
+import {
+  addJSDocComment,
+  NEVER,
+  oapiRef,
+  QUESTION_TOKEN,
+  tsModifiers,
+  tsPropertyIndex,
+} from "../lib/ts.js";
 import { createRef } from "../lib/utils.js";
 import type { OperationObject, RequestBodyObject, TransformNodeOptions } from "../types.js";
 import { transformParametersArray } from "./parameters-array.js";
@@ -28,17 +35,20 @@ export default function transformOperationObject(
             ...options,
             path: createRef([options.path, "requestBody"]),
           });
+
     const required = !!(
       "$ref" in operationObject.requestBody
         ? options.ctx.resolve<RequestBodyObject>(operationObject.requestBody.$ref)
         : operationObject.requestBody
     )?.required;
+
     const property = ts.factory.createPropertySignature(
       /* modifiers     */ tsModifiers({ readonly: options.ctx.immutable }),
       /* name          */ tsPropertyIndex("requestBody"),
       /* questionToken */ required ? undefined : QUESTION_TOKEN,
       /* type          */ requestBodyType,
     );
+
     addJSDocComment(operationObject.requestBody, property);
     type.push(property);
   } else {
@@ -73,8 +83,11 @@ export function injectOperationObject(
 ): void {
   // find or create top-level operations interface
   let operations = options.ctx.injectFooter.find(
-    (node) => ts.isInterfaceDeclaration(node) && (node as ts.InterfaceDeclaration).name.text === "operations",
+    (node) =>
+      ts.isInterfaceDeclaration(node) &&
+      (node as ts.InterfaceDeclaration).name.text === "operations",
   ) as unknown as ts.InterfaceDeclaration;
+
   if (!operations) {
     operations = ts.factory.createInterfaceDeclaration(
       /* modifiers       */ tsModifiers({
@@ -86,11 +99,13 @@ export function injectOperationObject(
       /* heritageClauses */ undefined,
       /* members         */ [],
     );
+
     options.ctx.injectFooter.push(operations);
   }
 
   // inject operation object
   const type = transformOperationObject(operationObject, options);
+
   const updated = ts.factory.createInterfaceDeclaration(
     operations.modifiers,
     operations.name,
@@ -106,7 +121,9 @@ export function injectOperationObject(
       ),
     ],
   );
+
   const index = options.ctx.injectFooter.indexOf(operations);
+
   if (index === -1) {
     options.ctx.injectFooter.push(updated);
   } else {

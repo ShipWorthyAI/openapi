@@ -1,8 +1,5 @@
-
-
 type: object
 properties:
-  
   cors:
     allOf:
       - $ref: apps_cors_policy.yml
@@ -15,14 +12,14 @@ properties:
     deprecated: true
     items:
       $ref: app_route_spec.yml
-      
+
   name:
-      type: string
-      maxLength: 32
-      minLength: 2
-      pattern: ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
-      description: The name. Must be unique across all components within the same app.
-      example: api
+    type: string
+    maxLength: 32
+    minLength: 2
+    pattern: ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
+    description: The name. Must be unique across all components within the same app.
+    example: api
 
   source_dir:
     type: string
@@ -59,4 +56,4 @@ properties:
     description: A list of configured log forwarding destinations.
 
 required:
-- name
+  - name

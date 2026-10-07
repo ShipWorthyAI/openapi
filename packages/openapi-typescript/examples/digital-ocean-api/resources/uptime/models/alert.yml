@@ -1,9 +1,8 @@
 alert:
   type: object
   allOf:
-    - $ref: '#/alert_base'
-    - $ref: '#/alert_updatable'
-
+    - $ref: "#/alert_base"
+    - $ref: "#/alert_updatable"
 
 alert_base:
   type: object
@@ -14,7 +13,6 @@ alert_base:
       readOnly: true
       example: 5a4981aa-9653-4bd1-bef5-d6bff52042e4
       description: A unique ID that can be used to identify and reference the alert.
-
 
 alert_updatable:
   type: object
@@ -48,7 +46,7 @@ alert_updatable:
         - "less_than"
 
     notifications:
-      $ref: './notification.yml'
+      $ref: "./notification.yml"
 
     period:
       type: string
@@ -62,7 +60,3 @@ alert_updatable:
         - 15m
         - 30m
         - 1h
-
-
-
-

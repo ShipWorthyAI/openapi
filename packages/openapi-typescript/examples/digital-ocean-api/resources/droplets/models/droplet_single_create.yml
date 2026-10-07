@@ -15,6 +15,6 @@ allOf:
           for the Droplet in its internal configuration.
 
     required:
-    - name
+      - name
 
-  - $ref: 'droplet_create.yml'
+  - $ref: "droplet_create.yml"

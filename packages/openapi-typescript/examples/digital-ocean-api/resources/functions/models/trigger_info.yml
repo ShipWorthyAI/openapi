@@ -20,12 +20,12 @@ properties:
     type: string
     example: SCHEDULED
     description: String which indicates the type of trigger source like SCHEDULED.
-  
+
   is_enabled:
     type: boolean
     example: true
     description: Indicates weather the trigger is paused or unpaused.
-  
+
   created_at:
     type: string
     example: 2022-11-11T04:16:45Z
@@ -37,7 +37,7 @@ properties:
     description: UTC time string.
 
   scheduled_details:
-    $ref: './scheduled_details.yml'
+    $ref: "./scheduled_details.yml"
 
   scheduled_runs:
     type: object

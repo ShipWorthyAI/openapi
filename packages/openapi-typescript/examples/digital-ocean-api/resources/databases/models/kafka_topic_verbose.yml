@@ -24,7 +24,7 @@ properties:
   partitions:
     type: array
     items:
-      $ref: './kafka_topic_partition.yml'
+      $ref: "./kafka_topic_partition.yml"
 
   config:
-    $ref: './kafka_topic_config.yml'
+    $ref: "./kafka_topic_config.yml"

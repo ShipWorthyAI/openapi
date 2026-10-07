@@ -2,34 +2,20 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "transit": {
-      "dependsOn": [
-        "^transit"
-      ]
+      "dependsOn": ["^transit"]
     },
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "dist/**"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
     },
     "test": {
-      "dependsOn": [
-        "transit"
-      ]
+      "dependsOn": ["transit"]
     },
     "//#quality": {
-      "dependsOn": [
-        "//#lint",
-        "//#format"
-      ]
+      "dependsOn": ["//#lint", "//#format"]
     },
     "//#quality:fix": {
-      "dependsOn": [
-        "//#lint:fix",
-        "//#format:fix"
-      ]
+      "dependsOn": ["//#lint:fix", "//#format:fix"]
     },
     "//#lint": {},
     "//#lint:fix": {
@@ -37,9 +23,7 @@
     },
     "//#format": {},
     "//#format:fix": {
-      "dependsOn": [
-        "//#lint:fix"
-      ],
+      "dependsOn": ["//#lint:fix"],
       "cache": false
     },
     "//#typecheck": {}

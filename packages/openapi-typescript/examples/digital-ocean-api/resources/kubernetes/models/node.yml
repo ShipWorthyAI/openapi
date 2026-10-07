@@ -20,10 +20,10 @@ properties:
       state:
         type: string
         enum:
-        - provisioning
-        - running
-        - draining
-        - deleting
+          - provisioning
+          - running
+          - draining
+          - deleting
         example: provisioning
         description: A string indicating the current status of the node.
 

@@ -6,7 +6,8 @@ import type { paths } from "./schemas/path-based-client.js";
 // identical to helper, but for createObservedPathBasedClient
 function createObservedPathBasedClient<T extends {}, M extends MediaType = MediaType>(
   options?: Parameters<typeof createPathBasedClient<T>>[0],
-  onRequest: (input: Request) => Promise<Response> = async () => Response.json({ status: 200, message: "OK" }),
+  onRequest: (input: Request) => Promise<Response> = async () =>
+    Response.json({ status: 200, message: "OK" }),
 ) {
   return createPathBasedClient<T, M>({
     ...options,
@@ -24,16 +25,19 @@ describe("createPathBasedClient", () => {
 
     test("GET (no params)", async () => {
       let method = "";
+
       const client = createObservedPathBasedClient<paths>({}, async (req) => {
         method = req.method;
         return Response.json({});
       });
+
       await client["/posts"].GET();
       expect(method).toBe("GET");
     });
 
     test("GET (params)", async () => {
       let actualPathname = "";
+
       const client = createObservedPathBasedClient<paths>({}, async (req) => {
         actualPathname = new URL(req.url).pathname;
         return Response.json({ title: "Blog post title" });
@@ -81,6 +85,7 @@ describe("createPathBasedClient", () => {
 
     test('properly binds "this" inside PathCallForwarder', async () => {
       let method = "";
+
       const client = createObservedPathBasedClient<paths>({}, async (req) => {
         method = req.method;
         return Response.json({});

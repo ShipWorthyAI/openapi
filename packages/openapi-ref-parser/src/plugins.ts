@@ -80,8 +80,10 @@ export function normalizeArguments(args: unknown[]): NormalizedArguments {
   let path = "";
   let schema: unknown;
   let options: Options = {};
+
   if (typeof args[0] === "string") {
     path = args[0];
+
     if (args.length >= 3) {
       schema = args[1];
       options = isOptions(args[2]) ? args[2] : {};
@@ -94,6 +96,7 @@ export function normalizeArguments(args: unknown[]): NormalizedArguments {
     schema = args[0];
     options = isOptions(args[1]) ? args[1] : {};
   }
+
   return { path, schema, options };
 }
 

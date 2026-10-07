@@ -75,4 +75,4 @@ x-codeSamples:
 
 security:
   - bearer_auth:
-    - 'database:create'
+      - "database:create"

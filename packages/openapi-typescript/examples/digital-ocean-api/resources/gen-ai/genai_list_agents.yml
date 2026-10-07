@@ -1,24 +1,24 @@
 description: To list all agents, send a GET request to `/v2/gen-ai/agents`.
 operationId: genai_list_agents
 parameters:
-- description: Only list agents that are deployed.
-  example: true
-  in: query
-  name: only_deployed
-  schema:
-    type: boolean
-- description: Page number.
-  example: 1
-  in: query
-  name: page
-  schema:
-    type: integer
-- description: Items per page.
-  example: 1
-  in: query
-  name: per_page
-  schema:
-    type: integer
+  - description: Only list agents that are deployed.
+    example: true
+    in: query
+    name: only_deployed
+    schema:
+      type: boolean
+  - description: Page number.
+    example: 1
+    in: query
+    name: page
+    schema:
+      type: integer
+  - description: Items per page.
+    example: 1
+    in: query
+    name: per_page
+    schema:
+      type: integer
 responses:
   "200":
     content:
@@ -44,10 +44,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:read
+  - bearer_auth:
+      - genai:read
 summary: List Agents
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_list_agents.yml
+  - $ref: examples/curl/genai_list_agents.yml

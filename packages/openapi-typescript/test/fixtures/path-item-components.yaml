@@ -12,7 +12,7 @@ servers:
 
 paths:
   /users:
-    $ref: '#/components/pathItems/users'
+    $ref: "#/components/pathItems/users"
 
 security:
   - bearerAuth: []

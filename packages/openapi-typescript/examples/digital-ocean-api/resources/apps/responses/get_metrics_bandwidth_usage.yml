@@ -1,4 +1,4 @@
-description: 'A JSON object with a `app_bandwidth_usage` key'
+description: "A JSON object with a `app_bandwidth_usage` key"
 
 content:
   application/json:

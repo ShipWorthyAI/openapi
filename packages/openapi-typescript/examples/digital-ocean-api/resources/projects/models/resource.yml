@@ -2,7 +2,7 @@ type: object
 
 properties:
   urn:
-    $ref: '../../../shared/attributes/urn.yml'
+    $ref: "../../../shared/attributes/urn.yml"
 
   assigned_at:
     type: string
@@ -25,10 +25,10 @@ properties:
   status:
     type: string
     enum:
-    - ok
-    - not_found
-    - assigned
-    - already_assigned
-    - service_down
+      - ok
+      - not_found
+      - assigned
+      - already_assigned
+      - service_down
     example: ok
     description: The status of assigning and fetching the resources.

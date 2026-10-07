@@ -33,5 +33,3 @@ properties:
     description: "Number of days to retain logs in an OpenSearch cluster."
     example: 14
     default: 14
-
-

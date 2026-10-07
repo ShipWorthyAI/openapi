@@ -15,32 +15,32 @@ requestBody:
   content:
     application/json:
       schema:
-        $ref: 'models/domain.yml'
+        $ref: "models/domain.yml"
       example:
         name: example.com
 
 responses:
-  '201':
-    $ref: 'responses/create_domain_response.yml'
+  "201":
+    $ref: "responses/create_domain_response.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/domains_create.yml'
-  - $ref: 'examples/go/domains_create.yml'
-  - $ref: 'examples/ruby/domains_create.yml'
-  - $ref: 'examples/python/domains_create.yml'
+  - $ref: "examples/curl/domains_create.yml"
+  - $ref: "examples/go/domains_create.yml"
+  - $ref: "examples/ruby/domains_create.yml"
+  - $ref: "examples/python/domains_create.yml"
 
 security:
   - bearer_auth:
-    - 'domain:create'
+      - "domain:create"

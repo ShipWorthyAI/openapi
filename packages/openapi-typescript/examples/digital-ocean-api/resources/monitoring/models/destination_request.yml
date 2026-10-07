@@ -15,4 +15,4 @@ properties:
       The destination type. `opensearch_dbaas` for a DigitalOcean managed OpenSearch
       cluster or `opensearch_ext` for an externally managed one.
   config:
-    $ref: 'opensearch_config_request.yml'
+    $ref: "opensearch_config_request.yml"

@@ -14,12 +14,12 @@ properties:
       An array of integers representing the hours of the day that a backup can
       start.
     example:
-    - 0
-    - 4
-    - 8
-    - 12
-    - 16
-    - 20
+      - 0
+      - 4
+      - 8
+      - 12
+      - 16
+      - 20
 
   window_length_hours:
     type: integer

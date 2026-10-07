@@ -1,5 +1,12 @@
 import ts from "#compiler";
-import { addJSDocComment, NEVER, oapiRef, QUESTION_TOKEN, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
+import {
+  addJSDocComment,
+  NEVER,
+  oapiRef,
+  QUESTION_TOKEN,
+  tsModifiers,
+  tsPropertyIndex,
+} from "../lib/ts.js";
 import { createRef } from "../lib/utils.js";
 import type {
   OperationObject,
@@ -17,7 +24,10 @@ export type Method = "get" | "put" | "post" | "delete" | "options" | "head" | "p
  * Transform PathItem nodes (4.8.9)
  * @see https://spec.openapis.org/oas/v3.1.0#path-item-object
  */
-export default function transformPathItemObject(pathItem: PathItemObject, options: TransformNodeOptions): ts.TypeNode {
+export default function transformPathItemObject(
+  pathItem: PathItemObject,
+  options: TransformNodeOptions,
+): ts.TypeNode {
   const type: ts.TypeElement[] = [];
 
   // parameters
@@ -29,13 +39,25 @@ export default function transformPathItemObject(pathItem: PathItemObject, option
   );
 
   // methods
-  for (const method of ["get", "put", "post", "delete", "options", "head", "patch", "trace"] as Method[]) {
+  for (const method of [
+    "get",
+    "put",
+    "post",
+    "delete",
+    "options",
+    "head",
+    "patch",
+    "trace",
+  ] as Method[]) {
     const operationObject = pathItem[method];
+
     if (
       !operationObject ||
       (options.ctx.excludeDeprecated &&
-        ("$ref" in operationObject ? options.ctx.resolve<OperationObject>(operationObject.$ref) : operationObject)
-          ?.deprecated)
+        ("$ref" in operationObject
+          ? options.ctx.resolve<OperationObject>(operationObject.$ref)
+          : operationObject
+        )?.deprecated)
     ) {
       type.push(
         ts.factory.createPropertySignature(
@@ -45,19 +67,25 @@ export default function transformPathItemObject(pathItem: PathItemObject, option
           /* type          */ NEVER,
         ),
       );
+
       continue;
     }
 
     // fold top-level PathItem parameters into method-level, with the latter overriding the former
     const keyedParameters: Record<string, ParameterObject | ReferenceObject> = {};
+
     if (!("$ref" in operationObject)) {
       // important: OperationObject parameters come last, and will override any conflicts with PathItem parameters
-      for (const parameter of [...(pathItem.parameters ?? []), ...(operationObject.parameters ?? [])]) {
+      for (const parameter of [
+        ...(pathItem.parameters ?? []),
+        ...(operationObject.parameters ?? []),
+      ]) {
         // fix: #1798, use unique key
         const name =
           "$ref" in parameter
             ? `${options.ctx.resolve<ParameterObject>(parameter.$ref)?.in}-${options.ctx.resolve<ParameterObject>(parameter.$ref)?.name}`
             : `${parameter.in}-${parameter.name}`;
+
         if (name) {
           keyedParameters[name] = parameter;
         }
@@ -65,6 +93,7 @@ export default function transformPathItemObject(pathItem: PathItemObject, option
     }
 
     let operationType: ts.TypeNode;
+
     if ("$ref" in operationObject) {
       operationType = oapiRef(operationObject.$ref);
     }
@@ -73,6 +102,7 @@ export default function transformPathItemObject(pathItem: PathItemObject, option
       // Operation ids can contain "#" when a ref was parsed as part of the id.
       const operationId = operationObject.operationId.replace(HASH_RE, "/");
       operationType = oapiRef(createRef(["operations", operationId]));
+
       injectOperationObject(
         operationId,
         { ...operationObject, parameters: Object.values(keyedParameters) },
@@ -86,12 +116,14 @@ export default function transformPathItemObject(pathItem: PathItemObject, option
         ),
       );
     }
+
     const property = ts.factory.createPropertySignature(
       /* modifiers     */ tsModifiers({ readonly: options.ctx.immutable }),
       /* name          */ tsPropertyIndex(method),
       /* questionToken */ undefined,
       /* type          */ operationType,
     );
+
     addJSDocComment(operationObject, property);
     type.push(property);
   }

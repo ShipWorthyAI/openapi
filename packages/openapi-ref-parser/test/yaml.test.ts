@@ -13,6 +13,7 @@ describe("YAML compatibility", () => {
     - 1
     - 5
 `);
+
     expect(parsed).toEqual({
       value: [
         [1302998400, 1124, -435],
@@ -28,6 +29,7 @@ items:
   - - 1
     - 2
 `) as { description: string; items: number[][] };
+
     expect(parsed.description).toBe("- - keep me\n");
     expect(parsed.items).toEqual([[1, 2]]);
   });
@@ -42,9 +44,11 @@ items:
       import.meta.dirname,
       "../../openapi-typescript/test/fixtures/yaml-merge.yaml",
     );
+
     const parsed = parseYamlDocument(readFileSync(fixture, "utf8")) as {
       paths: { "/admin/ping": { get: { responses: Record<string, { description: string }> } } };
     };
+
     const responses = parsed.paths["/admin/ping"].get.responses;
     expect(Object.keys(responses)).toEqual(["200", "4XX"]);
     expect(responses["4XX"]?.description).toBe("Error response");

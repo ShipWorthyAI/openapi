@@ -11,4 +11,4 @@ paths:
 components:
   schemas:
     obj:
-      $ref: './anchor-with-ref-test.yaml#/components/schemas/anchorTest'
+      $ref: "./anchor-with-ref-test.yaml#/components/schemas/anchorTest"

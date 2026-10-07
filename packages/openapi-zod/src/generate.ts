@@ -16,6 +16,7 @@ type Schema = JsonSchema | boolean;
 const schemaMaps = ["properties", "patternProperties"] as const;
 const compositions = ["allOf", "anyOf", "oneOf"] as const;
 const schemaFields = ["items", "additionalProperties", "propertyNames", "contains"] as const;
+
 const annotations = new Set([
   "title",
   "description",
@@ -29,7 +30,9 @@ const annotations = new Set([
   "externalDocs",
   "xml",
 ]);
+
 const untypedKeywords = new Set(["enum", "const", "allOf", "anyOf", "oneOf"]);
+
 const keywords = new Set<string>([
   "$ref",
   "type",
@@ -111,6 +114,7 @@ function isSingleRequiredKey(part: Schema): part is JsonSchema & { required: str
 
 function indent(value: string, spaces: number): string {
   const pad = " ".repeat(spaces);
+
   return value
     .split("\n")
     .map((line) => (line.length === 0 ? line : pad + line))
@@ -119,10 +123,12 @@ function indent(value: string, spaces: number): string {
 
 function schemaLiteral(schema: Schema, names: readonly string[], expression?: string): string {
   if (names.length === 0) return expression ?? JSON.stringify(schema, null, 2);
+
   const defs = indent(
     names.map((name) => `${JSON.stringify(name)}: definitions.${name}`).join(",\n"),
     4,
   );
+
   if (expression) return `{\n  ...${expression},\n  $defs: {\n${defs}\n  },\n}`;
   const json = JSON.stringify(schema, null, 2);
   if (!json.startsWith("{\n")) return `{\n  $defs: {\n${defs}\n  },\n}`;
@@ -153,6 +159,7 @@ export function zodSources(
 ): ZodSources {
   assertPrefix(prefix);
   if (!document.openapi?.startsWith("3.1.")) throw new Error("Zod generation requires OpenAPI 3.1");
+
   if (document.jsonSchemaDialect || document.$defs) {
     throw new Error("Zod generation does not support custom dialects or top-level $defs");
   }
@@ -163,18 +170,22 @@ export function zodSources(
     seen = new Set<string>(),
   ): Record<string, Schema> {
     if (typeof schema === "boolean") return {};
+
     if (schema.$ref) {
       if (seen.has(schema.$ref)) return {};
       const resolved = asSchema(resolveDocumentRef(document, schema.$ref), schema.$ref);
       return objectProperties(resolved, path, new Set([...seen, schema.$ref]));
     }
+
     const merged: Record<string, Schema> = {};
+
     for (const [index, part] of (schema.allOf ?? []).entries()) {
       Object.assign(
         merged,
         objectProperties(asSchema(part, `${path}/allOf/${index}`), `${path}/allOf/${index}`, seen),
       );
     }
+
     if (schema.properties) Object.assign(merged, schema.properties);
     return merged;
   }
@@ -186,9 +197,11 @@ export function zodSources(
   ): JsonSchema {
     // `true` and `false` are the same as `{}` and `{ not: {} }` once Zod converts them.
     if (typeof schema === "boolean") return definitionSchema(schema);
+
     for (const key of Object.keys(schema)) {
       if (!keywords.has(key) && !isAnnotation(key)) fail(path, `Unsupported keyword ${key}`);
     }
+
     const result: JsonSchema = { ...schema };
     delete result.default;
     const properties = { ...inherited, ...objectProperties(schema, path) };
@@ -197,11 +210,14 @@ export function zodSources(
       if (!schema.$ref.startsWith("#/components/schemas/")) {
         fail(path, `Unsupported schema reference ${schema.$ref}`);
       }
+
       resolveDocumentRef(document, schema.$ref);
+
       for (const key of Object.keys(schema)) {
         if (key !== "$ref" && !isAnnotation(key))
           fail(path, `Zod does not preserve ${key} alongside $ref`);
       }
+
       result.$ref = `#/$defs/${schema.$ref.slice("#/components/schemas/".length)}`;
       return result;
     }
@@ -210,9 +226,12 @@ export function zodSources(
     // Zod only accepts `not: {}` (never), so the forbidden keys become `false` schemas.
     if (schema.not !== undefined) {
       const notSchema = schema.not;
+
       const exclusions =
         typeof notSchema === "object" && notSchema !== null ? notSchema.anyOf : undefined;
+
       const onlyNot = Object.keys(schema).every((key) => key === "not" || isAnnotation(key));
+
       if (
         !Array.isArray(exclusions) ||
         typeof notSchema !== "object" ||
@@ -224,7 +243,9 @@ export function zodSources(
       ) {
         fail(path, "Unsupported not constraint");
       }
+
       const forbidden: Record<string, Schema> = {};
+
       for (const part of exclusions) {
         const key = asSchema(part, path);
         if (!isSingleRequiredKey(key)) fail(path, "Unsupported not constraint");
@@ -232,6 +253,7 @@ export function zodSources(
         if (!name) fail(path, "Unsupported not constraint");
         forbidden[name] = false;
       }
+
       delete result.not;
       result.type = "object";
       result.properties = forbidden;
@@ -243,13 +265,16 @@ export function zodSources(
       if (!Array.isArray(schema.required)) fail(path, "Unsupported required constraint");
       result.type = "object";
       const props: Record<string, Schema> = { ...schema.properties };
+
       for (const name of schema.required) {
         const property = properties[name];
         if (property === undefined) fail(path, `Cannot resolve required property ${name}`);
         props[name] = property;
       }
+
       result.properties = props;
     }
+
     if (
       !result.type &&
       Object.keys(schema).some((key) => keywords.has(key) && !untypedKeywords.has(key))
@@ -262,38 +287,47 @@ export function zodSources(
       if (!values) continue;
       if (!isRecord(values)) fail(path, `Unsupported ${key}`);
       const normalized: Record<string, Schema> = {};
+
       for (const [name, value] of Object.entries(values)) {
         normalized[name] = normalize(
           asSchema(value, `${path}/${key}/${name}`),
           `${path}/${key}/${name}`,
         );
       }
+
       result[key] = normalized;
     }
+
     for (const key of compositions) {
       const values = result[key];
       if (!values) continue;
       if (!Array.isArray(values)) fail(path, `Unsupported ${key}`);
+
       result[key] = values.map((part, index) =>
         normalize(asSchema(part, `${path}/${key}/${index}`), `${path}/${key}/${index}`, properties),
       );
     }
+
     if (result.prefixItems) {
       if (!Array.isArray(result.prefixItems)) fail(path, "Unsupported prefixItems");
+
       result.prefixItems = result.prefixItems.map((part, index) =>
         normalize(asSchema(part, `${path}/prefixItems/${index}`), `${path}/prefixItems/${index}`),
       );
     }
+
     for (const key of schemaFields) {
       const value = result[key];
       if (value === undefined) continue;
       if (Array.isArray(value)) fail(path, "Tuple items require prefixItems");
       result[key] = normalize(asSchema(value, `${path}/${key}`), `${path}/${key}`);
     }
+
     return result;
   }
 
   const definitions = new Map<string, JsonSchema>();
+
   for (const [name, schema] of Object.entries(document.components?.schemas ?? {})) {
     definitions.set(
       name,
@@ -303,10 +337,13 @@ export function zodSources(
 
   function source(entries: readonly SchemaExport[], typeName: string): string {
     for (const { name } of entries) assertExportName(name, [typeName, "z", "definitions"]);
+
     function visit(schema: Schema, needed: Set<string>) {
       if (typeof schema === "boolean") return;
+
       if (schema.$ref) {
         const name = definitionName(schema.$ref);
+
         if (!needed.has(name)) {
           const definition = definitions.get(name);
           if (definition === undefined) fail(schema.$ref, "Reference not found");
@@ -314,16 +351,19 @@ export function zodSources(
           visit(definition, needed);
         }
       }
+
       for (const key of schemaMaps) {
         const values = schema[key];
         if (!isRecord(values)) continue;
         for (const part of Object.values(values)) visit(asSchema(part, "schema"), needed);
       }
+
       for (const key of [...compositions, "prefixItems"] as const) {
         const values = schema[key];
         if (!Array.isArray(values)) continue;
         for (const part of values) visit(asSchema(part, "schema"), needed);
       }
+
       for (const key of schemaFields) {
         const value = schema[key];
         if (value !== undefined && !Array.isArray(value)) visit(asSchema(value, "schema"), needed);
@@ -331,29 +371,35 @@ export function zodSources(
     }
 
     let usesDefinitions = false;
+
     const exports = entries.map(({ name, schema, type, expression }) => {
       const needed = new Set<string>();
       visit(schema, needed);
       const names = [...needed].sort();
       if (expression || names.length > 0) usesDefinitions = true;
       const defs: Record<string, JsonSchema> = {};
+
       for (const definition of names) {
         const value = definitions.get(definition);
         if (!value) fail(`#/$defs/${definition}`, "Reference not found");
         defs[definition] = value;
       }
+
       const root =
         typeof schema === "boolean"
           ? schema
           : { ...schema, ...(names.length > 0 ? { $defs: defs } : {}) };
+
       try {
         z.compile(z.fromJSONSchema(root));
       } catch (error) {
         fail(name, error instanceof Error ? error.message : String(error));
       }
+
       const argument = schemaLiteral(schema, names, expression);
       return `export const ${name} = z.compile(z.fromJSONSchema(${argument})) as z.ZodType<${type}>;`;
     });
+
     if (exports.length === 0) return header;
     const imports = [`import * as z from "zod";`];
     if (usesDefinitions) imports.push(`import * as definitions from "./definitions";`);
@@ -362,6 +408,7 @@ export function zodSources(
   }
 
   const componentsType = `${prefix}ApiComponents`;
+
   const schemas = source(
     [...definitions].map(([name, schema]) => ({
       name,
@@ -373,6 +420,7 @@ export function zodSources(
   );
 
   const bodies: SchemaExport[] = [];
+
   for (const [id, route] of Object.entries(routes)) {
     const method = route[0];
     const path = route[1];
@@ -381,21 +429,26 @@ export function zodSources(
     if (!methods.has(lower)) fail(location, `Unsupported method ${method}`);
     const item = document.paths?.[path];
     if (!isRecord(item)) fail(location, "Path not found");
+
     const pathItem = resolveObject<PathItemObject>(
       document,
       item as PathItemObject | { $ref: string },
     );
+
     const raw = pathItem[lower as Lowercase<HttpMethod>];
     if (!raw) fail(location, "Operation not found");
     const operation = resolveObject<OperationObject>(document, raw);
     if (!operation.requestBody) continue;
     const body = resolveObject<RequestBodyObject>(document, operation.requestBody);
     const content = body.content["application/json"];
+
     if (!content || Object.keys(body.content).length !== 1) {
       fail(location, "Request bodies require a single application/json media type");
     }
+
     const media = resolveObject<MediaTypeObject>(document, content);
     if (media.schema === undefined) fail(location, "Request body has no schema");
+
     bodies.push({
       name: `${id}RequestBody`,
       schema: normalize(asSchema(media.schema, location), location),
@@ -407,6 +460,7 @@ export function zodSources(
     ([name, schema]) =>
       `export const ${name}: z.core.JSONSchema.JSONSchema = ${JSON.stringify(schema, null, 2)};`,
   );
+
   return {
     definitions:
       definitionExports.length === 0

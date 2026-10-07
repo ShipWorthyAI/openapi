@@ -2,13 +2,13 @@ description: To update an agent, send a PUT request to `/v2/gen-ai/agents/{uuid}
   The response body is a JSON object containing the agent.
 operationId: genai_update_agent
 parameters:
-- description: Unique agent id
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: uuid
-  required: true
-  schema:
-    type: string
+  - description: Unique agent id
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: uuid
+    required: true
+    schema:
+      type: string
 requestBody:
   content:
     application/json:
@@ -39,10 +39,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:update
+  - bearer_auth:
+      - genai:update
 summary: Update an Agent
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_update_agent.yml
+  - $ref: examples/curl/genai_update_agent.yml

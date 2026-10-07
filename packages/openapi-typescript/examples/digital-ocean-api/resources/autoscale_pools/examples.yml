@@ -1,7 +1,7 @@
 autoscale_create_request_dynamic:
   value:
     name: "my-autoscale-pool"
-    config: 
+    config:
       min_instances: 1
       max_instances: 5
       target_cpu_utilization: 0.5
@@ -12,7 +12,7 @@ autoscale_create_request_dynamic:
       size: c-2
       image: ubuntu-20-04-x64
       ssh_keys:
-      - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
+        - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
       backups: true
       ipv6: true
       monitoring: true
@@ -24,7 +24,7 @@ autoscale_create_request_dynamic:
 autoscale_create_request_static:
   value:
     name: "my-autoscale-pool"
-    config: 
+    config:
       target_number_instances: 2
     droplet_template:
       name: example.com
@@ -32,7 +32,7 @@ autoscale_create_request_static:
       size: c-2
       image: ubuntu-20-04-x64
       ssh_keys:
-      - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
+        - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
       backups: true
       ipv6: true
       monitoring: true
@@ -44,7 +44,7 @@ autoscale_create_request_static:
 autoscale_update_request:
   value:
     name: "my-autoscale-pool"
-    config: 
+    config:
       target_number_instances: 2
     droplet_template:
       name: example.com
@@ -52,7 +52,7 @@ autoscale_update_request:
       size: c-2
       image: ubuntu-20-04-x64
       ssh_keys:
-      - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
+        - 3b:16:e4:bf:8b:00:8b:b8:59:8c:a9:d3:f0:19:fa:45
       backups: true
       ipv6: true
       monitoring: true

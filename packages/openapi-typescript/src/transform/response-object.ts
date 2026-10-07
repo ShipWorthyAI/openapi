@@ -26,9 +26,11 @@ export default function transformResponseObject(
 
   // headers
   const headersObject: ts.TypeElement[] = [];
+
   if (responseObject.headers) {
     for (const [name, headerObject] of getEntries(responseObject.headers, options.ctx)) {
       const optional = "$ref" in headerObject || headerObject.required ? undefined : QUESTION_TOKEN;
+
       const subType =
         "$ref" in headerObject
           ? oapiRef(headerObject.$ref)
@@ -36,16 +38,19 @@ export default function transformResponseObject(
               ...options,
               path: createRef([options.path, "headers", name]),
             });
+
       const property = ts.factory.createPropertySignature(
         /* modifiers     */ tsModifiers({ readonly: options.ctx.immutable }),
         /* name          */ tsPropertyIndex(name),
         /* questionToken */ optional,
         /* type          */ subType,
       );
+
       addJSDocComment(headerObject, property);
       headersObject.push(property);
     }
   }
+
   // allow additional unknown headers
   headersObject.push(
     ts.factory.createIndexSignature(
@@ -62,6 +67,7 @@ export default function transformResponseObject(
       /* type          */ UNKNOWN,
     ),
   );
+
   type.push(
     ts.factory.createPropertySignature(
       /* modifiers     */ undefined,
@@ -73,8 +79,12 @@ export default function transformResponseObject(
 
   // content
   const contentObject: ts.TypeElement[] = [];
+
   if (responseObject.content) {
-    for (const [contentType, mediaTypeObject] of getEntries(responseObject.content ?? {}, options.ctx)) {
+    for (const [contentType, mediaTypeObject] of getEntries(
+      responseObject.content ?? {},
+      options.ctx,
+    )) {
       const property = ts.factory.createPropertySignature(
         /* modifiers     */ tsModifiers({ readonly: options.ctx.immutable }),
         /* name          */ tsPropertyIndex(contentType),
@@ -84,10 +94,12 @@ export default function transformResponseObject(
           path: createRef([options.path, "content", contentType]),
         }),
       );
+
       addJSDocComment(mediaTypeObject, property);
       contentObject.push(property);
     }
   }
+
   if (contentObject.length) {
     type.push(
       ts.factory.createPropertySignature(

@@ -8,11 +8,11 @@ description: The response will be a JSON object with a key called `floating_ip`.
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -20,21 +20,21 @@ content:
       type: object
       properties:
         floating_ip:
-          $ref: '../models/floating_ip.yml'
+          $ref: "../models/floating_ip.yml"
         links:
           type: object
           properties:
             droplets:
               type: array
               items:
-                $ref: '../../../shared/models/action_link.yml'
+                $ref: "../../../shared/models/action_link.yml"
             actions:
               type: array
               items:
-                $ref: '../../../shared/models/action_link.yml'
+                $ref: "../../../shared/models/action_link.yml"
 
     examples:
       floating_ip_assigning:
-        $ref: 'examples.yml#/floating_ip_assigning'
+        $ref: "examples.yml#/floating_ip_assigning"
       floating_ip_reserving:
-        $ref: 'examples.yml#/floating_ip_reserving'
+        $ref: "examples.yml#/floating_ip_reserving"

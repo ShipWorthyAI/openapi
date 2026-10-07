@@ -26,7 +26,10 @@ import {
   isTypeNode as importedIsTypeNode,
   isTypeReferenceNode as importedIsTypeReferenceNode,
 } from "typescript/unstable/ast/is";
-import { visitEachChild as visitEachChildNode, visitNode as visitNodeChild } from "typescript/unstable/ast/visitor";
+import {
+  visitEachChild as visitEachChildNode,
+  visitNode as visitNodeChild,
+} from "typescript/unstable/ast/visitor";
 
 const SyntaxKind = ImportedSyntaxKind;
 type SyntaxKind = (typeof ImportedSyntaxKind)[keyof typeof ImportedSyntaxKind];
@@ -52,7 +55,10 @@ declare module "typescript/unstable/ast" {
 
 const rawText = new WeakMap<Node, string>();
 const typeParameterText = new WeakMap<Node, string>();
-const leadingComments = new WeakMap<Node, { kind: SyntaxKind; text: string; hasTrailingNewLine: boolean }[]>();
+const leadingComments = new WeakMap<
+  Node,
+  { kind: SyntaxKind; text: string; hasTrailingNewLine: boolean }[]
+>();
 
 const KEYWORDS: Partial<Record<SyntaxKind, string>> = {
   [SyntaxKind.AnyKeyword]: "any",
@@ -95,9 +101,11 @@ function asName(name: string | number | Node): any {
   if (typeof name === "string") {
     return createIdentifier(name);
   }
+
   if (typeof name === "number") {
     return tsFactory.createNumericLiteral(String(name), TokenFlags.None);
   }
+
   return name;
 }
 
@@ -109,10 +117,16 @@ function aliasQuestionToken<T extends object>(node: T): T {
       return this.postfixToken;
     },
   });
+
   return node;
 }
 
-function createPropertySignature(modifiers: unknown, name: unknown, questionToken: unknown, type: unknown) {
+function createPropertySignature(
+  modifiers: unknown,
+  name: unknown,
+  questionToken: unknown,
+  type: unknown,
+) {
   return aliasQuestionToken(
     tsFactory.createPropertySignatureDeclaration(
       modifiers as never,
@@ -128,32 +142,49 @@ function keywordFromText(text: string): Node {
   if (text === "string") {
     return tsFactory.createKeywordTypeNode(SyntaxKind.StringKeyword);
   }
+
   if (text === "number") {
     return tsFactory.createKeywordTypeNode(SyntaxKind.NumberKeyword);
   }
+
   if (text === "boolean") {
     return tsFactory.createKeywordTypeNode(SyntaxKind.BooleanKeyword);
   }
+
   return tsFactory.createTypeReferenceNode(createIdentifier(text.trim()));
 }
 
 function parseTemplateType(source: string): Node {
   const body = source.slice(1, -1);
   const pieces = body.split(/\$\{([^}]+)\}/);
+
   if (pieces.length === 1) {
     return tsFactory.createNoSubstitutionTemplateLiteral(body, TokenFlags.None);
   }
+
   const head = pieces[0] ?? "";
   const spans = [];
+
   for (let index = 1; index < pieces.length; index += 2) {
     const literalText = pieces[index + 1] ?? "";
     const isLast = index + 2 >= pieces.length;
+
     const literal = isLast
       ? tsFactory.createTemplateTail(literalText, literalText, TokenFlags.None)
       : tsFactory.createTemplateMiddle(literalText, literalText, TokenFlags.None);
-    spans.push(tsFactory.createTemplateLiteralTypeSpan(keywordFromText(pieces[index] ?? "string") as never, literal));
+
+    spans.push(
+      tsFactory.createTemplateLiteralTypeSpan(
+        keywordFromText(pieces[index] ?? "string") as never,
+        literal,
+      ),
+    );
   }
-  return tsFactory.createTemplateLiteralTypeNode(tsFactory.createTemplateHead(head, head, TokenFlags.None), spans);
+
+  return tsFactory.createTemplateLiteralTypeNode(
+    tsFactory.createTemplateHead(head, head, TokenFlags.None),
+    spans,
+  );
 }
 
 function splitStatements(source: string): string[] {
@@ -161,83 +192,112 @@ function splitStatements(source: string): string[] {
   let current = "";
   let depth = 0;
   let quote: string | null = null;
+
   for (let index = 0; index < source.length; index += 1) {
     const character = source[index] ?? "";
+
     if (quote) {
       current += character;
+
       if (character === "\\") {
         current += source[index + 1] ?? "";
         index += 1;
         continue;
       }
+
       if (character === quote) {
         quote = null;
       }
+
       continue;
     }
+
     if (character === "`" || character === '"' || character === "'") {
       quote = character;
       current += character;
       continue;
     }
+
     if (character === "{" || character === "(" || character === "[") {
       depth += 1;
     } else if (character === "}" || character === ")" || character === "]") {
       depth -= 1;
     }
+
     if (character === ";" && depth === 0) {
       const statement = current.trim();
+
       if (statement) {
         parts.push(statement.endsWith(";") ? statement : `${statement};`);
       }
+
       current = "";
       continue;
     }
+
     current += character;
   }
+
   const tail = current.trim();
+
   if (tail) {
     parts.push(tail);
   }
+
   return parts;
 }
 
 function typeAliasFromStatement(statement: string): Node | undefined {
   const match = statement.match(/^(export\s+)?type\s+([A-Za-z0-9_$]+)([\s\S]*?)\s*=\s*([\s\S]+)$/);
+
   if (!match) {
     return undefined;
   }
+
   const exported = Boolean(match[1]);
   const name = match[2] ?? "";
   const parameters = (match[3] ?? "").trim();
   const typeText = (match[4] ?? "").trim().replace(/;$/, "");
   const typeNode = tsFactory.createKeywordTypeNode(SyntaxKind.AnyKeyword);
   rawText.set(typeNode, typeText);
+
   const alias = tsFactory.createTypeAliasDeclaration(
     exported ? [tsFactory.createToken(SyntaxKind.ExportKeyword)] : undefined,
     createIdentifier(name),
     undefined,
     typeNode,
   );
+
   if (parameters) {
     typeParameterText.set(alias, parameters);
   }
+
   return alias;
 }
 
 function statementsFromSource(source: string): Node[] {
   const trimmed = source.trim();
+
   if (!trimmed) {
     return [];
   }
+
   if (trimmed.startsWith("`") && trimmed.endsWith("`")) {
-    return [{ kind: SyntaxKind.ExpressionStatement, expression: parseTemplateType(trimmed) } as unknown as Node];
+    return [
+      {
+        kind: SyntaxKind.ExpressionStatement,
+        expression: parseTemplateType(trimmed),
+      } as unknown as Node,
+    ];
   }
+
   return splitStatements(trimmed).map((statement) => {
     const alias = typeAliasFromStatement(statement);
+
     if (alias) {
       return alias;
     }
+
     const node = tsFactory.createNotEmittedStatement();
     rawText.set(node, statement.endsWith(";") ? statement : `${statement};`);
     return node;
@@ -259,7 +319,12 @@ function parseSourceFile(
   };
 }
 
-function addLeadingComment(node: Node, kind: SyntaxKind, text: string, hasTrailingNewLine: boolean) {
+function addLeadingComment(
+  node: Node,
+  kind: SyntaxKind,
+  text: string,
+  hasTrailingNewLine: boolean,
+) {
   const comments = leadingComments.get(node) ?? [];
   comments.push({ kind, text, hasTrailingNewLine });
   leadingComments.set(node, comments);
@@ -270,16 +335,21 @@ function formatComments(node: Node, indent: number, removeComments: boolean): st
   if (removeComments) {
     return "";
   }
+
   const comments = leadingComments.get(node);
+
   if (!comments?.length) {
     return "";
   }
+
   const pad = " ".repeat(indent);
+
   return comments
     .map((comment) => {
       if (comment.kind === SyntaxKind.SingleLineCommentTrivia) {
         return `${pad}//${comment.text}`;
       }
+
       return `${pad}/*${comment.text.replaceAll("\n", `\n${pad}`)}*/`;
     })
     .join("\n");
@@ -289,6 +359,7 @@ function printModifiers(modifiers: readonly { kind: SyntaxKind }[] | undefined):
   if (!modifiers?.length) {
     return "";
   }
+
   return `${modifiers
     .map((modifier) => KEYWORDS[modifier.kind])
     .filter(Boolean)
@@ -299,15 +370,19 @@ function printName(name: Node | undefined): string {
   if (!name) {
     return "";
   }
+
   if (name.kind === SyntaxKind.Identifier || name.kind === SyntaxKind.NumericLiteral) {
     return (name as Identifier).text;
   }
+
   if (name.kind === SyntaxKind.StringLiteral) {
     return JSON.stringify((name as Identifier).text);
   }
+
   if (name.kind === SyntaxKind.ComputedPropertyName) {
     return `[${render((name as unknown as { expression: Node }).expression, 0)}]`;
   }
+
   return render(name, 0);
 }
 
@@ -315,10 +390,13 @@ function render(node: Node | undefined, indent: number, removeComments = false):
   if (!node) {
     return "";
   }
+
   const raw = rawText.get(node);
+
   if (raw !== undefined) {
     return raw;
   }
+
   const comments = formatComments(node, indent, removeComments);
   const body = printBody(node, indent, removeComments);
   return comments ? `${comments}\n${body}` : body;
@@ -326,9 +404,15 @@ function render(node: Node | undefined, indent: number, removeComments = false):
 
 function printBody(node: Node, indent: number, removeComments: boolean): string {
   const keyword = KEYWORDS[node.kind];
-  if (keyword && node.kind !== SyntaxKind.ExportKeyword && node.kind !== SyntaxKind.ReadonlyKeyword) {
+
+  if (
+    keyword &&
+    node.kind !== SyntaxKind.ExportKeyword &&
+    node.kind !== SyntaxKind.ReadonlyKeyword
+  ) {
     return keyword;
   }
+
   const pad = " ".repeat(indent);
   const next = indent + 4;
   const record = node as unknown as Record<string, any>;
@@ -343,6 +427,7 @@ function printBody(node: Node, indent: number, removeComments: boolean): string 
       const body = members.map((member) => render(member, next, removeComments)).join(",\n");
       return `${pad}${printModifiers(record.modifiers)}enum ${printName(record.name)} {\n${body}\n${pad}}`;
     }
+
     case SyntaxKind.EnumMember:
       return `${pad}${printName(record.name)}${record.initializer ? ` = ${render(record.initializer, 0, removeComments)}` : ""}`;
     case SyntaxKind.VariableStatement: {
@@ -351,14 +436,17 @@ function printBody(node: Node, indent: number, removeComments: boolean): string 
       const declaration = list?.declarations?.[0];
       return `${pad}${printModifiers(record.modifiers)}${keywordName} ${printName(declaration?.name)}${declaration?.type ? `: ${render(declaration.type, 0, removeComments)}` : ""}${declaration?.initializer ? ` = ${render(declaration.initializer, indent, removeComments)}` : ""};`;
     }
+
     case SyntaxKind.PropertySignature: {
       const optional = record.postfixToken || record.questionToken ? "?" : "";
       return `${pad}${printModifiers(record.modifiers)}${printName(record.name)}${optional}: ${render(record.type, indent, removeComments)};`;
     }
+
     case SyntaxKind.TypeLiteral:
       if (!record.members?.length) {
         return "{}";
       }
+
       return `{${printMembers(record.members, next, removeComments)}\n${pad}}`;
     case SyntaxKind.UnionType:
       return record.types.map((type: Node) => render(type, indent, removeComments)).join(" | ");
@@ -368,30 +456,39 @@ function printBody(node: Node, indent: number, removeComments: boolean): string 
       const argumentsText = record.typeArguments?.length
         ? `<${record.typeArguments.map((type: Node) => render(type, indent, removeComments)).join(", ")}>`
         : "";
+
       return `${printName(record.typeName)}${argumentsText}`;
     }
+
     case SyntaxKind.ArrayType: {
       const element = record.elementType as Node;
       const printed = render(element, indent, removeComments);
-      const parenthesize = element.kind === SyntaxKind.UnionType || element.kind === SyntaxKind.IntersectionType;
+      const parenthesize =
+        element.kind === SyntaxKind.UnionType || element.kind === SyntaxKind.IntersectionType;
       return `${parenthesize ? `(${printed})` : printed}[]`;
     }
+
     case SyntaxKind.TupleType: {
       const elements = [...(record.elements ?? [])] as Node[];
+
       if (elements.length === 0) {
         return "[]";
       }
+
       const body = elements
         .map((element) => indentPrinted(render(element, next, removeComments), next))
         .join(",\n");
+
       return `[\n${body}\n${pad}]`;
     }
+
     case SyntaxKind.IndexedAccessType:
       return `${render(record.objectType, indent, removeComments)}[${render(record.indexType, 0, removeComments)}]`;
     case SyntaxKind.IndexSignature: {
       const parameter = record.parameters?.[0];
       return `${pad}${printModifiers(record.modifiers)}[${printName(parameter?.name)}: ${render(parameter?.type, 0, removeComments)}]: ${render(record.type, next, removeComments)};`;
     }
+
     case SyntaxKind.TypeOperator:
       return `${KEYWORDS[record.operator as SyntaxKind] ?? "keyof"} ${render(record.type, indent, removeComments)}`;
     case SyntaxKind.RestType:
@@ -407,23 +504,33 @@ function printBody(node: Node, indent: number, removeComments: boolean): string 
       return `${KEYWORDS[record.operator as SyntaxKind] ?? "-"}${render(record.operand, 0, removeComments)}`;
     case SyntaxKind.ArrayLiteralExpression: {
       const elements = [...(record.elements ?? [])] as Node[];
+
       if (elements.length === 0) {
         return "[]";
       }
+
       const body = elements
         .map((element) => indentPrinted(render(element, next, removeComments), next))
         .join(",\n");
+
       return `[\n${body}\n${pad}]`;
     }
+
     case SyntaxKind.ParenthesizedType:
       return `(${render(record.type, indent, removeComments)})`;
     case SyntaxKind.NoSubstitutionTemplateLiteral:
       return `\`${record.text ?? ""}\``;
     case SyntaxKind.TemplateLiteralType: {
-      const spans = [...(record.templateSpans ?? [])] as { type: Node; literal: { text?: string } }[];
-      const body = spans.map((span) => `\${${render(span.type, 0, removeComments)}}${span.literal?.text ?? ""}`).join("");
+      const spans = [...(record.templateSpans ?? [])] as {
+        type: Node;
+        literal: { text?: string };
+      }[];
+      const body = spans
+        .map((span) => `\${${render(span.type, 0, removeComments)}}${span.literal?.text ?? ""}`)
+        .join("");
       return `\`${record.head?.text ?? ""}${body}\``;
     }
+
     default:
       throw new Error(`Unable to print SyntaxKind ${node.kind}`);
   }
@@ -431,24 +538,34 @@ function printBody(node: Node, indent: number, removeComments: boolean): string 
 
 function indentPrinted(printed: string, indent: number): string {
   const pad = " ".repeat(indent);
+
   if (printed.startsWith(pad) || printed.includes("\n")) {
     return printed;
   }
+
   return `${pad}${printed}`;
 }
 
-function printMembers(members: readonly Node[] | undefined, indent: number, removeComments: boolean): string {
+function printMembers(
+  members: readonly Node[] | undefined,
+  indent: number,
+  removeComments: boolean,
+): string {
   if (!members?.length) {
     return "";
   }
+
   return `\n${[...members].map((member) => render(member, indent, removeComments)).join("\n")}`;
 }
 
 function makePrinter(options: PrinterOptions = {}) {
   const removeComments = options.removeComments ?? false;
+
   return {
     printFile(sourceFile: { statements?: readonly Node[] }) {
-      const text = (sourceFile.statements ?? []).map((statement) => render(statement, 0, removeComments)).join("\n");
+      const text = (sourceFile.statements ?? [])
+        .map((statement) => render(statement, 0, removeComments))
+        .join("\n");
       return text.endsWith("\n") ? text : `${text}\n`;
     },
     printNode(node: Node) {
@@ -457,13 +574,18 @@ function makePrinter(options: PrinterOptions = {}) {
   };
 }
 
-function transformNodes(nodes: Node | readonly Node[], transformers: ((context: object) => (node: Node) => Node | undefined)[]) {
+function transformNodes(
+  nodes: Node | readonly Node[],
+  transformers: ((context: object) => (node: Node) => Node | undefined)[],
+) {
   const list = Array.isArray(nodes) ? [...nodes] : [nodes as Node];
   let current = list;
+
   for (const transformer of transformers) {
     const visit = transformer({});
     current = current.map((node) => visit(node) ?? node);
   }
+
   return {
     transformed: Array.isArray(nodes) ? current : current[0],
     dispose() {},
@@ -500,7 +622,11 @@ namespace ts {
     createArrayLiteralExpression: tsFactory.createArrayLiteralExpression,
     createArrayTypeNode: tsFactory.createArrayTypeNode,
     createEnumDeclaration(modifiers: unknown, name: unknown, members: unknown) {
-      return tsFactory.createEnumDeclaration(modifiers as never, asName(name as string | Node) as Identifier, members as never);
+      return tsFactory.createEnumDeclaration(
+        modifiers as never,
+        asName(name as string | Node) as Identifier,
+        members as never,
+      );
     },
     createEnumMember(name: unknown, initializer?: unknown) {
       return tsFactory.createEnumMember(asName(name as string | Node), initializer as never);
@@ -509,9 +635,19 @@ namespace ts {
     createIdentifier,
     createIndexedAccessTypeNode: tsFactory.createIndexedAccessTypeNode,
     createIndexSignature(modifiers: unknown, parameters: unknown, type: unknown) {
-      return tsFactory.createIndexSignatureDeclaration(modifiers as never, parameters as never, type as never);
+      return tsFactory.createIndexSignatureDeclaration(
+        modifiers as never,
+        parameters as never,
+        type as never,
+      );
     },
-    createInterfaceDeclaration(modifiers: unknown, name: unknown, typeParameters: unknown, heritageClauses: unknown, members: unknown) {
+    createInterfaceDeclaration(
+      modifiers: unknown,
+      name: unknown,
+      typeParameters: unknown,
+      heritageClauses: unknown,
+      members: unknown,
+    ) {
       return tsFactory.createInterfaceDeclaration(
         modifiers as never,
         asName(name as string | Node) as Identifier,
@@ -529,7 +665,14 @@ namespace ts {
     createNumericLiteral(value: string | number) {
       return tsFactory.createNumericLiteral(String(value), TokenFlags.None);
     },
-    createParameterDeclaration(modifiers: unknown, dotDotDotToken: unknown, name: unknown, questionToken?: unknown, type?: unknown, initializer?: unknown) {
+    createParameterDeclaration(
+      modifiers: unknown,
+      dotDotDotToken: unknown,
+      name: unknown,
+      questionToken?: unknown,
+      type?: unknown,
+      initializer?: unknown,
+    ) {
       return tsFactory.createParameterDeclaration(
         modifiers as never,
         dotDotDotToken as never,
@@ -548,7 +691,12 @@ namespace ts {
     createToken: tsFactory.createToken,
     createTrue: () => tsFactory.createKeywordExpression(SyntaxKind.TrueKeyword),
     createTupleTypeNode: tsFactory.createTupleTypeNode,
-    createTypeAliasDeclaration(modifiers: unknown, name: unknown, typeParameters: unknown, type: unknown) {
+    createTypeAliasDeclaration(
+      modifiers: unknown,
+      name: unknown,
+      typeParameters: unknown,
+      type: unknown,
+    ) {
       return tsFactory.createTypeAliasDeclaration(
         modifiers as never,
         asName(name as string | Node) as Identifier,
@@ -560,15 +708,34 @@ namespace ts {
     createTypeOperatorNode: tsFactory.createTypeOperatorNode,
     createTypeReferenceNode(name: string | Node, typeArguments?: readonly Node[]) {
       const typeName = typeof name === "string" ? createIdentifier(name) : name;
-      return tsFactory.createTypeReferenceNode(typeName as Identifier, typeArguments?.length ? (typeArguments as never) : undefined);
+      return tsFactory.createTypeReferenceNode(
+        typeName as Identifier,
+        typeArguments?.length ? (typeArguments as never) : undefined,
+      );
     },
     createUnionTypeNode: tsFactory.createUnionTypeNode,
-    createVariableDeclaration(name: unknown, exclamationToken?: unknown, type?: unknown, initializer?: unknown) {
-      return tsFactory.createVariableDeclaration(asName(name as string | Node), exclamationToken as never, type as never, initializer as never);
+    createVariableDeclaration(
+      name: unknown,
+      exclamationToken?: unknown,
+      type?: unknown,
+      initializer?: unknown,
+    ) {
+      return tsFactory.createVariableDeclaration(
+        asName(name as string | Node),
+        exclamationToken as never,
+        type as never,
+        initializer as never,
+      );
     },
     createVariableDeclarationList: tsFactory.createVariableDeclarationList,
     createVariableStatement: tsFactory.createVariableStatement,
-    updatePropertySignature(node: { initializer?: Node }, modifiers: unknown, name: unknown, questionToken: unknown, type: unknown) {
+    updatePropertySignature(
+      node: { initializer?: Node },
+      modifiers: unknown,
+      name: unknown,
+      questionToken: unknown,
+      type: unknown,
+    ) {
       return aliasQuestionToken(
         tsFactory.updatePropertySignatureDeclaration(
           node as never,

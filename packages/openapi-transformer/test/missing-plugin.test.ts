@@ -12,6 +12,7 @@ describe("missing plugin", () => {
       lint: false,
       loadModule: () => Promise.reject(new Error("Cannot find package")),
     }).pipe(Effect.provide(layer));
+
     await expect(Effect.runPromise(program)).rejects.toThrow(
       "Install @shipworthy/openapi-typescript to run openapi generate typescript.",
     );

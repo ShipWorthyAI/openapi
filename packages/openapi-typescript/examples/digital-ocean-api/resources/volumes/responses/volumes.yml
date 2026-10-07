@@ -5,11 +5,11 @@ description: >-
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -20,18 +20,18 @@ content:
             volumes:
               type: array
               items:
-                $ref: '../models/volume_full.yml'
+                $ref: "../models/volume_full.yml"
               description: Array of volumes.
           required:
             - volumes
 
-        - $ref: '../../../shared/pages.yml#/pagination'
-        - $ref: '../../../shared/meta.yml'
+        - $ref: "../../../shared/pages.yml#/pagination"
+        - $ref: "../../../shared/meta.yml"
 
     examples:
       All Volumes:
-        $ref: '../examples.yml#/volumes_all'
+        $ref: "../examples.yml#/volumes_all"
       Filtered by Name:
-        $ref: '../examples.yml#/volumes_filtered_by_name'
+        $ref: "../examples.yml#/volumes_filtered_by_name"
       Filtered by Region:
-        $ref: '../examples.yml#/volumes_filtered_by_region'
+        $ref: "../examples.yml#/volumes_filtered_by_region"

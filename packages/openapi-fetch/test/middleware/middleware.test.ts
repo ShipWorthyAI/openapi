@@ -34,10 +34,12 @@ test("receives a UUID per-request", async () => {
 
 test("can modify request", async () => {
   let actualRequest = new Request("https://nottherealurl.fake");
+
   const client = createObservedClient<paths>({}, async (req) => {
     actualRequest = new Request(req);
     return Response.json({});
   });
+
   client.use({
     async onRequest({ request }) {
       return new Request("https://foo.bar/api/v1", {
@@ -64,7 +66,9 @@ test("can modify response", async () => {
     updated_at: "2024-01-20T00:00:00Z",
   };
 
-  const client = createObservedClient<paths>({}, async () => Response.json(rawBody, { headers: { foo: "bar" } }));
+  const client = createObservedClient<paths>({}, async () =>
+    Response.json(rawBody, { headers: { foo: "bar" } }),
+  );
 
   client.use({
     // convert date string to unix time
@@ -74,6 +78,7 @@ test("can modify response", async () => {
       body.updated_at = toUnix(body.updated_at);
       const headers = new Headers(response.headers);
       headers.set("middleware", "value");
+
       return new Response(JSON.stringify(body), {
         status: 201,
         headers,
@@ -98,9 +103,11 @@ test("can modify response", async () => {
 
 test("returns original errors if nothing is returned", async () => {
   const actualError = new Error();
+
   const client = createObservedClient<paths>({}, async (req) => {
     throw actualError;
   });
+
   client.use({
     onError({ error }) {
       expect(error).toBe(actualError);
@@ -118,9 +125,11 @@ test("returns original errors if nothing is returned", async () => {
 test("can modify errors", async () => {
   const actualError = new Error();
   const modifiedError = new Error();
+
   const client = createObservedClient<paths>({}, async (req) => {
     throw actualError;
   });
+
   client.use({
     onError() {
       return modifiedError;
@@ -137,9 +146,11 @@ test("can modify errors", async () => {
 test("can catch errors and return a response instead", async () => {
   const actualError = new Error();
   const customResponse = Response.json({});
+
   const client = createObservedClient<paths>({}, async (req) => {
     throw actualError;
   });
+
   client.use({
     onError({ error }) {
       expect(error).toBe(actualError);
@@ -154,10 +165,12 @@ test("can catch errors and return a response instead", async () => {
 
 test("executes in expected order", async () => {
   let actualRequest = new Request("https://nottherealurl.fake");
+
   const client = createObservedClient<paths>({}, async (req) => {
     actualRequest = new Request(req);
     return Response.json({});
   });
+
   // this middleware passes along the “step” header
   // for both requests and responses, but first checks if
   // it received the end result of the previous middleware step
@@ -183,6 +196,7 @@ test("executes in expected order", async () => {
       async onResponse({ response }) {
         const headers = new Headers(response.headers);
         headers.set("step", "B");
+
         if (response.headers.get("step") === "C") {
           return new Response(response.body, { ...response, headers });
         }
@@ -196,6 +210,7 @@ test("executes in expected order", async () => {
       onResponse({ response }) {
         const headers = new Headers(response.headers);
         headers.set("step", "C");
+
         if (response.headers.get("step") === "D") {
           return new Response(response.body, { ...response, headers });
         }
@@ -230,15 +245,18 @@ test("executes error handlers in expected order", async () => {
   const actualError = new Error();
   const modifiedError = new Error();
   const customResponse = Response.json({});
+
   const client = createObservedClient<paths>({}, async (req) => {
     throw actualError;
   });
+
   client.use({
     onError({ error }) {
       expect(error).toBe(modifiedError);
       return customResponse;
     },
   });
+
   client.use({
     onError() {
       return modifiedError;
@@ -256,6 +274,7 @@ test("receives correct options", async () => {
   const client = createObservedClient<paths>({
     baseUrl: "https://api.foo.bar/v1/",
   });
+
   client.use({
     onRequest({ options }) {
       requestBaseUrl = options.baseUrl;
@@ -269,6 +288,7 @@ test("receives correct options", async () => {
 
 test("receives the original request", async () => {
   const client = createObservedClient<paths>();
+
   client.use({
     onResponse({ request }) {
       expect(request).toBeInstanceOf(Request);
@@ -281,6 +301,7 @@ test("receives the original request", async () => {
 
 test("receives OpenAPI options passed in from parent", async () => {
   const pathname = "/tag/{name}";
+
   const tagData = {
     params: {
       path: {
@@ -299,6 +320,7 @@ test("receives OpenAPI options passed in from parent", async () => {
   let receivedParams: MiddlewareCallbackParams["params"] = {};
 
   const client = createObservedClient<paths>();
+
   client.use({
     onRequest({ schemaPath, params }) {
       receivedPath = schemaPath;
@@ -306,6 +328,7 @@ test("receives OpenAPI options passed in from parent", async () => {
       return undefined;
     },
   });
+
   await client.PUT(pathname, tagData);
 
   expect(receivedPath).toBe(pathname);
@@ -317,13 +340,16 @@ test("can be skipped without interrupting request", async () => {
     if (!req) {
       return Response.json(null, { status: 500 });
     }
+
     return Response.json({ id: 123 });
   });
+
   client.use({
     onRequest() {
       return undefined;
     },
   });
+
   const { data } = await client.GET("/posts/{id}", { params: { path: { id: 123 } } });
 
   expect(data).toEqual({ id: 123 });
@@ -331,6 +357,7 @@ test("can be skipped without interrupting request", async () => {
 
 test("can be ejected", async () => {
   let called = false;
+
   const errorMiddleware = {
     onRequest() {
       called = true;
@@ -348,6 +375,7 @@ test("can be ejected", async () => {
 
 test("preserves (and can safely add) headers", async () => {
   let actualRequest = new Request("https://nottherealurl.fake");
+
   const client = createObservedClient<paths>(
     {
       headers: {
@@ -406,6 +434,7 @@ test("baseUrl can be overridden", async () => {
     },
     async () => Response.json({ id: 123 }),
   );
+
   client.use({
     onRequest({ options }) {
       reqUrl = options.baseUrl;
@@ -417,11 +446,13 @@ test("baseUrl can be overridden", async () => {
     baseUrl: "https://api.foo.bar/v1/",
     params: { path: { id: 123 } },
   });
+
   expect(reqUrl).toBe("https://api.foo.bar/v1");
 });
 
 test("auth header", async () => {
   let accessToken: string | undefined;
+
   const authMiddleware: Middleware = {
     async onRequest({ request }) {
       if (accessToken) {
@@ -432,30 +463,36 @@ test("auth header", async () => {
   };
 
   let headers = new Headers();
+
   const client = createObservedClient<paths>({}, async (req) => {
     headers = req.headers;
     return Response.json({});
   });
+
   client.use(authMiddleware);
 
   // assert initial call is unauthenticated
   await client.GET("/posts/{id}", {
     params: { path: { id: 123 } },
   });
+
   expect(headers.get("authorization")).toBeNull();
 
   // assert after setting token, client is authenticated
   accessToken = "real_token";
+
   await client.GET("/posts/{id}", {
     params: { path: { id: 123 } },
   });
+
   expect(headers.get("authorization")).toBe(`Bearer ${accessToken}`);
 });
 
 test("type error occurs only when neither onRequest nor onResponse is specified", async () => {
   expectTypeOf<Middleware>().not.toEqualTypeOf({});
   const onRequest = async ({ request }: MiddlewareCallbackParams) => request;
-  const onResponse = async ({ response }: MiddlewareCallbackParams & { response: Response }) => response;
+  const onResponse = async ({ response }: MiddlewareCallbackParams & { response: Response }) =>
+    response;
   assertType<Middleware>({ onRequest });
   assertType<Middleware>({ onResponse });
   assertType<Middleware>({ onRequest, onResponse });
@@ -525,6 +562,7 @@ test("skips onResponse handlers when response is returned from onRequest", async
 
 test("add middleware at the request level", async () => {
   const customResponse = Response.json({});
+
   const client = createObservedClient<paths>({}, async () => {
     throw new Error("unexpected call to fetch");
   });

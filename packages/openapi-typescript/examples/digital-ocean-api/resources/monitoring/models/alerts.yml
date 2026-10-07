@@ -14,4 +14,4 @@ properties:
     type: array
     description: "Slack integration details."
     items:
-      $ref: 'slack_details.yml'
+      $ref: "slack_details.yml"

@@ -2,8 +2,7 @@ operationId: apps_get_exec_active_deployment
 
 summary: Retrieve Exec URL
 
-description:
-  Returns a websocket URL that allows sending/receiving console input and output
+description: Returns a websocket URL that allows sending/receiving console input and output
   to a component of the active deployment if one exists.
 
 tags:

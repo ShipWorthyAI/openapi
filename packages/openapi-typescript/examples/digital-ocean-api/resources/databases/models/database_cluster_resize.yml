@@ -20,7 +20,6 @@ properties:
       Additional storage added to the cluster, in MiB. If null, no additional storage is added to the cluster, beyond
       what is provided as a base amount from the 'size' and any previously added additional storage.
 
-
 required:
   - size
   - num_nodes

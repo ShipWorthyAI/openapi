@@ -81,7 +81,11 @@ describe("transformSchemaObject > object", () => {
     [
       "additionalProperties > true",
       {
-        given: { type: "object", properties: { property: { type: "number" } }, additionalProperties: true },
+        given: {
+          type: "object",
+          properties: { property: { type: "number" } },
+          additionalProperties: true,
+        },
         want: `{
     property?: number;
 } & {
@@ -131,7 +135,10 @@ describe("transformSchemaObject > object", () => {
     [
       "patternProperties > enum",
       {
-        given: { type: "object", patternProperties: { "^a": { type: "string", enum: ["a", "b", "c"] } } },
+        given: {
+          type: "object",
+          patternProperties: { "^a": { type: "string", enum: ["a", "b", "c"] } },
+        },
         want: `{
     [key: string]: "a" | "b" | "c";
 }`,
@@ -140,7 +147,10 @@ describe("transformSchemaObject > object", () => {
     [
       "patternProperties > multiple patterns",
       {
-        given: { type: "object", patternProperties: { "^a": { type: "string" }, "^b": { type: "number" } } },
+        given: {
+          type: "object",
+          patternProperties: { "^a": { type: "string" }, "^b": { type: "number" } },
+        },
         want: `{
     [key: string]: string | number;
 }`,
@@ -631,6 +641,7 @@ describe("transformSchemaObject > object", () => {
       testName,
       async () => {
         const result = astToString(transformSchemaObject(given, options));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {

@@ -26,6 +26,7 @@ export function versionMessage(document: unknown): string | undefined {
   if (!isRecord(document)) return "Unsupported schema format, expected `openapi: 3.x`";
   const openapi = typeof document.openapi === "string" ? document.openapi : undefined;
   const openapiVersion = Number.parseFloat(openapi ?? "");
+
   if (
     document.swagger ||
     !openapi ||
@@ -34,11 +35,14 @@ export function versionMessage(document: unknown): string | undefined {
     openapiVersion >= 4
   ) {
     if (document.swagger) return "Unsupported Swagger version: 2.x. Use OpenAPI 3.x instead.";
+
     if (openapi || openapiVersion < 3 || openapiVersion >= 4) {
       return `Unsupported OpenAPI version: ${openapi}`;
     }
+
     return "Unsupported schema format, expected `openapi: 3.x`";
   }
+
   return undefined;
 }
 

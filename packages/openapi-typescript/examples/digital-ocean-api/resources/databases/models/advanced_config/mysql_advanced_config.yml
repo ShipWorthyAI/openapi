@@ -38,7 +38,7 @@ properties:
       Default server time zone, in the form of an offset from UTC (from -12:00 to +12:00), a
       time zone name (EST), or 'SYSTEM' to use the MySQL server default.
     type: string
-    example: '+03:00'
+    example: "+03:00"
     minLength: 2
     maxLength: 100
   group_concat_max_len:
@@ -247,7 +247,7 @@ properties:
     minimum: 0
     maximum: 1000
     example: 0
-  net_buffer_length: 
+  net_buffer_length:
     description: >-
       Start sizes of connection buffer and result buffer, must be multiple of 1024. Changing this parameter will lead to a restart of the MySQL service.
     type: integer

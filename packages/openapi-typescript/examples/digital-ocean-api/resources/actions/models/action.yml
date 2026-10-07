@@ -46,7 +46,7 @@ properties:
     example: droplet
 
   region:
-      $ref: '../../regions/models/region.yml'
+    $ref: "../../regions/models/region.yml"
 
   region_slug:
     type: string

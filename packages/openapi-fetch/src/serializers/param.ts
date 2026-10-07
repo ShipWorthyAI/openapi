@@ -11,11 +11,13 @@ export function serializePrimitiveParam(
   if (value === undefined || value === null) {
     return "";
   }
+
   if (typeof value === "object") {
     throw new Error(
       "Deeply-nested arrays/objects aren’t supported. Provide your own `querySerializer()` to handle these.",
     );
   }
+
   return `${name}=${options?.allowReserved === true ? value : encodeURIComponent(value)}`;
 }
 
@@ -34,7 +36,9 @@ export function serializeObjectParam(
   if (!value || typeof value !== "object") {
     return "";
   }
+
   const values: Array<string | unknown> = [];
+
   const joiner =
     {
       simple: ",",
@@ -50,17 +54,22 @@ export function serializeObjectParam(
         options.allowReserved === true ? value[k] : encodeURIComponent(String(value[k])),
       );
     }
+
     const final = values.join(","); // note: values are always joined by comma in explode: false (but joiner can prefix)
+
     switch (options.style) {
       case "form": {
         return `${name}=${final}`;
       }
+
       case "label": {
         return `.${final}`;
       }
+
       case "matrix": {
         return `;${name}=${final}`;
       }
+
       default: {
         return final;
       }
@@ -72,6 +81,7 @@ export function serializeObjectParam(
     const finalName = options.style === "deepObject" ? `${name}[${k}]` : k;
     values.push(serializePrimitiveParam(finalName, value[k] as string | number | boolean, options));
   }
+
   const final = values.join(joiner);
   return options.style === "label" || options.style === "matrix" ? `${joiner}${final}` : final;
 }
@@ -99,19 +109,24 @@ export function serializeArrayParam(
       { form: ",", spaceDelimited: "%20", pipeDelimited: "|" }[
         options.style as "form" | "spaceDelimited" | "pipeDelimited"
       ] || ",";
+
     const final = (
       options.allowReserved === true ? value : value.map((v) => encodeURIComponent(String(v)))
     ).join(joiner);
+
     switch (options.style) {
       case "simple": {
         return final;
       }
+
       case "label": {
         return `.${final}`;
       }
+
       case "matrix": {
         return `;${name}=${final}`;
       }
+
       // case "spaceDelimited":
       // case "pipeDelimited":
       default: {
@@ -123,7 +138,9 @@ export function serializeArrayParam(
   // explode: true
   const joiner =
     { simple: ",", label: ".", matrix: ";" }[options.style as "simple" | "label" | "matrix"] || "&";
+
   const values = [];
+
   for (const v of value) {
     if (options.style === "simple" || options.style === "label") {
       values.push(options.allowReserved === true ? v : encodeURIComponent(String(v)));
@@ -131,6 +148,7 @@ export function serializeArrayParam(
       values.push(serializePrimitiveParam(name, v as string | number | boolean, options));
     }
   }
+
   return options.style === "label" || options.style === "matrix"
     ? `${joiner}${values.join(joiner)}`
     : values.join(joiner);

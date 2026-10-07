@@ -14,29 +14,28 @@ tags:
   - 1-Click Applications
 
 parameters:
-  - $ref: 'parameters.yml#/oneClicks_type'
+  - $ref: "parameters.yml#/oneClicks_type"
 
 responses:
-  '200':
-    $ref: 'responses/oneClicks_all.yml'
+  "200":
+    $ref: "responses/oneClicks_all.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/oneClicks.yml'
-  - $ref: 'examples/python/oneClicks.yml'
+  - $ref: "examples/curl/oneClicks.yml"
+  - $ref: "examples/python/oneClicks.yml"
 
 security:
   - bearer_auth:
-    - '1click:read'
-
+      - "1click:read"

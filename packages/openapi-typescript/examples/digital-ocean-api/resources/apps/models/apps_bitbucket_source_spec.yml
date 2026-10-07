@@ -12,5 +12,5 @@ properties:
 
   repo:
     type: string
-    description: 'The name of the repo in the format owner/repo. Example: `digitalocean/sample-golang`'
+    description: "The name of the repo in the format owner/repo. Example: `digitalocean/sample-golang`"
     example: digitalocean/sample-golang

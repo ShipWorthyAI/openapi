@@ -7,16 +7,20 @@ export function createQuerySerializer<T = unknown>(
 ): (queryParams: T) => string {
   return function querySerializer(queryParams) {
     const search = [];
+
     if (queryParams && typeof queryParams === "object") {
       for (const name in queryParams) {
         const value = (queryParams as Record<string, unknown>)[name];
+
         if (value === undefined || value === null) {
           continue;
         }
+
         if (Array.isArray(value)) {
           if (value.length === 0) {
             continue;
           }
+
           search.push(
             serializeArrayParam(name, value, {
               style: "form",
@@ -25,8 +29,10 @@ export function createQuerySerializer<T = unknown>(
               allowReserved: options?.allowReserved || false,
             }),
           );
+
           continue;
         }
+
         if (typeof value === "object") {
           search.push(
             serializeObjectParam(name, value as Record<string, unknown>, {
@@ -36,11 +42,14 @@ export function createQuerySerializer<T = unknown>(
               allowReserved: options?.allowReserved || false,
             }),
           );
+
           continue;
         }
+
         search.push(serializePrimitiveParam(name, value as string | number | boolean, options));
       }
     }
+
     return search.join("&");
   };
 }

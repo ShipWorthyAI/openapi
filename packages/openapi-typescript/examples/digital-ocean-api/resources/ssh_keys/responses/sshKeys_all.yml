@@ -4,11 +4,11 @@ description: >-
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -18,9 +18,9 @@ content:
             ssh_keys:
               type: array
               items:
-                $ref: '../models/sshKeys.yml'
-        - $ref: '../../../shared/pages.yml#/pagination'
-        - $ref: '../../../shared/meta.yml'
+                $ref: "../models/sshKeys.yml"
+        - $ref: "../../../shared/pages.yml#/pagination"
+        - $ref: "../../../shared/meta.yml"
 
       example:
         ssh_keys:
@@ -30,5 +30,4 @@ content:
             name: Other Public Key
         links: {}
         meta:
-          total:
-            1
+          total: 1

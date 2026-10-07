@@ -10,8 +10,7 @@ paths:
     description: Remote Ref
     $ref: "_path-object-refs-paths.yaml#/GetItemOperation"
     parameters:
-      -
-        name: id
+      - name: id
         in: path
         required: true
         schema:
@@ -20,8 +19,7 @@ paths:
     description: Remote Ref
     $ref: "_path-object-refs-paths.yaml#/GetItemOperation"
     parameters:
-      -
-        name: id
+      - name: id
         in: path
         required: true
         schema:

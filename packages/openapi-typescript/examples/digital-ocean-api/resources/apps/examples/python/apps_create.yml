@@ -4,7 +4,7 @@ source: |-
   from pydo import Client
 
   client = Client(token=os.environ.get("DIGITALOCEAN_TOKEN"))
-  
+
   create_resp = client.apps.create(
       {
           "spec": {

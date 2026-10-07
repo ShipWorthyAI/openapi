@@ -5,10 +5,12 @@ import type { components, paths } from "./schemas/never-response.js";
 describe("GET", () => {
   test("sends correct method", async () => {
     let method = "";
+
     const client = createObservedClient<paths>({}, async (req) => {
       method = req.method;
       return Response.json({});
     });
+
     await client.GET("/posts");
     expect(method).toBe("GET");
   });
@@ -20,6 +22,7 @@ describe("GET", () => {
     };
 
     let actualPathname = "";
+
     const client = createObservedClient<paths>({}, async (req) => {
       actualPathname = new URL(req.url).pathname;
       return Response.json(mockData);
@@ -44,6 +47,7 @@ describe("GET", () => {
 
   test("sends correct options, returns undefined on 204", async () => {
     let actualPathname = "";
+
     const client = createObservedClient<paths>({}, async (req) => {
       actualPathname = new URL(req.url).pathname;
       return new Response(null, { status: 204 });
@@ -71,6 +75,7 @@ describe("GET", () => {
 
     let method = "";
     let actualPathname = "";
+
     const client = createObservedClient<paths>({}, async (req) => {
       method = req.method;
       actualPathname = new URL(req.url).pathname;
@@ -101,6 +106,7 @@ describe("GET", () => {
     const client = createObservedClient<paths>({}, async () => Response.json([]));
 
     const { data } = await client.GET("/posts", { params: {} });
+
     if (!data) {
       throw new Error("data empty");
     }
@@ -112,6 +118,7 @@ describe("GET", () => {
   test("handles empty-array-type 204 response", async () => {
     let method = "";
     let actualPathname = "";
+
     const client = createObservedClient<paths>({}, async (req) => {
       method = req.method;
       actualPathname = new URL(req.url).pathname;
@@ -133,7 +140,10 @@ describe("GET", () => {
   });
 
   test("gracefully handles invalid JSON for errors", async () => {
-    const client = createObservedClient<paths>({}, async () => new Response("Unauthorized", { status: 401 }));
+    const client = createObservedClient<paths>(
+      {},
+      async () => new Response("Unauthorized", { status: 401 }),
+    );
 
     const { data, error } = await client.GET("/posts");
 

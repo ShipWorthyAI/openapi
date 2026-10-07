@@ -5,11 +5,11 @@ properties:
     type: integer
     example: 3600
     enum:
-    - 60
-    - 600
-    - 3600
-    - 86400
-    - 604800
+      - 60
+      - 600
+      - 3600
+      - 86400
+      - 604800
     default: 3600
     description: The amount of time the content is cached by the CDN's edge
       servers in seconds. TTL must be one of 60, 600, 3600, 86400, or 604800.

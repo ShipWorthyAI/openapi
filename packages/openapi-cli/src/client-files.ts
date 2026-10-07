@@ -28,6 +28,7 @@ export function schemaUrl(input: string) {
     if (/^(https?:|file:)/i.test(input)) {
       return new URL(input);
     }
+
     const path = yield* Path.Path;
     return yield* path.toFileUrl(path.resolve(input)).pipe(Effect.mapError(userError));
   });
@@ -49,9 +50,11 @@ function writeFiles(directory: string, name: string, files: Record<string, strin
     const path = yield* Path.Path;
     const output = path.resolve(directory, name);
     yield* fs.makeDirectory(output, { recursive: true }).pipe(Effect.mapError(userError));
+
     for (const [file, contents] of Object.entries(files)) {
       yield* fs.writeFileString(path.join(output, file), contents).pipe(Effect.mapError(userError));
     }
+
     return output;
   });
 }

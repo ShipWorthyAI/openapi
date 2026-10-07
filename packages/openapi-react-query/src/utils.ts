@@ -19,6 +19,7 @@ export function parseArgs(args: unknown[], defaultMethod: HttpMethod) {
     const [method, ...rest] = args;
     return { method: method as HttpMethod, rest };
   }
+
   return { method: defaultMethod, rest: args };
 }
 
@@ -26,14 +27,18 @@ export function buildQueryFn(client: Client<{}>, method: HttpMethod, path: strin
   return async ({ signal }: { signal: AbortSignal }) => {
     const mth = method.toUpperCase() as Uppercase<HttpMethod>;
     const fn = (client as any)[mth];
+
     const { data, error, response } = await fn(path, {
       signal,
       ...(init ?? undefined),
     });
+
     if (error) throw error;
+
     if (response.status === 204 || response.headers.get("Content-Length") === "0") {
       return data ?? null;
     }
+
     return data;
   };
 }

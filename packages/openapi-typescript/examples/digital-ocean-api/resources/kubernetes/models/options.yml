@@ -1,5 +1,4 @@
 kubernetes_options:
-
   type: object
   properties:
     options:
@@ -7,15 +6,15 @@ kubernetes_options:
         regions:
           type: array
           items:
-            $ref: '#/kubernetes_region'
+            $ref: "#/kubernetes_region"
         versions:
           type: array
           items:
-            $ref: '#/kubernetes_version'
+            $ref: "#/kubernetes_version"
         sizes:
           type: array
           items:
-            $ref: '#/kubernetes_size'
+            $ref: "#/kubernetes_size"
 
 kubernetes_version:
   type: object
@@ -28,7 +27,7 @@ kubernetes_version:
         the upstream version of Kubernetes as well as the DigitalOcean revision.
     kubernetes_version:
       type: string
-      example: '1.16.13'
+      example: "1.16.13"
       description: The upstream version string for the version of Kubernetes
         provided by a given slug.
     supported_features:
@@ -36,9 +35,9 @@ kubernetes_version:
       items:
         type: string
       example:
-      - cluster-autoscaler
-      - docr-integration
-      - token-authentication
+        - cluster-autoscaler
+        - docr-integration
+        - token-authentication
       description: The features available with the version of Kubernetes
         provided by a given slug.
 

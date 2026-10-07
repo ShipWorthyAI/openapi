@@ -5,7 +5,7 @@ summary: List Instance Sizes
 description: List all instance sizes for `service`, `worker`, and `job` components.
 
 tags:
-- Apps
+  - Apps
 
 responses:
   "200":
@@ -24,10 +24,9 @@ responses:
     $ref: ../../shared/responses/unexpected_error.yml
 
 x-codeSamples:
-  - $ref: 'examples/curl/apps_list_instanceSizes.yml'
-  - $ref: 'examples/python/apps_list_instanceSizes.yml'
+  - $ref: "examples/curl/apps_list_instanceSizes.yml"
+  - $ref: "examples/python/apps_list_instanceSizes.yml"
 
 security:
   - bearer_auth:
-    - 'app:read'
-
+      - "app:read"

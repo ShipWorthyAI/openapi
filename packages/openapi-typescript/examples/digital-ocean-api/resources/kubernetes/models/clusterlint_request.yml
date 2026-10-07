@@ -17,8 +17,8 @@ properties:
     items:
       type: string
     example:
-    - bare-pods
-    - resource-requirements
+      - bare-pods
+      - resource-requirements
     description: An array of checks that will be run when clusterlint
       executes checks.
 
@@ -27,7 +27,7 @@ properties:
     items:
       type: string
     example:
-    - workload-health
+      - workload-health
     description: An array of check groups that will be omitted when clusterlint
       executes checks.
 
@@ -36,6 +36,6 @@ properties:
     items:
       type: string
     example:
-    - default-namespace
+      - default-namespace
     description: An array of checks that will be run when clusterlint executes
       checks.

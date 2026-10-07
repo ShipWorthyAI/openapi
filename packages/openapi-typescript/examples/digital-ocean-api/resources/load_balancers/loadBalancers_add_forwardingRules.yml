@@ -16,7 +16,7 @@ tags:
   - Load Balancers
 
 parameters:
-  - $ref: 'parameters.yml#/load_balancer_id'
+  - $ref: "parameters.yml#/load_balancer_id"
 
 requestBody:
   required: true
@@ -29,35 +29,35 @@ requestBody:
             type: array
             minItems: 1
             items:
-              $ref: 'models/forwarding_rule.yml'
+              $ref: "models/forwarding_rule.yml"
         required:
           - forwarding_rules
 
 responses:
-  '204':
-    $ref: '../../shared/responses/no_content.yml'
+  "204":
+    $ref: "../../shared/responses/no_content.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '404':
-    $ref: '../../shared/responses/not_found.yml'
+  "404":
+    $ref: "../../shared/responses/not_found.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/loadBalancers_add_forwardingRules.yml'
-  - $ref: 'examples/go/loadBalancers_add_forwardingRules.yml'
-  - $ref: 'examples/ruby/loadBalancers_add_forwardingRules.yml'
-  - $ref: 'examples/python/loadBalancers_add_forwardingRules.yml'
+  - $ref: "examples/curl/loadBalancers_add_forwardingRules.yml"
+  - $ref: "examples/go/loadBalancers_add_forwardingRules.yml"
+  - $ref: "examples/ruby/loadBalancers_add_forwardingRules.yml"
+  - $ref: "examples/python/loadBalancers_add_forwardingRules.yml"
 
 security:
   - bearer_auth:
-      - 'load_balancer:update'
+      - "load_balancer:update"

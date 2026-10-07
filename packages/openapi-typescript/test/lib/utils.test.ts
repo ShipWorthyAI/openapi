@@ -39,12 +39,18 @@ describe("getEntries", () => {
 
 describe("createRef", () => {
   test("basic", () => {
-    expect(createRef(["components", "schemas", "SchemaObject"])).toBe("#/components/schemas/SchemaObject");
+    expect(createRef(["components", "schemas", "SchemaObject"])).toBe(
+      "#/components/schemas/SchemaObject",
+    );
   });
 
   test("escapes", () => {
-    expect(createRef(["paths", "/foo/{bar}", "get", "parameters"])).toBe("#/paths/~1foo~1{bar}/get/parameters");
-    expect(createRef(["components", "schemas", "~SchemaObject"])).toBe("#/components/schemas/~0SchemaObject");
+    expect(createRef(["paths", "/foo/{bar}", "get", "parameters"])).toBe(
+      "#/paths/~1foo~1{bar}/get/parameters",
+    );
+    expect(createRef(["components", "schemas", "~SchemaObject"])).toBe(
+      "#/components/schemas/~0SchemaObject",
+    );
   });
 
   test("handles partial paths", () => {

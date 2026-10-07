@@ -10,7 +10,7 @@ tags:
   - Block Storage
 
 parameters:
-  - $ref: 'parameters.yml#/volume_snapshot_id'
+  - $ref: "parameters.yml#/volume_snapshot_id"
 
 responses:
   "200":
@@ -32,8 +32,8 @@ responses:
     $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/volumeSnapshots_get_byId.yml'
-  - $ref: 'examples/python/volumeSnapshots_get_byId.yml'
+  - $ref: "examples/curl/volumeSnapshots_get_byId.yml"
+  - $ref: "examples/python/volumeSnapshots_get_byId.yml"
 
 security:
   - bearer_auth:

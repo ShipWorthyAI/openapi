@@ -6,8 +6,8 @@ accept:
   schema:
     type: string
     enum:
-    - application/json
-    - application/yaml
+      - application/json
+      - application/yaml
   example: application/json
 
 content-type:
@@ -18,8 +18,8 @@ content-type:
   schema:
     type: string
     enum:
-    - application/json
-    - application/yaml
+      - application/json
+      - application/yaml
   example: application/json
 
 app_id:
@@ -105,17 +105,17 @@ log_type:
   schema:
     default: UNSPECIFIED
     enum:
-    - UNSPECIFIED
-    - BUILD
-    - DEPLOY
-    - RUN
-    - RUN_RESTARTED
+      - UNSPECIFIED
+      - BUILD
+      - DEPLOY
+      - RUN
+      - RUN_RESTARTED
     type: string
   example: BUILD
 
 time_wait:
-  description: 'An optional time duration to wait if the underlying component instance
-    is not immediately available. Default: `3m`.'
+  description: "An optional time duration to wait if the underlying component instance
+    is not immediately available. Default: `3m`."
   in: query
   name: pod_connection_timeout
   schema:

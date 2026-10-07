@@ -18,8 +18,8 @@ properties:
     items:
       type: string
     example:
-    - nyc3
-    - sfo3
+      - nyc3
+      - sfo3
     description: An array of the regions that the snapshot is available in. The
       regions are represented by their identifying slug values.
 

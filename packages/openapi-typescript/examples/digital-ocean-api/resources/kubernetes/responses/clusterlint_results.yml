@@ -3,16 +3,15 @@ description: |
   objects in the cluster. Each diagnostic will contain some metadata information
   about the object and feedback for users to act upon.
 
-
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
     schema:
-      $ref: '../models/clusterlint_results.yml'
+      $ref: "../models/clusterlint_results.yml"

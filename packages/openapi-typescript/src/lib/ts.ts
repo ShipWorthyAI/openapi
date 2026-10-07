@@ -44,19 +44,25 @@ export interface AnnotatedSchemaObject {
  * @see {comment} for output examples
  * @returns void if not comments or jsdoc format comment string
  */
-export function addJSDocComment(schemaObject: AnnotatedSchemaObject, node: ts.PropertySignature): void {
+export function addJSDocComment(
+  schemaObject: AnnotatedSchemaObject,
+  node: ts.PropertySignature,
+): void {
   if (!schemaObject || typeof schemaObject !== "object" || Array.isArray(schemaObject)) {
     return;
   }
+
   const output: string[] = [];
 
   // Not JSDoc tags: [title, format]
   if (schemaObject.title) {
     output.push(schemaObject.title.trim().replace(LB_RE, "\n *     "));
   }
+
   if (schemaObject.summary) {
     output.push(schemaObject.summary.trim().replace(LB_RE, "\n *     "));
   }
+
   if (schemaObject.format) {
     output.push(`Format: ${schemaObject.format}`);
   }
@@ -69,16 +75,23 @@ export function addJSDocComment(schemaObject: AnnotatedSchemaObject, node: ts.Pr
 
   // JSDoc tags with value
   const supportedJsDocTags = ["description", "default", "example"] as const;
+
   for (const field of supportedJsDocTags) {
     const allowEmptyString = field === "default" || field === "example";
+
     if (schemaObject[field] === undefined) {
       continue;
     }
+
     if (schemaObject[field] === "" && !allowEmptyString) {
       continue;
     }
+
     const serialized =
-      typeof schemaObject[field] === "object" ? JSON.stringify(schemaObject[field], null, 2) : schemaObject[field];
+      typeof schemaObject[field] === "object"
+        ? JSON.stringify(schemaObject[field], null, 2)
+        : schemaObject[field];
+
     output.push(`@${field} ${String(serialized).trim().replace(LB_RE, "\n *     ")}`);
   }
 
@@ -97,11 +110,13 @@ export function addJSDocComment(schemaObject: AnnotatedSchemaObject, node: ts.Pr
   // JSDoc 'Enum' with type
   if (schemaObject.enum) {
     let type = "unknown";
+
     if (Array.isArray(schemaObject.type)) {
       type = schemaObject.type.join("|");
     } else if (typeof schemaObject.type === "string") {
       type = schemaObject.type;
     }
+
     output.push(`@enum {${type}${schemaObject.nullable ? "|null" : ""}}`);
   }
 
@@ -112,7 +127,10 @@ export function addJSDocComment(schemaObject: AnnotatedSchemaObject, node: ts.Pr
     const hasMultiLineContent = output.some((item) => item.includes("\n"));
 
     let text =
-      output.length === 1 && !hasMultiLineContent ? `* ${output.join("\n")} ` : `*\n * ${output.join("\n * ")}\n `;
+      output.length === 1 && !hasMultiLineContent
+        ? `* ${output.join("\n")} `
+        : `*\n * ${output.join("\n * ")}\n `;
+
     text = text.replace(COMMENT_RE, "*\\/"); // prevent inner comments from leaking
 
     ts.addSyntheticLeadingComment(
@@ -127,6 +145,7 @@ export function addJSDocComment(schemaObject: AnnotatedSchemaObject, node: ts.Pr
 function isOasRef(obj: object): obj is { $ref: string } {
   return "$ref" in obj && typeof obj.$ref === "string";
 }
+
 type OapiRefResolved = ParameterObject | { $ref: string };
 
 function isParameterObject(obj: OapiRefResolved | undefined): obj is ParameterObject {
@@ -191,8 +210,13 @@ export interface OapiRefOptions {
  *       When accessing properties that may only exist on some variants of a union type,
  *       we use Extract<> to narrow the type before each property access.
  **/
-export function oapiRef(path: string, resolved?: OapiRefResolved, options: OapiRefOptions = {}): ts.TypeNode {
+export function oapiRef(
+  path: string,
+  resolved?: OapiRefResolved,
+  options: OapiRefOptions = {},
+): ts.TypeNode {
   const { pointer } = parseRef(path);
+
   if (pointer.length === 0) {
     throw new Error(`Error parsing $ref: ${path}. Is this a valid $ref?`);
   }
@@ -265,6 +289,7 @@ export function astToString(
     removeComments: false,
     ...options?.formatOptions,
   });
+
   return printer.printFile(sourceFile);
 }
 
@@ -286,20 +311,26 @@ export function stringToAST(source: string): unknown[] {
 export function tsDedupe(types: ts.TypeNode[]): ts.TypeNode[] {
   const encounteredTypes = new Set<number>();
   const filteredTypes: ts.TypeNode[] = [];
+
   for (const t of types) {
     // only mark for deduplication if this is not a const ("text" means it is a const)
     const dedupeTarget = ((t as LiteralTypeNode).literal ?? t) as object;
+
     if (!hasDefinedField(dedupeTarget, "text")) {
       const { kind } = dedupeTarget as { kind: number };
+
       if (encounteredTypes.has(kind)) {
         continue;
       }
+
       if (tsIsPrimitive(t)) {
         encounteredTypes.add(kind);
       }
     }
+
     filteredTypes.push(t);
   }
+
   return filteredTypes;
 }
 
@@ -315,6 +346,7 @@ export function tsEnum(
   let enumName = sanitizeMemberName(name);
   enumName = `${enumName[0].toUpperCase()}${enumName.substring(1)}`;
   let key = "";
+
   if (options?.shouldCache) {
     key = `${members
       .slice(0)
@@ -323,15 +355,18 @@ export function tsEnum(
         return `${metadata?.[i]?.name ?? String(v)}:${metadata?.[i]?.description || ""}`;
       })
       .join(",")}`;
+
     if (enumCache.has(key)) {
       return enumCache.get(key) as ts.EnumDeclaration;
     }
   }
+
   const enumDeclaration = ts.factory.createEnumDeclaration(
     /* modifiers */ options ? tsModifiers({ export: options.export ?? false }) : undefined,
     /* name      */ enumName,
     /* members   */ members.map((value, i) => tsEnumMember(value, metadata?.[i])),
   );
+
   options?.shouldCache && enumCache.set(key, enumDeclaration);
   return enumDeclaration;
 }
@@ -349,12 +384,14 @@ export function tsArrayLiteralExpression(
   if (
     options?.injectFooter &&
     !options.injectFooter.some(
-      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "FlattenedDeepRequired",
+      (node) =>
+        ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "FlattenedDeepRequired",
     )
   ) {
     const helper = stringToAST(
       "type FlattenedDeepRequired<T> = { [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>; };",
     )[0] as any;
+
     options.injectFooter.push(helper);
   }
 
@@ -398,15 +435,21 @@ function sanitizeMemberName(name: string) {
     const last = c[c.length - 1];
     return JS_PROPERTY_INDEX_INVALID_CHARS_RE.test(last) ? "" : last.toUpperCase();
   });
+
   if (Number(name[0]) >= 0) {
     sanitizedName = `Value${name}`;
   }
+
   return sanitizedName;
 }
 
 /** Sanitize TS enum member expression */
-export function tsEnumMember(value: string | number, metadata: { name?: string; description?: string | null } = {}) {
+export function tsEnumMember(
+  value: string | number,
+  metadata: { name?: string; description?: string | null } = {},
+) {
   let name = metadata.name ?? String(value);
+
   if (!JS_PROPERTY_INDEX_RE.test(name)) {
     if (Number(name[0]) >= 0) {
       name = `Value${name}`.replace(".", "_"); // don't forged decimals;
@@ -415,6 +458,7 @@ export function tsEnumMember(value: string | number, metadata: { name?: string; 
     }
 
     const invalidCharMatch = name.match(JS_PROPERTY_INDEX_INVALID_CHARS_RE);
+
     if (invalidCharMatch) {
       if (invalidCharMatch[0] === name) {
         name = `"${name}"`;
@@ -427,6 +471,7 @@ export function tsEnumMember(value: string | number, metadata: { name?: string; 
   }
 
   let member: ts.EnumMember;
+
   if (typeof value === "number") {
     const literal =
       value < 0
@@ -442,11 +487,21 @@ export function tsEnumMember(value: string | number, metadata: { name?: string; 
   }
 
   const trimmedDescription = metadata.description?.trim();
-  if (trimmedDescription === undefined || trimmedDescription === null || trimmedDescription === "") {
+
+  if (
+    trimmedDescription === undefined ||
+    trimmedDescription === null ||
+    trimmedDescription === ""
+  ) {
     return member;
   }
 
-  return ts.addSyntheticLeadingComment(member, ts.SyntaxKind.SingleLineCommentTrivia, ` ${trimmedDescription}`, true);
+  return ts.addSyntheticLeadingComment(
+    member,
+    ts.SyntaxKind.SingleLineCommentTrivia,
+    ` ${trimmedDescription}`,
+    true,
+  );
 }
 
 /** Create an intersection type */
@@ -454,9 +509,11 @@ export function tsIntersection(types: ts.TypeNode[]): ts.TypeNode {
   if (types.length === 0) {
     return NEVER;
   }
+
   if (types.length === 1) {
     return types[0];
   }
+
   return ts.factory.createIntersectionTypeNode(tsDedupe(types));
 }
 
@@ -464,9 +521,11 @@ export function tsIntersection(types: ts.TypeNode[]): ts.TypeNode {
 /** True when a node actually stores `key`, not merely inherits a getter for it. */
 function hasDefinedField(node: object, key: string): boolean {
   const record = node as { _data?: Record<string, unknown> } & Record<string, unknown>;
+
   if (record._data && Object.hasOwn(record._data, key) && record._data[key] !== undefined) {
     return true;
   }
+
   return Object.hasOwn(record, key) && record[key] !== undefined;
 }
 
@@ -474,6 +533,7 @@ export function tsIsPrimitive(type: ts.TypeNode): boolean {
   if (!type) {
     return true;
   }
+
   return (
     ts.SyntaxKind[type.kind] === "BooleanKeyword" ||
     ts.SyntaxKind[type.kind] === "NeverKeyword" ||
@@ -481,7 +541,8 @@ export function tsIsPrimitive(type: ts.TypeNode): boolean {
     ts.SyntaxKind[type.kind] === "NumberKeyword" ||
     ts.SyntaxKind[type.kind] === "StringKeyword" ||
     ts.SyntaxKind[type.kind] === "UndefinedKeyword" ||
-    (hasDefinedField(type, "literal") && tsIsPrimitive((type as LiteralTypeNode).literal as TypeLiteralNode))
+    (hasDefinedField(type, "literal") &&
+      tsIsPrimitive((type as LiteralTypeNode).literal as TypeLiteralNode))
   );
 }
 
@@ -491,6 +552,7 @@ export function tsLiteral(value: unknown): ts.TypeNode {
     // workaround for UTF-8: https://github.com/microsoft/TypeScript/issues/36174
     return ts.factory.createIdentifier(JSON.stringify(value)) as unknown as ts.TypeNode;
   }
+
   if (typeof value === "number") {
     const literal =
       value < 0
@@ -499,22 +561,29 @@ export function tsLiteral(value: unknown): ts.TypeNode {
             ts.factory.createNumericLiteral(Math.abs(value)),
           )
         : ts.factory.createNumericLiteral(value);
+
     return ts.factory.createLiteralTypeNode(literal);
   }
+
   if (typeof value === "boolean") {
     return value === true ? TRUE : FALSE;
   }
+
   if (value === null) {
     return NULL;
   }
+
   if (Array.isArray(value)) {
     if (value.length === 0) {
       return ts.factory.createArrayTypeNode(NEVER);
     }
+
     return ts.factory.createTupleTypeNode(value.map((v: unknown) => tsLiteral(v)));
   }
+
   if (typeof value === "object") {
     const keys: ts.TypeElement[] = [];
+
     for (const [k, v] of Object.entries(value)) {
       keys.push(
         ts.factory.createPropertySignature(
@@ -525,20 +594,25 @@ export function tsLiteral(value: unknown): ts.TypeNode {
         ),
       );
     }
+
     return keys.length ? ts.factory.createTypeLiteralNode(keys) : tsRecord(STRING, NEVER);
   }
+
   return UNKNOWN;
 }
 
 /** Modifiers (readonly) */
 export function tsModifiers(modifiers: { readonly?: boolean; export?: boolean }): ts.Modifier[] {
   const typeMods: ts.Modifier[] = [];
+
   if (modifiers.export) {
     typeMods.push(ts.factory.createModifier(ts.SyntaxKind.ExportKeyword));
   }
+
   if (modifiers.readonly) {
     typeMods.push(ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword));
   }
+
   return typeMods;
 }
 
@@ -568,6 +642,7 @@ export function tsPropertyIndex(index: string | number) {
   ) {
     return ts.factory.createNumericLiteral(index);
   }
+
   return typeof index === "string" && JS_PROPERTY_INDEX_RE.test(index)
     ? ts.factory.createIdentifier(index)
     : ts.factory.createStringLiteral(String(index));
@@ -578,9 +653,11 @@ export function tsUnion(types: ts.TypeNode[]): ts.TypeNode {
   if (types.length === 0) {
     return NEVER;
   }
+
   if (types.length === 1) {
     return types[0];
   }
+
   return ts.factory.createUnionTypeNode(tsDedupe(types));
 }
 
@@ -595,8 +672,14 @@ export function tsWithRequired(
   }
 
   // inject helper, if needed
-  if (!injectFooter.some((node) => ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "WithRequired")) {
-    const helper = stringToAST("type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };")[0] as any;
+  if (
+    !injectFooter.some(
+      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "WithRequired",
+    )
+  ) {
+    const helper = stringToAST(
+      "type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };",
+    )[0] as any;
     injectFooter.push(helper);
   }
 
@@ -614,12 +697,16 @@ export function tsWithRequired(
 export function tsReadonlyArray(type: ts.TypeNode, injectFooter?: ts.Node[]): ts.TypeNode {
   if (
     injectFooter &&
-    !injectFooter.some((node) => ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "ReadonlyArray")
+    !injectFooter.some(
+      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "ReadonlyArray",
+    )
   ) {
     const helper = stringToAST(
       "type ReadonlyArray<T> = [Exclude<T, undefined>] extends [unknown[]] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;",
     )[0] as any;
+
     injectFooter.push(helper);
   }
+
   return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("ReadonlyArray"), [type]);
 }

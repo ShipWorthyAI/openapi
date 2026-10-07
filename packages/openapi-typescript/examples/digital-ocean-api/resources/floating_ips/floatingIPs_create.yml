@@ -24,29 +24,29 @@ requestBody:
   content:
     application/json:
       schema:
-        $ref: 'models/floating_ip_create.yml'
+        $ref: "models/floating_ip_create.yml"
 
 responses:
-  '202':
-    $ref: 'responses/floating_ip_created.yml'
+  "202":
+    $ref: "responses/floating_ip_created.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/create_floating_ip.yml'
-  - $ref: 'examples/go/create_floating_ip.yml'
-  - $ref: 'examples/ruby/create_floating_ip.yml'
+  - $ref: "examples/curl/create_floating_ip.yml"
+  - $ref: "examples/go/create_floating_ip.yml"
+  - $ref: "examples/ruby/create_floating_ip.yml"
 
 security:
   - bearer_auth:
-    - 'reserved_ip:create'
+      - "reserved_ip:create"

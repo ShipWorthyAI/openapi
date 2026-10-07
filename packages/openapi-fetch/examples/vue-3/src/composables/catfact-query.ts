@@ -10,12 +10,9 @@ interface AppError {
 
 type FactCatQueryOptions<T> = ParamsOption<T> & RequestBodyOption<T>;
 
-type CatFactResponse =
-  paths["/fact"]["get"]["responses"]["200"]["content"]["application/json"];
+type CatFactResponse = paths["/fact"]["get"]["responses"]["200"]["content"]["application/json"];
 
-export const useCatFactQuery = (
-  fetchOptions: FactCatQueryOptions<paths["/fact"]["get"]>
-) => {
+export const useCatFactQuery = (fetchOptions: FactCatQueryOptions<paths["/fact"]["get"]>) => {
   const state = ref<CatFactResponse>();
   const isReady = ref(false);
   const isFetching = ref(false);

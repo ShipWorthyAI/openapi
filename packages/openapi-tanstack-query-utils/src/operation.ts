@@ -10,6 +10,7 @@ import type {
 export type OperationInput<Op> = (Op extends { parameters: infer Parameters } ? Parameters : {}) &
   RequestBodyOption<Op>;
 type Responses<Op> = Extract<ResponseObjectMap<Op>, Record<string | number, unknown>>;
+
 type NormalizeData<T> = [T] extends [never]
   ? null
   : Exclude<T, undefined> | (undefined extends T ? null : never);

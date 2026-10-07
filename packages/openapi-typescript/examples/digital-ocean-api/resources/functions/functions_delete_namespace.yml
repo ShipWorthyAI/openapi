@@ -15,32 +15,32 @@ tags:
   - Functions
 
 parameters:
-  - $ref: 'parameters.yml#/namespace_id'
+  - $ref: "parameters.yml#/namespace_id"
 
 responses:
-  '204':
-    $ref: '../../shared/responses/no_content.yml'
+  "204":
+    $ref: "../../shared/responses/no_content.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '404':
-    $ref: 'responses/namespace_not_found.yml'
+  "404":
+    $ref: "responses/namespace_not_found.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/delete_namespace.yml'
-  - $ref: 'examples/python/delete_namespace.yml'
+  - $ref: "examples/curl/delete_namespace.yml"
+  - $ref: "examples/python/delete_namespace.yml"
 
 security:
   - bearer_auth:
-    - 'function:delete'
-    - 'function:admin'
+      - "function:delete"
+      - "function:admin"

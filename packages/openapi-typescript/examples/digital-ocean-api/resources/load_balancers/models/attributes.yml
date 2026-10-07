@@ -4,8 +4,8 @@ load_balancer_droplet_ids:
     items:
       type: integer
     example:
-    - 3164444
-    - 3164445
+      - 3164444
+      - 3164445
     description: An array containing the IDs of the Droplets assigned to the
       load balancer.
 

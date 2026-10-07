@@ -20,14 +20,14 @@ properties:
   day:
     type: string
     enum:
-    - any
-    - monday
-    - tuesday
-    - wednesday
-    - thursday
-    - friday
-    - saturday
-    - sunday
+      - any
+      - monday
+      - tuesday
+      - wednesday
+      - thursday
+      - friday
+      - saturday
+      - sunday
     example: any
     description: The day of the maintenance window policy. May be one of
       `monday` through `sunday`, or `any` to indicate an arbitrary week day.

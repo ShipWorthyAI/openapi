@@ -9,10 +9,10 @@ properties:
   scope:
     type: string
     enum:
-    - UNSET
-    - RUN_TIME
-    - BUILD_TIME
-    - RUN_AND_BUILD_TIME
+      - UNSET
+      - RUN_TIME
+      - BUILD_TIME
+      - RUN_AND_BUILD_TIME
     description: |-
       - RUN_TIME: Made available only at run-time
       - BUILD_TIME: Made available only at build-time
@@ -23,8 +23,8 @@ properties:
   type:
     type: string
     enum:
-    - GENERAL
-    - SECRET
+      - GENERAL
+      - SECRET
     description: |-
       - GENERAL: A plain-text environment variable
       - SECRET: A secret encrypted environment variable
@@ -38,4 +38,4 @@ properties:
     example: http://example.com
 
 required:
-- key
+  - key

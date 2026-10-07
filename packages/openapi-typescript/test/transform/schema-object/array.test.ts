@@ -208,6 +208,7 @@ describe("transformSchemaObject > array", () => {
       testName,
       async () => {
         const result = astToString(transformSchemaObject(given, options));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {

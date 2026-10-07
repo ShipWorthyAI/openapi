@@ -1,9 +1,8 @@
 check:
   type: object
   allOf:
-  - $ref: '#/check_base'
-  - $ref: '#/check_updatable'
-
+    - $ref: "#/check_base"
+    - $ref: "#/check_updatable"
 
 check_base:
   type: object
@@ -14,7 +13,6 @@ check_base:
       readOnly: true
       example: 5a4981aa-9653-4bd1-bef5-d6bff52042e4
       description: A unique ID that can be used to identify and reference the check.
-
 
 check_updatable:
   type: object
@@ -38,7 +36,6 @@ check_updatable:
       format: url
       example: "https://www.landingpage.com"
       description: The endpoint to perform healthchecks on.
-
 
     regions:
       type: array

@@ -39,7 +39,8 @@ describe("transformWebhooksObject", () => {
               },
               responses: {
                 200: {
-                  description: "Return a 200 status to indicate that the data was received successfully",
+                  description:
+                    "Return a 200 status to indicate that the data was received successfully",
                 },
               },
             },
@@ -148,6 +149,7 @@ describe("transformWebhooksObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/utm_email": {
                 return {
                   in: "query",
@@ -155,6 +157,7 @@ describe("transformWebhooksObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/utm_campaign": {
                 return {
                   in: "query",
@@ -162,6 +165,7 @@ describe("transformWebhooksObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/version": {
                 return {
                   in: "path",
@@ -169,6 +173,7 @@ describe("transformWebhooksObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               default: {
                 return undefined as any;
               }
@@ -184,6 +189,7 @@ describe("transformWebhooksObject", () => {
       testName,
       async () => {
         const result = astToString(transformWebhooksObject(given, options));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {

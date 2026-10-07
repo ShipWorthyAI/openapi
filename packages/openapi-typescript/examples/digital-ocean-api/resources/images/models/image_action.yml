@@ -11,15 +11,15 @@ image_action_base:
         - transfer
       example: convert
   required:
-  - type
+    - type
 
 image_action_transfer:
   allOf:
-  - $ref: '#/image_action_base'
-  - type: object
-    properties:
-      region:
-        $ref: '../../../shared/attributes/region_slug.yml'
-    required:
-    - type
-    - region
+    - $ref: "#/image_action_base"
+    - type: object
+      properties:
+        region:
+          $ref: "../../../shared/attributes/region_slug.yml"
+      required:
+        - type
+        - region

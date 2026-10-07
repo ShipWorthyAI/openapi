@@ -2,13 +2,13 @@ description: To retrieve details of an agent, GET request to `/v2/gen-ai/agents/
   The response body is a JSON object containing the agent.
 operationId: genai_get_agent
 parameters:
-- description: Unique agent id
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: uuid
-  required: true
-  schema:
-    type: string
+  - description: Unique agent id
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: uuid
+    required: true
+    schema:
+      type: string
 responses:
   "200":
     content:
@@ -34,10 +34,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:read
+  - bearer_auth:
+      - genai:read
 summary: Retrieve an Existing Agent
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_get_agent.yml
+  - $ref: examples/curl/genai_get_agent.yml

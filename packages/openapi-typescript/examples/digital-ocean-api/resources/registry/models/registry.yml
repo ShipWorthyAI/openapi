@@ -4,7 +4,7 @@ properties:
   name:
     type: string
     maxLength: 63
-    pattern: '^[a-z0-9-]{1,63}$'
+    pattern: "^[a-z0-9-]{1,63}$"
     example: example
     description: A globally unique name for the container registry. Must be
       lowercase and be composed only of numbers, letters and `-`, up to a limit
@@ -14,7 +14,7 @@ properties:
     type: string
     format: date-time
     readOnly: true
-    example: '2020-03-21T16:02:37Z'
+    example: "2020-03-21T16:02:37Z"
     description: A time value given in ISO8601 combined date and time format
       that represents when the registry was created.
 
@@ -33,12 +33,12 @@ properties:
     type: string
     format: date-time
     readOnly: true
-    example: '2020-11-04T21:39:49.530562231Z'
+    example: "2020-11-04T21:39:49.530562231Z"
     description: The time at which the storage usage was updated. Storage usage
       is calculated asynchronously, and may not immediately reflect pushes to
       the registry.
 
   subscription:
     allOf:
-    - readOnly: true
-    - $ref: 'subscription.yml'
+      - readOnly: true
+      - $ref: "subscription.yml"

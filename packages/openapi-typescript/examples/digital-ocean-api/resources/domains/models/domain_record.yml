@@ -7,17 +7,17 @@ properties:
     description: A unique identifier for each domain record.
     example: 28448429
     readOnly: true
-  
+
   type:
     type: string
-    description: 'The type of the DNS record. For example: A, CNAME, TXT, ...'
+    description: "The type of the DNS record. For example: A, CNAME, TXT, ..."
     example: NS
-  
+
   name:
     type: string
     description: The host name, alias, or service being defined by the record.
-    example: '@'
-  
+    example: "@"
+
   data:
     type: string
     description: >-
@@ -26,7 +26,7 @@ properties:
       For a CAA record, it would contain the domain name of the CA being granted
       permission to issue certificates.
     example: ns1.digitalocean.com
-  
+
   priority:
     type: integer
     description: The priority for SRV and MX records.
@@ -34,7 +34,7 @@ properties:
     # Note: This field is nullable in the current API, but `null` is an invalid
     # integer value for examples.
     example: null
-  
+
   port:
     type: integer
     description: The port for SRV records.
@@ -42,7 +42,7 @@ properties:
     # Note: This field is nullable in the current API, but `null` is an invalid
     # integer value for examples.
     example: null
-  
+
   ttl:
     type: integer
     description: >-
@@ -50,7 +50,7 @@ properties:
       the time frame that clients can cache queried information before a refresh
       should be requested.
     example: 1800
-  
+
   weight:
     type: integer
     description: The weight for SRV records.
@@ -58,7 +58,7 @@ properties:
     # Note: This field is nullable in the current API, but `null` is an invalid
     # integer value for examples.
     example: null
-  
+
   flags:
     type: integer
     description: An unsigned integer between 0-255 used for CAA records.
@@ -66,7 +66,7 @@ properties:
     # Note: This field is nullable in the current API, but `null` is an invalid
     # integer value for examples.
     example: null
-  
+
   tag:
     type: string
     description: >-

@@ -10,6 +10,7 @@ const client = createClient<paths>({
  */
 async function testGet() {
   const { data } = await client.GET("/get");
+
   if (!data) {
     throw new Error("/get: No data");
   }
@@ -20,6 +21,7 @@ async function testGet() {
  */
 async function testPost() {
   const { data } = await client.POST("/post", { body: { message: "POST" } });
+
   if (!data) {
     throw new Error("/post: No data");
   }
@@ -35,6 +37,7 @@ async function testMultiForm() {
       file: new File(["Hello, World!"], "hello.txt") as unknown as string,
     },
   });
+
   if (!data) {
     throw new Error("/multi-form: No data");
   }

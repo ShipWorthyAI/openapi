@@ -27,5 +27,5 @@ region:
   description: >-
     The slug identifier for the region where the resource is available.
   schema:
-    $ref: 'attributes/region_slug.yml'
+    $ref: "attributes/region_slug.yml"
   example: nyc3

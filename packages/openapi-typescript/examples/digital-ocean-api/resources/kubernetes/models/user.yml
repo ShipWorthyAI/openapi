@@ -4,7 +4,6 @@ properties:
   kubernetes_cluster_user:
     type: object
     properties:
-
       username:
         type: string
         format: email
@@ -16,5 +15,5 @@ properties:
         items:
           type: string
         example:
-        - k8saas:authenticated
+          - k8saas:authenticated
         description: A list of in-cluster groups that the user belongs to.

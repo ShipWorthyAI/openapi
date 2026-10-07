@@ -16,12 +16,14 @@ function render(model: ParsedOpenApi): string {
   const source = Number.parseFloat(model.openapi) >= 3.1 ? "openapi-3.1" : "openapi-3.0";
   const definitions: JsonSchema.Definitions = {};
   const schemas: JsonSchema.JsonSchema[] = [];
+
   for (const name of names) {
     const converted = fromOpenApi(source, model.components.schemas[name] as JsonSchema.JsonSchema);
     Object.assign(definitions, converted.definitions);
     definitions[name] = converted.schema;
     schemas.push(converted.schema);
   }
+
   const roots = SchemaRepresentation.fromJsonSchemaMultiDocument(
     {
       dialect: "draft-2020-12",
@@ -30,10 +32,12 @@ function render(model: ParsedOpenApi): string {
     },
     { patterns: "apply" },
   );
+
   const asts = roots.map((schema) => schema.ast) as [
     (typeof roots)[number]["ast"],
     ...(typeof roots)[number]["ast"][],
   ];
+
   const code = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations(asts));
   return emit(names, code);
 }
@@ -50,27 +54,37 @@ function emit(names: readonly string[], code: SchemaRepresentation.CodeDocument)
     ...Object.keys(code.references.recursives),
     ...names,
   ];
+
   const unique = [...new Set(bindings)].sort((left, right) => right.length - left.length);
   const rewrite = (runtime: string) => rewriteBindings(runtime, unique);
+
   const lines = code.artifacts.flatMap((artifact) =>
     artifact._tag === "Import" ? [artifact.importDeclaration] : [],
   );
-  if (!lines.some((line) => line.includes("Schema"))) lines.unshift(`import { Schema } from "effect";`);
+
+  if (!lines.some((line) => line.includes("Schema")))
+    lines.unshift(`import { Schema } from "effect";`);
   const declared = new Set<string>();
+
   function declare(name: string, runtime: string) {
     const binding = `${name}Schema`;
     if (declared.has(binding)) return;
     declared.add(binding);
     lines.push(`const ${binding} = ${rewrite(runtime)}`);
   }
-  for (const reference of code.references.nonRecursives) declare(reference.$ref, reference.code.runtime);
-  for (const [name, body] of Object.entries(code.references.recursives)) declare(name, body.runtime);
+
+  for (const reference of code.references.nonRecursives)
+    declare(reference.$ref, reference.code.runtime);
+  for (const [name, body] of Object.entries(code.references.recursives))
+    declare(name, body.runtime);
+
   names.forEach((name, index) => {
     const body = code.codes[index];
     if (!body) return;
     declare(name, body.runtime);
     lines.push(`export const ${name} = Schema.toStandardSchemaV1(${name}Schema);`);
   });
+
   return `${header}${lines.join("\n")}\n`;
 }
 

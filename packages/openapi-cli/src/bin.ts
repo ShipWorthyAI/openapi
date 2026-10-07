@@ -7,6 +7,7 @@ import { deprecatedTypescriptFlag } from "./generate";
 import { version } from "./version";
 
 const deprecated = deprecatedTypescriptFlag(process.argv.slice(2));
+
 if (deprecated) {
   console.error(deprecated);
   process.exit(1);

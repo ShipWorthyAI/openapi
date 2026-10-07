@@ -8,4 +8,4 @@ properties:
   amount:
     type: string
     description: Total amount charged in USD
-    example: '3.45'
+    example: "3.45"

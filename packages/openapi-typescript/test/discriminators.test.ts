@@ -46,7 +46,10 @@ describe("3.1 discriminators", () => {
                 allOf: [{ $ref: "#/components/schemas/Pet" }],
               },
               LizardDog: {
-                allOf: [{ $ref: "#/components/schemas/Dog" }, { $ref: "#/components/schemas/Lizard" }],
+                allOf: [
+                  { $ref: "#/components/schemas/Dog" },
+                  { $ref: "#/components/schemas/Lizard" },
+                ],
               },
               AnimalSighting: {
                 oneOf: [
@@ -635,6 +638,7 @@ export type operations = Record<string, never>;`,
       testName,
       async () => {
         const result = astToString(await openapiTS(given, options));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {

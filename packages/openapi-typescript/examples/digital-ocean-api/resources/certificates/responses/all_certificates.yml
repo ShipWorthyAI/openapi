@@ -4,11 +4,11 @@ description: The result will be a JSON object with a `certificates` key. This
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -19,10 +19,10 @@ content:
             certificates:
               type: array
               items:
-                $ref: '../models/certificate.yml'
-        - $ref: '../../../shared/pages.yml#/pagination'
-        - $ref: '../../../shared/meta.yml'
+                $ref: "../models/certificate.yml"
+        - $ref: "../../../shared/pages.yml#/pagination"
+        - $ref: "../../../shared/meta.yml"
 
     examples:
       AllCertificates:
-        $ref: 'examples.yml#/certificates_all'
+        $ref: "examples.yml#/certificates_all"

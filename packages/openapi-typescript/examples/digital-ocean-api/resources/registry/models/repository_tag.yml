@@ -35,5 +35,5 @@ properties:
   updated_at:
     type: string
     format: date-time
-    example: '2020-04-09T23:54:25Z'
+    example: "2020-04-09T23:54:25Z"
     description: The time the tag was last updated.

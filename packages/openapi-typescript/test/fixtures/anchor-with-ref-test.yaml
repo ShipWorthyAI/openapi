@@ -14,7 +14,7 @@ components:
       type: object
       properties: &testProperties
         metadata:
-          $ref: '#/components/schemas/metadata'
+          $ref: "#/components/schemas/metadata"
       additionalProperties: false
     anchorTest:
       type: object

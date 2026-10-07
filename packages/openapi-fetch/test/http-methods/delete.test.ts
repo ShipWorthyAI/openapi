@@ -5,6 +5,7 @@ import type { paths } from "./schemas/delete.js";
 describe("DELETE", () => {
   test("returns empty object on 204", async () => {
     const client = createObservedClient<paths>({}, async () => new Response(null, { status: 204 }));
+
     const { data, error, response } = await client.DELETE("/tags/{name}", {
       params: { path: { name: "New Tag" } },
     });
@@ -20,10 +21,12 @@ describe("DELETE", () => {
 
   test("sends the correct method", async () => {
     let method = "";
+
     const client = createObservedClient<paths>({}, async (req) => {
       method = req.method;
       return new Response(null, { status: 204 });
     });
+
     await client.DELETE("/tags/{name}", { params: { path: { name: "Tag" } } });
     expect(method).toBe("DELETE");
   });
@@ -33,6 +36,7 @@ describe("DELETE", () => {
       {},
       async () => new Response(null, { status: 200, headers: { "Content-Length": "0" } }),
     );
+
     const { data, error } = await client.DELETE("/tags/{name}", {
       params: {
         path: { name: "Tag" },
@@ -53,6 +57,7 @@ describe("DELETE", () => {
       {},
       async () => new Response(null, { status: 500 }), // No Content-Length header
     );
+
     const { data, error, response } = await client.DELETE("/tags/{name}", {
       params: {
         path: { name: "Tag" },
@@ -76,6 +81,7 @@ describe("DELETE", () => {
       {},
       async () => new Response(null, { status: 200 }), // No Content-Length header
     );
+
     const { data, error, response } = await client.DELETE("/tags/{name}", {
       params: {
         path: { name: "Tag" },

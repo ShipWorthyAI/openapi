@@ -10,4 +10,4 @@ properties:
     example: 3
     description: The number of partitions available for the topic. On update, this value can only be increased.
   config:
-    $ref: './kafka_topic_config.yml'
+    $ref: "./kafka_topic_config.yml"

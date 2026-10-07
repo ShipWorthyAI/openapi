@@ -46,16 +46,19 @@ void test("CLI writes types and Zod validators", async () => {
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
   const input = resolve(directory, "schema.json");
   await writeFile(input, JSON.stringify(schema));
+
   try {
     await exec("bun", ["run", cli, "generate", "zod", input, "-o", directory, "--name", "fixture"]);
     const schemas = await readFile(resolve(directory, "fixture/schemas.ts"), "utf8");
     const types = await readFile(resolve(directory, "fixture/types.ts"), "utf8");
     assert.match(schemas, /export const Item/);
     assert.match(types, /export interface FixtureApiComponents/);
+
     assert.match(
       await readFile(resolve(directory, "fixture/operations.ts"), "utf8"),
       /createItemRequestBody/,
     );
+
     await writeFile(
       resolve(directory, "consumer.ts"),
       `
@@ -66,11 +69,14 @@ void test("CLI writes types and Zod validators", async () => {
       createItemRequestBody.parse(item);
     `,
     );
+
     const compilers = [
       resolve(import.meta.dirname, "../node_modules/typescript/bin/tsc"),
       resolve(import.meta.dirname, "../../../node_modules/typescript/bin/tsc"),
     ].filter((path) => existsSync(path));
+
     assert.ok(compilers.length > 0);
+
     for (const compiler of compilers) {
       await exec(process.execPath, [
         compiler,

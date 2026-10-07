@@ -22,12 +22,14 @@ export default function transformResponsesObject(
             ...options,
             path: createRef([options.path, "responses", responseCode]),
           });
+
     const property = ts.factory.createPropertySignature(
       /* modifiers     */ tsModifiers({ readonly: options.ctx.immutable }),
       /* name          */ tsPropertyIndex(responseCode),
       /* questionToken */ undefined,
       /* type          */ responseType,
     );
+
     addJSDocComment(responseObject, property);
     type.push(property);
   }

@@ -11,7 +11,7 @@ properties:
   is_managed:
     type: boolean
     example: true
-    description: A boolean value indicating if the domain is already managed 
+    description: A boolean value indicating if the domain is already managed
       by DigitalOcean. If true, all A and AAAA records required to enable Global
       load balancers will be automatically added.
 

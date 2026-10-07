@@ -6,7 +6,7 @@ description: An objects containing information about a resource associated
 properties:
   id:
     type: string
-    example: '61486916'
+    example: "61486916"
     description: The unique identifier for the resource associated with the
       Droplet.
 

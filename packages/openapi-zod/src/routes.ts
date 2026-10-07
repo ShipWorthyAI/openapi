@@ -11,6 +11,7 @@ const blockedOperationIds = new Set(["__proto__", "constructor", "prototype"]);
 /** operationId → [METHOD, path], in document order. Every operation needs an id. */
 export function operationRoutes(model: ParsedOpenApi): Record<string, OperationRoute> {
   const routes: Record<string, OperationRoute> = Object.create(null);
+
   for (const operation of model.operations) {
     const label = `${operation.method} ${operation.path}`;
     const id = operation.operationId;
@@ -19,6 +20,7 @@ export function operationRoutes(model: ParsedOpenApi): Record<string, OperationR
     if (Object.hasOwn(routes, id)) throw new Error(`Duplicate operationId: ${id}`);
     routes[id] = [operation.method, operation.path];
   }
+
   return routes;
 }
 

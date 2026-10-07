@@ -9,11 +9,11 @@ properties:
   invoice_id:
     type: string
     description: ID of the invoice
-    example: '123456789'
+    example: "123456789"
 
   billing_period:
     type: string
-    description: >- 
+    description: >-
       Billing period of usage for which the invoice is issued, in `YYYY-MM` 
       format.
     example: 2020-01
@@ -23,7 +23,7 @@ properties:
     description: >-
       Total amount of the invoice, in USD. 
       This will reflect month-to-date usage in the invoice preview.
-    example: '27.13'
+    example: "27.13"
 
   user_name:
     type: string
@@ -33,7 +33,7 @@ properties:
   user_billing_address:
     allOf:
       - description: The billing address of the customer being invoiced.
-      - $ref: 'billing_address.yml'
+      - $ref: "billing_address.yml"
 
   user_company:
     type: string
@@ -51,20 +51,20 @@ properties:
           A summary of the product usage charges contributing to the invoice. 
           This will include an amount, and grouped aggregates by resource type 
           under the `items` key.
-      - $ref: 'product_usage_charges.yml'
+      - $ref: "product_usage_charges.yml"
 
   overages:
     allOf:
       - description: A summary of the overages contributing to the invoice.
-      - $ref: 'simple_charge.yml'
+      - $ref: "simple_charge.yml"
 
   taxes:
     allOf:
       - description: A summary of the taxes contributing to the invoice.
-      - $ref: 'simple_charge.yml'
+      - $ref: "simple_charge.yml"
 
   credits_and_adjustments:
     allOf:
-      - description: >- 
+      - description: >-
           A summary of the credits and adjustments contributing to the invoice.
-      - $ref: 'simple_charge.yml'
+      - $ref: "simple_charge.yml"

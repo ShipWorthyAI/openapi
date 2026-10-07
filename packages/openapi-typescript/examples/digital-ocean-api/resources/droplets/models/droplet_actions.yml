@@ -7,34 +7,34 @@ droplet_action:
     type:
       type: string
       enum:
-      - enable_backups
-      - disable_backups
-      - reboot
-      - power_cycle
-      - shutdown
-      - power_off
-      - power_on
-      - restore
-      - password_reset
-      - resize
-      - rebuild
-      - rename
-      - change_kernel
-      - enable_ipv6
-      - snapshot
+        - enable_backups
+        - disable_backups
+        - reboot
+        - power_cycle
+        - shutdown
+        - power_off
+        - power_on
+        - restore
+        - password_reset
+        - resize
+        - rebuild
+        - rename
+        - change_kernel
+        - enable_ipv6
+        - snapshot
       example: reboot
       description: The type of action to initiate for the Droplet.
 
 droplet_action_enable_backups:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      backup_policy:
-        allOf:
-        - $ref: 'droplet_backup_policy.yml'
-        - description: An object specifying the backup policy for the Droplet. If
-            omitted, the backup plan will default to daily.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        backup_policy:
+          allOf:
+            - $ref: "droplet_backup_policy.yml"
+            - description: An object specifying the backup policy for the Droplet. If
+                omitted, the backup plan will default to daily.
 
   example:
     type: enable_backups
@@ -44,15 +44,15 @@ droplet_action_enable_backups:
 
 droplet_action_change_backup_policy:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      backup_policy:
-        allOf:
-        - $ref: 'droplet_backup_policy.yml'
-        - description: An object specifying the backup policy for the Droplet.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        backup_policy:
+          allOf:
+            - $ref: "droplet_backup_policy.yml"
+            - description: An object specifying the backup policy for the Droplet.
   required:
-  - backup_policy
+    - backup_policy
 
   example:
     type: enable_backups
@@ -63,73 +63,73 @@ droplet_action_change_backup_policy:
 
 droplet_action_restore:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      image:
-        type: integer
-        example: 12389723
-        description: The ID of a backup of the current Droplet instance to
-          restore from.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        image:
+          type: integer
+          example: 12389723
+          description: The ID of a backup of the current Droplet instance to
+            restore from.
 
 droplet_action_resize:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      disk:
-        type: boolean
-        example: true
-        description: When `true`, the Droplet's disk will be resized in addition
-          to its RAM and CPU. This is a permanent change and cannot be reversed
-          as a Droplet's disk size cannot be decreased.
-      size:
-        type: string
-        example: s-2vcpu-2gb
-        description: The slug identifier for the size to which you wish to
-          resize the Droplet.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        disk:
+          type: boolean
+          example: true
+          description: When `true`, the Droplet's disk will be resized in addition
+            to its RAM and CPU. This is a permanent change and cannot be reversed
+            as a Droplet's disk size cannot be decreased.
+        size:
+          type: string
+          example: s-2vcpu-2gb
+          description: The slug identifier for the size to which you wish to
+            resize the Droplet.
 
 droplet_action_rebuild:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      image:
-        oneOf:
-        - type: string
-        - type: integer
-        example: ubuntu-20-04-x64
-        description: The image ID of a public or private image or the slug
-          identifier for a public image. The Droplet will be rebuilt using this
-          image as its base.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        image:
+          oneOf:
+            - type: string
+            - type: integer
+          example: ubuntu-20-04-x64
+          description: The image ID of a public or private image or the slug
+            identifier for a public image. The Droplet will be rebuilt using this
+            image as its base.
 
 droplet_action_rename:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      name:
-        type: string
-        example: "nifty-new-name"
-        description: The new name for the Droplet.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        name:
+          type: string
+          example: "nifty-new-name"
+          description: The new name for the Droplet.
 
 droplet_action_change_kernel:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      kernel:
-        type: integer
-        example: 12389723
-        description: A unique number used to identify and reference a
-          specific kernel.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        kernel:
+          type: integer
+          example: 12389723
+          description: A unique number used to identify and reference a
+            specific kernel.
 
 droplet_action_snapshot:
   allOf:
-  - $ref: '#/droplet_action'
-  - type: object
-    properties:
-      name:
-        type: string
-        example: Nifty New Snapshot
-        description: The name to give the new snapshot of the Droplet.
+    - $ref: "#/droplet_action"
+    - type: object
+      properties:
+        name:
+          type: string
+          example: Nifty New Snapshot
+          description: The name to give the new snapshot of the Droplet.

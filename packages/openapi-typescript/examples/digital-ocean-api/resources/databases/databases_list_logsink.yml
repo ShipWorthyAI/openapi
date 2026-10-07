@@ -37,4 +37,4 @@ x-codeSamples:
 
 security:
   - bearer_auth:
-    - 'database:read'
+      - "database:read"

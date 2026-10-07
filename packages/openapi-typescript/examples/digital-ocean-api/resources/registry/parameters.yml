@@ -3,7 +3,7 @@ registry_expiry_seconds:
   name: expiry_seconds
   required: false
   description: The duration in seconds that the returned registry credentials
-   will be valid. If not set or 0, the credentials will not expire.
+    will be valid. If not set or 0, the credentials will not expire.
   schema:
     type: integer
     minimum: 0

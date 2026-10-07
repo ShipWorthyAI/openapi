@@ -1,20 +1,20 @@
 description: To update the function route, send a PUT request to `/v2/gen-ai/agents/{agent_uuid}/functions/{function_uuid}`.
 operationId: genai_update_agent_function
 parameters:
-- description: Agent id
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: agent_uuid
-  required: true
-  schema:
-    type: string
-- description: Function id
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: function_uuid
-  required: true
-  schema:
-    type: string
+  - description: Agent id
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: agent_uuid
+    required: true
+    schema:
+      type: string
+  - description: Function id
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: function_uuid
+    required: true
+    schema:
+      type: string
 requestBody:
   content:
     application/json:
@@ -45,10 +45,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:update
+  - bearer_auth:
+      - genai:update
 summary: Update Function Route for an Agent
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_update_agent_function.yml
+  - $ref: examples/curl/genai_update_agent_function.yml

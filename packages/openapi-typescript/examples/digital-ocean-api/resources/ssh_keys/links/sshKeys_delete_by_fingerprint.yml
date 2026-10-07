@@ -1,7 +1,7 @@
 operationId: ssh_keys_delete_by_fingerprint
 
 parameters:
-  ssh_key_identifier: '$response.body#/ssh_key/fingerprint'
+  ssh_key_identifier: "$response.body#/ssh_key/fingerprint"
 
 description: >-
   The `fingerprint` value returned in the response can be used as the 

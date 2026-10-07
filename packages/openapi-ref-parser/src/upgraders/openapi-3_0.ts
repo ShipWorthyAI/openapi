@@ -2,6 +2,7 @@ import { JsonSchema } from "effect";
 import { asRecord } from "../pointer.js";
 
 const METHODS = new Set(["get", "put", "post", "delete", "options", "head", "patch", "trace"]);
+
 const SINGLE_KEYS = [
   "not",
   "additionalProperties",
@@ -16,6 +17,7 @@ const SINGLE_KEYS = [
   "unevaluatedItems",
   "contentSchema",
 ];
+
 const ARRAY_KEYS = ["allOf", "anyOf", "oneOf", "prefixItems"];
 const MAP_KEYS = ["properties", "patternProperties", "$defs", "definitions", "dependentSchemas"];
 
@@ -36,15 +38,21 @@ export function isOpenApi3_0(document: unknown): boolean {
 
 export function upgradeOpenApi3_0(document: Record<string, unknown>): void {
   if (!isOpenApi3_0(document)) return;
+
   for (const slot of schemaSlots(document)) {
     slot.parent[slot.key] = upgradeSchema(slot.parent[slot.key]);
   }
+
   document.openapi = "3.1.0";
 }
 
-export function schemaSlots(document: Record<string, unknown>, includeComponentSchemas = true): Slot[] {
+export function schemaSlots(
+  document: Record<string, unknown>,
+  includeComponentSchemas = true,
+): Slot[] {
   const slots: Slot[] = [];
   const components = asRecord(document.components);
+
   if (components) {
     if (includeComponentSchemas) collectSchemaMap(components.schemas, slots);
     collectParameterMap(components.parameters, slots);
@@ -52,18 +60,24 @@ export function schemaSlots(document: Record<string, unknown>, includeComponentS
     collectRequestBodyMap(components.requestBodies, slots);
     collectHeaderMap(components.headers, slots);
     const pathItems = asRecord(components.pathItems);
+
     if (pathItems) {
       for (const value of Object.values(pathItems)) collectPathItem(value, slots);
     }
   }
+
   const paths = asRecord(document.paths);
+
   if (paths) {
     for (const value of Object.values(paths)) collectPathItem(value, slots);
   }
+
   const webhooks = asRecord(document.webhooks);
+
   if (webhooks) {
     for (const value of Object.values(webhooks)) collectPathItem(value, slots);
   }
+
   return slots;
 }
 
@@ -107,6 +121,7 @@ function collectPathItem(value: unknown, slots: Slot[]) {
   const record = asRecord(value);
   if (!record || typeof record.$ref === "string") return;
   collectParameterList(record.parameters, slots);
+
   for (const [key, child] of Object.entries(record)) {
     if (METHODS.has(key)) collectOperation(child, slots);
   }
@@ -118,10 +133,13 @@ function collectOperation(value: unknown, slots: Slot[]) {
   collectParameterList(record.parameters, slots);
   collectRequestBody(record.requestBody, slots);
   const responses = asRecord(record.responses);
+
   if (responses) {
     for (const response of Object.values(responses)) collectResponse(response, slots);
   }
+
   const callbacks = asRecord(record.callbacks);
+
   if (callbacks) {
     for (const callback of Object.values(callbacks)) {
       const paths = asRecord(callback);
@@ -166,6 +184,7 @@ function collectHeader(value: unknown, slots: Slot[]) {
 function collectContent(value: unknown, slots: Slot[]) {
   const content = asRecord(value);
   if (!content) return;
+
   for (const media of Object.values(content)) {
     const mediaRecord = asRecord(media);
     if (mediaRecord && "schema" in mediaRecord) slots.push({ parent: mediaRecord, key: "schema" });
@@ -175,24 +194,31 @@ function collectContent(value: unknown, slots: Slot[]) {
 function upgradeSchema(value: unknown): unknown {
   const record = asRecord(value);
   if (!record) return value;
+
   for (const key of SINGLE_KEYS) {
     if (!(key in record)) continue;
+
     if (key === "items" && Array.isArray(record.items)) {
       record.items = record.items.map((item) => upgradeSchema(item));
     } else {
       record[key] = upgradeSchema(record[key]);
     }
   }
+
   for (const key of ARRAY_KEYS) {
-    if (Array.isArray(record[key])) record[key] = (record[key] as unknown[]).map((item) => upgradeSchema(item));
+    if (Array.isArray(record[key]))
+      record[key] = (record[key] as unknown[]).map((item) => upgradeSchema(item));
   }
+
   for (const key of MAP_KEYS) {
     const map = asRecord(record[key]);
     if (!map) continue;
     for (const child of Object.keys(map)) map[child] = upgradeSchema(map[child]);
   }
+
   if (Array.isArray(record.items)) {
     record.prefixItems = record.items;
+
     if ("additionalItems" in record) {
       record.items = record.additionalItems;
       delete record.additionalItems;
@@ -200,6 +226,7 @@ function upgradeSchema(value: unknown): unknown {
       delete record.items;
     }
   }
+
   if (typeof record.$ref === "string" && Object.keys(record).some((key) => key !== "$ref")) {
     const nullable = record.nullable === true;
     const readOnly = record.readOnly === true;
@@ -208,17 +235,21 @@ function upgradeSchema(value: unknown): unknown {
     delete siblings.nullable;
     if (readOnly) delete siblings.readOnly;
     if (writeOnly) delete siblings.writeOnly;
+
     const lifted: Record<string, unknown> =
       Object.keys(siblings).length > 0 ? { allOf: [{ $ref }, siblings] } : { $ref };
+
     if (nullable && Object.keys(siblings).length === 0) {
       lifted.allOf = [{ $ref }];
       delete lifted.$ref;
     }
+
     if (nullable) lifted.nullable = true;
     if (readOnly) lifted.readOnly = true;
     if (writeOnly) lifted.writeOnly = true;
     return lifted;
   }
+
   applyOpenApi30Keywords(record);
   return record;
 }
@@ -229,13 +260,17 @@ function applyOpenApi30Keywords(schema: Record<string, unknown>): void {
       type: schema.type,
       nullable: true,
     }).schema;
+
     delete schema.nullable;
     schema.type = converted.type;
   } else if (schema.nullable !== true) {
     delete schema.nullable;
   }
 
-  if (typeof schema.exclusiveMinimum === "boolean" || typeof schema.exclusiveMaximum === "boolean") {
+  if (
+    typeof schema.exclusiveMinimum === "boolean" ||
+    typeof schema.exclusiveMaximum === "boolean"
+  ) {
     const projection: JsonSchema.JsonSchema = {};
     if ("minimum" in schema) projection.minimum = schema.minimum;
     if ("maximum" in schema) projection.maximum = schema.maximum;
@@ -246,6 +281,7 @@ function applyOpenApi30Keywords(schema: Record<string, unknown>): void {
     delete schema.maximum;
     delete schema.exclusiveMinimum;
     delete schema.exclusiveMaximum;
+
     for (const key of ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"] as const) {
       if (key in converted) schema[key] = converted[key];
     }

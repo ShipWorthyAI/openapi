@@ -60,10 +60,10 @@ subscription_tier_extended:
       items:
         type: string
         enum:
-        - OverRepositoryLimit
-        - OverStorageLimit
+          - OverRepositoryLimit
+          - OverStorageLimit
       example:
-      - OverRepositoryLimit
+        - OverRepositoryLimit
       description: If your account is not eligible to use a certain subscription
         tier, this will include a list of reasons that prevent you from using the
         tier.

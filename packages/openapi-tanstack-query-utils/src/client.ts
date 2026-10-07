@@ -12,21 +12,25 @@ export function createApiClient<Paths extends {}>({
   ...options
 }: ApiClientOptions): Client<Paths> {
   const client = createClient<Paths>(options);
+
   if (authToken !== undefined) {
     client.use({
       async onRequest({ request }) {
         const token = typeof authToken === "function" ? await authToken() : authToken;
+
         if (request.signal?.aborted) {
           const error = new Error("Request aborted");
           error.name = "AbortError";
           throw error;
         }
+
         if (token) request.headers.set("Authorization", `Bearer ${token}`);
         else request.headers.delete("Authorization");
         return request;
       },
     });
   }
+
   return client;
 }
 

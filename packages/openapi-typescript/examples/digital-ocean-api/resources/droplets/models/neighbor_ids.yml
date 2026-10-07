@@ -10,8 +10,8 @@ properties:
     description: An array of arrays. Each array will contain a set of Droplet IDs
       for Droplets that share a physical server.
     example:
-    - - 168671828
-      - 168663509
-      - 168671815
-    - - 168671883
-      - 168671750
+      - - 168671828
+        - 168663509
+        - 168671815
+      - - 168671883
+        - 168671750

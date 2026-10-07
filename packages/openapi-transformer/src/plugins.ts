@@ -48,12 +48,15 @@ export const importPlugin = Effect.fn("openapi-transformer.importPlugin")(functi
   if (!isPluginName(plugin)) {
     return yield* new UnknownPlugin({ text: `Unknown generator plugin: ${plugin}.` });
   }
+
   const specifier = pluginPackages[plugin];
   const imported = pluginSpecifiers[plugin];
+
   const loaded = yield* Effect.tryPromise({
     try: () => load(imported),
     catch: () => new MissingPlugin({ plugin, specifier }),
   });
+
   const value = (loaded as Record<string, unknown>)[exportNames[plugin]];
   if (!isGenerator(value)) return yield* new MissingPlugin({ plugin, specifier });
   return value;

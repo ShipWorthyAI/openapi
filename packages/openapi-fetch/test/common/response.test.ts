@@ -22,6 +22,7 @@ describe("response", () => {
         assertType<NonNullable<Resource[]>>(result.data);
         assertType<undefined>(result.error);
       }
+
       // 2b. inverse should work, too
       if (!result.error) {
         assertType<NonNullable<Resource[]>>(result.data);
@@ -33,6 +34,7 @@ describe("response", () => {
         assertType<undefined>(result.data);
         assertType<NonNullable<Error>>(result.error);
       }
+
       // 3b. inverse should work, too
       if (!result.data) {
         assertType<undefined>(result.data);
@@ -57,10 +59,13 @@ describe("response", () => {
     test("returns union for mismatched response", async () => {
       const client = createObservedClient<paths>();
       const result = await client.GET("/mismatched-response");
+
       if (result.data) {
         expectTypeOf(result.data).toEqualTypeOf<Resource | Resource[]>();
       } else {
-        expectTypeOf(result.error).extract<{ code: number }>().toEqualTypeOf<{ code: number; message: string }>();
+        expectTypeOf(result.error)
+          .extract<{ code: number }>()
+          .toEqualTypeOf<{ code: number; message: string }>();
         expectTypeOf(result.error).exclude<{ code: number }>().toEqualTypeOf<never>();
       }
     });
@@ -68,12 +73,17 @@ describe("response", () => {
     test("returns union for mismatched errors", async () => {
       const client = createObservedClient<paths>();
       const result = await client.GET("/mismatched-errors");
+
       if (result.data) {
         expectTypeOf(result.data).toEqualTypeOf<Resource>();
-        expectTypeOf(result.data).toEqualTypeOf<MethodResponse<typeof client, "get", "/mismatched-errors">>();
+        expectTypeOf(result.data).toEqualTypeOf<
+          MethodResponse<typeof client, "get", "/mismatched-errors">
+        >();
       } else {
         expectTypeOf(result.data).toBeUndefined();
-        expectTypeOf(result.error).extract<{ code: number }>().toEqualTypeOf<{ code: number; message: string }>();
+        expectTypeOf(result.error)
+          .extract<{ code: number }>()
+          .toEqualTypeOf<{ code: number; message: string }>();
         expectTypeOf(result.error).exclude<{ code: number }>().toEqualTypeOf(undefined);
       }
     });
@@ -109,16 +119,20 @@ describe("response", () => {
           "/invalid",
           {},
         );
+
         assertType<unknown>(data);
       });
     });
 
     test("`default` is an error", async () => {
-      const client = createObservedClient<paths>({ headers: { "Cache-Control": "max-age=10000000" } }, async () =>
-        Response.json({ code: 500, message: "An unexpected error occurred" }, { status: 500 }),
+      const client = createObservedClient<paths>(
+        { headers: { "Cache-Control": "max-age=10000000" } },
+        async () =>
+          Response.json({ code: 500, message: "An unexpected error occurred" }, { status: 500 }),
       );
 
       const { error } = await client.GET("/error-default");
+
       if (error) {
         assertType<Error>(error);
       }
@@ -130,6 +144,7 @@ describe("response", () => {
       const client = createObservedClient<paths>({}, async (req) =>
         Response.json({ status, message: "OK" }, { status }),
       );
+
       const result = await client.GET(status === 200 ? "/resources" : `/error-${status}`);
       expect(result.response.status).toBe(status);
     });
@@ -140,9 +155,11 @@ describe("response", () => {
 
     test("json with empty response", async () => {
       const client = createObservedClient<paths>({}, async () => new Response());
+
       const { data, error } = (await client.GET("/empty-json", {
         parseAs: "json",
       })) satisfies { data?: undefined };
+
       if (error) {
         throw new Error("parseAs json: error");
       }
@@ -154,9 +171,11 @@ describe("response", () => {
       const { data, error } = (await client.GET("/resources", {
         parseAs: "text",
       })) satisfies { data?: string };
+
       if (error) {
         throw new Error("parseAs text: error");
       }
+
       expect(data).toBe("{}");
     });
 
@@ -164,9 +183,11 @@ describe("response", () => {
       const { data, error } = (await client.GET("/resources", {
         parseAs: "arrayBuffer",
       })) satisfies { data?: ArrayBuffer };
+
       if (error) {
         throw new Error("parseAs arrayBuffer: error");
       }
+
       expect(data.byteLength).toBe("{}".length);
     });
 
@@ -174,9 +195,11 @@ describe("response", () => {
       const { data, error } = (await client.GET("/resources", {
         parseAs: "blob",
       })) satisfies { data?: Blob };
+
       if (error) {
         throw new Error("parseAs blob: error");
       }
+
       expect(data.constructor.name).toBe("Blob");
     });
 
@@ -184,6 +207,7 @@ describe("response", () => {
       const { data } = (await client.GET("/resources", {
         parseAs: "stream",
       })) satisfies { data?: ReadableStream<Uint8Array> | null };
+
       if (!data) {
         throw new Error("parseAs stream: error");
       }
@@ -195,10 +219,14 @@ describe("response", () => {
     });
 
     test("use the selected content", async () => {
-      const client = createObservedClient<paths, "application/ld+json">({}, async () => Response.json({ bar: "bar" }));
+      const client = createObservedClient<paths, "application/ld+json">({}, async () =>
+        Response.json({ bar: "bar" }),
+      );
+
       const { data } = await client.GET("/media-multiple", {
         headers: { Accept: "application/ld+json" },
       });
+
       if (data) {
         assertType<{ bar: string }>(data);
       }
@@ -208,6 +236,7 @@ describe("response", () => {
   describe("chunked transfer with zero Content-Length", () => {
     test("does not treat chunked body with Content-Length: 0 as empty", async () => {
       const mock = [{ id: 1 }];
+
       const client = createObservedClient<paths>({}, async () =>
         Response.json(mock, {
           status: 200,
@@ -221,6 +250,7 @@ describe("response", () => {
       expect(data).toEqual(mock);
     });
   });
+
   describe("Content-Length: 0 without chunked", () => {
     test("treats as empty when not chunked", async () => {
       const client = createObservedClient<paths>({}, async () =>

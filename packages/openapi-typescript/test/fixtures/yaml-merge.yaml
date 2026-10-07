@@ -8,7 +8,7 @@ x-error-response: &x-error-response
     content:
       application/json:
         schema:
-          $ref: '#/components/schemas/HTTPError'
+          $ref: "#/components/schemas/HTTPError"
 paths:
   /admin/ping:
     get:

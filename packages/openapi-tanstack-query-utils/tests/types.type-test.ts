@@ -17,6 +17,7 @@ import {
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
 type Expect<T extends true> = T;
 
 const utils = createTanstackQueryUtils<{
@@ -41,12 +42,15 @@ export function checkTypes(id: string | undefined) {
       select: (item) => item.name,
     }),
   );
+
   type Selected = Expect<Equal<typeof query.data, string | undefined>>;
   const suspense = useSuspenseQuery(utils.getItem.queryOptions({ input: { path: { id: "1" } } }));
   type Suspense = Expect<Equal<typeof suspense.data, { name: string }>>;
+
   const conditional = utils.getItem.queryOptions({
     input: id ? { path: { id } } : skipToken,
   });
+
   useQuery(conditional);
   // TanStack 5.59 does not reject skipToken in its suspense types. Our result
   // still exposes it honestly; only ordinary-input overloads guarantee a function.
@@ -58,10 +62,12 @@ export function checkTypes(id: string | undefined) {
   utils.getItem.queryOptions({ enabled: false });
   // @ts-expect-error Required id is missing.
   utils.getItem.queryOptions({ input: {} });
+
   utils.getItem.queryOptions({
     // @ts-expect-error Wrong query parameter type.
     input: { path: { id: "1" }, query: { tags: 4 } },
   });
+
   // @ts-expect-error Operation names are generated, not arbitrary strings.
   utils.unknown.queryOptions();
   utils.listItems.queryOptions();
@@ -77,22 +83,27 @@ export function checkTypes(id: string | undefined) {
       },
     }),
   );
+
   mutation.mutate({
     path: { id: "1" },
     body: { name: "Hotel" },
     header: { "Idempotency-Key": "attempt" },
   });
+
   // @ts-expect-error Headers are required per mutation attempt.
   mutation.mutate({ path: { id: "1" }, body: { name: "Hotel" } });
+
   mutation.mutate({
     path: { id: "1" },
     // @ts-expect-error The generated body fields are required.
     body: {},
     header: { "Idempotency-Key": "attempt" },
   });
+
   useMutation(utils.listItems.mutationOptions()).mutate({
     query: { cursor: 2 },
   });
+
   useMutation(utils.listItems.mutationOptions()).mutate({
     // @ts-expect-error Mutation variables are already the grouped input, not wrapped in input.
     input: { cursor: 2 },
@@ -103,8 +114,10 @@ export function checkTypes(id: string | undefined) {
     initialPageParam: 0,
     getNextPageParam: (page) => page.next,
   });
+
   useInfiniteQuery(infinite);
   useSuspenseInfiniteQuery(infinite);
+
   const selected = useInfiniteQuery(
     utils.listItems.infiniteOptions({
       input: (cursor: number) => ({ query: { cursor } }),
@@ -113,15 +126,19 @@ export function checkTypes(id: string | undefined) {
       select: (data) => data.pages.length,
     }),
   );
+
   type InfiniteSelected = Expect<Equal<typeof selected.data, number | undefined>>;
+
   const skipped = utils.listItems.infiniteOptions({
     input: id ? (cursor: number) => ({ query: { cursor } }) : skipToken,
     initialPageParam: 0,
     getNextPageParam: (page) => page.next,
   });
+
   useInfiniteQuery(skipped);
   // @ts-expect-error Conditional pagination does not guarantee an executable queryFn.
   const infiniteFn: (...args: any[]) => unknown = skipped.queryFn;
+
   utils.listItems.infiniteOptions({
     // @ts-expect-error Wrong page input type.
     input: (cursor: number) => ({ query: { cursor: String(cursor) } }),
@@ -145,28 +162,35 @@ type Input = OperationInput<{
   requestBody: { content: { "application/json": { id: number } } };
   responses: {};
 }>;
+
 type PathId = Expect<Equal<Input["path"]["id"], string>>;
 type QueryId = Expect<Equal<Input["query"]["id"], boolean>>;
 type BodyId = Expect<Equal<Input["body"]["id"], number>>;
+
 const valid: Input = {
   path: { id: "1" },
   query: { id: true },
   body: { id: 1 },
 };
+
 // @ts-expect-error Required bodies remain required.
 const invalid: Input = { path: { id: "1" }, query: { id: true } };
+
 type OptionalBody = OperationInput<{
   parameters: { path: { id: string } };
   requestBody?: { content: { "application/json": { title: string } } };
   responses: {};
 }>;
+
 const optionalBody: OptionalBody = { path: { id: "1" } };
 
 type Created = OperationData<{
   responses: { 201: { content: { "application/json": { id: string } } } };
 }>;
+
 type Accepted = OperationData<{
   responses: { 202: { content: { "application/json": { pending: boolean } } } };
 }>;
+
 type CreatedResponse = Expect<Equal<Created, { id: string }>>;
 type AcceptedResponse = Expect<Equal<Accepted, { pending: boolean }>>;

@@ -28,6 +28,7 @@ describe("transformHeaderObject", () => {
   for (const [testName, { given, want, options = DEFAULT_OPTIONS, ci }] of tests) {
     test.skipIf(ci?.skipIf)(testName, async () => {
       const result = astToString(transformHeaderObject(given, options));
+
       if (want instanceof URL) {
         await expect(result).toMatchFileSnapshot(fileURLToPath(want));
       } else {

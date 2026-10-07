@@ -1,13 +1,13 @@
 description: To view agent routes for an agent, send a GET requtest to `/v2/gen-ai/agents/{uuid}/child_agents`.
 operationId: genai_get_agent_children
 parameters:
-- description: Agent id
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: uuid
-  required: true
-  schema:
-    type: string
+  - description: Agent id
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: uuid
+    required: true
+    schema:
+      type: string
 responses:
   "200":
     content:
@@ -33,10 +33,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:read
+  - bearer_auth:
+      - genai:read
 summary: View Agent Routes
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_get_agent_children.yml
+  - $ref: examples/curl/genai_get_agent_children.yml

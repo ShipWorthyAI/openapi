@@ -13,4 +13,4 @@ allOf:
         type: integer
         nullable: true
         example: null
-  - $ref: '../../actions/models/action.yml'
+  - $ref: "../../actions/models/action.yml"

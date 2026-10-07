@@ -4,11 +4,11 @@ properties:
   id:
     type: string
     description: ID of the particular event.
-    example: 'pe8u2huh'
+    example: "pe8u2huh"
   cluster_name:
     type: string
     description: The name of cluster.
-    example: 'sample_cluster'
+    example: "sample_cluster"
   event_type:
     type: string
     enum:
@@ -20,8 +20,8 @@ properties:
       - cluster_poweron
       - cluster_poweroff
     description: Type of the event.
-    example: 'cluster_create'
+    example: "cluster_create"
   create_time:
     type: string
     description: The time of the generation of a event.
-    example: '2020-10-29T15:57:38Z'
+    example: "2020-10-29T15:57:38Z"

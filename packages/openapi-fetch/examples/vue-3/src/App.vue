@@ -22,7 +22,7 @@ const { error, isFetching, isReady, state, execute } = useCatFactQuery({
           state,
         },
         undefined,
-        2
+        2,
       )
     }}</pre>
   </div>

@@ -9,8 +9,8 @@ tags:
   - Uptime
 
 parameters:
-  - $ref: 'parameters.yml#/check_id'
-  - $ref: 'parameters.yml#/alert_id'
+  - $ref: "parameters.yml#/check_id"
+  - $ref: "parameters.yml#/alert_id"
 
 requestBody:
   required: true
@@ -20,7 +20,7 @@ requestBody:
       schema:
         type: object
         allOf:
-          - $ref: 'models/alert.yml#/alert_updatable'
+          - $ref: "models/alert.yml#/alert_updatable"
 
         required:
           - name
@@ -29,28 +29,28 @@ requestBody:
           - period
 
 responses:
-  '200':
-    $ref: 'responses/existing_alert.yml'
+  "200":
+    $ref: "responses/existing_alert.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '404':
-    $ref: '../../shared/responses/not_found.yml'
+  "404":
+    $ref: "../../shared/responses/not_found.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/alert_update.yml'
-  - $ref: 'examples/python/alert_update.yml'
+  - $ref: "examples/curl/alert_update.yml"
+  - $ref: "examples/python/alert_update.yml"
 
 security:
   - bearer_auth:
-      - 'uptime:update'
+      - "uptime:update"

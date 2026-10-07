@@ -5,7 +5,11 @@ import {
   useMutation as useTanstackMutation,
 } from "@tanstack/react-query";
 import type { FetchResponse, MaybeOptionalInit } from "@shipworthy/openapi-fetch";
-import type { HttpMethod, MediaType, PathsWithMethod } from "@shipworthy/openapi-typescript-helpers";
+import type {
+  HttpMethod,
+  MediaType,
+  PathsWithMethod,
+} from "@shipworthy/openapi-typescript-helpers";
 import { useApiClient } from "../provider";
 import { parseArgs } from "../utils";
 

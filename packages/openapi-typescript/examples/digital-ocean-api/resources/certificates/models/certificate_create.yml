@@ -9,26 +9,26 @@ certificate_create_base:
     type:
       type: string
       enum:
-      - custom
-      - lets_encrypt
+        - custom
+        - lets_encrypt
       example: lets_encrypt
       description: A string representing the type of the certificate. The value
         will be `custom` for a user-uploaded certificate or `lets_encrypt` for
         one automatically generated with Let's Encrypt.
 
   required:
-  - name
+    - name
 
 certificate_request_custom:
   title: Custom Certificate Request
   allOf:
-    - $ref: '#/certificate_create_base'
+    - $ref: "#/certificate_create_base"
 
     - type: object
       properties:
         private_key:
           type: string
-          example:  |-
+          example: |-
             -----BEGIN PRIVATE KEY-----
             MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDBIZMz8pnK6V52
             SVf+CYssOfCQHAx5f0Ou5rYbq3xNh8VHAIYJCQ1QxQIxKSP6+uODSYrb2KWyurP1
@@ -159,13 +159,13 @@ certificate_request_custom:
             authority's certificate and your domain's SSL certificate.
 
       required:
-      - private_key
-      - leaf_certificate
+        - private_key
+        - leaf_certificate
 
 certificate_request_lets_encrypt:
   title: Let's Encrypt Certificate Request
   allOf:
-    - $ref: '#/certificate_create_base'
+    - $ref: "#/certificate_create_base"
 
     - type: object
       properties:
@@ -174,11 +174,11 @@ certificate_request_lets_encrypt:
           items:
             type: string
           example:
-          - www.example.com
-          - example.com
+            - www.example.com
+            - example.com
           description: An array of fully qualified domain names (FQDNs) for
             which the certificate was issued. A certificate covering all
             subdomains can be issued using a wildcard (e.g. `*.example.com`).
 
       required:
-      - dns_names
+        - dns_names

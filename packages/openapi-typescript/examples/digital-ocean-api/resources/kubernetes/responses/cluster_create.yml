@@ -10,20 +10,20 @@ description: |
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
     schema:
       properties:
         kubernetes_cluster:
-          $ref: '../models/cluster.yml'
+          $ref: "../models/cluster.yml"
     examples:
       Kubernetes Cluster Response:
-        $ref: 'examples.yml#/kubernetes_clusters_create_basic_response'
+        $ref: "examples.yml#/kubernetes_clusters_create_basic_response"
       Kubernetes Cluster with Multiple Node Pools Response:
-         $ref: 'examples.yml#/kubernetes_clusters_multi_pool_response'
+        $ref: "examples.yml#/kubernetes_clusters_multi_pool_response"

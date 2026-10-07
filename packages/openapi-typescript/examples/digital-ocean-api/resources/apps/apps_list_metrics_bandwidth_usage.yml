@@ -2,7 +2,7 @@ operationId: apps_list_metrics_bandwidth_daily
 
 summary: "Retrieve Multiple Apps' Daily Bandwidth Metrics"
 
-description: 'Retrieve daily bandwidth usage metrics for multiple apps.'
+description: "Retrieve daily bandwidth usage metrics for multiple apps."
 
 tags:
   - Apps
@@ -22,7 +22,7 @@ requestBody:
 responses:
   "200":
     $ref: responses/list_metrics_bandwidth_usage.yml
-  
+
   "401":
     $ref: ../../shared/responses/unauthorized.yml
 

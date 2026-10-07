@@ -16,34 +16,34 @@ tags:
   - Droplets
 
 parameters:
-  - $ref: 'parameters.yml#/droplet_id'
+  - $ref: "parameters.yml#/droplet_id"
 
 responses:
-  '202':
-    $ref: '../../shared/responses/accepted.yml'
+  "202":
+    $ref: "../../shared/responses/accepted.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '404':
-    $ref: '../../shared/responses/not_found.yml'
+  "404":
+    $ref: "../../shared/responses/not_found.yml"
 
-  '409':
-    $ref: '../../shared/responses/conflict.yml'
+  "409":
+    $ref: "../../shared/responses/conflict.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/droplets_destroy_retryWithAssociatedResources.yml'
-  - $ref: 'examples/python/droplets_destroy_retryWithAssociatedResources.yml'
+  - $ref: "examples/curl/droplets_destroy_retryWithAssociatedResources.yml"
+  - $ref: "examples/python/droplets_destroy_retryWithAssociatedResources.yml"
 
 security:
   - bearer_auth:
-    - 'droplet:delete'
+      - "droplet:delete"

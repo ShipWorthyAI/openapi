@@ -4,11 +4,11 @@ description: The response will be a JSON object with a key called `check`. The
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -16,4 +16,4 @@ content:
       type: object
       properties:
         check:
-          $ref: '../models/check.yml#/check'
+          $ref: "../models/check.yml#/check"

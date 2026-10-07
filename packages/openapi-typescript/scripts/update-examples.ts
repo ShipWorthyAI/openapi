@@ -14,6 +14,7 @@ async function generateSchemas() {
 
   const updateSchema = async (name: string, ext: string) => {
     const start = performance.now();
+
     try {
       const args: string[][] = [[`./examples/${name}${ext}`, "-o", `./examples/${name}.ts`]];
 
@@ -25,6 +26,7 @@ async function generateSchemas() {
           "-o",
           `./examples/${name}-immutable.ts`,
         ]);
+
         args.push([
           `./examples/${name}${ext}`,
           "--immutable",
@@ -32,12 +34,14 @@ async function generateSchemas() {
           "-o",
           `./examples/${name}-export-type-immutable.ts`,
         ]);
+
         args.push([
           `./examples/${name}${ext}`,
           "--properties-required-by-default",
           "-o",
           `./examples/${name}-required.ts`,
         ]);
+
         args.push([
           `./examples/${name}${ext}`,
           "--root-types",
@@ -47,7 +51,9 @@ async function generateSchemas() {
       }
 
       const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
-      await Promise.all(args.map((a) => spawn(["bun", cli, "generate", "typescript", ...a], { cwd })));
+      await Promise.all(
+        args.map((a) => spawn(["bun", cli, "generate", "typescript", ...a], { cwd })),
+      );
 
       schemasDoneCount++;
       const timeMs = Math.round(performance.now() - start);

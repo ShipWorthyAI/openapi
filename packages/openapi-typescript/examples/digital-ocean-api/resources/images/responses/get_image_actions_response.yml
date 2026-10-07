@@ -5,11 +5,11 @@ description: >-
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -17,20 +17,20 @@ content:
       allOf:
         - type: object
           properties:
-            actions: 
+            actions:
               type: array
               items:
-                $ref: '../../actions/models/action.yml'
-        - $ref: '../../../shared/pages.yml#/pagination'
-        - $ref: '../../../shared/meta.yml'
+                $ref: "../../actions/models/action.yml"
+        - $ref: "../../../shared/pages.yml#/pagination"
+        - $ref: "../../../shared/meta.yml"
 
     example:
       actions:
         - id: 29410565
           status: completed
           type: transfer
-          started_at: '2014-07-25T15:04:21Z'
-          completed_at: '2014-07-25T15:10:20Z'
+          started_at: "2014-07-25T15:04:21Z"
+          completed_at: "2014-07-25T15:10:20Z"
           resource_id: 7555620
           resource_type: image
           region:

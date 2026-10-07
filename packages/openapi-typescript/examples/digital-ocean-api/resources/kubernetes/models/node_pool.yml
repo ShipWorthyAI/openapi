@@ -1,22 +1,22 @@
 kubernetes_node_pool:
   type: object
   allOf:
-  - $ref: "#/kubernetes_node_pool_size"
-  - $ref: "#/kubernetes_node_pool_base"
+    - $ref: "#/kubernetes_node_pool_size"
+    - $ref: "#/kubernetes_node_pool_base"
 
   required:
-  - name
-  - size
-  - count
+    - name
+    - size
+    - count
 
 kubernetes_node_pool_update:
   type: object
   allOf:
-  - $ref: "#/kubernetes_node_pool_base"
+    - $ref: "#/kubernetes_node_pool_base"
 
   required:
-  - name
-  - count
+    - name
+    - count
 
 kubernetes_node_pool_size:
   type: object
@@ -53,11 +53,11 @@ kubernetes_node_pool_base:
       items:
         type: string
       example:
-      - k8s
-      - k8s:bd5f5959-5e1e-4205-a714-a914373942af
-      - k8s-worker
-      - production
-      - web-team
+        - k8s
+        - k8s:bd5f5959-5e1e-4205-a714-a914373942af
+        - k8s-worker
+        - production
+        - web-team
       description: An array containing the tags applied to the node pool. All
         node pools are automatically tagged `k8s`, `k8s-worker`, and
         `k8s:$K8S_CLUSTER_ID`.
@@ -104,7 +104,7 @@ kubernetes_node_pool_base:
       description: An object specifying the details of a specific worker node in
         a node pool.
       items:
-        $ref: 'node.yml'
+        $ref: "node.yml"
 
 kubernetes_node_pool_taint:
   type: object
@@ -128,9 +128,9 @@ kubernetes_node_pool_taint:
     effect:
       type: string
       enum:
-      - NoSchedule
-      - PreferNoSchedule
-      - NoExecute
+        - NoSchedule
+        - PreferNoSchedule
+        - NoExecute
       example: NoSchedule
       description: How the node reacts to pods that it won't tolerate. Available
         effect values are `NoSchedule`, `PreferNoSchedule`, and `NoExecute`.

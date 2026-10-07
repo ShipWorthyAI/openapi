@@ -2,10 +2,9 @@ state:
   type: object
   properties:
     regions:
-      $ref: '#/regional_state'
+      $ref: "#/regional_state"
     previous_outage:
-      $ref: '#/previous_outage'
-
+      $ref: "#/previous_outage"
 
 regional_state:
   type: object
@@ -15,7 +14,6 @@ regional_state:
       $ref: "#/region_state"
     eu_west:
       $ref: "#/region_state"
-
 
 region_state:
   type: object
@@ -34,7 +32,6 @@ region_state:
       type: number
       example: 97.99
 
-
 previous_outage:
   type: object
   properties:
@@ -50,9 +47,3 @@ previous_outage:
     duration_seconds:
       type: integer
       example: 120
-
-
-
-
-
-

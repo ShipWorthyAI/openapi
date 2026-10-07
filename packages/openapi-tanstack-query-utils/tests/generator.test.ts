@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 const cli = resolve(import.meta.dirname, "../../openapi-cli/src/bin.ts");
+
 const generate = (input: string, output: string) =>
   exec("bun", ["run", cli, "generate", "tanstack-query", input, "-o", output, "--name", "fixture"]);
 
@@ -23,18 +24,23 @@ test("CLI generates a typed route table from local and remote referenced documen
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
   const document = structuredClone(schema) as any;
   document.components.schemas.Item = { $ref: "./item.json" };
+
   const item = {
     type: "object",
     required: ["name"],
     properties: { name: { type: "string" } },
   };
+
   await writeFile(resolve(directory, "schema.json"), JSON.stringify(document));
   await writeFile(resolve(directory, "item.json"), JSON.stringify(item));
+
   const server = createServer((req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify(req.url === "/item.json" ? item : document));
   });
+
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+
   try {
     await generate(resolve(directory, "schema.json"), directory);
     const local = await readFile(resolve(directory, "fixture/client.ts"), "utf8");
@@ -47,6 +53,7 @@ test("CLI generates a typed route table from local and remote referenced documen
     assert.ok(address && typeof address !== "string");
     await generate(`http://127.0.0.1:${address.port}/schema.json`, directory);
     assert.equal(await readFile(resolve(directory, "fixture/client.ts"), "utf8"), local);
+
     await writeFile(
       resolve(directory, "consumer.ts"),
       `
@@ -63,6 +70,7 @@ test("CLI generates a typed route table from local and remote referenced documen
       new QueryClient().setQueryData(utils.getItem.queryKey({input:{path:{id:'1'}}}), old => old && {name:old.name});
     `,
     );
+
     for (const compiler of [
       resolve(import.meta.dirname, "../node_modules/typescript/bin/tsc"),
       resolve(import.meta.dirname, "../../../node_modules/typescript/bin/tsc"),
@@ -82,17 +90,21 @@ test("CLI generates a typed route table from local and remote referenced documen
         resolve(directory, "consumer.ts"),
       ]);
     }
+
     document.paths["/items/{id}"].get.operationId = "listItems";
     await writeFile(resolve(directory, "schema.json"), JSON.stringify(document));
+
     await assert.rejects(
       generate(resolve(directory, "schema.json"), directory),
       /unique "operationId"/,
     );
+
     assert.equal(await readFile(resolve(directory, "fixture/client.ts"), "utf8"), local);
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve())),
     );
+
     await rm(directory, { recursive: true, force: true });
   }
 });
@@ -102,10 +114,12 @@ test("generator requires operation IDs without inspecting body schemas", async (
   delete missing.paths["/items"].get.operationId;
   assert.throws(() => operationRoutes(parseModel(missing)), /GET \/items: Missing operationId/);
   const arrays = structuredClone(schema) as any;
+
   arrays.paths["/items/{id}"].post.requestBody.content["application/json"].schema = {
     type: "array",
     items: { type: "string" },
   };
+
   const routes = operationRoutes(parseModel(arrays));
   assert.deepEqual(routes.updateItem, ["POST", "/items/{id}"]);
 });
@@ -113,11 +127,13 @@ test("generator requires operation IDs without inspecting body schemas", async (
 test("grouped inputs preserve distinct path/query/body fields and native body shapes", async () => {
   const document = structuredClone(schema) as any;
   const operation = document.paths["/items/{id}"].post;
+
   operation.parameters.push({
     name: "id",
     in: "query",
     schema: { type: "string" },
   });
+
   operation.requestBody = {
     required: false,
     content: {
@@ -130,8 +146,10 @@ test("grouped inputs preserve distinct path/query/body fields and native body sh
       },
     },
   };
+
   const fixture = await generatedFixture(document);
   let request: Request | undefined;
+
   try {
     const client = fixture.createFixtureApiClient({
       baseUrl: "http://test",
@@ -140,35 +158,44 @@ test("grouped inputs preserve distinct path/query/body fields and native body sh
         return new Response(null, { status: 204 });
       },
     });
+
     const mutation = fixture
       .createFixtureApiQueryUtils(client)
       .updateItem.mutationOptions().mutationFn;
+
     await mutation({
       path: { id: "path-id" },
       query: { id: "query-id" },
       body: { id: 42, extra: "value" },
       header: { "Idempotency-Key": "attempt" },
     } as any);
+
     assert.equal(request!.url, "http://test/items/path-id?id=query-id");
     assert.deepEqual(await request!.json(), { id: 42, extra: "value" });
+
     await mutation({
       path: { id: "1" },
       header: { "Idempotency-Key": "attempt" },
     } as any);
+
     assert.equal(await request!.text(), "");
+
     await mutation({
       path: { id: "1" },
       body: {},
       header: { "Idempotency-Key": "attempt" },
     } as any);
+
     assert.equal(await request!.text(), "{}");
   } finally {
     await fixture.dispose();
   }
+
   operation.requestBody.content["application/json"].schema = {
     type: "array",
     items: { type: "string" },
   };
+
   operation.responses = {
     "201": {
       description: "Created",
@@ -182,26 +209,32 @@ test("grouped inputs preserve distinct path/query/body fields and native body sh
       },
     },
   };
+
   const arrayFixture = await generatedFixture(document);
+
   try {
     const client = arrayFixture.createFixtureApiClient({
       baseUrl: "http://test",
       fetch: async (value) => {
         request = value;
+
         return new Response(JSON.stringify({ created: true }), {
           status: 201,
           headers: { "Content-Type": "application/json" },
         });
       },
     });
+
     const mutation = arrayFixture
       .createFixtureApiQueryUtils(client)
       .updateItem.mutationOptions().mutationFn;
+
     const result = await mutation({
       path: { id: "1" },
       body: ["one", "two"],
       header: { "Idempotency-Key": "attempt" },
     } as any);
+
     assert.deepEqual(await request!.json(), ["one", "two"]);
     assert.deepEqual(result, { created: true });
   } finally {
@@ -233,7 +266,9 @@ test("schema-less operations and referenced path items use the same generation p
       },
     },
   };
+
   const routes = operationRoutes(parseModel(document));
+
   assert.deepEqual(
     { ...routes },
     {
@@ -241,6 +276,7 @@ test("schema-less operations and referenced path items use the same generation p
       ready: ["GET", "/ready"],
     },
   );
+
   const empty = operationRoutes(
     parseModel({
       openapi: "3.0.3",
@@ -248,6 +284,7 @@ test("schema-less operations and referenced path items use the same generation p
       paths: {},
     }),
   );
+
   assert.deepEqual(Object.keys(empty), []);
 });
 
@@ -272,6 +309,7 @@ test("defaults do not make schema properties required", async () => {
       pluginOptions: { prefix: "Fixture", name: "fixture" },
     }).pipe(Effect.provide(NodeServices.layer)),
   )) as { nodes: Parameters<typeof astToString>[0] };
+
   assert.match(astToString(generated.nodes), /count\?: number/);
 });
 

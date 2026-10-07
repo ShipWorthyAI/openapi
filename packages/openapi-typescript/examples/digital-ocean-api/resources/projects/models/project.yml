@@ -58,9 +58,9 @@ project_base:
     environment:
       type: string
       enum:
-      - Development
-      - Staging
-      - Production
+        - Development
+        - Staging
+        - Production
       example: Production
       description: The environment of the project's resources.
 
@@ -82,7 +82,7 @@ project_base:
 
 project:
   allOf:
-    - $ref: '#/project_base'
+    - $ref: "#/project_base"
 
     - type: object
       properties:

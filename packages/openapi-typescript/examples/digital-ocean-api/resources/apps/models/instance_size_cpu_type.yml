@@ -1,8 +1,8 @@
 default: UNSPECIFIED
 enum:
-- UNSPECIFIED
-- SHARED
-- DEDICATED
+  - UNSPECIFIED
+  - SHARED
+  - DEDICATED
 title: |-
   - SHARED: Shared vCPU cores
    - DEDICATED: Dedicated vCPU cores

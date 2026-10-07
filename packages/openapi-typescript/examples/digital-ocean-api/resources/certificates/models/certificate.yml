@@ -1,7 +1,6 @@
 type: object
 
 properties:
-
   id:
     type: string
     format: uuid
@@ -43,17 +42,17 @@ properties:
     items:
       type: string
     example:
-    - www.example.com
-    - example.com
+      - www.example.com
+      - example.com
     description: An array of fully qualified domain names (FQDNs) for which the
       certificate was issued.
 
   state:
     type: string
     enum:
-    - pending
-    - verified
-    - error
+      - pending
+      - verified
+      - error
     readOnly: true
     example: verified
     description: A string representing the current state of the certificate. It
@@ -62,8 +61,8 @@ properties:
   type:
     type: string
     enum:
-    - custom
-    - lets_encrypt
+      - custom
+      - lets_encrypt
     example: lets_encrypt
     description: A string representing the type of the certificate. The value
       will be `custom` for a user-uploaded certificate or `lets_encrypt` for

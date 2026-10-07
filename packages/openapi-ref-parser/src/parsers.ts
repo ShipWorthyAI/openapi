@@ -19,9 +19,11 @@ export function parserPlugins(options: Options): EffectPlugin<unknown>[] {
   const plugins: EffectPlugin<unknown>[] = [];
   if (options.parse?.json !== false) plugins.push(jsonParser());
   if (options.parse?.yaml !== false) plugins.push(yamlParser());
+
   for (const [index, plugin] of (options.parsers ?? []).entries()) {
     plugins.push(customParser(plugin, index));
   }
+
   return plugins;
 }
 
@@ -53,7 +55,9 @@ function yamlParser(): EffectPlugin<unknown> {
     order: 200,
     can: (file) => {
       const extension = extensionOf(file.url);
-      return extension === ".yaml" || extension === ".yml" || extension === ".json" || extension === "";
+      return (
+        extension === ".yaml" || extension === ".yml" || extension === ".json" || extension === ""
+      );
     },
     run(file) {
       return Effect.try({

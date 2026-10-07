@@ -42,7 +42,10 @@ describe("openapiTS", () => {
                 properties: { number: { type: "number" } },
               },
               AllOf: {
-                allOf: [{ $ref: "#/components/schemas/HasString" }, { $ref: "#/components/schemas/HasNumber" }],
+                allOf: [
+                  { $ref: "#/components/schemas/HasString" },
+                  { $ref: "#/components/schemas/HasNumber" },
+                ],
               },
             },
           },
@@ -1119,6 +1122,7 @@ export type operations = Record<string, never>;`,
       testName,
       async () => {
         const result = astToString(await openapiTS(given, options));
+
         if (want instanceof URL) {
           await expect(want).toMatchFileSnapshot(fileURLToPath(want));
         } else {
@@ -1158,6 +1162,7 @@ export type operations = Record<string, never>;`,
         },
       },
     };
+
     const before = JSON.stringify(schema);
     await openapiTS(schema);
     const after = JSON.stringify(schema);

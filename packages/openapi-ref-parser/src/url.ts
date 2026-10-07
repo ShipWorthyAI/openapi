@@ -3,7 +3,15 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Effect } from "effect";
 import { ResolverFailure } from "./errors.js";
 
-const unsafeDomainSuffixes = [".localhost", ".local", ".internal", ".intranet", ".corp", ".home", ".lan"];
+const unsafeDomainSuffixes = [
+  ".localhost",
+  ".local",
+  ".internal",
+  ".intranet",
+  ".corp",
+  ".home",
+  ".lan",
+];
 
 export interface ResolvedUrlAddress {
   address: string;
@@ -73,10 +81,17 @@ export function extensionOf(ref: string): string {
 export function isUnsafeUrl(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return true;
-  if (normalized.startsWith("javascript:") || normalized.startsWith("vbscript:") || normalized.startsWith("data:")) {
+
+  if (
+    normalized.startsWith("javascript:") ||
+    normalized.startsWith("vbscript:") ||
+    normalized.startsWith("data:")
+  ) {
     return true;
   }
+
   if (normalized.startsWith("file:")) return true;
+
   try {
     const url = new URL(normalized.startsWith("//") ? `http:${normalized}` : normalized);
     if (isUnsafeHostname(url.hostname)) return true;
@@ -84,10 +99,14 @@ export function isUnsafeUrl(value: string): boolean {
   } catch {
     return false;
   }
+
   return false;
 }
 
-export function isAllowedOrigin(href: string, allowedOrigins: readonly string[] | undefined): boolean {
+export function isAllowedOrigin(
+  href: string,
+  allowedOrigins: readonly string[] | undefined,
+): boolean {
   const origin = httpOrigin(href);
   if (!origin || !allowedOrigins?.length) return false;
   return allowedOrigins.some((allowed) => httpOrigin(allowed) === origin);
@@ -97,12 +116,15 @@ export const resolveUrlSafety = Effect.fnUntraced(function* (href: string) {
   if (isUnsafeUrl(href)) return { unsafe: true };
   if (typeof process === "undefined" || !process.versions?.node) return { unsafe: false };
   let parsed: URL;
+
   try {
     parsed = new URL(href.startsWith("//") ? `http:${href}` : href);
   } catch {
     return { unsafe: true };
   }
+
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return { unsafe: false };
+
   const addresses = yield* Effect.tryPromise({
     try: async () => {
       const dns = (await import("node:dns/promises")) as {
@@ -111,6 +133,7 @@ export const resolveUrlSafety = Effect.fnUntraced(function* (href: string) {
           options: { all: true; verbatim: true },
         ): Promise<ResolvedUrlAddress[]>;
       };
+
       return dns.lookup(normalizeHostname(parsed.hostname), { all: true, verbatim: true });
     },
     catch: (cause) =>
@@ -120,16 +143,22 @@ export const resolveUrlSafety = Effect.fnUntraced(function* (href: string) {
         ioErrorCode: codeOf(cause),
       }),
   });
+
   if (addresses.length === 0 || addresses.some(({ address }) => isUnsafeHostname(address))) {
     return { unsafe: true };
   }
+
   return { unsafe: false, addresses };
 });
 
 export function isUnsafeHostname(hostname: string): boolean {
   const normalized = normalizeHostname(hostname);
   if (!normalized) return true;
-  if (normalized === "localhost" || unsafeDomainSuffixes.some((suffix) => normalized.endsWith(suffix))) return true;
+  if (
+    normalized === "localhost" ||
+    unsafeDomainSuffixes.some((suffix) => normalized.endsWith(suffix))
+  )
+    return true;
   const ipv4 = parseIPv4Address(normalized);
   if (ipv4) return isUnsafeIPv4Address(ipv4);
   const ipv6 = parseIPv6Address(normalized);
@@ -138,7 +167,8 @@ export function isUnsafeHostname(hostname: string): boolean {
 }
 
 function codeOf(cause: unknown): string {
-  if (typeof cause === "object" && cause !== null && "code" in cause && cause.code != null) return String(cause.code);
+  if (typeof cause === "object" && cause !== null && "code" in cause && cause.code != null)
+    return String(cause.code);
   return "";
 }
 
@@ -153,7 +183,8 @@ function parseIPv4Address(ip: string): number[] | undefined {
   const parts = ip.split(".");
   if (parts.length !== 4) return undefined;
   const octets = parts.map((part) => (/^\d+$/.test(part) ? Number(part) : Number.NaN));
-  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return undefined;
+  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255))
+    return undefined;
   return octets;
 }
 
@@ -163,6 +194,7 @@ function isUnsafeIPv4Address(octets: readonly number[]): boolean {
   const c = octets[2];
   const d = octets[3];
   if (a === undefined || b === undefined || c === undefined || d === undefined) return true;
+
   return (
     a === 0 ||
     a === 10 ||
@@ -183,6 +215,7 @@ function parseIPv6Address(ip: string): number[] | undefined {
   let normalized = ip;
   const lastSeparator = normalized.lastIndexOf(":");
   const possibleIPv4 = normalized.slice(lastSeparator + 1);
+
   if (possibleIPv4.includes(".")) {
     const ipv4 = parseIPv4Address(possibleIPv4);
     if (!ipv4) return undefined;
@@ -190,6 +223,7 @@ function parseIPv6Address(ip: string): number[] | undefined {
     const secondGroup = ipv4[2]! * 256 + ipv4[3]!;
     normalized = `${normalized.slice(0, lastSeparator + 1)}${firstGroup.toString(16)}:${secondGroup.toString(16)}`;
   }
+
   const halves = normalized.split("::");
   if (halves.length > 2) return undefined;
   const head = parseIPv6Groups(halves[0] ?? "");
@@ -203,8 +237,11 @@ function parseIPv6Address(ip: string): number[] | undefined {
 
 function parseIPv6Groups(groups: string): number[] | undefined {
   if (!groups) return [];
-  const parsed = groups.split(":").map((group) => (/^[\da-f]{1,4}$/i.test(group) ? Number.parseInt(group, 16) : Number.NaN));
-  if (parsed.some((group) => !Number.isInteger(group) || group < 0 || group > 0xffff)) return undefined;
+  const parsed = groups
+    .split(":")
+    .map((group) => (/^[\da-f]{1,4}$/i.test(group) ? Number.parseInt(group, 16) : Number.NaN));
+  if (parsed.some((group) => !Number.isInteger(group) || group < 0 || group > 0xffff))
+    return undefined;
   return parsed;
 }
 
@@ -225,11 +262,17 @@ function mappedIPv4(groups: number[]): number[] | undefined {
   const firstSix = firstFive && groups[5] === 0;
   const v4Mapped = firstFive && groups[5] === 0xffff;
   if (!firstSix && !v4Mapped) return undefined;
-  return [Math.floor(groups[6]! / 256), groups[6]! % 256, Math.floor(groups[7]! / 256), groups[7]! % 256];
+  return [
+    Math.floor(groups[6]! / 256),
+    groups[6]! % 256,
+    Math.floor(groups[7]! / 256),
+    groups[7]! % 256,
+  ];
 }
 
 function isInternalPort(port: number): boolean {
   return [
-    22, 23, 25, 53, 135, 139, 445, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 6379, 8080, 8443, 9200, 27017,
+    22, 23, 25, 53, 135, 139, 445, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 6379, 8080, 8443,
+    9200, 27017,
   ].includes(port);
 }

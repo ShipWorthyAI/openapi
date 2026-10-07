@@ -14,18 +14,23 @@ export function createFinalURL<O>(
   },
 ): string {
   let finalURL = `${options.baseUrl}${pathname}`;
+
   if (options.params?.path) {
     finalURL = options.pathSerializer(finalURL, options.params.path);
   }
+
   let search = (options.querySerializer as (query: Record<string, unknown>) => string)(
     options.params.query ?? {},
   );
+
   if (search.startsWith("?")) {
     search = search.substring(1);
   }
+
   if (search) {
     finalURL += `?${search}`;
   }
+
   return finalURL;
 }
 
@@ -34,5 +39,6 @@ export function removeTrailingSlash(url: string): string {
   if (url.endsWith("/")) {
     return url.substring(0, url.length - 1);
   }
+
   return url;
 }

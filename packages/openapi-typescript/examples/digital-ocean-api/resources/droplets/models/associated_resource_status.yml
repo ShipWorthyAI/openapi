@@ -5,7 +5,7 @@ description: An objects containing information about a resources scheduled
 
 properties:
   droplet:
-    $ref: 'destroyed_associated_resource.yml'
+    $ref: "destroyed_associated_resource.yml"
 
   resources:
     type: object
@@ -15,23 +15,23 @@ properties:
       reserved_ips:
         type: array
         items:
-          $ref: 'destroyed_associated_resource.yml'
+          $ref: "destroyed_associated_resource.yml"
       floating_ips:
         type: array
         items:
-          $ref: 'destroyed_associated_resource.yml'
+          $ref: "destroyed_associated_resource.yml"
       snapshots:
         type: array
         items:
-          $ref: 'destroyed_associated_resource.yml'
+          $ref: "destroyed_associated_resource.yml"
       volumes:
         type: array
         items:
-          $ref: 'destroyed_associated_resource.yml'
+          $ref: "destroyed_associated_resource.yml"
       volume_snapshots:
         type: array
         items:
-          $ref: 'destroyed_associated_resource.yml'
+          $ref: "destroyed_associated_resource.yml"
 
   completed_at:
     type: string

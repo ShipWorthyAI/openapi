@@ -36,7 +36,7 @@ paths:
         - $ref: "#/components/parameters/local_ref_b"
         - $ref: "./_parameters-test-partial.yaml#/remote_ref_b"
   /endpoint2:
-    parameters: 
+    parameters:
       - $ref: "#/paths/~1endpoint/get/parameters/0"
 components:
   parameters:

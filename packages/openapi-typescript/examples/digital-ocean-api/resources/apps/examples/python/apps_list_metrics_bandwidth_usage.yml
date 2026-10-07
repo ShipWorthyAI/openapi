@@ -4,7 +4,7 @@ source: |-
   from pydo import Client
 
   client = Client(token=os.environ.get("DIGITALOCEAN_TOKEN"))
-  
+
   req = {
       "app_ids": [
           "4f6c71e2-1e90-4762-9fee-6cc4a0a9f2cf",

@@ -20,9 +20,11 @@ const DEPRECATED_FLAGS: readonly (readonly [string, string])[] = [
 
 export function deprecatedTypescriptFlag(args: readonly string[]): string | undefined {
   if (!args.includes("typescript")) return undefined;
+
   for (const [flag, message] of DEPRECATED_FLAGS) {
     if (args.includes(flag)) return message;
   }
+
   return undefined;
 }
 
@@ -59,7 +61,10 @@ function typescriptModule() {
   return Effect.tryPromise({
     try: () => import("@shipworthy/openapi-typescript") as Promise<TypescriptModule>,
     catch: (cause) =>
-      userError(cause, "Install @shipworthy/openapi-typescript to run openapi generate typescript."),
+      userError(
+        cause,
+        "Install @shipworthy/openapi-typescript to run openapi generate typescript.",
+      ),
   });
 }
 
@@ -125,11 +130,15 @@ export const generate = Command.make(
     ),
     output: Flag.String("output").pipe(
       Flag.withAlias("o"),
-      Flag.withDescription("Output file or directory. Writes to stdout when omitted for typescript."),
+      Flag.withDescription(
+        "Output file or directory. Writes to stdout when omitted for typescript.",
+      ),
       Flag.optional,
     ),
     name: Flag.String("name").pipe(
-      Flag.withDescription("Client name. Used as the output directory and the generated type prefix."),
+      Flag.withDescription(
+        "Client name. Used as the output directory and the generated type prefix.",
+      ),
       Flag.optional,
     ),
     check: flag("check", "Check that the generated types are up-to-date."),
@@ -191,51 +200,63 @@ export const generate = Command.make(
       if (flags.rootTypesNoSchemaPrefix && !flags.rootTypes) {
         console.warn("--root-types-no-schema-prefix has no effect without --root-types flag");
       }
+
       if (flags.rootTypesKeepCasing && !flags.rootTypes) {
         console.warn("--root-types-keep-casing has no effect without --root-types flag");
       }
+
       const output = optionValue(flags.output);
       const input = optionValue(flags.input);
       const name = optionValue(flags.name);
       if (input?.includes("*")) return yield* fail("Globbing is unsupported.");
       const started = performance.now();
+
       if (flags.plugin === "typescript") {
         yield* generateTypescript(flags, input, output, started);
         return;
       }
+
       if (!input) return yield* fail("An OpenAPI schema file or URL is required.");
       const source = yield* schemaUrl(input);
+
       if (flags.plugin === "zod") {
         if (!name) return yield* fail("--name is required.");
         if (!output) return yield* fail("--output is required.");
         yield* requireClientName(name);
         const prefix = pascalCase(name);
+
         const validators = (yield* transform({
           plugin: "zod",
           source,
           lint: false,
           pluginOptions: { prefix },
         }).pipe(Effect.mapError(userError))) as ZodSources;
+
         const nodes = yield* transform({
           plugin: "typescript",
           source,
           lint: false,
           pluginOptions: { ...pluginOptions(flags), defaultNonNullable: false },
         }).pipe(Effect.mapError(userError));
+
         const printed = yield* loadedTypes(nodes, prefix);
+
         yield* writeGenerated(output, name, {
           "types.ts": printed,
           "definitions.ts": validators.definitions,
           "schemas.ts": validators.schemas,
           "operations.ts": validators.operations,
         });
+
         return;
       }
+
       if (flags.plugin === "tanstack-query") {
         if (!name) return yield* fail("--name is required.");
         if (!output) return yield* fail("--output is required.");
         yield* requireClientName(name);
         const prefix = pascalCase(name);
+
         const generated = (yield* transform({
           plugin: "tanstack-query",
           source,
@@ -243,22 +264,28 @@ export const generate = Command.make(
           silent: false,
           pluginOptions: { ...pluginOptions(flags), prefix, name, defaultNonNullable: false },
         }).pipe(Effect.mapError(userError))) as { nodes: readonly unknown[]; client: string };
+
         const types = yield* loadedTypes(generated.nodes, prefix);
         yield* writeClient(output, name, types, generated.client);
         return;
       }
+
       if (flags.plugin === "standard-schema") {
         const text = yield* transform({ plugin: "standard-schema", source, lint: false }).pipe(
           Effect.mapError(userError),
         );
+
         if (typeof text !== "string") return yield* fail("standard-schema did not return source.");
+
         if (!output) {
           process.stdout.write(text);
           return;
         }
+
         yield* publish(text, yield* resolveOutput(output), false, input, output, started);
         return;
       }
+
       return yield* fail(`Unknown generator plugin: ${flags.plugin}.`);
     }),
 ).pipe(
@@ -293,6 +320,7 @@ function generateTypescript(
   return Effect.gen(function* () {
     if (output) console.info(`openapi generate typescript ${version}`);
     const source: string | URL | Readable = input ? yield* schemaUrl(input) : process.stdin;
+
     const nodes = yield* transform({
       plugin: "typescript",
       source,
@@ -300,13 +328,23 @@ function generateTypescript(
       silent: output === undefined,
       pluginOptions: pluginOptions({ ...flags, silent: output === undefined }),
     }).pipe(Effect.mapError(userError));
+
     const types = yield* typescriptModule();
     const printed = `${types.COMMENT_HEADER}${types.astToString(nodes as readonly unknown[])}`;
+
     if (!output) {
       process.stdout.write(printed);
       return;
     }
-    yield* publish(printed, yield* resolveOutput(output), flags.check, input ?? "stdin", output, started);
+
+    yield* publish(
+      printed,
+      yield* resolveOutput(output),
+      flags.check,
+      input ?? "stdin",
+      output,
+      started,
+    );
   });
 }
 
@@ -335,13 +373,17 @@ function publish(
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
+
     if (check) {
       const previous = yield* fs.readFileString(outputPath).pipe(Effect.mapError(userError));
       if (previous === result) return;
       console.error("Generated types are not up-to-date!");
       return yield* fail("Generated types are not up-to-date!");
     }
-    yield* fs.makeDirectory(path.dirname(outputPath), { recursive: true }).pipe(Effect.mapError(userError));
+
+    yield* fs
+      .makeDirectory(path.dirname(outputPath), { recursive: true })
+      .pipe(Effect.mapError(userError));
     yield* fs.writeFileString(outputPath, result).pipe(Effect.mapError(userError));
     console.log(`${label} → ${outputLabel} [${formatTime(performance.now() - started)}]`);
   });

@@ -3,11 +3,14 @@ import type { HeadersOptions } from "./types.js";
 /** Merge headers a and b, with b taking priority */
 export function mergeHeaders(...allHeaders: (HeadersOptions | undefined)[]): Headers {
   const finalHeaders = new Headers();
+
   for (const h of allHeaders) {
     if (!h || typeof h !== "object") {
       continue;
     }
+
     const iterator = h instanceof Headers ? h.entries() : Object.entries(h);
+
     for (const [k, v] of iterator) {
       if (v === null) {
         finalHeaders.delete(k);
@@ -20,5 +23,6 @@ export function mergeHeaders(...allHeaders: (HeadersOptions | undefined)[]): Hea
       }
     }
   }
+
   return finalHeaders;
 }

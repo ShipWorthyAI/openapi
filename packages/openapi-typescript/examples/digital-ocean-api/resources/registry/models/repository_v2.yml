@@ -12,7 +12,7 @@ properties:
     description: The name of the repository.
 
   latest_manifest:
-    $ref: 'repository_manifest.yml'
+    $ref: "repository_manifest.yml"
 
   tag_count:
     type: integer

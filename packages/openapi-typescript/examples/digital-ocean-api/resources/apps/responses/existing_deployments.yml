@@ -1,6 +1,6 @@
 description: A JSON object with a `deployments` key. This will be a list
   of all app deployments
- 
+
 content:
   application/json:
     schema:
@@ -8,7 +8,7 @@ content:
     examples:
       deployments:
         $ref: examples.yml#/deployments
-        
+
 headers:
   ratelimit-limit:
     $ref: ../../../shared/headers.yml#/ratelimit-limit

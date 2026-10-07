@@ -16,6 +16,7 @@ const fetchMock = vi.fn(
       });
     }),
 );
+
 vi.stubGlobal("fetch", fetchMock);
 
 afterAll(() => {
@@ -33,9 +34,11 @@ describe("setup", () => {
 
   bench("openapi-typescript-fetch", async () => {
     const fetcher = Fetcher.for();
+
     fetcher.configure({
       baseUrl: BASE_URL,
     });
+
     fetcher.path("/pet/findByStatus").method("get").create();
   });
 
@@ -56,13 +59,17 @@ describe("get (only URL)", () => {
   const openapiFetch = createClient({ baseUrl: BASE_URL });
   const openapiFetchPath = createPathBasedClient({ baseUrl: BASE_URL });
   const openapiTSFetch = Fetcher.for();
+
   openapiTSFetch.configure({
     baseUrl: BASE_URL,
   });
+
   const openapiTSFetchGET = openapiTSFetch.path("/url").method("get").create();
+
   const axiosInstance = axios.create({
     baseURL: BASE_URL,
   });
+
   const featureFetch = createApiFetchClient({ prefixUrl: BASE_URL });
 
   bench("openapi-fetch", async () => {
@@ -99,19 +106,25 @@ describe("get (headers)", () => {
     baseUrl: BASE_URL,
     headers: { "x-base-header": 123 },
   });
+
   const openapiFetchPath = createPathBasedClient({
     baseUrl: BASE_URL,
     headers: { "x-base-header": 123 },
   });
+
   const openapiTSFetch = Fetcher.for();
+
   openapiTSFetch.configure({
     baseUrl: BASE_URL,
     init: { headers: { "x-base-header": 123 } },
   });
+
   const openapiTSFetchGET = openapiTSFetch.path("/url").method("get").create();
+
   const axiosInstance = axios.create({
     baseURL: BASE_URL,
   });
+
   const featureFetch = createApiFetchClient({
     prefixUrl: BASE_URL,
     headers: { "x-base-header": "123" },

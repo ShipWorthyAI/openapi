@@ -11,11 +11,15 @@ import transformWebhooksObject from "./webhooks-object.js";
 
 type SchemaTransforms = keyof Pick<OpenAPI3, "paths" | "webhooks" | "components" | "$defs">;
 
-const transformers: Record<SchemaTransforms, (node: any, options: GlobalContext) => ts.Node | ts.Node[]> = {
+const transformers: Record<
+  SchemaTransforms,
+  (node: any, options: GlobalContext) => ts.Node | ts.Node[]
+> = {
   paths: transformPathsObject,
   webhooks: transformWebhooksObject,
   components: transformComponentsObject,
-  $defs: (node, options) => transformSchemaObject(node, { path: createRef(["$defs"]), ctx: options, schema: node }),
+  $defs: (node, options) =>
+    transformSchemaObject(node, { path: createRef(["$defs"]), ctx: options, schema: node }),
 };
 
 // Inline helper types for readOnly/writeOnly markers (when readWriteMarkers is enabled)
@@ -51,6 +55,7 @@ export default function transformSchema(schema: OpenAPI3, ctx: GlobalContext) {
     if (schema[root] && typeof schema[root] === "object") {
       const rootT = performance.now();
       const subTypes = ([] as ts.Node[]).concat(transformers[root](schema[root], ctx));
+
       for (const subType of subTypes) {
         if (ts.isTypeNode(subType)) {
           if ((subType as ts.TypeLiteralNode).members?.length) {
@@ -70,6 +75,7 @@ export default function transformSchema(schema: OpenAPI3, ctx: GlobalContext) {
                     /* members         */ (subType as TypeLiteralNode).members,
                   ),
             );
+
             debug(`${root} done`, "ts", performance.now() - rootT);
           } else {
             type.push(emptyObj);
@@ -90,12 +96,18 @@ export default function transformSchema(schema: OpenAPI3, ctx: GlobalContext) {
 
   // inject
   let hasOperations = false;
+
   for (const injectedType of ctx.injectFooter) {
-    if (!hasOperations && (injectedType as InterfaceDeclaration)?.name?.escapedText === "operations") {
+    if (
+      !hasOperations &&
+      (injectedType as InterfaceDeclaration)?.name?.escapedText === "operations"
+    ) {
       hasOperations = true;
     }
+
     type.push(injectedType);
   }
+
   if (!hasOperations) {
     // if no operations created, inject empty operations type
     type.push(

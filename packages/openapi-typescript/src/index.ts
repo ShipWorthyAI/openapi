@@ -39,29 +39,37 @@ function pascalCase(value: string): string {
 /** Rename generated top-level declarations and the references that point at them. */
 export function prefixTypes(nodes: readonly ts.Node[], prefix: string): string {
   const names = new Map<string, string>();
+
   for (const node of nodes) {
     if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
       names.set(node.name.text, `${prefix}Api${pascalCase(node.name.text.replace(/^\$/, ""))}`);
     }
   }
 
-  const result = ts.transform([...nodes], [
-    () => {
-      const visit: ts.Visitor = (node) => {
-        const name =
-          ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)
-            ? node.name
-            : ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)
-              ? node.typeName
-              : undefined;
-        const replacement = name && names.get(name.text);
-        return ts.visitEachChild(node, (child) =>
-          child === name && replacement ? ts.factory.createIdentifier(replacement) : visit(child),
-        );
-      };
-      return (node) => ts.visitNode(node, visit) as ts.Node;
-    },
-  ]);
+  const result = ts.transform(
+    [...nodes],
+    [
+      () => {
+        const visit: ts.Visitor = (node) => {
+          const name =
+            ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)
+              ? node.name
+              : ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)
+                ? node.typeName
+                : undefined;
+
+          const replacement = name && names.get(name.text);
+
+          return ts.visitEachChild(node, (child) =>
+            child === name && replacement ? ts.factory.createIdentifier(replacement) : visit(child),
+          );
+        };
+
+        return (node) => ts.visitNode(node, visit) as ts.Node;
+      },
+    ],
+  );
+
   try {
     return COMMENT_HEADER + astToString(result.transformed);
   } finally {
@@ -75,6 +83,7 @@ export const typescript: Generator<ts.Node[]> = {
   generate(model, raw) {
     const options = raw as OpenAPITSOptions;
     const schema = expandPathItemRefs(model.document as OpenAPI3);
+
     const ctx: GlobalContext = {
       additionalProperties: options.additionalProperties ?? false,
       alphabetize: options.alphabetize ?? false,
@@ -94,7 +103,8 @@ export const typescript: Generator<ts.Node[]> = {
       rootTypesKeepCasing: options.rootTypesKeepCasing ?? false,
       injectFooter: [],
       pathParamsAsTypes: options.pathParamsAsTypes ?? false,
-      postTransform: typeof options.postTransform === "function" ? options.postTransform : undefined,
+      postTransform:
+        typeof options.postTransform === "function" ? options.postTransform : undefined,
       propertiesRequiredByDefault: options.propertiesRequiredByDefault ?? false,
       silent: options.silent ?? false,
       inject: options.inject ?? undefined,
@@ -122,11 +132,13 @@ function expandPathItemRefs(schema: OpenAPI3): OpenAPI3 {
   if (!paths) return schema;
   let changed = false;
   const expanded: Record<string, unknown> = {};
+
   for (const [path, item] of Object.entries(paths)) {
     const next = expandPathItem(schema, item, new Set<string>());
     if (next !== item) changed = true;
     expanded[path] = next;
   }
+
   if (!changed) return schema;
   return { ...schema, paths: expanded as OpenAPI3["paths"] };
 }
@@ -148,11 +160,13 @@ function expandPathItem(schema: OpenAPI3, item: unknown, seen: Set<string>): unk
 
 function readPointer(root: unknown, ref: string): unknown {
   let node = root;
+
   for (const token of ref.slice(2).split("/")) {
     if (Array.isArray(node)) node = node[Number(token)];
     else if (isRecord(node)) node = node[token.replace(/~1/g, "/").replace(/~0/g, "~")];
     else return undefined;
   }
+
   return node;
 }
 

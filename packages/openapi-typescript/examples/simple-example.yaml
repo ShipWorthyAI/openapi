@@ -28,13 +28,13 @@ paths:
       summary: Get Test! Foo! Etc!
       responses:
         200:
-          description: '200'
+          description: "200"
           content:
             application/json:
               schema:
                 type: array
                 prefixItems:
-                  - type: 'string'
+                  - type: "string"
                 items: false
         400:
           description: An error response
@@ -51,13 +51,13 @@ paths:
             type: integer
             format: int32
       responses:
-        '200':
+        "200":
           description: A paged array of pets
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Pets'
-        '400':
+                $ref: "#/components/schemas/Pets"
+        "400":
           description: An error response
   /pets/model:
     get:
@@ -72,13 +72,13 @@ paths:
             type: integer
             format: int32
       responses:
-        '200':
+        "200":
           description: A paged array of model
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Model'
-        '400':
+                $ref: "#/components/schemas/Model"
+        "400":
           description: An error response
   /pets/person:
     get:
@@ -93,13 +93,13 @@ paths:
             type: integer
             format: int32
       responses:
-        '200':
+        "200":
           description: A paged array of person
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/person'
-        '400':
+                $ref: "#/components/schemas/person"
+        "400":
           description: An error response
   /:
     get:
@@ -112,7 +112,7 @@ paths:
       summary: Checks if unevaluatedProperties work
       responses:
         200:
-          description: 'OK'
+          description: "OK"
           content:
             application/json:
               schema:
@@ -151,9 +151,9 @@ webhooks:
                   contentEncoding: base64
                   contentMediaType: image/png
       responses:
-        '200':
+        "200":
           description: Return a 200 status to indicate that the data was received successfully
-        '405':
+        "405":
           description: Invalid input
     put:
       tags:
@@ -165,9 +165,9 @@ webhooks:
         content:
           application/octet-stream: {}
       responses:
-        '200':
+        "200":
           description: Return a 200 status to indicate that the data was received successfully
-        '400':
+        "400":
           description: An error response
 
 components:
@@ -177,11 +177,11 @@ components:
   pathItems: {}
   schemas:
     Problem:
-      id: 'https://tools.ietf.org/rfc/rfc7807.txt'
-      $schema: 'http://json-schema.org/draft-06/schema#'
-      description: 'schema for a rfc7807'
+      id: "https://tools.ietf.org/rfc/rfc7807.txt"
+      $schema: "http://json-schema.org/draft-06/schema#"
+      description: "schema for a rfc7807"
       definitions: {}
-      type: 'object'
+      type: "object"
       properties:
         type:
           description: A URI reference [RFC3986] that identifies the problem type.
@@ -225,10 +225,10 @@ components:
         name:
           type: string
         none:
-          type: 'null'
+          type: "null"
         tag:
           type:
-            - 'null'
+            - "null"
             - string
             - integer
           examples:
@@ -237,14 +237,14 @@ components:
           type: array
           $comment: Array without items keyword
         either:
-          type: ['string', 'null']
+          type: ["string", "null"]
       discriminator:
         propertyName: type
         x-extension: true
     Pets:
       type: array
       items:
-        $ref: '#/components/schemas/Pet'
+        $ref: "#/components/schemas/Pet"
     Model:
       type: object
       properties:
@@ -255,12 +255,12 @@ components:
             - string
         two:
           description: type 'null'
-          type: 'null'
+          type: "null"
         three:
           description: type array including 'null'
           type:
             - string
-            - 'null'
+            - "null"
         four:
           description: array with no items
           type: array
@@ -285,7 +285,7 @@ components:
           description: nullable string
           type:
             - string
-            - 'null'
+            - "null"
         eleven:
           description: file/binary
     person:
@@ -317,7 +317,7 @@ components:
           description: location can be null, set using `nullable` property thats supported by OpenAPI `3.0.x`
           type:
             - string
-            - 'null'
+            - "null"
         age:
           description: Age of Person
           type: integer

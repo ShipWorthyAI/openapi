@@ -7,8 +7,8 @@ properties:
     items:
       type: string
     example:
-    - kube-state-metrics
-    - loki
+      - kube-state-metrics
+      - loki
     default: []
     description: An array of 1-Click Application slugs to be installed to the Kubernetes cluster.
 

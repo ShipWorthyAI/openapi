@@ -2,13 +2,13 @@ description: To cancel an indexing job for a knowledge base, send a PUT request 
   `/v2/gen-ai/indexing_jobs/{uuid}/cancel`.
 operationId: genai_cancel_indexing_job
 parameters:
-- description: A unique identifier for an indexing job.
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: uuid
-  required: true
-  schema:
-    type: string
+  - description: A unique identifier for an indexing job.
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: uuid
+    required: true
+    schema:
+      type: string
 requestBody:
   content:
     application/json:
@@ -39,10 +39,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:update
+  - bearer_auth:
+      - genai:update
 summary: Cancel Indexing Job for a Knowledge Base
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_cancel_indexing_job.yml
+  - $ref: examples/curl/genai_cancel_indexing_job.yml

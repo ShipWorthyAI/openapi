@@ -12,6 +12,7 @@ export function userError(cause: unknown, userMessage?: string): CliError.UserEr
           typeof cause.message === "string"
         ? cause.message
         : String(cause));
+
   return new CliError.UserError({ cause, userMessage: message });
 }
 

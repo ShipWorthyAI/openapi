@@ -3,7 +3,12 @@ import * as changeCase from "change-case";
 import ts from "#compiler";
 import { addJSDocComment, NEVER, QUESTION_TOKEN, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
 import { createRef, debug, getEntries } from "../lib/utils.js";
-import type { ComponentsObject, GlobalContext, SchemaObject, TransformNodeOptions } from "../types.js";
+import type {
+  ComponentsObject,
+  GlobalContext,
+  SchemaObject,
+  TransformNodeOptions,
+} from "../types.js";
 import transformHeaderObject from "./header-object.js";
 import transformParameterObject from "./parameter-object.js";
 import transformPathItemObject from "./path-item-object.js";
@@ -39,9 +44,15 @@ export function isEnumSchema(schema: unknown): boolean {
   );
 }
 
-type ComponentTransforms = keyof Omit<ComponentsObject, "examples" | "securitySchemes" | "links" | "callbacks">;
+type ComponentTransforms = keyof Omit<
+  ComponentsObject,
+  "examples" | "securitySchemes" | "links" | "callbacks"
+>;
 
-const transformers: Record<ComponentTransforms, (node: any, options: TransformNodeOptions) => ts.TypeNode> = {
+const transformers: Record<
+  ComponentTransforms,
+  (node: any, options: TransformNodeOptions) => ts.TypeNode
+> = {
   schemas: transformSchemaObject,
   responses: transformResponseObject,
   parameters: transformParameterObject,
@@ -54,13 +65,18 @@ const transformers: Record<ComponentTransforms, (node: any, options: TransformNo
  * Transform the ComponentsObject (4.8.7)
  * @see https://spec.openapis.org/oas/latest.html#components-object
  */
-export default function transformComponentsObject(componentsObject: ComponentsObject, ctx: GlobalContext): ts.Node[] {
+export default function transformComponentsObject(
+  componentsObject: ComponentsObject,
+  ctx: GlobalContext,
+): ts.Node[] {
   const type: ts.TypeElement[] = [];
   const rootTypeAliases: { [key: string]: ts.TypeAliasDeclaration } = {};
+
   for (const key of Object.keys(transformers) as ComponentTransforms[]) {
     const componentT = performance.now();
 
     const items: ts.TypeElement[] = [];
+
     if (componentsObject[key]) {
       for (const [name, item] of getEntries<SchemaObject>(componentsObject[key], ctx)) {
         let subType = transformers[key](item, {
@@ -70,12 +86,14 @@ export default function transformComponentsObject(componentsObject: ComponentsOb
         });
 
         let hasQuestionToken = false;
+
         if (ctx.transform) {
           const result = ctx.transform(item, {
             path: createRef(["components", key, name]),
             schema: item,
             ctx,
           });
+
           if (result) {
             if ("schema" in result) {
               subType = result.schema;
@@ -92,6 +110,7 @@ export default function transformComponentsObject(componentsObject: ComponentsOb
           /* questionToken */ hasQuestionToken ? QUESTION_TOKEN : undefined,
           /* type          */ subType,
         );
+
         addJSDocComment(item as unknown as any, property);
         items.push(property);
 
@@ -101,7 +120,8 @@ export default function transformComponentsObject(componentsObject: ComponentsOb
 
           if (!shouldSkipEnumSchema) {
             const componentKey = changeCase.pascalCase(singularizeComponentKey(key));
-            const componentName = ctx.rootTypesKeepCasing && key === "schemas" ? name : changeCase.pascalCase(name);
+            const componentName =
+              ctx.rootTypesKeepCasing && key === "schemas" ? name : changeCase.pascalCase(name);
             let aliasName = `${componentKey}${componentName}`;
 
             // Add counter suffix (e.g. "_2") if conflict in name
@@ -111,21 +131,26 @@ export default function transformComponentsObject(componentsObject: ComponentsOb
               conflictCounter++;
               aliasName = `${componentKey}${componentName}_${conflictCounter}`;
             }
+
             const ref = ts.factory.createTypeReferenceNode(`components['${key}']['${name}']`);
+
             if (ctx.rootTypesNoSchemaPrefix && key === "schemas") {
               aliasName = aliasName.replace(componentKey, "");
             }
+
             const typeAlias = ts.factory.createTypeAliasDeclaration(
               /* modifiers      */ tsModifiers({ export: true }),
               /* name           */ aliasName,
               /* typeParameters */ undefined,
               /* type           */ ref,
             );
+
             rootTypeAliases[aliasName] = typeAlias;
           }
         }
       }
     }
+
     type.push(
       ts.factory.createPropertySignature(
         /* modifiers     */ undefined,
@@ -140,6 +165,7 @@ export default function transformComponentsObject(componentsObject: ComponentsOb
 
   // Extract root types
   let rootTypes: ts.TypeAliasDeclaration[] = [];
+
   if (ctx.rootTypes) {
     rootTypes = Object.keys(rootTypeAliases).map((k) => rootTypeAliases[k]);
   }
@@ -148,7 +174,14 @@ export default function transformComponentsObject(componentsObject: ComponentsOb
 }
 
 export function singularizeComponentKey(
-  key: `x-${string}` | "schemas" | "responses" | "parameters" | "requestBodies" | "headers" | "pathItems",
+  key:
+    | `x-${string}`
+    | "schemas"
+    | "responses"
+    | "parameters"
+    | "requestBodies"
+    | "headers"
+    | "pathItems",
 ): string {
   switch (key) {
     // Handle special singular case

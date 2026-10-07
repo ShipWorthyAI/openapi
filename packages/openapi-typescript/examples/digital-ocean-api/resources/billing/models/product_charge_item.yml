@@ -1,15 +1,15 @@
 type: object
 
 properties:
-  amount: 
+  amount:
     type: string
     description: Amount of the charge
-    example: '10.00'
-  name: 
+    example: "10.00"
+  name:
     type: string
     description: Description of the charge
     example: Spaces Subscription
-  count: 
+  count:
     type: string
     description: Number of times the charge was applied
-    example: '1'
+    example: "1"

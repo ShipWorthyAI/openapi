@@ -9,7 +9,7 @@ description: To propose and validate a spec for a new or existing app, send a PO
   to the existing app.
 
 tags:
-- Apps
+  - Apps
 
 requestBody:
   content:
@@ -53,5 +53,4 @@ responses:
 
 security:
   - bearer_auth:
-    - 'app:read'
-
+      - "app:read"

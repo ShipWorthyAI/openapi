@@ -3,21 +3,37 @@ import type { Agent } from "undici";
 import { Effect } from "effect";
 import { ResolverFailure } from "./errors.js";
 import type { EffectPlugin, HttpResolverOptions, Options } from "./plugins.js";
-import { httpOrigin, isAllowedOrigin, isHttp, isUnsafeUrl, resolveUrlSafety, type ResolvedUrlAddress } from "./url.js";
+import {
+  httpOrigin,
+  isAllowedOrigin,
+  isHttp,
+  isUnsafeUrl,
+  resolveUrlSafety,
+  type ResolvedUrlAddress,
+} from "./url.js";
 
 interface UndiciModule {
-  Agent: new (options?: { connect?: { lookup: LookupFunction }; autoSelectFamily?: boolean }) => Agent;
+  Agent: new (options?: {
+    connect?: { lookup: LookupFunction };
+    autoSelectFamily?: boolean;
+  }) => Agent;
   fetch(input: URL | string, init?: object): Promise<unknown>;
 }
 
-export function httpResolver(rootUrl: string, options: Options): EffectPlugin<Uint8Array> | undefined {
+export function httpResolver(
+  rootUrl: string,
+  options: Options,
+): EffectPlugin<Uint8Array> | undefined {
   if (options.resolve?.http === false) return undefined;
   const http = httpSettings(rootUrl, options);
+
   return {
     order: 200,
     can: (file) =>
       isHttp(file.url) &&
-      (http.safeUrlResolver === false || isAllowedOrigin(file.url, http.allowedOrigins) || !isUnsafeUrl(file.url)),
+      (http.safeUrlResolver === false ||
+        isAllowedOrigin(file.url, http.allowedOrigins) ||
+        !isUnsafeUrl(file.url)),
     run: (file) => download(file.url, http),
   };
 }
@@ -27,6 +43,7 @@ function httpSettings(rootUrl: string, options: Options): HttpResolverOptions {
   const origin = httpOrigin(rootUrl);
   const allowed = [...(user.allowedOrigins ?? [])];
   if (origin && !allowed.includes(origin)) allowed.push(origin);
+
   return {
     headers: null,
     timeout: 60_000,
@@ -42,12 +59,18 @@ const download: (
   href: string,
   http: HttpResolverOptions,
   redirects?: string[],
-) => Effect.Effect<Uint8Array, ResolverFailure> = Effect.fnUntraced(function* (href, http, redirects: string[] = []) {
+) => Effect.Effect<Uint8Array, ResolverFailure> = Effect.fnUntraced(function* (
+  href,
+  http,
+  redirects: string[] = [],
+) {
   const nextRedirects = [...redirects, href];
   const requestedPrivate = isAllowedOrigin(href, http.allowedOrigins) && isUnsafeUrl(href);
   let addresses: readonly ResolvedUrlAddress[] | undefined;
+
   if (http.safeUrlResolver !== false && !requestedPrivate) {
     const safety = yield* resolveUrlSafety(href);
+
     if (safety.unsafe) {
       return yield* Effect.fail(
         new ResolverFailure({
@@ -57,6 +80,7 @@ const download: (
         }),
       );
     }
+
     addresses = safety.addresses;
   }
 
@@ -67,6 +91,7 @@ const download: (
 
   try {
     const response = pending.response;
+
     if (response.status >= 400) {
       return yield* Effect.fail(
         new ResolverFailure({
@@ -76,6 +101,7 @@ const download: (
         }),
       );
     }
+
     if (response.status >= 300) {
       if (http.redirects !== undefined && nextRedirects.length > http.redirects) {
         return yield* Effect.fail(
@@ -86,7 +112,9 @@ const download: (
           }),
         );
       }
+
       const location = response.headers.get("location");
+
       if (!location) {
         return yield* Effect.fail(
           new ResolverFailure({
@@ -96,15 +124,20 @@ const download: (
           }),
         );
       }
+
       const redirectTo = new URL(location, href).href;
-      const redirectOptions = new URL(redirectTo).origin === new URL(href).origin ? http : withoutSensitiveHeaders(http);
+      const redirectOptions =
+        new URL(redirectTo).origin === new URL(href).origin ? http : withoutSensitiveHeaders(http);
       return yield* download(redirectTo, redirectOptions, nextRedirects);
     }
+
     if (!response.body) return new Uint8Array();
+
     const bytes = yield* Effect.tryPromise({
       try: async () => new Uint8Array(await response.arrayBuffer()),
       catch: (cause) => resolverFailure(href, cause),
     });
+
     return bytes;
   } finally {
     pending.cancelTimeout();
@@ -113,9 +146,15 @@ const download: (
 
 function resolverFailure(href: string, cause: unknown): ResolverFailure {
   const message = cause instanceof Error ? cause.message : String(cause);
-  const code = typeof cause === "object" && cause !== null && "code" in cause && cause.code != null ? String(cause.code) : "";
+  const code =
+    typeof cause === "object" && cause !== null && "code" in cause && cause.code != null
+      ? String(cause.code)
+      : "";
+
   return new ResolverFailure({
-    message: message.startsWith("Error downloading") ? message : `Error downloading ${href}: ${message}`,
+    message: message.startsWith("Error downloading")
+      ? message
+      : `Error downloading ${href}: ${message}`,
     source: href,
     ioErrorCode: code,
   });
@@ -131,15 +170,20 @@ async function get(
   http: HttpResolverOptions,
   addresses: readonly ResolvedUrlAddress[] | undefined,
 ): Promise<PendingResponse> {
-  const pinned = addresses && addresses.length > 0 ? await createPinnedTransport(new URL(href), addresses) : undefined;
+  const pinned =
+    addresses && addresses.length > 0
+      ? await createPinnedTransport(new URL(href), addresses)
+      : undefined;
   const dispatcher = pinned?.dispatcher;
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const controller = http.timeout ? new AbortController() : undefined;
   if (controller && http.timeout) timeoutId = setTimeout(() => controller.abort(), http.timeout);
+
   const cancelTimeout = () => {
     if (timeoutId !== undefined) clearTimeout(timeoutId);
     if (dispatcher && !dispatcher.destroyed) void dispatcher.destroy().catch(() => undefined);
   };
+
   try {
     const request: RequestInit = {
       method: "GET",
@@ -148,9 +192,11 @@ async function get(
       redirect: "manual",
       signal: controller ? controller.signal : null,
     };
+
     const response = pinned
       ? ((await pinned.fetch(href, dispatcher ? { ...request, dispatcher } : request)) as Response)
       : await fetch(href, request);
+
     return { response, cancelTimeout };
   } catch (error) {
     cancelTimeout();
@@ -158,16 +204,26 @@ async function get(
   }
 }
 
-async function createPinnedTransport(requestUrl: URL, resolvedAddresses: readonly ResolvedUrlAddress[]) {
+async function createPinnedTransport(
+  requestUrl: URL,
+  resolvedAddresses: readonly ResolvedUrlAddress[],
+) {
   const undici = (await import("undici")) as UndiciModule;
   const expectedHostname = normalizeLookupHostname(requestUrl.hostname);
   const pinnedAddresses = resolvedAddresses.map(({ address, family }) => ({ address, family }));
+
   const lookup: LookupFunction = (hostname, options, callback) => {
     const normalizedHostname = normalizeLookupHostname(hostname);
-    const requestedFamily = options.family === "IPv4" ? 4 : options.family === "IPv6" ? 6 : options.family || 0;
-    const candidates = pinnedAddresses.filter(({ family }) => requestedFamily === 0 || family === requestedFamily);
+    const requestedFamily =
+      options.family === "IPv4" ? 4 : options.family === "IPv6" ? 6 : options.family || 0;
+    const candidates = pinnedAddresses.filter(
+      ({ family }) => requestedFamily === 0 || family === requestedFamily,
+    );
+
     if (normalizedHostname !== expectedHostname || candidates.length === 0) {
-      const error = new Error(`No validated address is available for ${hostname}`) as NodeJS.ErrnoException;
+      const error = new Error(
+        `No validated address is available for ${hostname}`,
+      ) as NodeJS.ErrnoException;
       error.code = "ENOTFOUND";
       callback(error, "", 0);
     } else if (options.all) {
@@ -177,6 +233,7 @@ async function createPinnedTransport(requestUrl: URL, resolvedAddresses: readonl
       callback(null, selected.address, selected.family);
     }
   };
+
   return {
     dispatcher: new undici.Agent({ connect: { lookup }, autoSelectFamily: true }),
     fetch: (input: URL | string, init?: object) => undici.fetch(input, init),
@@ -184,7 +241,10 @@ async function createPinnedTransport(requestUrl: URL, resolvedAddresses: readonl
 }
 
 function normalizeLookupHostname(hostname: string): string {
-  return hostname.replace(/^\[|\]$/g, "").replace(/\.+$/, "").toLowerCase();
+  return hostname
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.+$/, "")
+    .toLowerCase();
 }
 
 function withoutSensitiveHeaders(http: HttpResolverOptions): HttpResolverOptions {

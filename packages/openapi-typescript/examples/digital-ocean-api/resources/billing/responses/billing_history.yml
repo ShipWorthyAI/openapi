@@ -3,11 +3,11 @@ description: >-
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -18,21 +18,21 @@ content:
             billing_history:
               type: array
               items:
-                $ref: '../models/billing_history.yml'
-        - $ref: '../../../shared/pages.yml#/pagination'
-        - $ref: '../../../shared/meta_optional_total.yml'
+                $ref: "../models/billing_history.yml"
+        - $ref: "../../../shared/pages.yml#/pagination"
+        - $ref: "../../../shared/meta_optional_total.yml"
 
       example:
         billing_history:
           - description: Invoice for May 2018
-            amount: '12.34'
-            invoice_id: '123'
+            amount: "12.34"
+            invoice_id: "123"
             invoice_uuid: example-uuid
-            date: '2018-06-01T08:44:38Z'
+            date: "2018-06-01T08:44:38Z"
             type: Invoice
           - description: Payment (MC 2018)
-            amount: '-12.34'
-            date: '2018-06-02T08:44:38Z'
+            amount: "-12.34"
+            date: "2018-06-02T08:44:38Z"
             type: Payment
         links:
           pages:

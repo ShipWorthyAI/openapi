@@ -2,10 +2,10 @@ type: object
 
 properties:
   id:
-    $ref: '../attributes/ssh_key_id.yml'
+    $ref: "../attributes/ssh_key_id.yml"
 
   fingerprint:
-    $ref: '../attributes/ssh_key_fingerprint.yml'
+    $ref: "../attributes/ssh_key_fingerprint.yml"
 
   public_key:
     description: >-
@@ -15,7 +15,7 @@ properties:
     example: "ssh-rsa AEXAMPLEaC1yc2EAAAADAQABAAAAQQDDHr/jh2Jy4yALcK4JyWbVkPRaWmhck3IgCoeOO3z1e2dBowLh64QAM+Qb72pxekALga2oi4GvT+TlWNhzPH4V example"
 
   name:
-    $ref: '../attributes/ssh_key_name.yml'
+    $ref: "../attributes/ssh_key_name.yml"
 
 required:
   - public_key

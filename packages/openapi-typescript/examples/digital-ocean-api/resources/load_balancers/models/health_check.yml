@@ -6,9 +6,9 @@ properties:
   protocol:
     type: string
     enum:
-    - http
-    - https
-    - tcp
+      - http
+      - https
+      - tcp
     default: http
     example: http
     description: The protocol used for health checks sent to the backend
@@ -23,8 +23,8 @@ properties:
 
   path:
     type: string
-    default: '/'
-    example: '/'
+    default: "/"
+    example: "/"
     description: The path on the backend Droplets to which the load balancer
       instance will send a request.
 

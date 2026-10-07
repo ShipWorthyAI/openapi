@@ -4,7 +4,7 @@ properties:
     description: The name of the component to route to.
     type: string
     example: web
-  
+
   preserve_path_prefix:
     description: "An optional flag to preserve the path that is forwarded to the backend service. By default, the HTTP request path will be trimmed from the left when forwarded to the component. For example, a component with `path=/api` will have requests to `/api/list` trimmed to `/list`. If this value is `true`, the path will remain `/api/list`. Note: this is not applicable for Functions Components and is mutually exclusive with `rewrite`."
     type: string

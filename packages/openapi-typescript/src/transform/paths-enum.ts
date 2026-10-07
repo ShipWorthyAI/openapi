@@ -15,6 +15,7 @@ export default function makeApiPathsEnum(pathsObject: PathsObject): ts.EnumDecla
 
       // Generate a name from the operation ID
       let pathName: string;
+
       if (operation.operationId) {
         pathName = operation.operationId;
       } else {
@@ -30,7 +31,9 @@ export default function makeApiPathsEnum(pathsObject: PathsObject): ts.EnumDecla
           })
           .join("");
       }
+
       enumKeys.push(url);
+
       enumMetaData.push({
         name: pathName,
       });

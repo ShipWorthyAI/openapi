@@ -33,7 +33,7 @@ properties:
     items:
       type: string
     example:
-    - db0
-    - db1
+      - db0
+      - db1
     default: []
     description: List of databases that should be ignored during migration.

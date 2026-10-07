@@ -10,10 +10,8 @@ const pki = forge.pki;
 
 const genCACert = async (opts = {}) => {
   const options = {
-    ...{
-      commonName: "Testing CA - DO NOT TRUST",
-      bits: 2048,
-    },
+    commonName: "Testing CA - DO NOT TRUST",
+    bits: 2048,
     ...opts,
   };
 
@@ -67,6 +65,7 @@ const caToBuffer = (ca) => {
 const API_PORT = process.env.API_PORT || 4578;
 
 const app = express();
+
 app.get("/v1/foo", (req, res) => {
   res.send("bar");
 });
@@ -79,12 +78,17 @@ test("requestInitExt", async () => {
   options.cert = buffers.cert;
   const httpsServer = https.createServer(options, app);
   httpsServer.listen(4578);
+
   const dispatcher = new Agent({
     connect: {
       rejectUnauthorized: false,
     },
   });
-  const client = createClient({ baseUrl: `https://localhost:${API_PORT}`, requestInitExt: { dispatcher } });
+
+  const client = createClient({
+    baseUrl: `https://localhost:${API_PORT}`,
+    requestInitExt: { dispatcher },
+  });
   const fetchResponse = await client.GET("/v1/foo", { parseAs: "text" });
   httpsServer.closeAllConnections();
   httpsServer.close();

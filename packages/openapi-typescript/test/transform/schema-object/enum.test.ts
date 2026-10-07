@@ -245,7 +245,9 @@ describe("transformComponentsObject", () => {
       "it matches the snapshot",
       async () => {
         assert(typeof want === "string");
-        const result = astToString(transformSchema(given, options?.ctx ?? DEFAULT_CTX), { fileName: name });
+        const result = astToString(transformSchema(given, options?.ctx ?? DEFAULT_CTX), {
+          fileName: name,
+        });
         expect(result.trim()).toBe(want.trim());
       },
       ci?.timeout,

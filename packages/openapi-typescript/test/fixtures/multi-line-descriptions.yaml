@@ -11,7 +11,7 @@ paths:
         It supports pagination.
         Use the limit parameter to control results.
       responses:
-        '200':
+        "200":
           description: >
             Success response.
             Returns an array of users.
@@ -21,7 +21,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/User'
+                  $ref: "#/components/schemas/User"
 components:
   schemas:
     User:
@@ -40,4 +40,3 @@ components:
         name:
           type: string
           description: User's full name
-

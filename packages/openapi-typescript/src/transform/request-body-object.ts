@@ -14,8 +14,13 @@ export default function transformRequestBodyObject(
   options: TransformNodeOptions,
 ): ts.TypeNode {
   const type: ts.TypeElement[] = [];
-  for (const [contentType, mediaTypeObject] of getEntries(requestBodyObject.content ?? {}, options.ctx)) {
+
+  for (const [contentType, mediaTypeObject] of getEntries(
+    requestBodyObject.content ?? {},
+    options.ctx,
+  )) {
     const nextPath = createRef([options.path, "content", contentType]);
+
     const mediaType =
       "$ref" in mediaTypeObject
         ? transformSchemaObject(mediaTypeObject, {
@@ -26,12 +31,14 @@ export default function transformRequestBodyObject(
             ...options,
             path: nextPath,
           });
+
     const property = ts.factory.createPropertySignature(
       /* modifiers     */ tsModifiers({ readonly: options.ctx.immutable }),
       /* name          */ tsPropertyIndex(contentType),
       /* questionToken */ undefined,
       /* type          */ mediaType,
     );
+
     addJSDocComment(mediaTypeObject, property);
     type.push(property);
   }

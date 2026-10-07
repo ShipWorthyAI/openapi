@@ -4,18 +4,18 @@ description: >-
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
     schema:
       properties:
         endpoint:
-          $ref: '../models/cdn_endpoint.yml'
+          $ref: "../models/cdn_endpoint.yml"
 
     examples:
       CDN Endpoint:
@@ -24,7 +24,7 @@ content:
             id: 19f06b6a-3ace-4315-b086-499a0e521b76
             origin: static-images.nyc3.digitaloceanspaces.com
             endpoint: static-images.nyc3.cdn.digitaloceanspaces.com
-            created_at: '2018-07-19T15:04:16Z'
+            created_at: "2018-07-19T15:04:16Z"
             ttl: 3600
 
       CDN Endpoint With Custom Domain:
@@ -33,7 +33,7 @@ content:
             id: 19f06b6a-3ace-4315-b086-499a0e521b76
             origin: static-images.nyc3.digitaloceanspaces.com
             endpoint: static-images.nyc3.cdn.digitaloceanspaces.com
-            created_at: '2018-07-19T15:04:16Z'
+            created_at: "2018-07-19T15:04:16Z"
             certificate_id: 892071a0-bb95-49bc-8021-3afd67a210bf
             custom_domain: static.example.com
             ttl: 3600

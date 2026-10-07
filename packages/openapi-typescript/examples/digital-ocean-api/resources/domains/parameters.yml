@@ -29,7 +29,7 @@ domain_name_query:
 
 domain_type_query:
   name: type
-  description: 'The type of the DNS record. For example: A, CNAME, TXT, ...'
+  description: "The type of the DNS record. For example: A, CNAME, TXT, ..."
   in: query
   schema:
     type: string

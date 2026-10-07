@@ -5,5 +5,5 @@ properties:
     type: string
     description: The ID of the project the app should be assigned to. If omitted, it will be assigned to your default project.
 required:
-- spec
+  - spec
 type: object

@@ -1,9 +1,9 @@
 default: UNSPECIFIED
 enum:
-- UNSPECIFIED
-- BUILD
-- DEPLOY
-- RUN
+  - UNSPECIFIED
+  - BUILD
+  - DEPLOY
+  - RUN
 title: |-
   - BUILD: Build-time logs
    - DEPLOY: Deploy-time logs

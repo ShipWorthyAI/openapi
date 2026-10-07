@@ -107,6 +107,7 @@ export class JSONParserErrorGroup extends Error {
     super(
       `${errors.length} error${errors.length === 1 ? "" : "s"} occurred while reading '${source}'`,
     );
+
     this.name = "JSONParserErrorGroup";
     this.errors = errors;
   }
@@ -121,7 +122,10 @@ const failureFields = {
   source: Schema.String,
 };
 
-export class ParserFailure extends Schema.TaggedError<ParserFailure>()("ParserFailure", failureFields) {}
+export class ParserFailure extends Schema.TaggedError<ParserFailure>()(
+  "ParserFailure",
+  failureFields,
+) {}
 
 export class ResolverFailure extends Schema.TaggedError<ResolverFailure>()("ResolverFailure", {
   ...failureFields,
@@ -138,15 +142,21 @@ export class UnmatchedResolverFailure extends Schema.TaggedError<UnmatchedResolv
   failureFields,
 ) {}
 
-export class MissingPointerFailure extends Schema.TaggedError<MissingPointerFailure>()("MissingPointerFailure", {
-  ...failureFields,
-  token: Schema.String,
-}) {}
+export class MissingPointerFailure extends Schema.TaggedError<MissingPointerFailure>()(
+  "MissingPointerFailure",
+  {
+    ...failureFields,
+    token: Schema.String,
+  },
+) {}
 
-export class InvalidPointerFailure extends Schema.TaggedError<InvalidPointerFailure>()("InvalidPointerFailure", {
-  ...failureFields,
-  pointer: Schema.String,
-}) {}
+export class InvalidPointerFailure extends Schema.TaggedError<InvalidPointerFailure>()(
+  "InvalidPointerFailure",
+  {
+    ...failureFields,
+    pointer: Schema.String,
+  },
+) {}
 
 export class GroupFailure extends Schema.TaggedError<GroupFailure>()("GroupFailure", {
   source: Schema.String,
@@ -163,25 +173,37 @@ export type TaggedFailure =
   | GroupFailure;
 
 function tagOf(error: unknown): string | undefined {
-  if (typeof error === "object" && error !== null && "_tag" in error && typeof error._tag === "string") {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "_tag" in error &&
+    typeof error._tag === "string"
+  ) {
     return error._tag;
   }
+
   return undefined;
 }
 
 export function toPublicError(error: unknown, grouped: JSONParserError[] = []): Error {
   if (error instanceof Error && tagOf(error) === undefined) return error;
+
   switch (tagOf(error)) {
     case "ParserFailure": {
       const failure = error as ParserFailure;
       return new ParserError(failure.message, failure.source);
     }
+
     case "ResolverFailure": {
       const failure = error as ResolverFailure;
-      const publicError = new ResolverError(Object.assign(new Error(failure.message), { code: failure.ioErrorCode || undefined }), failure.source);
+      const publicError = new ResolverError(
+        Object.assign(new Error(failure.message), { code: failure.ioErrorCode || undefined }),
+        failure.source,
+      );
       if (failure.ioErrorCode) publicError.ioErrorCode = failure.ioErrorCode;
       return publicError;
     }
+
     case "UnmatchedParserFailure":
       return new UnmatchedParserError((error as UnmatchedParserFailure).source);
     case "UnmatchedResolverFailure":
@@ -190,15 +212,19 @@ export function toPublicError(error: unknown, grouped: JSONParserError[] = []): 
       const failure = error as MissingPointerFailure;
       return new MissingPointerError(failure.token, failure.source);
     }
+
     case "InvalidPointerFailure": {
       const failure = error as InvalidPointerFailure;
       return new InvalidPointerError(failure.pointer, failure.source);
     }
+
     case "GroupFailure": {
       const failure = error as GroupFailure;
-      const errors = grouped.length > 0 ? grouped : [new JSONParserError(failure.messages, failure.source)];
+      const errors =
+        grouped.length > 0 ? grouped : [new JSONParserError(failure.messages, failure.source)];
       return errors.length === 1 ? errors[0]! : new JSONParserErrorGroup(failure.source, errors);
     }
+
     default:
       return error instanceof Error ? error : new JSONParserError(String(error));
   }

@@ -330,9 +330,9 @@ properties:
     description: Record commit time of transactions.
     type: string
     enum:
-      - 'off'
-      - 'on'
-    example: 'off'
+      - "off"
+      - "on"
+    example: "off"
   track_functions:
     description: Enables tracking of function call counts and time used.
     type: string
@@ -348,9 +348,9 @@ properties:
       time, which may cause significant overhead on some platforms.
     type: string
     enum:
-      - 'off'
-      - 'on'
-    example: 'off'
+      - "off"
+      - "on"
+    example: "off"
   max_wal_senders:
     description: PostgreSQL maximum WAL senders. Once increased, this parameter cannot be lowered from its set value.
     type: integer
@@ -384,7 +384,7 @@ properties:
     maximum: 60.0
     example: 41.5
   pgbouncer:
-    $ref: './pgbouncer_advanced_config.yml'
+    $ref: "./pgbouncer_advanced_config.yml"
   work_mem:
     description: >-
       The maximum amount of memory, in MB, used by a query operation (such as a sort or hash table) before writing to temporary disk files.
@@ -394,14 +394,14 @@ properties:
     maximum: 1024
     example: 4
   timescaledb:
-    $ref: './timescaledb_advanced_config.yml'
+    $ref: "./timescaledb_advanced_config.yml"
   synchronous_replication:
     description: Synchronous replication type. Note that the service plan also needs to support synchronous replication.
     type: string
     example: "off"
     enum:
-      - 'off'
-      - 'quorum'
+      - "off"
+      - "quorum"
   stat_monitor_enable:
     description: >-
       Enable the pg_stat_monitor extension. <b>Enabling this extension will cause the cluster to be restarted.</b> When this extension is enabled, pg_stat_statements results for utility commands are unreliable.

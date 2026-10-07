@@ -2,13 +2,13 @@ description: To get status of an indexing Job for a knowledge base, send a GET r
   to `/v2/gen-ai/indexing_jobs/{uuid}`.
 operationId: genai_get_indexing_job
 parameters:
-- description: Indexing job id
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: uuid
-  required: true
-  schema:
-    type: string
+  - description: Indexing job id
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: uuid
+    required: true
+    schema:
+      type: string
 responses:
   "200":
     content:
@@ -34,10 +34,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:read
+  - bearer_auth:
+      - genai:read
 summary: Retrieve Status of Indexing Job for a Knowledge Base
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_get_indexing_job.yml
+  - $ref: examples/curl/genai_get_indexing_job.yml

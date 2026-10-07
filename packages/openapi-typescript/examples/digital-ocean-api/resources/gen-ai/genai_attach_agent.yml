@@ -1,20 +1,20 @@
 description: To add an agent route to an agent, send a POST request to `/v2/gen-ai/agents/{parent_agent_uuid}/child_agents/{child_agent_uuid}`.
 operationId: genai_attach_agent
 parameters:
-- description: A unique identifier for the parent agent.
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: parent_agent_uuid
-  required: true
-  schema:
-    type: string
-- description: Routed agent id
-  example: '"123e4567-e89b-12d3-a456-426614174000"'
-  in: path
-  name: child_agent_uuid
-  required: true
-  schema:
-    type: string
+  - description: A unique identifier for the parent agent.
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: parent_agent_uuid
+    required: true
+    schema:
+      type: string
+  - description: Routed agent id
+    example: '"123e4567-e89b-12d3-a456-426614174000"'
+    in: path
+    name: child_agent_uuid
+    required: true
+    schema:
+      type: string
 requestBody:
   content:
     application/json:
@@ -45,10 +45,10 @@ responses:
   default:
     $ref: ../../shared/responses/unexpected_error.yml
 security:
-- bearer_auth:
-  - genai:create
+  - bearer_auth:
+      - genai:create
 summary: Add Agent Route to an Agent
 tags:
-- GenAI Platform (Public Preview)
+  - GenAI Platform (Public Preview)
 x-codeSamples:
-- $ref: examples/curl/genai_attach_agent.yml
+  - $ref: examples/curl/genai_attach_agent.yml

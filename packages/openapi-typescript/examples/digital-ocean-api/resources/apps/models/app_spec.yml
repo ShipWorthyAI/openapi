@@ -11,19 +11,19 @@ properties:
     example: web-app-01
 
   region:
-    description: 'The slug form of the geographical origin of the app. Default: `nearest
-      available`'
+    description: "The slug form of the geographical origin of the app. Default: `nearest
+      available`"
     type: string
     enum:
-    - ams
-    - nyc
-    - fra
-    - sfo
-    - sgp
-    - blr
-    - tor
-    - lon
-    - syd
+      - ams
+      - nyc
+      - fra
+      - sfo
+      - sgp
+      - blr
+      - tor
+      - lon
+      - syd
     example: nyc
 
   domains:
@@ -81,4 +81,4 @@ properties:
     $ref: app_maintenance_spec.yml
 
 required:
-- name
+  - name

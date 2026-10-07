@@ -3,7 +3,7 @@ properties:
     format: int64
     title: The bandwidth allowance in GiB for the instance size
     type: string
-    example: "1" 
+    example: "1"
   cpu_type:
     $ref: instance_size_cpu_type.yml
   cpus:
@@ -53,7 +53,7 @@ properties:
   usd_per_month:
     title: The cost of this instance size in USD per month
     type: string
-    example: "23" 
+    example: "23"
   usd_per_second:
     title: The cost of this instance size in USD per second
     type: string

@@ -9,7 +9,7 @@ properties:
   name:
     type: string
     description: "destination name"
-    example: "managed_opensearch_cluster"    
+    example: "managed_opensearch_cluster"
   type:
     enum:
       - opensearch_dbaas
@@ -19,4 +19,4 @@ properties:
       cluster or `opensearch_ext` for an externally managed one.
     example: "opensearch_dbaas"
   config:
-    $ref: 'opensearch_config.yml'
+    $ref: "opensearch_config.yml"

@@ -27,12 +27,12 @@ properties:
       "kafka" for Kafka, and "opensearch" for OpenSearch.
   version:
     type: string
-    example: '8'
+    example: "8"
     description: A string representing the version of the database engine in use for the cluster.
   semantic_version:
     type: string
-    example: '8.0.28'
-    description:  A string representing the semantic version of the database engine in use for the cluster.
+    example: "8.0.28"
+    description: A string representing the semantic version of the database engine in use for the cluster.
     readOnly: true
   num_nodes:
     type: integer
@@ -61,7 +61,7 @@ properties:
     type: string
     format: date-time
     example: 2019-01-11T18:37:36Z
-    description:  >-
+    description: >-
       A time value given in ISO8601 combined date and time format that represents
       when the database cluster was created.
     readOnly: true
@@ -78,7 +78,7 @@ properties:
     items:
       type: string
     example:
-     - production
+      - production
     nullable: true
     description: >-
       An array of tags that have been applied to the database cluster.
@@ -95,36 +95,36 @@ properties:
       database cluster.
   ui_connection:
     allOf:
-    - $ref: './opensearch_connection.yml'
-    - readOnly: true
+      - $ref: "./opensearch_connection.yml"
+      - readOnly: true
     description: >-
-     The connection details for OpenSearch dashboard. 
+      The connection details for OpenSearch dashboard. 
   connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
   private_connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
   standby_connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
   standby_private_connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
   users:
     type: array
     nullable: true
     items:
-      $ref: './database_user.yml'
+      $ref: "./database_user.yml"
     readOnly: true
   maintenance_window:
     allOf:
-    - $ref: './database_maintenance_window.yml'
-    - readOnly: true
+      - $ref: "./database_maintenance_window.yml"
+      - readOnly: true
   project_id:
     type: string
     format: uuid
@@ -133,17 +133,17 @@ properties:
   rules:
     type: array
     items:
-      $ref: './firewall_rule.yml'
+      $ref: "./firewall_rule.yml"
   version_end_of_life:
     type: string
-    example: '2023-11-09T00:00:00Z'
+    example: "2023-11-09T00:00:00Z"
     readOnly: true
     description: >-
       A timestamp referring to the date when the particular version will no longer be supported. If null, the version
       does not have an end of life timeline.
   version_end_of_availability:
     type: string
-    example: '2023-05-09T00:00:00Z'
+    example: "2023-05-09T00:00:00Z"
     readOnly: true
     description: >-
       A timestamp referring to the date when the particular version will no longer be available for creating new
@@ -157,13 +157,11 @@ properties:
   metrics_endpoints:
     type: array
     items:
-      $ref: './database_service_endpoint.yml'
+      $ref: "./database_service_endpoint.yml"
     description: >-
       Public hostname and port of the cluster's metrics endpoint(s). Includes one record for the cluster's primary node and
       a second entry for the cluster's standby node(s).
     readOnly: true
-
-
 
 required:
   - name

@@ -6,8 +6,8 @@ properties:
   type:
     type: string
     enum:
-    - cookies
-    - none
+      - cookies
+      - none
     example: cookies
     default: none
     description: An attribute indicating how and if requests from a client will

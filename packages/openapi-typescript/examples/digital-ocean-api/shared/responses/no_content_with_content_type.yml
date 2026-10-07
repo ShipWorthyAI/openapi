@@ -2,10 +2,10 @@ description: The action was successful and the response body is empty. This resp
 
 headers:
   ratelimit-limit:
-    $ref: '../headers.yml#/ratelimit-limit'
+    $ref: "../headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../headers.yml#/ratelimit-remaining'
+    $ref: "../headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../headers.yml#/ratelimit-reset'
+    $ref: "../headers.yml#/ratelimit-reset"
   content-type:
-    $ref: '../headers.yml#/content-type'
+    $ref: "../headers.yml#/content-type"

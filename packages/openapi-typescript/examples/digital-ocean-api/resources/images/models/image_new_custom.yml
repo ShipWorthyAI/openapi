@@ -1,7 +1,7 @@
 type: object
 
 allOf:
-  - $ref: 'image_update.yml'
+  - $ref: "image_update.yml"
   - properties:
       url:
         type: string
@@ -12,10 +12,10 @@ allOf:
         example: http://cloud-images.ubuntu.com/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img
 
       region:
-        $ref: '../../../shared/attributes/region_slug.yml'
-      
+        $ref: "../../../shared/attributes/region_slug.yml"
+
       tags:
-        $ref: '../../../shared/attributes/tags_array.yml'
+        $ref: "../../../shared/attributes/tags_array.yml"
 
 required:
   - name
@@ -29,5 +29,5 @@ example:
   region: nyc3
   description: Cloud-optimized image w/ small footprint
   tags:
-  - base-image
-  - prod
+    - base-image
+    - prod

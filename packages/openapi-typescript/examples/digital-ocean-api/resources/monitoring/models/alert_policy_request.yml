@@ -11,7 +11,7 @@ required:
   - enabled
 properties:
   alerts:
-    $ref: 'alerts.yml'
+    $ref: "alerts.yml"
   compare:
     type: string
     example: GreaterThan

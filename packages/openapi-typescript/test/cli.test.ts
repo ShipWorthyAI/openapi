@@ -7,8 +7,10 @@ import type { TestCase } from "./test-helpers.js";
 const root = new URL("../", import.meta.url);
 const cwd = fileURLToPath(root);
 const cli = fileURLToPath(new URL("../../openapi-cli/src/bin.ts", import.meta.url));
+
 const run = (args: string[] = [], options: SpawnOptions = {}) =>
   spawn(["bun", cli, "generate", "typescript", ...args], { cwd, ...options });
+
 const TIMEOUT = 90_000;
 
 describe("CLI", () => {
@@ -97,6 +99,7 @@ describe("CLI", () => {
       testName,
       async () => {
         const { stdout } = await run(given, { cwd, stripFinalNewline: false });
+
         if (want instanceof URL) {
           await expect(stdout).toMatchFileSnapshot(fileURLToPath(want));
         } else {
@@ -112,6 +115,7 @@ describe("CLI", () => {
     async () => {
       const input = fs.readFileSync(new URL("./examples/stripe-api.yaml", root));
       const { stdout } = await run([], { input, cwd, stripFinalNewline: false });
+
       await expect(stdout).toMatchFileSnapshot(
         fileURLToPath(new URL("./examples/stripe-api.ts", root)),
       );
@@ -140,6 +144,7 @@ describe("CLI", () => {
             stripFinalNewline: false,
           },
         );
+
         await expect(stdout).toMatchFileSnapshot(
           fileURLToPath(new URL("./examples/github-api-required.ts", root)),
         );
@@ -149,11 +154,15 @@ describe("CLI", () => {
   });
 
   test("lint error", async () => {
-    const output = fileURLToPath(new URL("./fixtures/redocly-lint-error/output.ts", import.meta.url));
+    const output = fileURLToPath(
+      new URL("./fixtures/redocly-lint-error/output.ts", import.meta.url),
+    );
+
     const { stderr } = await run(
       ["test/fixtures/redocly-lint-error/openapi/openapi.yaml", "-o", output],
       { cwd },
     );
+
     expect(stripAnsi(stderr)).toMatch(/OpenAPI "servers" must be present/);
   });
 });

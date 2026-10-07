@@ -9,31 +9,31 @@ tags:
   - Uptime
 
 parameters:
-  - $ref: 'parameters.yml#/check_id'
+  - $ref: "parameters.yml#/check_id"
 
 responses:
-  '200':
-    $ref: 'responses/existing_check.yml'
+  "200":
+    $ref: "responses/existing_check.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '404':
-    $ref: '../../shared/responses/not_found.yml'
+  "404":
+    $ref: "../../shared/responses/not_found.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/check_get.yml'
-  - $ref: 'examples/python/check_get.yml'
+  - $ref: "examples/curl/check_get.yml"
+  - $ref: "examples/python/check_get.yml"
 
 security:
   - bearer_auth:
-      - 'uptime:read'
+      - "uptime:read"

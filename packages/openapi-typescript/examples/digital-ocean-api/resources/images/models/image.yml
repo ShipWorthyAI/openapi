@@ -1,7 +1,6 @@
 type: object
 
 properties:
-
   id:
     type: integer
     description: >-
@@ -11,7 +10,7 @@ properties:
     readOnly: true
 
   name:
-    $ref: '../attributes.yml#/image_name'
+    $ref: "../attributes.yml#/image_name"
 
   type:
     type: string
@@ -30,7 +29,7 @@ properties:
     example: snapshot
 
   distribution:
-     $ref: '../../../shared/attributes/distribution.yml'
+    $ref: "../../../shared/attributes/distribution.yml"
 
   slug:
     type: string
@@ -52,7 +51,7 @@ properties:
     example: true
 
   regions:
-    $ref: '../../../shared/attributes/regions_array.yml'
+    $ref: "../../../shared/attributes/regions_array.yml"
 
   created_at:
     type: string
@@ -79,10 +78,10 @@ properties:
     example: 2.34
 
   description:
-    $ref: '../attributes.yml#/image_description'
+    $ref: "../attributes.yml#/image_description"
 
   tags:
-    $ref: '../../../shared/attributes/tags_array.yml'
+    $ref: "../../../shared/attributes/tags_array.yml"
 
   status:
     type: string

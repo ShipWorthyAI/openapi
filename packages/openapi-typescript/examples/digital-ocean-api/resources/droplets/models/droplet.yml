@@ -33,7 +33,7 @@ properties:
     description: An array of objects containing information about the disks
       available to the Droplet.
     items:
-      $ref: '../../sizes/models/disk_info.yml'
+      $ref: "../../sizes/models/disk_info.yml"
 
   locked:
     type: boolean
@@ -53,12 +53,12 @@ properties:
       This may be "new", "active", "off", or "archive".
 
   kernel:
-    $ref: './kernel.yml'
+    $ref: "./kernel.yml"
 
   created_at:
     type: string
     format: date-time
-    example: '2020-07-21T18:37:44Z'
+    example: "2020-07-21T18:37:44Z"
     description: A time value given in ISO8601 combined date and time format
       that represents when the Droplet was created.
 
@@ -84,10 +84,10 @@ properties:
 
   next_backup_window:
     allOf:
-    - $ref: 'droplet_next_backup_window.yml'
-    - description: The details of the Droplet's backups feature, if backups are
-        configured for the Droplet. This object contains keys for the start and
-        end times of the window during which the backup will start.
+      - $ref: "droplet_next_backup_window.yml"
+      - description: The details of the Droplet's backups feature, if backups are
+          configured for the Droplet. This object contains keys for the start and
+          end times of the window during which the backup will start.
 
   snapshot_ids:
     type: array
@@ -99,19 +99,19 @@ properties:
       Droplet instance.
 
   image:
-    $ref: '../../images/models/image.yml'
+    $ref: "../../images/models/image.yml"
 
   volume_ids:
     type: array
     items:
       type: string
     example:
-      - '506f78a4-e098-11e5-ad9f-000f53306ae1'
+      - "506f78a4-e098-11e5-ad9f-000f53306ae1"
     description: A flat array including the unique identifier for each Block
       Storage volume attached to the Droplet.
 
   size:
-    $ref: '../../sizes/models/size.yml'
+    $ref: "../../sizes/models/size.yml"
 
   size_slug:
     type: string
@@ -130,14 +130,14 @@ properties:
       v4:
         type: array
         items:
-          $ref: 'network_v4.yml'
+          $ref: "network_v4.yml"
       v6:
         type: array
         items:
-          $ref: 'network_v6.yml'
+          $ref: "network_v6.yml"
 
   region:
-    $ref: '../../regions/models/region.yml'
+    $ref: "../../regions/models/region.yml"
 
   tags:
     type: array
@@ -150,12 +150,12 @@ properties:
 
   vpc_uuid:
     type: string
-    example: '760e09ef-dc84-11e8-981e-3cfdfeaae000'
+    example: "760e09ef-dc84-11e8-981e-3cfdfeaae000"
     description: A string specifying the UUID of the VPC to which the Droplet
       is assigned.
 
   gpu_info:
-    $ref: '../../sizes/models/gpu_info.yml'
+    $ref: "../../sizes/models/gpu_info.yml"
 
 required:
   - id

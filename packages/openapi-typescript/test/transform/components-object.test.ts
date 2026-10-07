@@ -175,6 +175,7 @@ describe("transformComponentsObject", () => {
                   },
                 };
               }
+
               default: {
                 return undefined as any;
               }
@@ -427,6 +428,7 @@ describe("transformComponentsObject", () => {
                   },
                 };
               }
+
               default: {
                 return undefined as any;
               }
@@ -903,6 +905,7 @@ export type ItemDTO = components['schemas']['ItemDTO'];
       testName,
       async () => {
         const result = astToString(transformComponentsObject(given, options ?? DEFAULT_OPTIONS));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {
@@ -920,6 +923,7 @@ describe("isEnumSchema", () => {
       type: "string",
       enum: ["active", "inactive", "pending"],
     };
+
     expect(isEnumSchema(schema)).toBe(true);
   });
 
@@ -928,6 +932,7 @@ describe("isEnumSchema", () => {
       type: "number",
       enum: [1, 2, 3],
     };
+
     expect(isEnumSchema(schema)).toBe(true);
   });
 
@@ -935,6 +940,7 @@ describe("isEnumSchema", () => {
     const schema = {
       enum: ["high", 0, null],
     };
+
     expect(isEnumSchema(schema)).toBe(true);
   });
 
@@ -945,6 +951,7 @@ describe("isEnumSchema", () => {
         name: { type: "string" },
       },
     };
+
     expect(isEnumSchema(schema)).toBe(false);
   });
 
@@ -953,6 +960,7 @@ describe("isEnumSchema", () => {
       type: "object",
       enum: [{ value: "test" }],
     };
+
     expect(isEnumSchema(schema)).toBe(false);
   });
 
@@ -961,6 +969,7 @@ describe("isEnumSchema", () => {
       enum: ["test"],
       additionalProperties: true,
     };
+
     expect(isEnumSchema(schema)).toBe(false);
   });
 
@@ -968,6 +977,7 @@ describe("isEnumSchema", () => {
     const schema = {
       type: "string",
     };
+
     expect(isEnumSchema(schema)).toBe(false);
   });
 

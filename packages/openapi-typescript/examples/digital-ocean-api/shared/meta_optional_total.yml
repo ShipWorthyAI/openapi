@@ -2,7 +2,7 @@ type: object
 
 properties:
   meta:
-    $ref: 'models/meta_properties.yml'
+    $ref: "models/meta_properties.yml"
 
 required:
   - meta

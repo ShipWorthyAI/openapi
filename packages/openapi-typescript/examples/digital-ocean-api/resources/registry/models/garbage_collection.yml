@@ -14,14 +14,14 @@ properties:
   status:
     type: string
     enum:
-    - requested
-    - waiting for write JWTs to expire
-    - scanning manifests
-    - deleting unreferenced blobs
-    - cancelling
-    - failed
-    - succeeded
-    - cancelled
+      - requested
+      - waiting for write JWTs to expire
+      - scanning manifests
+      - deleting unreferenced blobs
+      - cancelling
+      - failed
+      - succeeded
+      - cancelled
     example: requested
     description: The current status of this garbage collection.
 

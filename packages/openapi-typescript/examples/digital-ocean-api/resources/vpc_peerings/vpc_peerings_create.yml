@@ -19,33 +19,32 @@ requestBody:
       schema:
         type: object
         allOf:
-        - $ref: 'models/vpc_peering.yml#/vpc_peering_updatable'
-        - $ref: 'models/vpc_peering.yml#/vpc_peering_create'
+          - $ref: "models/vpc_peering.yml#/vpc_peering_updatable"
+          - $ref: "models/vpc_peering.yml#/vpc_peering_create"
 
         required:
-        - name
-        - vpc_ids
-
+          - name
+          - vpc_ids
 
 responses:
-  '202':
-    $ref: 'responses/provisioning_vpc_peering.yml'
+  "202":
+    $ref: "responses/provisioning_vpc_peering.yml"
 
-  '401':
-    $ref: '../../shared/responses/unauthorized.yml'
+  "401":
+    $ref: "../../shared/responses/unauthorized.yml"
 
-  '429':
-    $ref: '../../shared/responses/too_many_requests.yml'
+  "429":
+    $ref: "../../shared/responses/too_many_requests.yml"
 
-  '500':
-    $ref: '../../shared/responses/server_error.yml'
+  "500":
+    $ref: "../../shared/responses/server_error.yml"
 
   default:
-    $ref: '../../shared/responses/unexpected_error.yml'
+    $ref: "../../shared/responses/unexpected_error.yml"
 
 x-codeSamples:
-  - $ref: 'examples/curl/vpc_peerings_create.yml'
+  - $ref: "examples/curl/vpc_peerings_create.yml"
 
 security:
   - bearer_auth:
-    - 'vpc_peering:create'
+      - "vpc_peering:create"

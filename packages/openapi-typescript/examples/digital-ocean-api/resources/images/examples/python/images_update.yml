@@ -12,4 +12,3 @@ source: |-
   }
 
   resp = client.images.update(image_id=234532, body=req)
-

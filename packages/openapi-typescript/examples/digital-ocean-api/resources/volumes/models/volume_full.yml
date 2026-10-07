@@ -1,7 +1,7 @@
 type: object
 
 allOf:
-  - $ref: 'volume_base.yml'
+  - $ref: "volume_base.yml"
   - properties:
       region:
         allOf:
@@ -10,8 +10,8 @@ allOf:
               a region, the value should be the slug identifier for the region. When
               you query a block storage volume, the entire region object will be
               returned.
-          - $ref: '../../regions/models/region.yml'
-        example: 
+          - $ref: "../../regions/models/region.yml"
+        example:
           name: New York 1
           slug: nyc1
           sizes:
@@ -36,12 +36,12 @@ allOf:
             - metadata
           available: true
         readOnly: true
-  
+
       filesystem_type:
         type: string
         description: The type of filesystem currently in-use on the volume.
         example: ext4
-      
+
       filesystem_label:
         type: string
         description: The label currently applied to the filesystem.

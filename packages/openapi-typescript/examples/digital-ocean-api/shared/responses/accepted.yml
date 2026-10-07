@@ -3,8 +3,8 @@ description: The does not indicate the success or failure of any
 
 headers:
   ratelimit-limit:
-    $ref: '../headers.yml#/ratelimit-limit'
+    $ref: "../headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../headers.yml#/ratelimit-remaining'
+    $ref: "../headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../headers.yml#/ratelimit-reset'
+    $ref: "../headers.yml#/ratelimit-reset"

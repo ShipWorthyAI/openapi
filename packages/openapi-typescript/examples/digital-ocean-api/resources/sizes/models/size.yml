@@ -54,19 +54,19 @@ properties:
     items:
       type: string
     example:
-    - ams2
-    - ams3
-    - blr1
-    - fra1
-    - lon1
-    - nyc1
-    - nyc2
-    - nyc3
-    - sfo1
-    - sfo2
-    - sfo3
-    - sgp1
-    - tor1
+      - ams2
+      - ams3
+      - blr1
+      - fra1
+      - lon1
+      - nyc1
+      - nyc2
+      - nyc3
+      - sfo1
+      - sfo2
+      - sfo3
+      - sgp1
+      - tor1
     description: An array containing the region slugs where this size is available
       for Droplet creates.
 
@@ -90,10 +90,10 @@ properties:
     description: An array of objects containing information about the disks
       available to Droplets created with this size.
     items:
-      $ref: './disk_info.yml'
+      $ref: "./disk_info.yml"
 
   gpu_info:
-    $ref: './gpu_info.yml'
+    $ref: "./gpu_info.yml"
 
 required:
   - available

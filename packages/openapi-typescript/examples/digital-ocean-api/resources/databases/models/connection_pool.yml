@@ -36,20 +36,20 @@ properties:
     example: doadmin
   connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
   private_connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
   standby_connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
   standby_private_connection:
     allOf:
-    - $ref: './database_connection.yml'
-    - readOnly: true
+      - $ref: "./database_connection.yml"
+      - readOnly: true
 required:
   - name
   - mode

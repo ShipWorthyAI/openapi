@@ -36,10 +36,10 @@ properties:
     readOnly: true
 
   mysql_settings:
-    $ref: './mysql_settings.yml'
+    $ref: "./mysql_settings.yml"
 
   settings:
-    $ref: './user_settings.yml'
+    $ref: "./user_settings.yml"
 
 required:
   - name

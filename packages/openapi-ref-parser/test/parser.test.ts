@@ -3,7 +3,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { JsonPointer } from "effect";
 import { describe, expect, it } from "vitest";
-import { bundle, dereference, InvalidPointerError, MissingPointerError, parse, type FileInfo } from "../src/index.js";
+import {
+  bundle,
+  dereference,
+  InvalidPointerError,
+  MissingPointerError,
+  parse,
+  type FileInfo,
+} from "../src/index.js";
 import { joinPointer, parsePointer } from "../src/pointer.js";
 
 const openapiRoot = path.resolve(import.meta.dirname, "fixtures/bundle-openapi/root.yaml");
@@ -31,47 +38,67 @@ describe("openapi bundle", () => {
 
     expect(bundled.openapi).toBe("3.1.0");
     expect(bundled.paths["/pets"].get.parameters[0].$ref).toBe("#/components/parameters/limit");
+
     expect(bundled.components.parameters.limit).toEqual({
       name: "limit",
       in: "query",
       schema: { type: "integer" },
     });
+
     expect(bundled.paths["/pets"].get.responses["201"].$ref).toBe("#/components/responses/created");
     expect(bundled.components.responses.created.description).toBe("created");
-    expect(bundled.paths["/pets"].post.requestBody.$ref).toBe("#/components/requestBodies/pet-body");
-    expect(bundled.components.requestBodies["pet-body"].required).toBe(true);
-    expect(bundled.paths["/pets"].get.responses["200"].headers["X-Rate"].$ref).toBe("#/components/headers/rate");
-    expect(bundled.components.headers.rate.schema).toEqual({ type: "integer" });
-    expect(bundled.paths["/pets"].get.responses["200"].content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/pet",
+    expect(bundled.paths["/pets"].post.requestBody.$ref).toBe(
+      "#/components/requestBodies/pet-body",
     );
+    expect(bundled.components.requestBodies["pet-body"].required).toBe(true);
+    expect(bundled.paths["/pets"].get.responses["200"].headers["X-Rate"].$ref).toBe(
+      "#/components/headers/rate",
+    );
+    expect(bundled.components.headers.rate.schema).toEqual({ type: "integer" });
+
+    expect(
+      bundled.paths["/pets"].get.responses["200"].content["application/json"].schema.$ref,
+    ).toBe("#/components/schemas/pet");
+
     expect(bundled.components.schemas.pet.properties.owner.$ref).toBe("#/components/schemas/owner");
     expect(bundled.components.schemas.owner.properties.id).toEqual({ type: "string" });
-    expect(bundled.paths["/pets"].put.responses["200"].content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/pet-2",
-    );
+
+    expect(
+      bundled.paths["/pets"].put.responses["200"].content["application/json"].schema.$ref,
+    ).toBe("#/components/schemas/pet-2");
+
     expect(bundled.components.schemas["pet-2"].properties.sku).toEqual({ type: "string" });
-    expect(bundled.paths["/pets"].get.responses["200"].content["application/json"].examples.sample.$ref).toBe(
-      "#/components/examples/pet-example",
-    );
+
+    expect(
+      bundled.paths["/pets"].get.responses["200"].content["application/json"].examples.sample.$ref,
+    ).toBe("#/components/examples/pet-example");
+
     expect(bundled.components.examples["pet-example"].value).toEqual({ name: "Rex" });
-    expect(bundled.paths["/pets"].post.responses["200"].links.next.$ref).toBe("#/components/links/pet-link");
+    expect(bundled.paths["/pets"].post.responses["200"].links.next.$ref).toBe(
+      "#/components/links/pet-link",
+    );
     expect(bundled.components.links["pet-link"].operationId).toBe("getPet");
-    expect(bundled.paths["/pets"].post.callbacks.onPet.$ref).toBe("#/components/callbacks/pet-callback");
+    expect(bundled.paths["/pets"].post.callbacks.onPet.$ref).toBe(
+      "#/components/callbacks/pet-callback",
+    );
+
     expect(bundled.components.securitySchemes.ApiKey).toEqual({
       type: "apiKey",
       name: "X-Api-Key",
       in: "header",
     });
-    expect(bundled.paths["/pets"].post.responses["200"].content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/Local",
-    );
+
+    expect(
+      bundled.paths["/pets"].post.responses["200"].content["application/json"].schema.$ref,
+    ).toBe("#/components/schemas/Local");
+
     expect(bundled.components.schemas.Local).toEqual({ type: "string" });
   });
 
   it("loads each external URL once", async () => {
     let reads = 0;
     const directory = await tempDir();
+
     const root = {
       openapi: "3.1.0",
       info: { title: "Cache", version: "1" },
@@ -83,11 +110,14 @@ describe("openapi bundle", () => {
         },
       },
     };
+
     await writeFile(path.join(directory, "root.json"), JSON.stringify(root));
+
     await writeFile(
       path.join(directory, "item.json"),
       JSON.stringify({ type: "object", properties: { name: { type: "string" } } }),
     );
+
     const bundled = (await bundle(path.join(directory, "root.json"), {
       resolvers: [
         {
@@ -125,6 +155,7 @@ describe("openapi bundle", () => {
         },
       ],
     });
+
     expect(schema).toMatchObject({ info: { title: "Fallback" } });
   });
 
@@ -162,14 +193,20 @@ describe("openapi bundle", () => {
 
     expect(bundled.openapi).toBe("3.1.0");
     expect(bundled.paths["/search"].get.parameters[0].example).toBe("keep-me");
+
     expect(bundled.paths["/search"].get.parameters[0].schema).toEqual({
       type: ["string", "null"],
       examples: ["schema-example"],
     });
+
     expect(bundled.components.schemas.Age).toEqual({ type: "integer", exclusiveMinimum: 0 });
-    expect(bundled.components.schemas.Pair.prefixItems).toEqual([{ type: "string" }, { type: "number" }]);
+    expect(bundled.components.schemas.Pair.prefixItems).toEqual([
+      { type: "string" },
+      { type: "number" },
+    ]);
     expect(bundled.components.schemas.Pair.items).toBe(false);
     expect(bundled.components.schemas.Pair.additionalItems).toBeUndefined();
+
     expect(bundled.components.schemas.Wrapped).toEqual({
       allOf: [{ $ref: "#/components/schemas/Age" }, { description: "kept" }],
     });
@@ -201,13 +238,18 @@ describe("openapi bundle", () => {
         },
       },
     };
+
     const bundled = (await bundle(structuredClone(document))) as any;
     expect(bundled.components.schemas.Node.properties.child.$ref).toBe("#/components/schemas/Node");
-    expect(bundled.components.schemas.Node.properties.label.$ref).toBe("#/components/schemas/Label");
+    expect(bundled.components.schemas.Node.properties.label.$ref).toBe(
+      "#/components/schemas/Label",
+    );
 
     const dereferenced = (await dereference(structuredClone(document))) as any;
     expect(JSON.stringify(dereferenced)).toContain("#/components/schemas/Node");
-    expect(dereferenced.components.schemas.Node.properties.child.$ref).toBe("#/components/schemas/Node");
+    expect(dereferenced.components.schemas.Node.properties.child.$ref).toBe(
+      "#/components/schemas/Node",
+    );
     expect(dereferenced.components.schemas.Node.properties.label).toEqual({ type: "string" });
     expect(dereferenced.components.schemas.A.properties.b.$ref).toBe("#/components/schemas/B");
     expect(dereferenced.components.schemas.B.properties.a.$ref).toBe("#/components/schemas/A");
@@ -252,13 +294,19 @@ describe("openapi bundle", () => {
     expect(bundled.components.schemas.Tree.properties.left.$ref).toBe("#/components/schemas/Tree");
     expect(bundled.components.schemas.Tree.$defs).toBeUndefined();
     expect(bundled.components.schemas.Label).toEqual({ type: "string" });
-    expect(bundled.components.schemas.Tree.properties.label.$ref).toBe("#/components/schemas/Label");
+    expect(bundled.components.schemas.Tree.properties.label.$ref).toBe(
+      "#/components/schemas/Label",
+    );
   });
 
   it("rewrites discriminator mappings and inlines external values", async () => {
     const directory = await tempDir();
-    await writeFile(path.join(directory, "dog.json"), JSON.stringify({ type: "object", properties: { bark: { type: "boolean" } } }));
+    await writeFile(
+      path.join(directory, "dog.json"),
+      JSON.stringify({ type: "object", properties: { bark: { type: "boolean" } } }),
+    );
     await writeFile(path.join(directory, "sample.json"), JSON.stringify({ name: "Rex" }));
+
     const root = {
       openapi: "3.1.0",
       info: { title: "Pets", version: "1" },
@@ -282,8 +330,11 @@ describe("openapi bundle", () => {
         },
       },
     };
+
     const bundled = (await bundle(path.join(directory, "root.json"), root)) as any;
-    expect(bundled.components.schemas.Pet.discriminator.mapping.dog).toBe("#/components/schemas/dog");
+    expect(bundled.components.schemas.Pet.discriminator.mapping.dog).toBe(
+      "#/components/schemas/dog",
+    );
     expect(bundled.components.schemas.Pet.oneOf[1].$ref).toBe("#/components/schemas/dog");
     expect(bundled.components.examples.sample).toEqual({ value: { name: "Rex" } });
   });
@@ -291,6 +342,7 @@ describe("openapi bundle", () => {
   it("leaves absolute http refs and external values when keepUrlRefs is set", async () => {
     const directory = await tempDir();
     await writeFile(path.join(directory, "local.json"), JSON.stringify({ type: "string" }));
+
     const bundled = (await bundle(
       path.join(directory, "root.json"),
       {
@@ -312,19 +364,24 @@ describe("openapi bundle", () => {
 
     expect(bundled.components.schemas.Local).toEqual({ type: "string" });
     expect(bundled.components.schemas.Remote.$ref).toBe("https://example.com/remote.json");
-    expect(bundled.components.examples.remote.externalValue).toBe("https://example.com/sample.json");
+    expect(bundled.components.examples.remote.externalValue).toBe(
+      "https://example.com/sample.json",
+    );
   });
 
   it("dereferences a plain YAML document the way config loading does", async () => {
     const directory = await tempDir();
     await writeFile(path.join(directory, "extra.yaml"), "name: extra\n");
+
     await writeFile(
       path.join(directory, "shipworthy.yaml"),
       "apis:\n  main:\n    root: ./openapi.yaml\n    meta:\n      $ref: ./extra.yaml\n",
     );
+
     const config = (await dereference(path.join(directory, "shipworthy.yaml"))) as {
       apis: { main: { root: string; meta: { name: string } } };
     };
+
     expect(config.apis.main.root).toBe("./openapi.yaml");
     expect(config.apis.main.meta).toEqual({ name: "extra" });
   });
@@ -332,6 +389,7 @@ describe("openapi bundle", () => {
   it("reuses an existing component name for the same external file", async () => {
     const directory = await tempDir();
     await writeFile(path.join(directory, "unauthorized.yaml"), "description: no\n");
+
     await writeFile(
       path.join(directory, "root.yaml"),
       [
@@ -350,13 +408,19 @@ describe("openapi bundle", () => {
         "",
       ].join("\n"),
     );
+
     const bundled = (await bundle(path.join(directory, "root.yaml"))) as {
-      paths: { "/pets": { get: { responses: { "401": { $ref?: string; description?: string } } } } };
+      paths: {
+        "/pets": { get: { responses: { "401": { $ref?: string; description?: string } } } };
+      };
       components: { responses: Record<string, { description?: string; $ref?: string }> };
     };
+
     expect(bundled.components.responses.unauthorized).toEqual({ description: "no" });
     expect(bundled.components.responses.Unauthorized).toBeUndefined();
-    expect(bundled.paths["/pets"].get.responses["401"].$ref).toBe("#/components/responses/unauthorized");
+    expect(bundled.paths["/pets"].get.responses["401"].$ref).toBe(
+      "#/components/responses/unauthorized",
+    );
   });
 
   it("keeps readOnly and writeOnly on a schema $ref", async () => {
@@ -384,6 +448,7 @@ describe("openapi bundle", () => {
       $ref: "#/components/schemas/Nested",
       readOnly: true,
     });
+
     expect(bundled.components.schemas.Item.properties.secret).toEqual({
       writeOnly: true,
       type: "string",

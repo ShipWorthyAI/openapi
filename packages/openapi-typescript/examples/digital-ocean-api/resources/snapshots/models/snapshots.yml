@@ -3,13 +3,13 @@ allOf:
     properties:
       id:
         type: string
-        example: '6372321'
+        example: "6372321"
         description: The unique identifier for the snapshot.
 
     required:
-    - id
+      - id
 
-  - $ref: 'snapshots_base.yml'
+  - $ref: "snapshots_base.yml"
 
   - type: object
     properties:
@@ -22,8 +22,8 @@ allOf:
       resource_type:
         type: string
         enum:
-        - droplet
-        - volume
+          - droplet
+          - volume
         example: droplet
         description: The type of resource that the snapshot originated from.
 
@@ -34,10 +34,10 @@ allOf:
           type: string
         nullable: true
         example:
-        - web
-        - env:prod
+          - web
+          - env:prod
 
     required:
-    - resource_id
-    - resource_type
-    - tags
+      - resource_id
+      - resource_type
+      - tags

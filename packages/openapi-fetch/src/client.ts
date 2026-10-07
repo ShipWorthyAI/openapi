@@ -49,6 +49,7 @@ type FetchWithExt = (input: Request, init?: Record<string, unknown>) => Promise<
 
 function supportsRequestInitExt() {
   const nodeProcess = (globalThis as typeof globalThis & { process?: NodeProcess }).process;
+
   return (
     typeof nodeProcess === "object" &&
     Number.parseInt(nodeProcess?.versions?.node?.substring(0, 2) ?? "") >= 18 &&
@@ -78,6 +79,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
     requestInitExt = undefined,
     ...baseOptions
   } = { ...clientOptions };
+
   requestInitExt = supportsRequestInitExt() ? requestInitExt : undefined;
   baseUrl = removeTrailingSlash(baseUrl);
   const globalMiddlewares: Middleware[] = [];
@@ -102,7 +104,9 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       middleware: requestMiddlewares = [],
       ...init
     } = fetchOptions || {};
+
     let finalBaseUrl = baseUrl;
+
     if (localBaseUrl) {
       finalBaseUrl = removeTrailingSlash(localBaseUrl) ?? baseUrl;
     }
@@ -111,6 +115,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       typeof globalQuerySerializer === "function"
         ? globalQuerySerializer
         : createQuerySerializer(globalQuerySerializer);
+
     if (requestQuerySerializer) {
       querySerializer =
         typeof requestQuerySerializer === "function"
@@ -136,6 +141,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
             // Lastly, based on the way headers work, it’s not a simple “present-or-not” check becauase null intentionally un-sets headers.
             mergeHeaders(baseHeaders, headers, params.header),
           );
+
     const finalHeaders = mergeHeaders(
       // with no body, we should not to set Content-Type
       serializedBody === undefined ||
@@ -163,6 +169,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
 
     let id: string | undefined;
     let options: MergedOptions | undefined;
+
     let request: Request = new Request(
       createFinalURL(schemaPath, {
         baseUrl: finalBaseUrl,
@@ -172,6 +179,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       }),
       requestInit,
     );
+
     let response: Response | undefined;
 
     /** Add custom parameters to Request object */
@@ -195,6 +203,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
         bodySerializer,
         pathSerializer,
       }) as MergedOptions;
+
       for (const m of finalMiddlewares) {
         if (m && typeof m === "object" && typeof m.onRequest === "function") {
           const result = await m.onRequest({
@@ -204,6 +213,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
             options,
             id,
           });
+
           if (result) {
             if (result instanceof Request) {
               request = result;
@@ -226,11 +236,13 @@ export default function createClient<Paths extends {}, Media extends MediaType =
         response = await (fetch as FetchWithExt)(request, requestInitExt);
       } catch (error) {
         let errorAfterMiddleware: unknown = error;
+
         // middleware (error)
         // execute in reverse-array order (first priority gets last transform)
         if (finalMiddlewares.length) {
           for (let i = finalMiddlewares.length - 1; i >= 0; i--) {
             const m = finalMiddlewares[i];
+
             if (m && typeof m === "object" && typeof m.onError === "function") {
               const result = await m.onError({
                 request,
@@ -240,6 +252,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
                 options: options as MergedOptions,
                 id: id as string,
               });
+
               if (result) {
                 // if error is handled by returning a response, skip remaining middleware
                 if (result instanceof Response) {
@@ -270,6 +283,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       if (finalMiddlewares.length) {
         for (let i = finalMiddlewares.length - 1; i >= 0; i--) {
           const m = finalMiddlewares[i];
+
           if (m && typeof m === "object" && typeof m.onResponse === "function") {
             const result = await m.onResponse({
               request,
@@ -279,12 +293,14 @@ export default function createClient<Paths extends {}, Media extends MediaType =
               options: options as MergedOptions,
               id: id as string,
             });
+
             if (result) {
               if (!(result instanceof Response)) {
                 throw new Error(
                   "onResponse: must return new Response() when modifying the response",
                 );
               }
+
               response = result;
             }
           }
@@ -294,6 +310,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
 
     const finalResponse = response as Response;
     const contentLength = finalResponse.headers.get("Content-Length");
+
     // handle empty content
     if (
       finalResponse.status === 204 ||
@@ -322,21 +339,26 @@ export default function createClient<Paths extends {}, Media extends MediaType =
 
         return await finalResponse[parseAs as Exclude<ParseAs, "stream">]();
       };
+
       return { data: await getResponseData(), response: finalResponse };
     }
 
     // handle errors (use text() when no content-length to safely handle empty bodies from proxies)
     const raw = await finalResponse.text();
+
     if (!raw) {
       // empty error body - return undefined to be consistent with status 204 handling
       return { error: undefined, response: finalResponse };
     }
+
     let error: unknown = raw;
+
     try {
       error = JSON.parse(raw); // attempt to parse as JSON
     } catch {
       // noop - keep as raw text
     }
+
     return { error, response: finalResponse };
   }
 
@@ -382,11 +404,13 @@ export default function createClient<Paths extends {}, Media extends MediaType =
         if (!m) {
           continue;
         }
+
         if (typeof m !== "object" || !("onRequest" in m || "onResponse" in m || "onError" in m)) {
           throw new Error(
             "Middleware must be an object with one of `onRequest()`, `onResponse() or `onError()`",
           );
         }
+
         globalMiddlewares.push(m);
       }
     },
@@ -394,11 +418,13 @@ export default function createClient<Paths extends {}, Media extends MediaType =
     eject(...middleware: Middleware[]) {
       for (const m of middleware) {
         const i = globalMiddlewares.indexOf(m);
+
         if (i !== -1) {
           globalMiddlewares.splice(i, 1);
         }
       }
     },
   };
+
   return client as Client<Paths, Media>;
 }

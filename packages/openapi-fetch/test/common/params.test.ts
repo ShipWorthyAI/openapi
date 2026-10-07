@@ -16,7 +16,10 @@ describe("params", () => {
         const found = [resource1, resource2, resource3].find(
           (post) => String(post.id) === req.url.split("/resources/")[1],
         );
-        return found ? Response.json(found) : Response.json({ code: 404, message: "Not found" }, { status: 404 });
+
+        return found
+          ? Response.json(found)
+          : Response.json({ code: 404, message: "Not found" }, { status: 404 });
       });
 
       // assert missing options throws error
@@ -59,7 +62,9 @@ describe("params", () => {
     });
 
     test("typechecks (empty path params)", async () => {
-      const client = createObservedClient<paths>({}, async () => Response.json([resource1, resource2, resource3]));
+      const client = createObservedClient<paths>({}, async () =>
+        Response.json([resource1, resource2, resource3]),
+      );
 
       // assert unneeded path params throws type error
       await client.GET("/resources", {
@@ -92,6 +97,7 @@ describe("params", () => {
     test("serializes", async () => {
       const baseUrl = "https://fakeurl.example";
       let actualPathname = "";
+
       const client = createObservedClient<paths>({ baseUrl }, async (req) => {
         actualPathname = new URL(req.url).pathname;
         return Response.json({});
@@ -148,6 +154,7 @@ describe("params", () => {
 
     test("escapes reserved characters in path segment", async () => {
       let actualPathname = "";
+
       const client = createObservedClient<paths>({}, async (req) => {
         actualPathname = new URL(req.url).pathname;
         return Response.json({ success: true });
@@ -163,6 +170,7 @@ describe("params", () => {
 
     test("does not escape allowed characters in path segment", async () => {
       let actualPathname = "";
+
       const client = createObservedClient<paths>({}, async (req) => {
         actualPathname = new URL(req.url).pathname;
         return Response.json({ success: true });
@@ -180,10 +188,12 @@ describe("params", () => {
 
     test("allows UTF-8 characters", async () => {
       let actualPathname = "";
+
       const client = createObservedClient<paths>({}, async (req) => {
         actualPathname = new URL(req.url).pathname;
         return Response.json({ success: true });
       });
+
       await client.GET("/path-params/{string}", {
         params: { path: { string: "🥴" } },
       });
@@ -195,14 +205,17 @@ describe("params", () => {
     describe("pathSerializer", () => {
       test("global", async () => {
         let actualPathname = "";
+
         const client = createObservedClient<paths>(
           {
             pathSerializer: (pathname, pathParams) => {
               // Custom serializer that wraps path values in brackets
               let result = pathname;
+
               for (const [key, value] of Object.entries(pathParams)) {
                 result = result.replace(`{${key}}`, `[${value}]`);
               }
+
               return result;
             },
           },
@@ -223,14 +236,17 @@ describe("params", () => {
 
       test("per-request", async () => {
         let actualPathname = "";
+
         const client = createObservedClient<paths>(
           {
             pathSerializer: (pathname, pathParams) => {
               // Default global serializer (should be overridden)
               let result = pathname;
+
               for (const [key, value] of Object.entries(pathParams)) {
                 result = result.replace(`{${key}}`, `global-${value}`);
               }
+
               return result;
             },
           },
@@ -247,9 +263,11 @@ describe("params", () => {
           pathSerializer: (pathname, pathParams) => {
             // Per-request serializer should override global
             let result = pathname;
+
             for (const [key, value] of Object.entries(pathParams)) {
               result = result.replace(`{${key}}`, `request-${value}`);
             }
+
             return result;
           },
         });
@@ -259,11 +277,13 @@ describe("params", () => {
 
       test("complex path params with custom serializer", async () => {
         let actualPathname = "";
+
         const client = createObservedClient<paths>(
           {
             pathSerializer: (pathname, pathParams) => {
               // Custom serializer that handles different value types
               let result = pathname;
+
               for (const [key, value] of Object.entries(pathParams)) {
                 if (typeof value === "string") {
                   result = result.replace(`{${key}}`, `custom:${value}`);
@@ -271,6 +291,7 @@ describe("params", () => {
                   result = result.replace(`{${key}}`, `other:${value}`);
                 }
               }
+
               return result;
             },
           },
@@ -297,9 +318,11 @@ describe("params", () => {
     test("per-request", async () => {
       const client = createObservedClient<paths>({}, async (req) => {
         const header = req.headers.get("x-required-header");
+
         if (header !== "correct") {
           return Response.json({ code: 500, message: "missing correct header" }, { status: 500 });
         }
+
         return Response.json({ status: header }, { status: 200, headers: req.headers });
       });
 
@@ -333,6 +356,7 @@ describe("params", () => {
     describe("querySerializer", () => {
       test("primitives", async () => {
         let actualURL = new URL("https://fakeurl.example");
+
         const client = createObservedClient<paths>({}, async (req) => {
           actualURL = new URL(req.url);
           return Response.json({});
@@ -349,6 +373,7 @@ describe("params", () => {
 
       test("array params (empty)", async () => {
         let actualURL = new URL("https://fakeurl.example");
+
         const client = createObservedClient<paths>({}, async (req) => {
           actualURL = new URL(req.url);
           return Response.json({});
@@ -366,6 +391,7 @@ describe("params", () => {
 
       test("array params (empty, multiple)", async () => {
         let actualURL = new URL("https://fakeurl.example");
+
         const client = createObservedClient<paths>({}, async (req) => {
           actualURL = new URL(req.url);
           return Response.json({});
@@ -383,6 +409,7 @@ describe("params", () => {
 
       test("empty/null params", async () => {
         let actualURL = new URL("https://fakeurl.example");
+
         const client = createObservedClient<paths>({}, async (req) => {
           actualURL = new URL(req.url);
           return Response.json({});
@@ -450,6 +477,7 @@ describe("params", () => {
           },
         ][])("%s", async (_, { given, want }) => {
           let actualURL = new URL("https://fakeurl.example");
+
           const client = createObservedClient<paths>(
             {
               querySerializer: { array: given },
@@ -509,6 +537,7 @@ describe("params", () => {
           },
         ][])("%s", async (_, { given, want }) => {
           let actualURL = new URL("https://fakeurl.example");
+
           const client = createObservedClient<paths>(
             {
               querySerializer: { object: given },
@@ -532,6 +561,7 @@ describe("params", () => {
 
       test("allowReserved", async () => {
         let actualURL = new URL("https://fakeurl.example");
+
         const client = createObservedClient<paths>(
           {
             querySerializer: { allowReserved: true },
@@ -571,6 +601,7 @@ describe("params", () => {
       describe("function", () => {
         test("global default", async () => {
           let actualURL = new URL("https://fakeurl.example");
+
           const client = createObservedClient<paths>(
             {
               querySerializer: (q) => `alpha=${q.version}&beta=${q.format}`,
@@ -588,11 +619,14 @@ describe("params", () => {
             },
           });
 
-          expect(`${actualURL.pathname}${actualURL.search}`).toBe("/resources/123?alpha=2&beta=json");
+          expect(`${actualURL.pathname}${actualURL.search}`).toBe(
+            "/resources/123?alpha=2&beta=json",
+          );
         });
 
         test("per-request", async () => {
           let actualURL = new URL("https://fakeurl.example");
+
           const client = createObservedClient<paths>(
             {
               querySerializer: () => "query",
@@ -611,12 +645,15 @@ describe("params", () => {
             querySerializer: (q) => `alpha=${q.version}&beta=${q.format}`,
           });
 
-          expect(`${actualURL.pathname}${actualURL.search}`).toBe("/resources/456?alpha=2&beta=json");
+          expect(`${actualURL.pathname}${actualURL.search}`).toBe(
+            "/resources/456?alpha=2&beta=json",
+          );
         });
       });
 
       test("ignores leading ? characters", async () => {
         let actualURL = new URL("https://fakeurl.example");
+
         const client = createObservedClient<paths>(
           {
             querySerializer: () => "?query",
@@ -626,12 +663,14 @@ describe("params", () => {
             return Response.json({});
           },
         );
+
         await client.GET("/resources/{id}", {
           params: {
             path: { id: 789 },
             query: { version: 2, format: "json" },
           },
         });
+
         expect(`${actualURL.pathname}${actualURL.search}`).toBe("/resources/789?query");
       });
     });

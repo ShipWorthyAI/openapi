@@ -10,7 +10,14 @@ import {
   UnmatchedResolverError,
   isHandledError,
 } from "./errors.js";
-import type { DereferenceHooks, FileInfo, HttpResolverOptions, Options, ParserPlugin, ResolverPlugin } from "./plugins.js";
+import type {
+  DereferenceHooks,
+  FileInfo,
+  HttpResolverOptions,
+  Options,
+  ParserPlugin,
+  ResolverPlugin,
+} from "./plugins.js";
 import { run, runDetailed, type RunResult } from "./run.js";
 
 export type {
@@ -83,7 +90,10 @@ export class $RefParser {
     return run("dereference", args);
   }
 
-  private async finish(mode: "parse" | "resolve" | "bundle" | "dereference", args: unknown[]): Promise<unknown> {
+  private async finish(
+    mode: "parse" | "resolve" | "bundle" | "dereference",
+    args: unknown[],
+  ): Promise<unknown> {
     const result = await runDetailed(mode, args);
     this.schema = result.schema;
     this.$refs = new Refs(result.documents);

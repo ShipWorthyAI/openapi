@@ -17,6 +17,7 @@ function splitPointer(fragment: string): string[] | undefined {
   const body = fragment.startsWith("#") ? fragment.slice(1) : fragment;
   if (body === "") return [];
   if (!body.startsWith("/")) return undefined;
+
   return body
     .slice(1)
     .split("/")
@@ -34,13 +35,16 @@ export function joinPointer(base: string, tokens: string | readonly string[]): s
 export function getAt(root: unknown, pointer: string, source = pointer): unknown {
   const tokens = parsePointer(pointer, source);
   let current = root;
+
   for (const token of tokens) {
     if (current === null || typeof current !== "object") {
       throw new MissingPointerError(token, source, pointer);
     }
+
     if (!Object.hasOwn(current, token)) throw new MissingPointerError(token, source, pointer);
     current = (current as Record<string, unknown>)[token];
   }
+
   return current;
 }
 
@@ -48,12 +52,14 @@ export function setAt(root: object, pointer: string, value: unknown): void {
   const tokens = parsePointer(pointer, pointer);
   if (tokens.length === 0 || tokens.some((token) => unsafeTokens.has(token))) return;
   let current = root as Record<string, unknown>;
+
   for (let index = 0; index < tokens.length - 1; index++) {
     const token = tokens[index]!;
     const next = current[token];
     if (next === null || typeof next !== "object" || Array.isArray(next)) current[token] = {};
     current = current[token] as Record<string, unknown>;
   }
+
   current[tokens[tokens.length - 1]!] = value;
 }
 
@@ -67,14 +73,17 @@ export function cloneData(value: unknown, seen = new Map<object, unknown>()): un
   if (typeof value !== "object" || value === null) return value;
   const cached = seen.get(value);
   if (cached !== undefined) return cached;
+
   if (Array.isArray(value)) {
     const copy: unknown[] = [];
     seen.set(value, copy);
     for (const item of value) copy.push(cloneData(item, seen));
     return copy;
   }
+
   const copy: Record<string, unknown> = {};
   seen.set(value, copy);
-  for (const key of Object.keys(value)) copy[key] = cloneData((value as Record<string, unknown>)[key], seen);
+  for (const key of Object.keys(value))
+    copy[key] = cloneData((value as Record<string, unknown>)[key], seen);
   return copy;
 }

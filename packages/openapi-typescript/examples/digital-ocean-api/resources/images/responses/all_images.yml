@@ -4,11 +4,11 @@ description: >-
 
 headers:
   ratelimit-limit:
-    $ref: '../../../shared/headers.yml#/ratelimit-limit'
+    $ref: "../../../shared/headers.yml#/ratelimit-limit"
   ratelimit-remaining:
-    $ref: '../../../shared/headers.yml#/ratelimit-remaining'
+    $ref: "../../../shared/headers.yml#/ratelimit-remaining"
   ratelimit-reset:
-    $ref: '../../../shared/headers.yml#/ratelimit-reset'
+    $ref: "../../../shared/headers.yml#/ratelimit-reset"
 
 content:
   application/json:
@@ -16,24 +16,24 @@ content:
       allOf:
         - type: object
           properties:
-            images: 
+            images:
               type: array
               items:
-                $ref: '../models/image.yml'
+                $ref: "../models/image.yml"
           required:
             - images
-        - $ref: '../../../shared/pages.yml#/pagination'
-        - $ref: '../../../shared/meta.yml'
+        - $ref: "../../../shared/pages.yml#/pagination"
+        - $ref: "../../../shared/meta.yml"
     examples:
       All:
-        $ref: 'examples.yml#/images_all'
+        $ref: "examples.yml#/images_all"
       Snapshots:
-        $ref: 'examples.yml#/images_snapshots'
+        $ref: "examples.yml#/images_snapshots"
       Distribution:
-        $ref: 'examples.yml#/images_distribution'
-      Custom: 
-        $ref: 'examples.yml#/images_custom'
-      Application: 
-        $ref: 'examples.yml#/images_application'
-      Tagged: 
-        $ref: 'examples.yml#/images_tagged'
+        $ref: "examples.yml#/images_distribution"
+      Custom:
+        $ref: "examples.yml#/images_custom"
+      Application:
+        $ref: "examples.yml#/images_application"
+      Tagged:
+        $ref: "examples.yml#/images_tagged"

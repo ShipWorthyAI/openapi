@@ -87,5 +87,5 @@ properties:
     items:
       $ref: apps_dedicated_egress_ip.yml
 required:
-- spec
+  - spec
 type: object

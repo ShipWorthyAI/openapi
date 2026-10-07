@@ -24,16 +24,27 @@ export function makeContext(rootUrl: string, options: Options): LoadContext {
 export const loadDocument = Effect.fnUntraced(function* (url: string, context: LoadContext) {
   const file = fileInfo(url);
   const resolvers = context.resolvers.filter((plugin) => plugin.can(file));
+
   if (resolvers.length === 0) {
-    return yield* Effect.fail(new UnmatchedResolverFailure({ message: `Could not find resolver for "${url}"`, source: url }));
+    return yield* Effect.fail(
+      new UnmatchedResolverFailure({
+        message: `Could not find resolver for "${url}"`,
+        source: url,
+      }),
+    );
   }
+
   const bytes = yield* Effect.firstSuccessOf(resolvers.map((plugin) => plugin.run(file)));
   const parsedFile: FileInfo = { ...file, data: bytes };
   const parsers = context.parsers.filter((plugin) => plugin.can(parsedFile));
   const selected = parsers.length > 0 ? parsers : context.parsers;
+
   if (selected.length === 0) {
-    return yield* Effect.fail(new UnmatchedParserFailure({ message: `Could not find parser for "${url}"`, source: url }));
+    return yield* Effect.fail(
+      new UnmatchedParserFailure({ message: `Could not find parser for "${url}"`, source: url }),
+    );
   }
+
   const parsed = yield* Effect.firstSuccessOf(selected.map((plugin) => plugin.run(parsedFile)));
   return parsed;
 });
@@ -43,7 +54,8 @@ function resolversFor(rootUrl: string, options: Options): EffectPlugin<Uint8Arra
   if (options.resolve?.file !== false) plugins.push(fileResolver());
   const http = httpResolver(rootUrl, options);
   if (http) plugins.push(http);
-  for (const [index, plugin] of (options.resolvers ?? []).entries()) plugins.push(customResolver(plugin, index));
+  for (const [index, plugin] of (options.resolvers ?? []).entries())
+    plugins.push(customResolver(plugin, index));
   return plugins.sort((left, right) => left.order - right.order);
 }
 
@@ -56,6 +68,7 @@ function fileResolver(): EffectPlugin<Uint8Array> {
         const fs = yield* FileSystem.FileSystem;
         let filePath = toFileSystemPath(file.url);
         if (filePath.endsWith("/") || filePath.endsWith("\\")) filePath = filePath.slice(0, -1);
+
         return yield* fs.readFile(filePath).pipe(
           Effect.mapError(
             (error) =>
@@ -83,7 +96,10 @@ function customResolver(plugin: ResolverPlugin, index: number): EffectPlugin<Uin
       new ResolverFailure({
         message: cause instanceof Error ? cause.message : `Error reading file "${""}"`,
         source: "",
-        ioErrorCode: typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code ?? "") : "",
+        ioErrorCode:
+          typeof cause === "object" && cause !== null && "code" in cause
+            ? String(cause.code ?? "")
+            : "",
       }),
   );
 }

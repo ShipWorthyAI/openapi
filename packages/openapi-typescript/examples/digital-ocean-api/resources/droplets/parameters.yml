@@ -28,8 +28,8 @@ droplet_type:
   schema:
     type: string
     enum:
-    - droplets
-    - gpus
+      - droplets
+      - gpus
   example: droplets
 
 droplet_delete_tag_name:

@@ -159,6 +159,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/utm_email": {
                 return {
                   in: "query",
@@ -166,6 +167,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/utm_campaign": {
                 return {
                   in: "query",
@@ -173,6 +175,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/version": {
                 return {
                   in: "path",
@@ -180,6 +183,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               default: {
                 return undefined as any;
               }
@@ -241,6 +245,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/utm_email": {
                 return {
                   in: "query",
@@ -248,6 +253,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/utm_campaign": {
                 return {
                   in: "query",
@@ -255,6 +261,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               case "#/components/parameters/version": {
                 return {
                   in: "path",
@@ -262,6 +269,7 @@ describe("transformPathsObject", () => {
                   schema: { type: "string" },
                 };
               }
+
               default: {
                 return undefined as any;
               }
@@ -382,6 +390,7 @@ describe("transformPathsObject", () => {
       testName,
       async () => {
         const result = astToString(transformPathsObject(given, options));
+
         if (want instanceof URL) {
           await expect(result).toMatchFileSnapshot(fileURLToPath(want));
         } else {

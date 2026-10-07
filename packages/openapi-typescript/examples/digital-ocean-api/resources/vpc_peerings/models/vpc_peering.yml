@@ -1,9 +1,9 @@
 vpc_peering:
   type: object
   allOf:
-  - $ref: '#/vpc_peering_base'
-  - $ref: '#/vpc_peering_create'
-  - $ref: '#/vpc_peering_updatable'
+    - $ref: "#/vpc_peering_base"
+    - $ref: "#/vpc_peering_create"
+    - $ref: "#/vpc_peering_updatable"
 
 vpc_peering_base:
   type: object
@@ -35,17 +35,17 @@ vpc_peering_base:
 vpc_peering_create:
   type: object
   properties:
-      vpc_ids:
-        type: array
-        items:
-          type: string
-          format: uuid
-        minItems: 2
-        maxItems: 2
-        example:
+    vpc_ids:
+      type: array
+      items:
+        type: string
+        format: uuid
+      minItems: 2
+      maxItems: 2
+      example:
         - c140286f-e6ce-4131-8b7b-df4590ce8d6a
         - 994a2735-dc84-11e8-80bc-3cfdfea9fba1
-        description: An array of the two peered VPCs IDs.
+      description: An array of the two peered VPCs IDs.
 
 vpc_peering_updatable:
   type: object
@@ -54,5 +54,5 @@ vpc_peering_updatable:
       type: string
       pattern: '^[a-zA-Z0-9\-]+$'
       example: nyc1-blr1-peering
-      description: The name of the VPC peering. Must be unique within the team 
+      description: The name of the VPC peering. Must be unique within the team
         and may only contain alphanumeric characters and dashes.

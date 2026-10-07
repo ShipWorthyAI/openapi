@@ -10,7 +10,7 @@ properties:
       - https
       - http2
     example: http
-    description: The protocol used for forwarding traffic from the load balancer to the 
+    description: The protocol used for forwarding traffic from the load balancer to the
       target backends. The possible values are `http`, `https` and `http2`.
 
   target_port:
