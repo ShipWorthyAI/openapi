@@ -34,16 +34,16 @@ describe("transformResponseObject", () => {
           },
         },
         want: `{
-    headers: {
-        foo?: string;
-        [name: string]: unknown;
+  headers: {
+    foo?: string;
+    [name: string]: unknown;
+  };
+  content: {
+    "application/json": {
+      url: string;
+      "content-type"?: string;
     };
-    content: {
-        "application/json": {
-            url: string;
-            "content-type"?: string;
-        };
-    };
+  };
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -61,11 +61,11 @@ describe("transformResponseObject", () => {
           },
         },
         want: `{
-    headers: {
-        "some-header": string;
-        [name: string]: unknown;
-    };
-    content?: never;
+  headers: {
+    "some-header": string;
+    [name: string]: unknown;
+  };
+  content?: never;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -75,10 +75,10 @@ describe("transformResponseObject", () => {
       {
         given: {},
         want: `{
-    headers: {
-        [name: string]: unknown;
-    };
-    content?: never;
+  headers: {
+    [name: string]: unknown;
+  };
+  content?: never;
 }`,
       },
     ],

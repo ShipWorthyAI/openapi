@@ -1,0 +1,21 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/get-item": {
+      "get": {
+        "$ref": "#/components/schemas/GetUserOperation"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GetUserOperation": {
+        "type": "object"
+      }
+    }
+  }
+}

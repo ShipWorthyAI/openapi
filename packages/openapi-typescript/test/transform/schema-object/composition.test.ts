@@ -119,9 +119,9 @@ describe("composition", () => {
           ],
         },
         want: `{
-    string?: string;
+  string?: string;
 } | {
-    boolean?: boolean;
+  boolean?: boolean;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -140,11 +140,11 @@ describe("composition", () => {
           },
         },
         want: `{
-    baz?: string;
+  baz?: string;
 } & ({
-    foo?: string;
+  foo?: string;
 } | {
-    bar?: string;
+  bar?: string;
 })`,
       },
       // options: DEFAULT_OPTIONS,
@@ -173,7 +173,7 @@ describe("composition", () => {
           ],
         },
         want: `{
-    [key: string]: unknown;
+  [key: string]: unknown;
 } & (components["schemas"]["simple-user"] | components["schemas"]["team"] | components["schemas"]["organization"])`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -211,9 +211,9 @@ describe("composition", () => {
           ],
         },
         want: `{
-    operation: "test";
+  operation: "test";
 } & (Omit<components["schemas"]["parent"], "operation"> & {
-    string?: string;
+  string?: string;
 })`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -312,7 +312,7 @@ describe("composition", () => {
           oneOf: [{ $ref: "#/components/schemas/Cat" }, { $ref: "#/components/schemas/Dog" }],
         },
         want: `{
-    name: string;
+  name: string;
 } & (components["schemas"]["Cat"] | components["schemas"]["Dog"])`,
         options: {
           path: "#/components/schemas/Pet",
@@ -398,9 +398,9 @@ describe("composition", () => {
           ],
         },
         want: `{
-    "@type": "test";
+  "@type": "test";
 } & (Omit<components["schemas"]["parent"], "@type"> & {
-    string?: string;
+  string?: string;
 })`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -455,8 +455,8 @@ describe("composition", () => {
           additionalProperties: false,
         },
         want: `{
-    _petType: "Dog";
-    bark?: boolean;
+  _petType: "Dog";
+  bark?: boolean;
 } & Omit<components["schemas"]["Pet"], "_petType">`,
         options: {
           path: "#/components/schemas/Dog",
@@ -506,10 +506,10 @@ describe("composition", () => {
           ],
         },
         want: `{
-    red: number;
-    blue: number;
+  red: number;
+  blue: number;
 } & {
-    green: number;
+  green: number;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -528,10 +528,10 @@ describe("composition", () => {
           ],
         },
         want: `{
-    red: number;
-    blue: number;
+  red: number;
+  blue: number;
 } & {
-    green: number;
+  green: number;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -550,7 +550,7 @@ describe("composition", () => {
           allOf: [{ $ref: "#/components/schemas/Product" }],
         },
         want: `{
-    price: components["schemas"]["Price"];
+  price: components["schemas"]["Price"];
 } & WithRequired<components["schemas"]["Product"], "name">`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -612,11 +612,11 @@ describe("composition", () => {
           ],
         },
         want: `{
-    red: number;
+  red: number;
 } | {
-    blue: number;
+  blue: number;
 } | {
-    green: number;
+  green: number;
 }`,
         // options: DEFAULT_OPTIONS
       },

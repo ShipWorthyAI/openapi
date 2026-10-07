@@ -34,6 +34,31 @@ items:
     expect(parsed.items).toEqual([[1, 2]]);
   });
 
+  it("parses a block scalar whose content shares the header indent", () => {
+    const parsed = parseYamlDocument(`body:
+  examples:
+    - |2
+
+
+    The MIT License
+
+    Copyright
+  featured: true
+`) as { body: { examples: string[]; featured: boolean } };
+
+    expect(parsed.body.examples).toEqual(["\n\nThe MIT License\n\nCopyright\n"]);
+    expect(parsed.body.featured).toBe(true);
+  });
+
+  it("does not treat digits after > inside prose as a block indicator", () => {
+    const parsed = parseYamlDocument(`description: >
+      created (<a href="/docs/charges/placing-a-hold">7 by default</a>), after
+      which they are marked as refunded.
+`) as { description: string };
+
+    expect(parsed.description).toContain(">7 by default</a>");
+  });
+
   it("parses a tab inside a block scalar", () => {
     const parsed = parseYamlDocument("source: |-\n  line\n  \tkept\n") as { source: string };
     expect(parsed.source).toContain("kept");

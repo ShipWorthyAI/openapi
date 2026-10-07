@@ -1,5 +1,8 @@
-import { JsonSchema } from "effect";
-import { asRecord } from "../pointer.js";
+import { JsonSchema, Predicate } from "effect";
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return Predicate.isObject(value) ? value : undefined;
+}
 
 const METHODS = new Set(["get", "put", "post", "delete", "options", "head", "patch", "trace"]);
 

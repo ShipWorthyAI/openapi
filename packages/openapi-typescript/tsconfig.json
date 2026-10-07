@@ -6,6 +6,6 @@
     "outDir": "dist",
     "types": ["vitest/globals"]
   },
-  "include": ["scripts", "src", "test", "*.ts"],
+  "include": ["src", "test", "*.ts"],
   "exclude": ["node_modules"]
 }

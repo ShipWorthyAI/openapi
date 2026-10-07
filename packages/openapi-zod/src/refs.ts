@@ -1,22 +1,30 @@
-import { resolveRef, type OpenAPI3 } from "@shipworthy/openapi-typescript";
+import type { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import { resolveRef } from "@shipworthy/openapi-typescript";
+import { Predicate } from "effect";
+import { ZodGenerationError } from "./errors";
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+/** Follow an internal `$ref` on a parsed document. Boolean `false` is a real schema. */
+export function resolveDocumentRef(model: ParsedOpenApi, ref: string): unknown {
+  const resolved = resolveRef<unknown>(model, ref, { silent: true });
 
-/** Follow an internal `$ref`. Boolean `false` is a real schema, so only `undefined` means missing. */
-export function resolveDocumentRef(document: OpenAPI3, ref: string): unknown {
-  const resolved = resolveRef<unknown>(document, ref, { silent: true });
-  if (resolved === undefined) throw new Error(`${ref}: Unresolved reference`);
+  if (resolved === undefined) {
+    throw new ZodGenerationError({ message: `${ref}: Unresolved reference` });
+  }
+
   return resolved;
 }
 
-export function resolveObject<T extends object>(
-  document: OpenAPI3,
-  value: T | { $ref: string },
-): T {
-  if (!isRecord(value) || typeof value.$ref !== "string") return value as T;
-  const resolved = resolveDocumentRef(document, value.$ref);
-  if (!isRecord(resolved)) throw new Error(`${value.$ref}: Unresolved reference`);
-  return resolved as T;
+export function resolveObject(model: ParsedOpenApi, value: unknown): Record<string, unknown> {
+  if (!Predicate.isObject(value)) {
+    throw new ZodGenerationError({ message: "Expected an object" });
+  }
+
+  if (!Predicate.isString(value.$ref)) return value;
+  const resolved = resolveDocumentRef(model, value.$ref);
+
+  if (!Predicate.isObject(resolved)) {
+    throw new ZodGenerationError({ message: `${value.$ref}: Unresolved reference` });
+  }
+
+  return resolved;
 }

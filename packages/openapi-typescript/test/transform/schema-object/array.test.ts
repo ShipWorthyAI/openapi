@@ -36,8 +36,8 @@ describe("transformSchemaObject > array", () => {
           maxItems: 2,
         },
         want: `[
-    string,
-    number
+  string,
+  number
 ]`,
         // options: DEFAULT_OPTIONS,
       },
@@ -51,9 +51,9 @@ describe("transformSchemaObject > array", () => {
           prefixItems: [{ type: "number" }, { type: "number" }, { type: "number" }],
         },
         want: `[
-    number,
-    number,
-    number
+  number,
+  number,
+  number
 ]`,
         // options: DEFAULT_OPTIONS,
       },
@@ -117,8 +117,8 @@ describe("transformSchemaObject > array", () => {
       {
         given: { type: "array", items: { type: "string" }, minItems: 1 },
         want: `[
-    string,
-    ...string[]
+  string,
+  ...string[]
 ]`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -132,10 +132,10 @@ describe("transformSchemaObject > array", () => {
         given: { type: "array", items: { type: "string" }, maxItems: 2 },
         want: `[
 ] | [
-    string
+  string
 ] | [
-    string,
-    string
+  string,
+  string
 ]`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -159,8 +159,8 @@ describe("transformSchemaObject > array", () => {
       {
         given: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2 },
         want: `[
-    string,
-    string
+  string,
+  string
 ]`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -191,9 +191,9 @@ describe("transformSchemaObject > array", () => {
           prefixItems: [{ type: "number" }, { type: "number" }, { type: "number" }],
         },
         want: `readonly [
-    number,
-    number,
-    number
+  number,
+  number,
+  number
 ]`,
         options: {
           ...DEFAULT_OPTIONS,

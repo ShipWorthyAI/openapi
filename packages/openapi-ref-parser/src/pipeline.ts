@@ -1,10 +1,14 @@
-import { JsonPointer, JsonSchema } from "effect";
+import { JsonPointer, JsonSchema, Predicate } from "effect";
 import type { DereferenceHooks } from "./plugins.js";
-import { asRecord, getAt, joinPointer } from "./pointer.js";
+import { getAt, joinPointer } from "./pointer.js";
 import { componentSchemas, schemaSlots } from "./upgraders/openapi-3_0.js";
-import { InvalidPointerError, MissingPointerError } from "./errors.js";
+import { circularAliasFailure, invalidPointerFailure, missingPointerFailure } from "./errors.js";
 
 const ANNOTATIONS = ["example", "discriminator", "xml", "externalDocs", "nullable"] as const;
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return Predicate.isObject(value) ? value : undefined;
+}
 
 const NESTED_SINGLE = [
   "additionalProperties",
@@ -37,12 +41,14 @@ export function runSchemaPipeline(
   hooks: DereferenceHooks | undefined,
 ): void {
   const definitions: Record<string, JsonSchema.JsonSchema> = {};
+  const definitionOrder: string[] = [];
 
   for (const slot of componentSchemas(document)) {
     const normalized = normalizeSchema(slot.parent[slot.key]);
     if (!normalized) continue;
     definitions[slot.key] = normalized.schema;
-    mergeDefinitions(definitions, normalized.definitions, normalized.schema);
+    rememberDefinition(definitionOrder, slot.key);
+    mergeDefinitions(definitions, normalized.definitions, normalized.schema, definitionOrder);
   }
 
   const others = schemaSlots(document, false);
@@ -56,7 +62,7 @@ export function runSchemaPipeline(
       continue;
     }
 
-    mergeDefinitions(definitions, normalized.definitions, normalized.schema);
+    mergeDefinitions(definitions, normalized.definitions, normalized.schema, definitionOrder);
     slot.parent[slot.key] = normalized.schema;
     slotSchemas.push(normalized.schema);
   }
@@ -116,7 +122,7 @@ export function runSchemaPipeline(
   restore(converted, parked);
   const components = asRecord(document.components) ?? {};
   document.components = components;
-  components.schemas = converted.definitions;
+  components.schemas = orderDefinitions(converted.definitions, definitionOrder);
 
   others.forEach((slot, index) => {
     slot.parent[slot.key] = converted.schemas[index];
@@ -147,19 +153,42 @@ function mergeDefinitions(
   pool: Record<string, JsonSchema.JsonSchema>,
   extra: JsonSchema.Definitions,
   owner: JsonSchema.JsonSchema,
+  order: string[],
 ): void {
   for (const [name, schema] of Object.entries(extra)) {
     if (!Object.hasOwn(pool, name)) {
       pool[name] = schema;
+      rememberDefinition(order, name);
       continue;
     }
 
     if (JSON.stringify(pool[name]) === JSON.stringify(schema)) continue;
     const unique = uniqueName(pool, name);
     pool[unique] = schema;
+    rememberDefinition(order, unique);
     rewriteDefName(owner, name, unique);
     rewriteDefName(schema, name, unique);
   }
+}
+
+function rememberDefinition(order: string[], name: string) {
+  if (!order.includes(name)) order.push(name);
+}
+
+function orderDefinitions(definitions: unknown, order: readonly string[]): unknown {
+  const source = asRecord(definitions);
+  if (!source) return definitions;
+  const output: Record<string, unknown> = {};
+
+  for (const name of order) {
+    if (Object.hasOwn(source, name)) output[name] = source[name];
+  }
+
+  for (const name of Object.keys(source)) {
+    if (!Object.hasOwn(output, name)) output[name] = source[name];
+  }
+
+  return output;
 }
 
 function uniqueName(pool: Record<string, unknown>, name: string): string {
@@ -213,7 +242,7 @@ function recursiveNames(definitions: Record<string, JsonSchema.JsonSchema>): Set
       const cycle = stack.slice(start);
 
       if (cycle.every((item) => isPureRef(definitions[item]))) {
-        throw new ReferenceError(`Definition ${JSON.stringify(name)} is a circular alias.`);
+        throw circularAliasFailure(name);
       }
 
       for (const item of cycle) recursive.add(item);
@@ -304,7 +333,7 @@ function resolveValue(
         return record;
       }
 
-      throw new MissingPointerError(key, record.$ref, record.$ref);
+      throw missingPointerFailure(key, record.$ref, record.$ref);
     }
 
     const final = finalName(key, definitions, aliases);
@@ -316,8 +345,7 @@ function resolveValue(
       return record;
     }
 
-    if (resolving.has(final))
-      throw new ReferenceError(`Definition ${JSON.stringify(final)} is a circular alias.`);
+    if (resolving.has(final)) throw circularAliasFailure(final);
     resolving.add(final);
 
     const resolved = resolveValue(
@@ -361,8 +389,7 @@ function finalName(
 ): string {
   if (aliases.has(name)) {
     const cached = aliases.get(name);
-    if (cached == null)
-      throw new ReferenceError(`Definition ${JSON.stringify(name)} is a circular alias.`);
+    if (cached == null) throw circularAliasFailure(name);
     return cached;
   }
 
@@ -391,7 +418,7 @@ function isPureRef(value: unknown): value is { $ref: string } {
 function referenceKey(ref: string): string | undefined {
   if (!ref.startsWith("#")) return undefined;
   const tokens = JsonPointer.parseUriFragment(ref);
-  if (tokens === undefined) throw new InvalidPointerError(ref, ref);
+  if (tokens === undefined) throw invalidPointerFailure(ref, ref);
   return tokens.length === 2 && tokens[0] === "$defs" ? tokens[1] : undefined;
 }
 
@@ -415,6 +442,7 @@ function park(
 
   for (const key of NESTED_ARRAY) {
     if (!Array.isArray(record[key])) continue;
+
     (record[key] as unknown[]).forEach((item, index) =>
       park(item, scope, id, [...pointer, key, String(index)], saved),
     );

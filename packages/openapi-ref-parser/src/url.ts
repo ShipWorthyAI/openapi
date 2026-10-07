@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Effect } from "effect";
-import { ResolverFailure } from "./errors.js";
+import { ResolverFailure, nodeErrorCode } from "./errors.js";
 
 const unsafeDomainSuffixes = [
   ".localhost",
@@ -140,7 +140,8 @@ export const resolveUrlSafety = Effect.fnUntraced(function* (href: string) {
       new ResolverFailure({
         message: `Error downloading ${href}: ${cause instanceof Error ? cause.message : String(cause)}`,
         source: href,
-        ioErrorCode: codeOf(cause),
+        cause,
+        ...ioCode(cause),
       }),
   });
 
@@ -166,10 +167,9 @@ export function isUnsafeHostname(hostname: string): boolean {
   return false;
 }
 
-function codeOf(cause: unknown): string {
-  if (typeof cause === "object" && cause !== null && "code" in cause && cause.code != null)
-    return String(cause.code);
-  return "";
+function ioCode(cause: unknown): { ioErrorCode: string } | undefined {
+  const ioErrorCode = nodeErrorCode(cause);
+  return ioErrorCode ? { ioErrorCode } : undefined;
 }
 
 function normalizeHostname(hostname: string): string {
@@ -237,9 +237,11 @@ function parseIPv6Address(ip: string): number[] | undefined {
 
 function parseIPv6Groups(groups: string): number[] | undefined {
   if (!groups) return [];
+
   const parsed = groups
     .split(":")
     .map((group) => (/^[\da-f]{1,4}$/i.test(group) ? Number.parseInt(group, 16) : Number.NaN));
+
   if (parsed.some((group) => !Number.isInteger(group) || group < 0 || group > 0xffff))
     return undefined;
   return parsed;
@@ -262,6 +264,7 @@ function mappedIPv4(groups: number[]): number[] | undefined {
   const firstSix = firstFive && groups[5] === 0;
   const v4Mapped = firstFive && groups[5] === 0xffff;
   if (!firstSix && !v4Mapped) return undefined;
+
   return [
     Math.floor(groups[6]! / 256),
     groups[6]! % 256,

@@ -9,7 +9,80 @@ const blockScalar = /^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/;
 export function parseYamlDocument(source: string): unknown {
   const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
   if (text.trim().length === 0) return null;
-  return applyMergeKeys(Yaml.parse(expandCompactNestedSequences(relaxIndentTabs(text))));
+
+  return applyMergeKeys(
+    Yaml.parse(expandCompactNestedSequences(deepenShallowBlockScalars(relaxIndentTabs(text)))),
+  );
+}
+
+/**
+ * Effect closes a block scalar when the next line is not indented past the header.
+ * `- |2` followed by text at the same column is that case. Indent the content and
+ * drop the explicit indicator so auto-detection keeps the scalar text.
+ */
+function deepenShallowBlockScalars(source: string): string {
+  const lines = source.replace(/\r\n?/g, "\n").split("\n");
+  const output: string[] = [];
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index] ?? "";
+    const indent = leadingSpaces(line);
+    const text = stripComment(line.slice(indent)).trimEnd();
+
+    if (!isExplicitBlockScalar(text) || !hasShallowContent(lines, index, indent)) {
+      output.push(line);
+      continue;
+    }
+
+    output.push(dropExplicitIndent(line));
+    index++;
+
+    while (index < lines.length) {
+      const next = lines[index] ?? "";
+      if (next.trim().length > 0 && leadingSpaces(next) < indent) break;
+      output.push(next.trim().length === 0 ? next : `  ${next}`);
+      index++;
+    }
+
+    index--;
+  }
+
+  return output.join("\n");
+}
+
+function isExplicitBlockScalar(text: string): boolean {
+  return /^[|>](?:[+-]?[1-9]|[1-9][+-])$/.test(scalarToken(text));
+}
+
+function scalarToken(text: string): string {
+  const separator = mappingSeparator(text);
+  const token = separator === -1 ? text : text.slice(separator + 1).trim();
+
+  if (token === "-" || token.startsWith("- ")) {
+    const item = token.slice(1).trimStart();
+    const nested = mappingSeparator(item);
+    return nested === -1 ? item : item.slice(nested + 1).trim();
+  }
+
+  return token;
+}
+
+function hasShallowContent(lines: readonly string[], header: number, indent: number): boolean {
+  for (let index = header + 1; index < lines.length; index++) {
+    const line = lines[index] ?? "";
+    if (line.trim().length === 0) continue;
+    return leadingSpaces(line) <= indent;
+  }
+
+  return false;
+}
+
+function dropExplicitIndent(line: string): string {
+  return line.replace(
+    /([|>])(\+|-)?[1-9](\+|-)?(\s*(?:#.*)?)?$/,
+    (_, bar: string, before?: string, after?: string, tail?: string) =>
+      `${bar}${before ?? ""}${after ?? ""}${tail ?? ""}`,
+  );
 }
 
 /** Effect rejects a tab after leading spaces, including inside block scalars. */
@@ -25,6 +98,7 @@ export function expandCompactNestedSequences(source: string): string {
     .replace(/^\uFEFF/, "")
     .replace(/\r\n?/g, "\n")
     .split("\n");
+
   const output: string[] = [];
   let blockIndent = -1;
 

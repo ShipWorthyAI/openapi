@@ -1,3 +1,6 @@
+import { Predicate, Result, Schema } from "effect";
+import { UnsupportedVersion } from "./errors.js";
+
 export interface OpenAPIDocument {
   openapi: string;
   info?: { title?: string; version?: string; [key: string]: unknown };
@@ -17,35 +20,29 @@ export interface OpenAPIDocument {
   [key: string]: unknown;
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+const unsupportedFormat = "Unsupported schema format, expected `openapi: 3.x`";
 
-/** The same version gate `invalid.test.ts` asserts. */
-export function versionMessage(document: unknown): string | undefined {
-  if (!isRecord(document)) return "Unsupported schema format, expected `openapi: 3.x`";
-  const openapi = typeof document.openapi === "string" ? document.openapi : undefined;
-  const openapiVersion = Number.parseFloat(openapi ?? "");
-
-  if (
-    document.swagger ||
-    !openapi ||
-    Number.isNaN(openapiVersion) ||
-    openapiVersion < 3 ||
-    openapiVersion >= 4
-  ) {
+const openApi3 = Schema.Unknown.check(
+  Schema.makeFilter((document: unknown): string | undefined => {
+    if (!Predicate.isObject(document)) return unsupportedFormat;
     if (document.swagger) return "Unsupported Swagger version: 2.x. Use OpenAPI 3.x instead.";
 
-    if (openapi || openapiVersion < 3 || openapiVersion >= 4) {
+    const openapi = document.openapi;
+    if (typeof openapi !== "string" || openapi.length === 0) return unsupportedFormat;
+
+    const version = Number.parseFloat(openapi);
+
+    if (Number.isNaN(version) || version < 3 || version >= 4) {
       return `Unsupported OpenAPI version: ${openapi}`;
     }
 
-    return "Unsupported schema format, expected `openapi: 3.x`";
-  }
+    return undefined;
+  }),
+);
 
-  return undefined;
-}
-
-export function decodePointer(token: string): string {
-  return token.replaceAll("~1", "/").replaceAll("~0", "~");
+/** Rejects anything other than an OpenAPI 3.x document. Callers keep the original value. */
+export function unsupportedVersion(document: unknown): UnsupportedVersion | undefined {
+  const result = Schema.decodeUnknownResult(openApi3)(document);
+  if (Result.isSuccess(result)) return undefined;
+  return new UnsupportedVersion({ message: result.failure.message });
 }

@@ -1,94 +1,90 @@
 import {
-  isRecord,
   loadDocument,
   parseModel,
+  UnsupportedVersion,
   type LoadError,
   type LoadedDocument,
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser";
-import { bundle } from "@shipworthy/openapi-ref-parser";
-import { Effect } from "effect";
-import {
-  ResolveError,
-  TransformError,
-  thrownMessage,
-  type MissingPlugin,
-  type UnknownPlugin,
-} from "./errors.js";
-import { importPlugin, type ModuleLoader, type PluginName } from "./plugins.js";
+import { bundleEffect } from "@shipworthy/openapi-ref-parser";
+import { Effect, FileSystem, Path, Predicate } from "effect";
+import { HttpClient } from "effect/http";
+import { ResolveError, TransformError, type InvalidPlugin, type MissingPlugin } from "./errors.js";
+import { importPlugin } from "./plugins.js";
 
 export interface GenerateOptions {
-  readonly plugin: PluginName | (string & {});
+  readonly specifier: string;
+  readonly exportName: string;
   readonly source: unknown;
   readonly cwd?: URL | string;
   readonly pluginOptions?: Readonly<Record<string, unknown>>;
-  readonly loadModule?: ModuleLoader;
 }
 
-export interface TanstackGeneration {
-  readonly nodes: unknown;
-  readonly client: unknown;
-}
+type GenerateServices = FileSystem.FileSystem | Path.Path | HttpClient.HttpClient;
 
-export const generate = Effect.fn("openapi-transformer.generate")(function* (
+export const generate = Effect.fn("generate")(function* (
   options: GenerateOptions,
-) {
+): Effect.fn.Return<unknown, GenerateError, GenerateServices> {
   const loaded = yield* loadDocument(options.source, { cwd: options.cwd });
 
   const document = yield* bundleDocument(loaded);
 
   const model = yield* Effect.try({
     try: () => parseModel(document),
-    catch: (cause) => new TransformError({ text: thrownMessage(cause) }),
+    catch: (cause) =>
+      cause instanceof UnsupportedVersion
+        ? cause
+        : new TransformError({ message: failureMessage(cause), cause }),
   });
 
-  if (options.plugin === "tanstack-query") return yield* generateTanstack(model, options);
-  const plugin = yield* importPlugin(options.plugin, options.loadModule);
+  const plugin = yield* importPlugin(options.specifier, options.exportName);
   return yield* render(plugin, model, options.pluginOptions ?? {});
 });
 
-const generateTanstack = Effect.fnUntraced(function* (
-  model: ParsedOpenApi,
-  options: GenerateOptions,
-) {
-  const query = yield* importPlugin("tanstack-query", options.loadModule);
-  const types = yield* importPlugin("typescript", options.loadModule);
+function failureMessage(cause: unknown): string {
+  return Predicate.isError(cause) ? cause.message : String(cause);
+}
 
-  const nodes = yield* render(types, model, {
-    defaultNonNullable: false,
-    ...options.pluginOptions,
-  });
+function pluginFailure(cause: unknown): TransformError {
+  return new TransformError({ message: failureMessage(cause), cause });
+}
 
-  const client = yield* render(query, model, options.pluginOptions ?? {});
-  return { nodes, client } satisfies TanstackGeneration;
-});
+function isPluginEffect(value: unknown): value is Effect.Effect<unknown, Error> {
+  return Effect.isEffect(value);
+}
 
-function render(
+const render = Effect.fnUntraced(function* (
   plugin: { generate(model: ParsedOpenApi, options: Readonly<Record<string, unknown>>): unknown },
   model: ParsedOpenApi,
   options: Readonly<Record<string, unknown>>,
-) {
-  return Effect.try({
+): Effect.fn.Return<unknown, TransformError> {
+  const value = yield* Effect.try({
     try: () => plugin.generate(model, options),
-    catch: (cause) => new TransformError({ text: thrownMessage(cause) }),
+    catch: pluginFailure,
   });
-}
 
-function bundleDocument(loaded: LoadedDocument) {
-  return Effect.tryPromise({
-    try: async () => {
-      const bundled = await bundle(loaded.absoluteRef, loaded.document);
-      if (!isRecord(bundled)) throw new Error("Bundled schema is empty");
-      if (!("components" in bundled)) bundled.components = {};
-      return bundled;
-    },
-    catch: (cause) => new ResolveError({ text: thrownMessage(cause) }),
-  });
-}
+  if (!isPluginEffect(value)) return value;
+
+  return yield* Effect.mapError(value, pluginFailure);
+});
+
+const bundleDocument = Effect.fnUntraced(function* (
+  loaded: LoadedDocument,
+): Effect.fn.Return<{ [x: PropertyKey]: unknown }, ResolveError, FileSystem.FileSystem> {
+  const bundled = yield* bundleEffect(loaded.absoluteRef, loaded.document).pipe(
+    Effect.mapError((cause) => new ResolveError({ message: failureMessage(cause), cause })),
+  );
+
+  if (!Predicate.isObject(bundled)) {
+    return yield* new ResolveError({ message: "Bundled schema is empty" });
+  }
+
+  return "components" in bundled ? bundled : { ...bundled, components: {} };
+});
 
 export type GenerateError =
   | ResolveError
   | TransformError
   | MissingPlugin
-  | UnknownPlugin
+  | InvalidPlugin
   | LoadError;

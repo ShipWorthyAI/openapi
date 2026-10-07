@@ -1,6 +1,7 @@
 import type ts from "#compiler";
 import { STRING } from "../lib/ts.js";
-import type { ParameterObject, TransformNodeOptions } from "../types.js";
+import type { Json as ParameterObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import transformSchemaObject from "./schema-object.js";
 
 /**

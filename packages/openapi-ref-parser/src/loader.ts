@@ -1,6 +1,14 @@
-import { Effect, FileSystem } from "effect";
-import { ResolverFailure, UnmatchedParserFailure, UnmatchedResolverFailure } from "./errors.js";
-import { nodeFileSystem } from "./filesystem.js";
+import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem";
+import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
+import { Effect, FileSystem, Layer, ManagedRuntime } from "effect";
+import type { HttpClient } from "effect/http";
+import {
+  ResolverFailure,
+  UnmatchedParserFailure,
+  UnmatchedResolverFailure,
+  nodeErrorCode,
+  type TaggedFailure,
+} from "./errors.js";
 import { httpResolver } from "./http.js";
 import { parserPlugins } from "./parsers.js";
 import type { EffectPlugin, FileInfo, Options, ResolverPlugin } from "./plugins.js";
@@ -21,17 +29,18 @@ export function makeContext(rootUrl: string, options: Options): LoadContext {
   };
 }
 
-export const loadDocument = Effect.fnUntraced(function* (url: string, context: LoadContext) {
+export const loadDocument = Effect.fnUntraced(function* (
+  url: string,
+  context: LoadContext,
+): Effect.fn.Return<unknown, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
   const file = fileInfo(url);
   const resolvers = context.resolvers.filter((plugin) => plugin.can(file));
 
   if (resolvers.length === 0) {
-    return yield* Effect.fail(
-      new UnmatchedResolverFailure({
-        message: `Could not find resolver for "${url}"`,
-        source: url,
-      }),
-    );
+    return yield* new UnmatchedResolverFailure({
+      message: `Could not find resolver for "${url}"`,
+      source: url,
+    });
   }
 
   const bytes = yield* Effect.firstSuccessOf(resolvers.map((plugin) => plugin.run(file)));
@@ -40,9 +49,10 @@ export const loadDocument = Effect.fnUntraced(function* (url: string, context: L
   const selected = parsers.length > 0 ? parsers : context.parsers;
 
   if (selected.length === 0) {
-    return yield* Effect.fail(
-      new UnmatchedParserFailure({ message: `Could not find parser for "${url}"`, source: url }),
-    );
+    return yield* new UnmatchedParserFailure({
+      message: `Could not find parser for "${url}"`,
+      source: url,
+    });
   }
 
   const parsed = yield* Effect.firstSuccessOf(selected.map((plugin) => plugin.run(parsedFile)));
@@ -59,28 +69,31 @@ function resolversFor(rootUrl: string, options: Options): EffectPlugin<Uint8Arra
   return plugins.sort((left, right) => left.order - right.order);
 }
 
+const readResolvedFile = Effect.fnUntraced(function* (
+  file: FileInfo,
+): Effect.fn.Return<Uint8Array, ResolverFailure, FileSystem.FileSystem> {
+  const fs = yield* FileSystem.FileSystem;
+  let filePath = toFileSystemPath(file.url);
+  if (filePath.endsWith("/") || filePath.endsWith("\\")) filePath = filePath.slice(0, -1);
+
+  return yield* fs.readFile(filePath).pipe(
+    Effect.mapError(
+      (error) =>
+        new ResolverFailure({
+          message: `Error opening file ${filePath}: ${error.message}`,
+          source: filePath,
+          cause: error,
+          ...ioCode(error),
+        }),
+    ),
+  );
+});
+
 function fileResolver(): EffectPlugin<Uint8Array> {
   return {
     order: 100,
     can: (file) => isFileSystemPath(file.url),
-    run(file) {
-      return Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem;
-        let filePath = toFileSystemPath(file.url);
-        if (filePath.endsWith("/") || filePath.endsWith("\\")) filePath = filePath.slice(0, -1);
-
-        return yield* fs.readFile(filePath).pipe(
-          Effect.mapError(
-            (error) =>
-              new ResolverFailure({
-                message: `Error opening file ${filePath}: ${error.message}`,
-                source: filePath,
-                ioErrorCode: error.reason._tag,
-              }),
-          ),
-        );
-      });
-    },
+    run: readResolvedFile,
   };
 }
 
@@ -92,14 +105,12 @@ function customResolver(plugin: ResolverPlugin, index: number): EffectPlugin<Uin
       const data = await plugin.read(file);
       return typeof data === "string" ? new TextEncoder().encode(data) : data;
     },
-    (cause) =>
+    (cause, file) =>
       new ResolverFailure({
-        message: cause instanceof Error ? cause.message : `Error reading file "${""}"`,
-        source: "",
-        ioErrorCode:
-          typeof cause === "object" && cause !== null && "code" in cause
-            ? String(cause.code ?? "")
-            : "",
+        message: cause instanceof Error ? cause.message : `Error reading file "${file.url}"`,
+        source: file.url,
+        cause,
+        ...ioCode(cause),
       }),
   );
 }
@@ -108,6 +119,11 @@ function fileInfo(url: string): FileInfo {
   return { url: stripHash(url), extension: extensionOf(url) };
 }
 
-export function provideFileSystem<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
-  return effect.pipe(Effect.provideService(FileSystem.FileSystem, nodeFileSystem()));
+function ioCode(cause: unknown): { ioErrorCode: string } | undefined {
+  const ioErrorCode = nodeErrorCode(cause);
+  return ioErrorCode ? { ioErrorCode } : undefined;
 }
+
+export const runtime = ManagedRuntime.make(
+  Layer.mergeAll(NodeFileSystem.layer, NodeHttpClient.layerUndici),
+);

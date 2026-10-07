@@ -111,147 +111,147 @@ describe("transformPathItemObject", () => {
           },
         },
         want: `{
+  parameters: {
+    query?: never;
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  /** @description Basic GET */
+  get: {
     parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    /** @description Basic GET */
-    get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                    };
-                };
-            };
-            404: components["responses"]["NotFound"];
-            /** @description Server error */
-            "5xx": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        message: string;
-                        code?: string;
-                    };
-                };
-            };
+        content: {
+          "application/json": {
+            success: boolean;
+          };
         };
+      };
+      404: components["responses"]["NotFound"];
+      /** @description Server error */
+      "5xx": {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            message: string;
+            code?: string;
+          };
+        };
+      };
     };
-    /** @description Basic PUT */
-    put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["AllGood"];
-            404: components["responses"]["NotFound"];
-        };
+  };
+  /** @description Basic PUT */
+  put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    /** @description Basic POST */
-    post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["User"];
-            };
-        };
-        responses: {
-            200: components["responses"]["AllGood"];
-            404: components["responses"]["NotFound"];
-        };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["AllGood"];
+      404: components["responses"]["NotFound"];
     };
-    /** @description Basic DELETE */
-    delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["AllGood"];
-            404: components["responses"]["NotFound"];
-        };
+  };
+  /** @description Basic POST */
+  post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    /** @description Basic OPTIONS */
-    options: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["AllGood"];
-        };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["User"];
+      };
     };
-    /** @description Basic HEAD */
-    head: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["AllGood"];
-        };
+    responses: {
+      200: components["responses"]["AllGood"];
+      404: components["responses"]["NotFound"];
     };
-    /** @description Basic PATCH */
-    patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["AllGood"];
-            404: components["responses"]["NotFound"];
-        };
+  };
+  /** @description Basic DELETE */
+  delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    /** @description Basic TRACE */
-    trace: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["AllGood"];
-        };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["AllGood"];
+      404: components["responses"]["NotFound"];
     };
+  };
+  /** @description Basic OPTIONS */
+  options: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["AllGood"];
+    };
+  };
+  /** @description Basic HEAD */
+  head: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["AllGood"];
+    };
+  };
+  /** @description Basic PATCH */
+  patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["AllGood"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  /** @description Basic TRACE */
+  trace: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["AllGood"];
+    };
+  };
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -283,21 +283,21 @@ describe("transformPathItemObject", () => {
           },
         },
         want: `{
-    parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-    };
-    /** @description Get a user */
-    get: operations["getUser"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
+  parameters: {
+    query?: never;
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  /** @description Get a user */
+  get: operations["getUser"];
+  put?: never;
+  post?: never;
+  delete?: never;
+  options?: never;
+  head?: never;
+  patch?: never;
+  trace?: never;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -311,20 +311,20 @@ describe("transformPathItemObject", () => {
           },
         },
         want: `{
-    parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-    };
-    get: components["schemas"]["GetUserOperation"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
+  parameters: {
+    query?: never;
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  get: components["schemas"]["GetUserOperation"];
+  put?: never;
+  post?: never;
+  delete?: never;
+  options?: never;
+  head?: never;
+  patch?: never;
+  trace?: never;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -338,20 +338,20 @@ describe("transformPathItemObject", () => {
           },
         },
         want: `{
-    parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
+  parameters: {
+    query?: never;
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  get?: never;
+  put?: never;
+  post?: never;
+  delete?: never;
+  options?: never;
+  head?: never;
+  patch?: never;
+  trace?: never;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -387,35 +387,35 @@ describe("transformPathItemObject", () => {
           },
         },
         want: `{
+  parameters: {
+    query?: never;
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  get: {
     parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
+      query?: never;
+      header: {
+        /** @description param1 */
+        param1: string;
+      };
+      path?: never;
+      cookie: {
+        /** @description param1 */
+        param1: string;
+      };
     };
-    get: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description param1 */
-                param1: string;
-            };
-            path?: never;
-            cookie: {
-                /** @description param1 */
-                param1: string;
-            };
-        };
-        requestBody?: never;
-        responses: never;
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
+    requestBody?: never;
+    responses: never;
+  };
+  put?: never;
+  post?: never;
+  delete?: never;
+  options?: never;
+  head?: never;
+  patch?: never;
+  trace?: never;
 }`,
       },
     ],

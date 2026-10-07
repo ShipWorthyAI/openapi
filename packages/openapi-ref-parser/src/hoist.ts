@@ -1,9 +1,15 @@
-import { MissingPointerError } from "./errors.js";
+import { Predicate } from "effect";
+import { MissingPointerFailure, bundleFailure } from "./errors.js";
 import type { BundleHooks } from "./plugins.js";
-import { asRecord, cloneData, getAt, joinPointer, parsePointer, setAt } from "./pointer.js";
+import { cloneData, getAt, joinPointer, parsePointer, setAt } from "./pointer.js";
 import { getHash, isFileSystemPath, isHttp, stripHash } from "./url.js";
 
 const MAX_ATTEMPTS = 1000;
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return Predicate.isObject(value) ? value : undefined;
+}
+
 const MAX_PASSES = 100_000;
 
 type NameBucket = { taken: Set<string>; generated: Map<string, string | null> };
@@ -130,6 +136,7 @@ export function hoistExternalRefs(
     const value = cloneData(valueAt(readValue(url), hash, found.ref));
     rebaseInternalRefs(value, url);
     const rootName = oas3DefaultRoot(found.pointer);
+
     const identical = rootName
       ? matchingComponent(root, rootName, value, url, componentSource)
       : undefined;
@@ -156,7 +163,7 @@ export function hoistExternalRefs(
     }
   }
 
-  throw new Error("Could not finish bundling external references.");
+  throw bundleFailure("Could not finish bundling external references.");
 }
 
 function valueAt(document: unknown, hash: string, ref: string): unknown {
@@ -212,7 +219,7 @@ function collapseRefChains(root: Record<string, unknown>): void {
             changed = true;
           }
         } catch (error) {
-          if (!(error instanceof MissingPointerError)) throw error;
+          if (!(error instanceof MissingPointerFailure)) throw error;
         }
       }
 
@@ -354,6 +361,7 @@ function canReferenceCallback(path: string[]): boolean {
 function isUnderDirectRoot(pathFromRoot: string, root: string): boolean {
   const pointer = pointerTokens(pathFromRoot);
   const rootTokens = pointerTokens(root);
+
   return (
     pointer.length === rootTokens.length + 1 &&
     rootTokens.every((token, index) => pointer[index] === token)
@@ -363,6 +371,7 @@ function isUnderDirectRoot(pathFromRoot: string, root: string): boolean {
 function isInRoot(pointer: string, root: string): boolean {
   const pointerTokens_ = pointerTokens(pointer);
   const rootTokens = pointerTokens(root);
+
   return (
     pointerTokens_.length > rootTokens.length &&
     rootTokens.every((token, index) => pointerTokens_[index] === token)
@@ -391,9 +400,11 @@ function existingComponentPointer(
   for (const [key, child] of Object.entries(map)) {
     const record = asRecord(child);
     if (!record || typeof record.$ref !== "string") continue;
+
     const extras = Object.keys(record).filter(
       (name) => name !== "$ref" && name !== "summary" && name !== "description",
     );
+
     if (extras.length > 0) continue;
     if (stripHash(record.$ref) !== file || getHash(record.$ref) !== hash) continue;
     return joinPointer(root, key);
@@ -500,7 +511,7 @@ function valueAtSafe(root: object, pointer: string): unknown {
   try {
     return getAt(root, pointer);
   } catch (error) {
-    if (error instanceof MissingPointerError) return undefined;
+    if (error instanceof MissingPointerFailure) return undefined;
     throw error;
   }
 }
@@ -518,26 +529,18 @@ function suggest(taken: Set<string>, key: string, fileBase?: string): string {
     if (!taken.has(candidate)) return candidate;
   }
 
-  throw new Error(`Could not generate a unique component name for ${key}.`);
+  throw bundleFailure(`Could not generate a unique component name for ${key}.`);
 }
 
 function matchingComponent(
-  schema: object,
-  root: string,
-  value: unknown,
-  source: string,
-  componentSource: Map<string, string>,
+  _schema: object,
+  _root: string,
+  _value: unknown,
+  _source: string,
+  _componentSource: Map<string, string>,
 ): string | undefined {
-  const map = asRecord(valueAtSafe(schema, root));
-  if (!map) return undefined;
-  const serialized = JSON.stringify(value);
-
-  for (const [key, child] of Object.entries(map)) {
-    const pointer = joinPointer(root, key);
-    if (componentSource.get(pointer) === source) continue;
-    if (JSON.stringify(child) === serialized) return pointer;
-  }
-
+  // Each external file keeps its own component, even when two files contain the same
+  // schema. DigitalOcean repeats one enum as apps_domain_phase and app_alert_phase.
   return undefined;
 }
 

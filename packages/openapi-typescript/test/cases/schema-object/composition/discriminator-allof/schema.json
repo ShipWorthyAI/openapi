@@ -1,0 +1,33 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {
+      "Subject": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/parent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "string": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "parent": {
+        "propertyName": "operation",
+        "mapping": {
+          "test": "#/components/schemas/schema-object"
+        }
+      }
+    }
+  }
+}

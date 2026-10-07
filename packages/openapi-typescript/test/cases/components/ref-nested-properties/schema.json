@@ -1,0 +1,43 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test",
+    "version": "1.0.0"
+  },
+  "components": {
+    "parameters": {
+      "direct": {
+        "name": "direct",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/aaa"
+        }
+      },
+      "nested": {
+        "name": "nested",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/bbb/properties/ccc"
+        }
+      }
+    },
+    "schemas": {
+      "aaa": {
+        "type": "string"
+      },
+      "bbb": {
+        "type": "object",
+        "properties": {
+          "ccc": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "aaa": {
+      "type": "object"
+    }
+  }
+}

@@ -8,18 +8,20 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "bun test tests/*.test.ts"
+    "test": "vitest run test/generate.test.ts && bun test test/cli.test.ts"
   },
   "dependencies": {
+    "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-parser": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
+    "effect": "catalog:",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
-    "@shipworthy/openapi-transformer": "workspace:*",
+    "@effect/vitest": "catalog:",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "effect": "catalog:"
+    "vitest": "catalog:"
   }
 }

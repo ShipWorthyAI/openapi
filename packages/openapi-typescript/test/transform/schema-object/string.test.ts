@@ -31,8 +31,8 @@ describe("transformSchemaObject > string", () => {
       {
         given: { properties: { status: { enum: ["complete", "incomplete"] } } },
         want: `{
-    /** @enum {unknown} */
-    status?: "complete" | "incomplete";
+  /** @enum {unknown} */
+  status?: "complete" | "incomplete";
 }`,
         // options: DEFAULT_OPTIONS,
       },

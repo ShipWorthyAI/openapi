@@ -82,81 +82,81 @@ describe("transformComponentsObject", () => {
           },
         },
         want: `{
-    schemas: {
-        String: string;
-        Error: {
-            code: string;
-            message: string;
-        };
+  schemas: {
+    String: string;
+    Error: {
+      code: string;
+      message: string;
     };
-    responses: {
-        /** @description OK */
-        OK: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "text/html": string;
-            };
-        };
-        /** @description No Content */
-        NoContent: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
-        ErrorResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
+  };
+  responses: {
+    /** @description OK */
+    OK: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "text/html": string;
+      };
     };
-    parameters: {
-        Search: string;
+    /** @description No Content */
+    NoContent: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content?: never;
     };
-    requestBodies: {
-        UploadUser: {
-            content: {
-                "application/json": {
-                    email: string;
-                };
-            };
+    ErrorResponse: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+  };
+  parameters: {
+    Search: string;
+  };
+  requestBodies: {
+    UploadUser: {
+      content: {
+        "application/json": {
+          email: string;
         };
+      };
     };
-    headers: {
-        Auth: string;
-    };
-    pathItems: {
-        UploadUser: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            get: {
-                parameters: {
-                    query?: never;
-                    header?: never;
-                    path?: never;
-                    cookie?: never;
-                };
-                requestBody?: components["requestBodies"]["UploadUser"];
-                responses: never;
-            };
-            put?: never;
-            post?: never;
-            delete?: never;
-            options?: never;
-            head?: never;
-            patch?: never;
-            trace?: never;
+  };
+  headers: {
+    Auth: string;
+  };
+  pathItems: {
+    UploadUser: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      get: {
+        parameters: {
+          query?: never;
+          header?: never;
+          path?: never;
+          cookie?: never;
         };
+        requestBody?: components["requestBodies"]["UploadUser"];
+        responses: never;
+      };
+      put?: never;
+      post?: never;
+      delete?: never;
+      options?: never;
+      head?: never;
+      patch?: never;
+      trace?: never;
     };
+  };
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -203,15 +203,15 @@ describe("transformComponentsObject", () => {
           },
         },
         want: `{
-    schemas: never;
-    responses: never;
-    parameters: {
-        myParam: string;
-        myParam2: string;
-    };
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: {
+    myParam: string;
+    myParam2: string;
+  };
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }`,
         options: DEFAULT_OPTIONS,
       },
@@ -247,27 +247,27 @@ describe("transformComponentsObject", () => {
           },
         },
         want: `{
-    schemas: {
-        Alpha: {
-            a?: boolean;
-            z?: boolean;
-        };
-        Beta: {
-            a?: boolean;
-            b?: boolean;
-            c?: boolean;
-        };
-        Gamma: {
-            1?: boolean;
-            2?: boolean;
-            10?: boolean;
-        };
+  schemas: {
+    Alpha: {
+      a?: boolean;
+      z?: boolean;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    Beta: {
+      a?: boolean;
+      b?: boolean;
+      c?: boolean;
+    };
+    Gamma: {
+      1?: boolean;
+      2?: boolean;
+      10?: boolean;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }`,
         options: { ...DEFAULT_OPTIONS, alphabetize: true },
       },
@@ -334,81 +334,81 @@ describe("transformComponentsObject", () => {
           },
         },
         want: `{
-    schemas: {
-        readonly String: string;
-        readonly Error: {
-            readonly code: string;
-            readonly message: string;
-        };
+  schemas: {
+    readonly String: string;
+    readonly Error: {
+      readonly code: string;
+      readonly message: string;
     };
-    responses: {
-        /** @description OK */
-        readonly OK: {
-            headers: {
-                readonly [name: string]: unknown;
-            };
-            content: {
-                readonly "text/html": string;
-            };
-        };
-        /** @description No Content */
-        readonly NoContent: {
-            headers: {
-                readonly [name: string]: unknown;
-            };
-            content?: never;
-        };
-        readonly ErrorResponse: {
-            headers: {
-                readonly [name: string]: unknown;
-            };
-            content: {
-                readonly "application/json": components["schemas"]["Error"];
-            };
-        };
+  };
+  responses: {
+    /** @description OK */
+    readonly OK: {
+      headers: {
+        readonly [name: string]: unknown;
+      };
+      content: {
+        readonly "text/html": string;
+      };
     };
-    parameters: {
-        readonly Search: string;
+    /** @description No Content */
+    readonly NoContent: {
+      headers: {
+        readonly [name: string]: unknown;
+      };
+      content?: never;
     };
-    requestBodies: {
-        readonly UploadUser: {
-            readonly content: {
-                readonly "application/json": {
-                    readonly email: string;
-                };
-            };
+    readonly ErrorResponse: {
+      headers: {
+        readonly [name: string]: unknown;
+      };
+      content: {
+        readonly "application/json": components["schemas"]["Error"];
+      };
+    };
+  };
+  parameters: {
+    readonly Search: string;
+  };
+  requestBodies: {
+    readonly UploadUser: {
+      readonly content: {
+        readonly "application/json": {
+          readonly email: string;
         };
+      };
     };
-    headers: {
-        readonly Auth: string;
-    };
-    pathItems: {
-        readonly UploadUser: {
-            readonly parameters: {
-                readonly query?: never;
-                readonly header?: never;
-                readonly path?: never;
-                readonly cookie?: never;
-            };
-            readonly get: {
-                readonly parameters: {
-                    readonly query?: never;
-                    readonly header?: never;
-                    readonly path?: never;
-                    readonly cookie?: never;
-                };
-                readonly requestBody?: components["requestBodies"]["UploadUser"];
-                readonly responses: never;
-            };
-            readonly put?: never;
-            readonly post?: never;
-            readonly delete?: never;
-            readonly options?: never;
-            readonly head?: never;
-            readonly patch?: never;
-            readonly trace?: never;
+  };
+  headers: {
+    readonly Auth: string;
+  };
+  pathItems: {
+    readonly UploadUser: {
+      readonly parameters: {
+        readonly query?: never;
+        readonly header?: never;
+        readonly path?: never;
+        readonly cookie?: never;
+      };
+      readonly get: {
+        readonly parameters: {
+          readonly query?: never;
+          readonly header?: never;
+          readonly path?: never;
+          readonly cookie?: never;
         };
+        readonly requestBody?: components["requestBodies"]["UploadUser"];
+        readonly responses: never;
+      };
+      readonly put?: never;
+      readonly post?: never;
+      readonly delete?: never;
+      readonly options?: never;
+      readonly head?: never;
+      readonly patch?: never;
+      readonly trace?: never;
     };
+  };
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -452,16 +452,16 @@ describe("transformComponentsObject", () => {
           },
         },
         want: `{
-    schemas: {
-        Alpha: {
-            z?: boolean;
-        };
+  schemas: {
+    Alpha: {
+      z?: boolean;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }`,
         options: { ...DEFAULT_OPTIONS, excludeDeprecated: true },
       },
@@ -582,107 +582,107 @@ describe("transformComponentsObject", () => {
           },
         },
         want: `{
-    schemas: {
-        SomeType: {
-            name: string;
-            url: string;
-        };
-        "Some-Type": {
-            name: string;
-            url: string;
-        };
-        "Some.Type": {
-            name: string;
-            url: string;
-        };
-        "Some/Type": {
-            name: string;
-            url: string;
-        };
-        "1Type": {
-            value: string;
-        };
-        Error: {
-            code: string;
-            message: string;
-        };
+  schemas: {
+    SomeType: {
+      name: string;
+      url: string;
     };
-    responses: {
-        /** @description OK */
-        OK: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "text/html": string;
-            };
-        };
-        /** @description No Content */
-        NoContent: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
-        ErrorResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        SomeType: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SomeType"];
-            };
-        };
+    "Some-Type": {
+      name: string;
+      url: string;
     };
-    parameters: {
-        Search: string;
+    "Some.Type": {
+      name: string;
+      url: string;
     };
-    requestBodies: {
-        UploadUser: {
-            content: {
-                "application/json": {
-                    email: string;
-                };
-            };
+    "Some/Type": {
+      name: string;
+      url: string;
+    };
+    "1Type": {
+      value: string;
+    };
+    Error: {
+      code: string;
+      message: string;
+    };
+  };
+  responses: {
+    /** @description OK */
+    OK: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "text/html": string;
+      };
+    };
+    /** @description No Content */
+    NoContent: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content?: never;
+    };
+    ErrorResponse: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    SomeType: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["SomeType"];
+      };
+    };
+  };
+  parameters: {
+    Search: string;
+  };
+  requestBodies: {
+    UploadUser: {
+      content: {
+        "application/json": {
+          email: string;
         };
+      };
     };
-    headers: {
-        Auth: string;
-    };
-    pathItems: {
-        UploadUser: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            get: {
-                parameters: {
-                    query?: never;
-                    header?: never;
-                    path?: never;
-                    cookie?: never;
-                };
-                requestBody?: components["requestBodies"]["UploadUser"];
-                responses: never;
-            };
-            put?: never;
-            post?: never;
-            delete?: never;
-            options?: never;
-            head?: never;
-            patch?: never;
-            trace?: never;
+  };
+  headers: {
+    Auth: string;
+  };
+  pathItems: {
+    UploadUser: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      get: {
+        parameters: {
+          query?: never;
+          header?: never;
+          path?: never;
+          cookie?: never;
         };
+        requestBody?: components["requestBodies"]["UploadUser"];
+        responses: never;
+      };
+      put?: never;
+      post?: never;
+      delete?: never;
+      options?: never;
+      head?: never;
+      patch?: never;
+      trace?: never;
     };
+  };
 }
 export type SchemaSomeType = components['schemas']['SomeType'];
 export type SchemaSomeType_2 = components['schemas']['Some-Type'];
@@ -734,26 +734,26 @@ export type PathItemUploadUser = components['pathItems']['UploadUser'];`,
           },
         },
         want: `{
-    schemas: {
-        Item: {
-            name: string;
-            url: string;
-        };
-        Document: {
-            name: string;
-            size: number;
-            url: string;
-        };
-        Error: {
-            code: string;
-            message: string;
-        };
+  schemas: {
+    Item: {
+      name: string;
+      url: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    Document: {
+      name: string;
+      size: number;
+      url: string;
+    };
+    Error: {
+      code: string;
+      message: string;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type Item = components['schemas']['Item'];
 export type Document = components['schemas']['Document'];
@@ -782,17 +782,17 @@ export type Error = components['schemas']['Error'];
           },
         },
         want: `{
-    schemas: {
-        ItemDTO: {
-            name: string;
-            url: string;
-        };
+  schemas: {
+    ItemDTO: {
+      name: string;
+      url: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type ItemDTO = components['schemas']['ItemDTO'];
 `,
@@ -818,17 +818,17 @@ export type ItemDTO = components['schemas']['ItemDTO'];
           },
         },
         want: `{
-    schemas: {
-        Alpha: {
-            /** Format: date-time */
-            z?: Date | null;
-        };
+  schemas: {
+    Alpha: {
+      /** Format: date-time */
+      z?: Date | null;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -880,20 +880,20 @@ export type ItemDTO = components['schemas']['ItemDTO'];
           },
         },
         want: `{
-    schemas: {
-        aaa: string;
-        bbb: {
-            ccc?: string;
-        };
+  schemas: {
+    aaa: string;
+    bbb: {
+      ccc?: string;
     };
-    responses: never;
-    parameters: {
-        direct: components["aaa"];
-        nested: components["schemas"]["bbb"]["ccc"];
-    };
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: {
+    direct: components["aaa"];
+    nested: components["schemas"]["bbb"]["ccc"];
+  };
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }`,
         options: DEFAULT_OPTIONS,
       },

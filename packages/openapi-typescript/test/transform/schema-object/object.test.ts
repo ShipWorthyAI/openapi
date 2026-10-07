@@ -22,8 +22,8 @@ describe("transformSchemaObject > object", () => {
           required: ["required"],
         },
         want: `{
-    required: boolean;
-    optional?: boolean;
+  required: boolean;
+  optional?: boolean;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -40,8 +40,8 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    truthy: unknown;
-    falsy: never;
+  truthy: unknown;
+  falsy: never;
 }`,
       },
     ],
@@ -62,9 +62,9 @@ describe("transformSchemaObject > object", () => {
           additionalProperties: { type: "string" },
         },
         want: `{
-    property?: boolean;
+  property?: boolean;
 } & {
-    [key: string]: string;
+  [key: string]: string;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -74,7 +74,7 @@ describe("transformSchemaObject > object", () => {
       {
         given: { type: "object", additionalProperties: { type: "string" } },
         want: `{
-    [key: string]: string;
+  [key: string]: string;
 }`,
       },
     ],
@@ -87,9 +87,9 @@ describe("transformSchemaObject > object", () => {
           additionalProperties: true,
         },
         want: `{
-    property?: number;
+  property?: number;
 } & {
-    [key: string]: unknown;
+  [key: string]: unknown;
 }`,
       },
     ],
@@ -98,7 +98,7 @@ describe("transformSchemaObject > object", () => {
       {
         given: { type: "object", additionalProperties: {} },
         want: `{
-    [key: string]: unknown;
+  [key: string]: unknown;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -115,7 +115,7 @@ describe("transformSchemaObject > object", () => {
       {
         given: { type: "object", patternProperties: {} },
         want: `{
-    [key: string]: unknown;
+  [key: string]: unknown;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -128,7 +128,7 @@ describe("transformSchemaObject > object", () => {
       {
         given: { type: "object", patternProperties: { "^a": { type: "string" } } },
         want: `{
-    [key: string]: string;
+  [key: string]: string;
 }`,
       },
     ],
@@ -140,7 +140,7 @@ describe("transformSchemaObject > object", () => {
           patternProperties: { "^a": { type: "string", enum: ["a", "b", "c"] } },
         },
         want: `{
-    [key: string]: "a" | "b" | "c";
+  [key: string]: "a" | "b" | "c";
 }`,
       },
     ],
@@ -152,7 +152,7 @@ describe("transformSchemaObject > object", () => {
           patternProperties: { "^a": { type: "string" }, "^b": { type: "number" } },
         },
         want: `{
-    [key: string]: string | number;
+  [key: string]: string | number;
 }`,
       },
     ],
@@ -165,7 +165,7 @@ describe("transformSchemaObject > object", () => {
           patternProperties: { "^a": { type: "string" } },
         },
         want: `{
-    [key: string]: unknown | string;
+  [key: string]: unknown | string;
 }`,
       },
     ],
@@ -178,7 +178,7 @@ describe("transformSchemaObject > object", () => {
           patternProperties: { "^a": { type: "string" } },
         },
         want: `{
-    [key: string]: number | string;
+  [key: string]: number | string;
 }`,
       },
     ],
@@ -190,7 +190,7 @@ describe("transformSchemaObject > object", () => {
           patternProperties: { "^a": { type: "string" } },
         },
         want: `{
-    [key: string]: unknown | string;
+  [key: string]: unknown | string;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -206,7 +206,7 @@ describe("transformSchemaObject > object", () => {
           properties: { string: { type: "string" } },
         },
         want: `{
-    string?: string;
+  string?: string;
 } | null`,
         // options: DEFAULT_OPTIONS,
       },
@@ -220,7 +220,7 @@ describe("transformSchemaObject > object", () => {
           nullable: true,
         },
         want: `{
-    string?: string;
+  string?: string;
 } | null`,
         // options: DEFAULT_OPTIONS,
       },
@@ -239,12 +239,12 @@ describe("transformSchemaObject > object", () => {
           required: ["required", "requiredDefault"],
         },
         want: `{
-    required: boolean;
-    /** @default false */
-    requiredDefault: boolean;
-    optional?: boolean;
-    /** @default false */
-    optionalDefault: boolean;
+  required: boolean;
+  /** @default false */
+  requiredDefault: boolean;
+  optional?: boolean;
+  /** @default false */
+  optionalDefault: boolean;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -263,12 +263,12 @@ describe("transformSchemaObject > object", () => {
           required: ["required", "requiredDefault"],
         },
         want: `{
-    required: boolean;
-    /** @default false */
-    requiredDefault: boolean;
-    optional?: boolean;
-    /** @default false */
-    optionalDefault?: boolean;
+  required: boolean;
+  /** @default false */
+  requiredDefault: boolean;
+  optional?: boolean;
+  /** @default false */
+  optionalDefault?: boolean;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -285,8 +285,8 @@ describe("transformSchemaObject > object", () => {
           required: ["constant"],
         },
         want: `{
-    /** @constant */
-    constant: "a";
+  /** @constant */
+  constant: "a";
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -308,8 +308,8 @@ describe("transformSchemaObject > object", () => {
           required: ["constant"],
         },
         want: `{
-    /** @constant */
-    constant: 1;
+  /** @constant */
+  constant: 1;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -330,8 +330,8 @@ describe("transformSchemaObject > object", () => {
           required: ["constant"],
         },
         want: `{
-    /** @constant */
-    constant: 0;
+  /** @constant */
+  constant: 0;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -349,11 +349,11 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    foo?: string;
-    $defs: {
-        /** @enum {string} */
-        defEnum: "one" | "two" | "three";
-    };
+  foo?: string;
+  $defs: {
+    /** @enum {string} */
+    defEnum: "one" | "two" | "three";
+  };
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -367,7 +367,7 @@ describe("transformSchemaObject > object", () => {
           "x-extension": true,
         },
         want: `{
-    string?: string;
+  string?: string;
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -388,9 +388,9 @@ describe("transformSchemaObject > object", () => {
       {
         given: { type: "object", properties: { string: { type: "string" } } },
         want: `{
-    string?: string;
+  string?: string;
 } & {
-    [key: string]: unknown;
+  [key: string]: unknown;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -428,9 +428,9 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    readonly array?: readonly {
-        readonly [key: string]: unknown;
-    }[] | null;
+  readonly array?: readonly {
+    readonly [key: string]: unknown;
+  }[] | null;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -449,7 +449,7 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    new?: string;
+  new?: string;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -462,7 +462,7 @@ describe("transformSchemaObject > object", () => {
       {
         given: { type: "object", properties: { string: { type: "string" } } },
         want: `{
-    string: string;
+  string: string;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -482,8 +482,8 @@ describe("transformSchemaObject > object", () => {
           required: ["required"],
         },
         want: `{
-    required: boolean;
-    optional?: boolean;
+  required: boolean;
+  optional?: boolean;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -516,10 +516,10 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    array?: [
-        string,
-        boolean
-    ][];
+  array?: [
+    string,
+    boolean
+  ][];
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -538,8 +538,8 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    id?: $Read<number>;
-    name?: string;
+  id?: $Read<number>;
+  name?: string;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -558,8 +558,8 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    name?: string;
-    password?: $Write<string>;
+  name?: string;
+  password?: $Write<string>;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -580,9 +580,9 @@ describe("transformSchemaObject > object", () => {
           required: ["name"],
         },
         want: `{
-    id?: $Read<number>;
-    name: string;
-    password?: $Write<string>;
+  id?: $Read<number>;
+  name: string;
+  password?: $Write<string>;
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -601,8 +601,8 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    readonly id?: number;
-    password?: string;
+  readonly id?: number;
+  password?: string;
 }`,
       },
     ],
@@ -621,12 +621,12 @@ describe("transformSchemaObject > object", () => {
           },
         },
         want: `{
-    foo?: string;
-    $defs: {
-        readOnlyDef: $Read<string>;
-        writeOnlyDef: $Write<number>;
-        normalDef: boolean;
-    };
+  foo?: string;
+  $defs: {
+    readOnlyDef: $Read<string>;
+    writeOnlyDef: $Write<number>;
+    normalDef: boolean;
+  };
 }`,
         options: {
           ...DEFAULT_OPTIONS,

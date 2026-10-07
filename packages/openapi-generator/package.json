@@ -1,0 +1,25 @@
+{
+  "name": "@shipworthy/openapi-transformer",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Load, resolve, and parse an OpenAPI document, then run one generator plugin.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-parser": "workspace:*",
+    "@shipworthy/openapi-ref-parser": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@shipworthy/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

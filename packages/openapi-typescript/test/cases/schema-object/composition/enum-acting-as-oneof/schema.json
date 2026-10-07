@@ -1,0 +1,53 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {
+      "Subject": {
+        "type": "object",
+        "additionalProperties": true,
+        "enum": [
+          {
+            "$ref": "#/components/schemas/simple-user"
+          },
+          {
+            "$ref": "#/components/schemas/team"
+          },
+          {
+            "$ref": "#/components/schemas/organization"
+          }
+        ]
+      },
+      "simple-user": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "team": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "organization": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

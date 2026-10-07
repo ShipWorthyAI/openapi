@@ -12,13 +12,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "effect": "catalog:",
-    "undici": "^8.10.2"
+    "@effect/platform-node": "catalog:",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "vitest": "5.0.3"
+    "vitest": "catalog:"
   }
 }

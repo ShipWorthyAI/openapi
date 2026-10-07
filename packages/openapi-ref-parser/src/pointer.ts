@@ -1,5 +1,5 @@
 import { JsonPointer } from "effect";
-import { InvalidPointerError, MissingPointerError } from "./errors.js";
+import { invalidPointerFailure, missingPointerFailure } from "./errors.js";
 
 const unsafeTokens = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -8,7 +8,7 @@ export function parsePointer(pointer: string, source = pointer): string[] {
   if (hash === "" || hash === "#") return [];
   const fragment = hash.startsWith("#") ? hash : `#${hash}`;
   const tokens = JsonPointer.parseUriFragment(fragment) ?? splitPointer(fragment);
-  if (tokens === undefined) throw new InvalidPointerError(fragment, source);
+  if (tokens === undefined) throw invalidPointerFailure(fragment, source);
   return [...tokens];
 }
 
@@ -38,10 +38,10 @@ export function getAt(root: unknown, pointer: string, source = pointer): unknown
 
   for (const token of tokens) {
     if (current === null || typeof current !== "object") {
-      throw new MissingPointerError(token, source, pointer);
+      throw missingPointerFailure(token, source, pointer);
     }
 
-    if (!Object.hasOwn(current, token)) throw new MissingPointerError(token, source, pointer);
+    if (!Object.hasOwn(current, token)) throw missingPointerFailure(token, source, pointer);
     current = (current as Record<string, unknown>)[token];
   }
 
@@ -61,11 +61,6 @@ export function setAt(root: object, pointer: string, value: unknown): void {
   }
 
   current[tokens[tokens.length - 1]!] = value;
-}
-
-export function asRecord(value: unknown): Record<string, unknown> | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
-  return value as Record<string, unknown>;
 }
 
 /** Copy enumerable data, including cycles, and drop non-enumerable parser symbols. */

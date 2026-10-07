@@ -8,13 +8,8 @@ import {
   tsPropertyIndex,
 } from "../lib/ts.js";
 import { createRef } from "../lib/utils.js";
-import type {
-  OperationObject,
-  ParameterObject,
-  PathItemObject,
-  ReferenceObject,
-  TransformNodeOptions,
-} from "../types.js";
+import type { Json as OperationObject, Json as ParameterObject, Json as PathItemObject, Json as ReferenceObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import transformOperationObject, { injectOperationObject } from "./operation-object.js";
 import { transformParametersArray } from "./parameters-array.js";
 

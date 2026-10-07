@@ -1,16 +1,10 @@
 import { Readable } from "node:stream";
-import { fileURLToPath } from "node:url";
+import { NodeStream } from "@effect/platform-node";
 import { parseYamlDocument } from "@shipworthy/openapi-ref-parser/yaml";
-import { Effect, FileSystem, Path } from "effect";
-import { isRecord, versionMessage, type OpenAPIDocument } from "./document.js";
-import {
-  causeMessage,
-  EmptySource,
-  InvalidSource,
-  ParseError,
-  UnsupportedVersion,
-  type LoadError,
-} from "./errors.js";
+import { Effect, FileSystem, Path, Predicate, Stream } from "effect";
+import { HttpClient } from "effect/http";
+import { unsupportedVersion, type OpenAPIDocument } from "./document.js";
+import { EmptySource, InvalidSource, ParseError, type LoadError } from "./errors.js";
 
 export interface LoadOptions {
   readonly cwd?: URL | string;
@@ -25,80 +19,45 @@ export interface LoadedDocument {
 const emptyPath = "Empty schema. Please specify a URL or file path";
 const emptySchema = "Can’t parse empty schema";
 
-export const loadDocument = Effect.fn("openapi-parser.loadDocument")(function* (
+type LoadServices = FileSystem.FileSystem | Path.Path | HttpClient.HttpClient;
+
+export const loadDocument = Effect.fn("loadDocument")(function* (
   source: unknown,
   options?: LoadOptions,
-): Effect.fn.Return<LoadedDocument, LoadError, FileSystem.FileSystem | Path.Path> {
-  const fs = yield* FileSystem.FileSystem;
+): Effect.fn.Return<LoadedDocument, LoadError, LoadServices> {
   const path = yield* Path.Path;
+  const cwd = yield* resolveCwd(path, options?.cwd);
 
-  const cwd =
-    options?.cwd instanceof URL
-      ? options.cwd.protocol === "file:"
-        ? fileURLToPath(options.cwd)
-        : options.cwd.href
-      : typeof options?.cwd === "string"
-        ? path.resolve(options.cwd)
-        : path.resolve(".");
-
-  if (source == null || source === "") return yield* new EmptySource({ text: emptyPath });
-  const loaded = yield* parseSource(source, cwd, fs);
-  const problem = versionMessage(loaded.document);
-  if (problem) return yield* new UnsupportedVersion({ text: problem });
+  if (source == null || source === "") return yield* new EmptySource({ message: emptyPath });
+  const loaded = yield* parseSource(source, cwd);
+  const problem = unsupportedVersion(loaded.document);
+  if (problem) return yield* problem;
   return loaded;
 });
 
 const parseSource = Effect.fnUntraced(function* (
   source: unknown,
   absoluteRef: string,
-  fs: FileSystem.FileSystem,
-): Effect.fn.Return<LoadedDocument, LoadError, FileSystem.FileSystem | Path.Path> {
-  if (source == null || source === "") return yield* new EmptySource({ text: emptySchema });
+): Effect.fn.Return<LoadedDocument, LoadError, LoadServices> {
+  if (source == null || source === "") return yield* new EmptySource({ message: emptySchema });
 
   if (source instanceof URL) {
-    const ref = source.protocol === "file:" ? fileURLToPath(source) : source.href;
+    const ref = source.protocol === "file:" ? yield* filePath(source) : source.href;
 
     const sourceText =
-      source.protocol === "file:"
-        ? yield* fs
-            .readFileString(ref)
-            .pipe(Effect.mapError((cause) => new ParseError({ text: cause.message })))
-        : yield* Effect.tryPromise({
-            try: async () => {
-              const response = await fetch(ref);
-              if (!response.ok)
-                throw new Error(`Error fetching ${ref}: ${response.status} ${response.statusText}`);
-              return await response.text();
-            },
-            catch: (cause) => new ParseError({ text: causeMessage(cause) }),
-          });
+      source.protocol === "file:" ? yield* readFile(ref) : yield* fetchText(source.href);
 
     const parsed = yield* parseText(sourceText);
-    return { document: asDocument(parsed), absoluteRef: ref, sourceText };
+    const document = yield* requireDocument(parsed);
+    return { document, absoluteRef: ref, sourceText };
   }
 
   if (source instanceof Readable) {
-    const contents = yield* Effect.tryPromise({
-      try: () =>
-        new Promise<string>((resolve, reject) => {
-          source.resume();
-          source.setEncoding("utf8");
-          let content = "";
-
-          source.on("data", (chunk: string) => {
-            content += chunk;
-          });
-
-          source.on("error", reject);
-          source.on("end", () => resolve(content.trim()));
-        }),
-      catch: (cause) => new ParseError({ text: causeMessage(cause) }),
-    });
-
-    return yield* parseSource(contents, absoluteRef, fs);
+    const contents = yield* readReadable(source);
+    return yield* parseSource(contents, absoluteRef);
   }
 
-  if (source instanceof Buffer) return yield* parseSource(source.toString("utf8"), absoluteRef, fs);
+  if (source instanceof Buffer) return yield* parseSource(source.toString("utf8"), absoluteRef);
 
   if (typeof source === "string") {
     if (
@@ -106,34 +65,108 @@ const parseSource = Effect.fnUntraced(function* (
       source.startsWith("https://") ||
       source.startsWith("file://")
     ) {
-      return yield* parseSource(new URL(source), absoluteRef, fs);
+      const url = yield* Effect.try({
+        try: () => new URL(source),
+        catch: (cause) =>
+          new InvalidSource({
+            message: Predicate.isError(cause) ? cause.message : `Expected a valid URL`,
+          }),
+      });
+
+      return yield* parseSource(url, absoluteRef);
     }
 
     const parsed = yield* parseText(source);
-    return { document: asDocument(parsed), absoluteRef, sourceText: source };
+    const document = yield* requireDocument(parsed);
+    return { document, absoluteRef, sourceText: source };
   }
 
-  if (isRecord(source)) return { document: source as OpenAPIDocument, absoluteRef };
+  if (Predicate.isObject(source))
+    return { document: source as unknown as OpenAPIDocument, absoluteRef };
 
   return yield* new InvalidSource({
-    text: `Expected string, object, or Buffer. Got ${Array.isArray(source) ? "Array" : typeof source}`,
+    message: `Expected string, object, or Buffer. Got ${Array.isArray(source) ? "Array" : typeof source}`,
   });
 });
 
-function parseText(source: string) {
+function resolveCwd(path: Path.Path, cwd: LoadOptions["cwd"]) {
+  if (cwd instanceof URL) {
+    if (cwd.protocol !== "file:") return Effect.succeed(cwd.href);
+    return path.fromFileUrl(cwd).pipe(Effect.mapError(parseFailure));
+  }
+
+  return Effect.succeed(typeof cwd === "string" ? path.resolve(cwd) : path.resolve("."));
+}
+
+const filePath = Effect.fnUntraced(function* (
+  url: URL,
+): Effect.fn.Return<string, ParseError, Path.Path> {
+  const path = yield* Path.Path;
+  return yield* path.fromFileUrl(url).pipe(Effect.mapError(parseFailure));
+});
+
+const readFile = Effect.fnUntraced(function* (
+  file: string,
+): Effect.fn.Return<string, ParseError, FileSystem.FileSystem> {
+  const fs = yield* FileSystem.FileSystem;
+  return yield* fs.readFileString(file).pipe(Effect.mapError(parseFailure));
+});
+
+const fetchText = Effect.fnUntraced(function* (
+  url: string,
+): Effect.fn.Return<string, ParseError, HttpClient.HttpClient> {
+  const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
+
+  return yield* client.get(url).pipe(
+    Effect.flatMap((response) => response.text),
+    Effect.mapError(parseFailure),
+  );
+});
+
+function readReadable(source: Readable) {
+  return NodeStream.fromReadable({
+    evaluate: () => source,
+    onError: parseFailure,
+  }).pipe(
+    Stream.decodeText,
+    Stream.mkString,
+    Effect.map((text) => text.trim()),
+  );
+}
+
+const parseText = Effect.fnUntraced(function* (source: string) {
   if (source[0] === "{") {
-    return Effect.try({
+    return yield* Effect.try({
       try: () => JSON.parse(source) as unknown,
-      catch: (cause) => new ParseError({ text: causeMessage(cause) }),
+      catch: parseFailure,
     });
   }
 
-  return Effect.try({
+  return yield* Effect.try({
     try: () => parseYamlDocument(source),
-    catch: (cause) => new ParseError({ text: causeMessage(cause) }),
+    catch: parseFailure,
+  });
+});
+
+const requireDocument = Effect.fnUntraced(function* (
+  value: unknown,
+): Effect.fn.Return<OpenAPIDocument, InvalidSource> {
+  if (Predicate.isObject(value)) return value as unknown as OpenAPIDocument;
+
+  return yield* new InvalidSource({
+    message: `Expected an OpenAPI document object. Got ${valueKind(value)}`,
+  });
+});
+
+function parseFailure(cause: unknown): ParseError {
+  return new ParseError({
+    message: Predicate.isError(cause) ? cause.message : String(cause),
+    cause,
   });
 }
 
-function asDocument(value: unknown): OpenAPIDocument {
-  return isRecord(value) ? (value as OpenAPIDocument) : ({ openapi: "" } as OpenAPIDocument);
+function valueKind(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "Array";
+  return typeof value;
 }

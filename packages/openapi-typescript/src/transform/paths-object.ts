@@ -3,13 +3,13 @@ import ts from "#compiler";
 import { addJSDocComment, oapiRef, stringToAST, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
 import { createRef, debug, getEntries } from "../lib/utils.js";
 import type {
-  GlobalContext,
-  OperationObject,
-  ParameterObject,
-  PathItemObject,
-  PathsObject,
-  ReferenceObject,
+  Json as OperationObject,
+  Json as ParameterObject,
+  Json as PathItemObject,
+  Json as PathsObject,
+  Json as ReferenceObject,
 } from "../types.js";
+import type { GlobalContext } from "../types.js";
 import transformPathItemObject, { type Method } from "./path-item-object.js";
 
 const PATH_PARAM_RE = /\{[^}]+\}/g;

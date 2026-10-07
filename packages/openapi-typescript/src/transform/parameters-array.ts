@@ -8,7 +8,8 @@ import {
   tsPropertyIndex,
 } from "../lib/ts.js";
 import { createRef } from "../lib/utils.js";
-import type { ParameterObject, ReferenceObject, TransformNodeOptions } from "../types.js";
+import type { Json as ParameterObject, Json as ReferenceObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import transformParameterObject from "./parameter-object.js";
 
 // Regex to match path parameters in URL

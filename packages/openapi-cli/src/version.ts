@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
+import { Schema } from "effect";
 
-export const version = (
-  JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
-    version: string;
-  }
+const PackageJson = Schema.Struct({ version: Schema.String });
+
+export const version = Schema.decodeSync(Schema.fromJsonString(PackageJson))(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ).version;

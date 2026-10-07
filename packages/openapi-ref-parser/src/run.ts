@@ -101,6 +101,7 @@ const execute = Effect.fnUntraced(function* (
 
   if (isOpenApi3(record)) {
     upgradeOpenApi3_0(record);
+
     runSchemaPipeline(
       record,
       mode === "dereference" ? "dereference" : "bundle",

@@ -2,7 +2,8 @@ import { escapePointer } from "../lib/ref.js";
 import ts from "#compiler";
 import { addJSDocComment, tsModifiers, tsPropertyIndex, UNKNOWN } from "../lib/ts.js";
 import { getEntries } from "../lib/utils.js";
-import type { HeaderObject, TransformNodeOptions } from "../types.js";
+import type { Json as HeaderObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import transformMediaTypeObject from "./media-type-object.js";
 import transformSchemaObject from "./schema-object.js";
 

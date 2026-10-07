@@ -55,5 +55,7 @@ export default defineConfig({
         prev: "multiline-block-like",
       },
     ],
+
+    "unstable-api-usage": "off",
   },
 });

@@ -1,11 +1,13 @@
 import { fileURLToPath } from "node:url";
+import { it } from "@effect/vitest";
+import { Effect } from "effect";
 import ts from "#compiler";
-import { astToString, COMMENT_HEADER } from "../src/index.js";
+import { astToString, COMMENT_HEADER, formatTypeScript } from "../src/index.js";
 import { openapiTS } from "./openapi-ts.js";
 import type { OpenAPITSOptions } from "../src/types.js";
 import type { TestCase } from "./test-helpers.js";
 
-const EXAMPLES_DIR = new URL("../examples/", import.meta.url);
+const EXAMPLES_DIR = new URL("./examples/", import.meta.url);
 
 const DATE = ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Date"));
 const BLOB = ts.factory.createTypeReferenceNode("Blob");
@@ -22,12 +24,12 @@ info:
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -44,12 +46,12 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -61,7 +63,7 @@ export type operations = Record<string, never>;`,
       {
         given:
           "https://raw.githubusercontent.com/Redocly/redocly-cli/13e753a4ca008293dab212ad3b70109166bf93c5/__tests__/lint/oas3.1/openapi.yaml",
-        want: new URL("simple-example.ts", EXAMPLES_DIR),
+        want: new URL("./simple/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
       },
     ],
@@ -71,15 +73,15 @@ export type operations = Record<string, never>;`,
         given: new URL(
           "https://raw.githubusercontent.com/Redocly/redocly-cli/13e753a4ca008293dab212ad3b70109166bf93c5/__tests__/lint/oas3.1/openapi.yaml",
         ),
-        want: new URL("simple-example.ts", EXAMPLES_DIR),
+        want: new URL("./simple/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
       },
     ],
     [
       "input > URL > local",
       {
-        given: new URL("./simple-example.yaml", EXAMPLES_DIR),
-        want: new URL("simple-example.ts", EXAMPLES_DIR),
+        given: new URL("./simple/schema.yaml", EXAMPLES_DIR),
+        want: new URL("./simple/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
       },
     ],
@@ -93,12 +95,12 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -115,12 +117,12 @@ info:
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -150,17 +152,17 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        User: {
-            name: string;
-            email: string;
-        };
+  schemas: {
+    User: {
+      name: string;
+      email: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -189,17 +191,17 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export type components = {
-    schemas: {
-        User: {
-            name: string;
-            email: string;
-        };
+  schemas: {
+    User: {
+      name: string;
+      email: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 };
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -224,53 +226,53 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    "/user/{user_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/user/{user_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          user_id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: never;
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          user_id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: never;
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -295,53 +297,53 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    [path: \`/user/\${string}\`]: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  [path: \`/user/\${string}\`]: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          user_id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: never;
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          user_id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: never;
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -363,15 +365,15 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** Format: date-time */
-        Date: Date;
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** Format: date-time */
+    Date: Date;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -404,15 +406,15 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** Format: date-time */
-        Date?: Date;
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** Format: date-time */
+    Date?: Date;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -452,18 +454,18 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: {
-        Blob: {
-            content: {
-                "application/json": Blob;
-            };
-        };
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: {
+    Blob: {
+      content: {
+        "application/json": Blob;
+      };
     };
-    headers: never;
-    pathItems: never;
+  };
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -502,21 +504,21 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: {
-        Blob: {
-            content: {
-                "application/json": {
-                    /** Format: binary */
-                    blob?: Blob;
-                };
-            };
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: {
+    Blob: {
+      content: {
+        "application/json": {
+          /** Format: binary */
+          blob?: Blob;
         };
+      };
     };
-    headers: never;
-    pathItems: never;
+  };
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -552,17 +554,17 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** Format: date-time */
-        Date: DateOrTime;
-        /** @enum {string} */
-        Set: Set<"low" | "medium" | "high">;
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** Format: date-time */
+    Date: DateOrTime;
+    /** @enum {string} */
+    Set: Set<"low" | "medium" | "high">;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -640,30 +642,30 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        User: {
-            /**
-             * @minLength 1
-             * @pattern ^[a-zA-Z0-9]+$
-             */
-            name: string;
-            /**
-             * @format email
-             */
-            /** Format: email */
-            email: string;
-            /**
-             * @minimum 0
-             * @maximum 120
-             */
-            age?: number;
-        };
+  schemas: {
+    User: {
+      /**
+       * @minLength 1
+       * @pattern ^[a-zA-Z0-9]+$
+       */
+      name: string;
+      /**
+       * @format email
+       */
+      /** Format: email */
+      email: string;
+      /**
+       * @minimum 0
+       * @maximum 120
+       */
+      age?: number;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -746,18 +748,18 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        User: {
-            name: string;
-            /** Format: email */
-            email?: string;
-        };
+  schemas: {
+    User: {
+      name: string;
+      /** Format: email */
+      email?: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -831,94 +833,94 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    "/url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    status?: PathsUrlGetParametersQueryStatus;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/url": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: {
+          status?: PathsUrlGetParametersQueryStatus;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: never;
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** @enum {string} */
-        Status: Status;
-        /** @enum {number} */
-        ErrorCode: ErrorCode;
-        /** @enum {number} */
-        XEnumVarnames: XEnumVarnames;
-        /** @enum {number} */
-        XEnumNames: XEnumNames;
-        /** @enum {string} */
-        InvalidPropertyNameChars: InvalidPropertyNameChars;
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** @enum {string} */
+    Status: Status;
+    /** @enum {number} */
+    ErrorCode: ErrorCode;
+    /** @enum {number} */
+    XEnumVarnames: XEnumVarnames;
+    /** @enum {number} */
+    XEnumNames: XEnumNames;
+    /** @enum {string} */
+    InvalidPropertyNameChars: InvalidPropertyNameChars;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export enum PathsUrlGetParametersQueryStatus {
-    active = "active",
-    inactive = "inactive"
+  active = "active",
+  inactive = "inactive"
 }
 export enum Status {
-    active = "active",
-    inactive = "inactive"
+  active = "active",
+  inactive = "inactive"
 }
 export enum ErrorCode {
-    Value100 = 100,
-    Value101 = 101,
-    Value102 = 102,
-    Value103 = 103,
-    Value104 = 104,
-    Value105 = 105
+  Value100 = 100,
+  Value101 = 101,
+  Value102 = 102,
+  Value103 = 103,
+  Value104 = 104,
+  Value105 = 105
 }
 export enum XEnumVarnames {
-    // Used when the status of something is successful
-    Success = 0,
-    // Used when the status of something has a warning
-    Warning = 1,
-    // Used when the status of something has an error
-    Error = 2
+  // Used when the status of something is successful
+  Success = 0,
+  // Used when the status of something has a warning
+  Warning = 1,
+  // Used when the status of something has an error
+  Error = 2
 }
 export enum XEnumNames {
-    // El número uno
-    Uno = 1,
-    // El número dos
-    Dos = 2,
-    // El número tres
-    Tres = 3
+  // El número uno
+  Uno = 1,
+  // El número dos
+  Dos = 2,
+  // El número tres
+  Tres = 3
 }
 export enum InvalidPropertyNameChars {
-    "=" = "=",
-    "!=" = "!=",
-    ">" = ">",
-    "~" = "~",
-    "^" = "^",
-    TE_ST = "TE=ST"
+  "=" = "=",
+  "!=" = "!=",
+  ">" = ">",
+  "~" = "~",
+  "^" = "^",
+  TE_ST = "TE=ST"
 }
 export type operations = Record<string, never>;`,
         options: { enum: true },
@@ -960,56 +962,56 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    "/url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    status?: "active" | "inactive";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/url": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: {
+          status?: "active" | "inactive";
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: never;
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** @enum {string} */
-        Status: "active" | "inactive";
-        /** @enum {number} */
-        ErrorCode: 100 | 101 | 102 | 103 | 104 | 105;
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** @enum {string} */
+    Status: "active" | "inactive";
+    /** @enum {number} */
+    ErrorCode: 100 | 101 | 102 | 103 | 104 | 105;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 type FlattenedDeepRequired<T> = {
-    [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
 };
 type ReadonlyArray<T> = [
-    Exclude<T, undefined>
+  Exclude<T, undefined>
 ] extends [
-    unknown[]
+  unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const pathsUrlGetParametersQueryStatusValues: ReadonlyArray<FlattenedDeepRequired<paths>["/url"]["get"]["parameters"]["query"]["status"]> = ["active", "inactive"];
 export const statusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Status"]> = ["active", "inactive"];
@@ -1044,27 +1046,27 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        ComplexEditKeyDto: {
-            states?: {
-                [key: string]: "TRANSLATED" | "REVIEWED";
-            };
-        };
+  schemas: {
+    ComplexEditKeyDto: {
+      states?: {
+        [key: string]: "TRANSLATED" | "REVIEWED";
+      };
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 type FlattenedDeepRequired<T> = {
-    [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
 };
 type ReadonlyArray<T> = [
-    Exclude<T, undefined>
+  Exclude<T, undefined>
 ] extends [
-    unknown[]
+  unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const complexEditKeyDtoStatesValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["ComplexEditKeyDto"]["states"][string]> = ["TRANSLATED", "REVIEWED"];
 export type operations = Record<string, never>;`,
@@ -1169,90 +1171,90 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    "/analytics/data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["analytics.data"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/analytics/data": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: operations["analytics.data"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    "analytics.data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        message: "Bad request. (InvalidFilterException)";
-                        errors: {
-                            filters: string;
-                        };
-                    } | {
-                        /** @enum {string} */
-                        message: "Bad request. (InvalidDimensionException)";
-                        errors: {
-                            dimensions: [
-                                string
-                            ];
-                        };
-                    } | {
-                        /** @enum {string} */
-                        message: "Bad request. (InvalidMetricException)";
-                        errors: {
-                            metrics: string;
-                        };
-                    };
-                };
-            };
-        };
+  "analytics.data": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody?: never;
+    responses: {
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {string} */
+            message: "Bad request. (InvalidFilterException)";
+            errors: {
+              filters: string;
+            };
+          } | {
+            /** @enum {string} */
+            message: "Bad request. (InvalidDimensionException)";
+            errors: {
+              dimensions: [
+                string
+              ];
+            };
+          } | {
+            /** @enum {string} */
+            message: "Bad request. (InvalidMetricException)";
+            errors: {
+              metrics: string;
+            };
+          };
+        };
+      };
+    };
+  };
 }
 type FlattenedDeepRequired<T> = {
-    [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
 };
 type ReadonlyArray<T> = [
-    Exclude<T, undefined>
+  Exclude<T, undefined>
 ] extends [
-    unknown[]
+  unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const pathsAnalyticsDataGetResponses400ContentApplicationJsonAnyOf0MessageValues: ReadonlyArray<Extract<FlattenedDeepRequired<paths>["/analytics/data"]["get"]["responses"]["400"]["content"]["application/json"], {
-    message: unknown;
+  message: unknown;
 }>["message"]> = ["Bad request. (InvalidFilterException)"];
 export const pathsAnalyticsDataGetResponses400ContentApplicationJsonAnyOf1MessageValues: ReadonlyArray<Extract<FlattenedDeepRequired<paths>["/analytics/data"]["get"]["responses"]["400"]["content"]["application/json"], {
-    message: unknown;
+  message: unknown;
 }>["message"]> = ["Bad request. (InvalidDimensionException)"];
 export const pathsAnalyticsDataGetResponses400ContentApplicationJsonAnyOf2MessageValues: ReadonlyArray<Extract<FlattenedDeepRequired<paths>["/analytics/data"]["get"]["responses"]["400"]["content"]["application/json"], {
-    message: unknown;
+  message: unknown;
 }>["message"]> = ["Bad request. (InvalidMetricException)"];`,
         options: { enumValues: true },
       },
@@ -1293,52 +1295,52 @@ export const pathsAnalyticsDataGetResponses400ContentApplicationJsonAnyOf2Messag
           },
         },
         want: `export interface paths {
-    "/url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    status?: PathsUrlGetParametersQueryStatus;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/url": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: {
+          status?: PathsUrlGetParametersQueryStatus;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: never;
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** @enum {string} */
-        Status: PathsUrlGetParametersQueryStatus;
-        /** @enum {string} */
-        StatusReverse: PathsUrlGetParametersQueryStatus;
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** @enum {string} */
+    Status: PathsUrlGetParametersQueryStatus;
+    /** @enum {string} */
+    StatusReverse: PathsUrlGetParametersQueryStatus;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export enum PathsUrlGetParametersQueryStatus {
-    active = "active",
-    inactive = "inactive"
+  active = "active",
+  inactive = "inactive"
 }
 export type operations = Record<string, never>;`,
         options: { enum: true, dedupeEnums: true },
@@ -1347,8 +1349,8 @@ export type operations = Record<string, never>;`,
     [
       "snapshot > GitHub",
       {
-        given: new URL("./github-api.yaml", EXAMPLES_DIR),
-        want: new URL("./github-api.ts", EXAMPLES_DIR),
+        given: new URL("./github/schema.yaml", EXAMPLES_DIR),
+        want: new URL("./github/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
         ci: { timeout: 30_000 },
       },
@@ -1356,8 +1358,8 @@ export type operations = Record<string, never>;`,
     [
       "snapshot > GitHub (next)",
       {
-        given: new URL("./github-api-next.yaml", EXAMPLES_DIR),
-        want: new URL("./github-api-next.ts", EXAMPLES_DIR),
+        given: new URL("./github-next/schema.yaml", EXAMPLES_DIR),
+        want: new URL("./github-next/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
         ci: { timeout: 30_000 },
       },
@@ -1365,8 +1367,8 @@ export type operations = Record<string, never>;`,
     [
       "snapshot > Octokit GHES 3.6 Diff to API",
       {
-        given: new URL("./octokit-ghes-3.6-diff-to-api.json", EXAMPLES_DIR),
-        want: new URL("./octokit-ghes-3.6-diff-to-api.ts", EXAMPLES_DIR),
+        given: new URL("./octokit-ghes-3.6/schema.json", EXAMPLES_DIR),
+        want: new URL("./octokit-ghes-3.6/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
         ci: { timeout: 30_000 },
       },
@@ -1374,8 +1376,8 @@ export type operations = Record<string, never>;`,
     [
       "snapshot > Stripe",
       {
-        given: new URL("./stripe-api.yaml", EXAMPLES_DIR),
-        want: new URL("./stripe-api.ts", EXAMPLES_DIR),
+        given: new URL("./stripe/schema.yaml", EXAMPLES_DIR),
+        want: new URL("./stripe/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
         ci: { timeout: 30_000 },
       },
@@ -1383,10 +1385,10 @@ export type operations = Record<string, never>;`,
     [
       "snapshot > DigitalOcean",
       {
-        given: new URL("./digital-ocean-api/DigitalOcean-public.v2.yaml", EXAMPLES_DIR),
-        want: new URL("./digital-ocean-api.ts", EXAMPLES_DIR),
+        given: new URL("./digital-ocean/schema/DigitalOcean-public.v2.yaml", EXAMPLES_DIR),
+        want: new URL("./digital-ocean/default/types.ts", EXAMPLES_DIR),
         // options: DEFAULT_OPTIONS,
-        ci: { timeout: 30_000 },
+        ci: { timeout: 90_000 },
       },
     ],
     [
@@ -1418,64 +1420,64 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    "/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        status?: "active" | "inactive";
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /** @enum {string} */
+            status?: "active" | "inactive";
+          };
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: never;
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 type FlattenedDeepRequired<T> = {
-    [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
 };
 type ReadonlyArray<T> = [
-    Exclude<T, undefined>
+  Exclude<T, undefined>
 ] extends [
-    unknown[]
+  unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const pathsTestGetRequestBodyContentApplicationJsonStatusValues: ReadonlyArray<FlattenedDeepRequired<paths>["/test"]["get"]["requestBody"]["content"]["application/json"]["status"]> = ["active", "inactive"];
 export type operations = Record<string, never>;`,
@@ -1540,48 +1542,48 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Resource: {
-            items?: ({
-                id: string;
-            } & ({
-                /** @enum {string} */
-                type?: "simple";
-            } | {
-                /** @enum {string} */
-                type?: "complex";
-                nested?: {
-                    /** @enum {string} */
-                    code: "a" | "b";
-                };
-            }))[];
+  schemas: {
+    Resource: {
+      items?: ({
+        id: string;
+      } & ({
+        /** @enum {string} */
+        type?: "simple";
+      } | {
+        /** @enum {string} */
+        type?: "complex";
+        nested?: {
+          /** @enum {string} */
+          code: "a" | "b";
         };
+      }))[];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 type FlattenedDeepRequired<T> = {
-    [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
 };
 type ReadonlyArray<T> = [
-    Exclude<T, undefined>
+  Exclude<T, undefined>
 ] extends [
-    unknown[]
+  unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const resourceItemsOneOf0TypeValues: ReadonlyArray<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["items"], {
-    type: unknown;
+  type: unknown;
 }>["type"]> = ["simple"];
 export const resourceItemsOneOf1TypeValues: ReadonlyArray<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["items"], {
-    type: unknown;
+  type: unknown;
 }>["type"]> = ["complex"];
 export const resourceItemsOneOf1NestedCodeValues: ReadonlyArray<Extract<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["items"], {
-    nested: unknown;
+  nested: unknown;
 }>["nested"], {
-    code: unknown;
+  code: unknown;
 }>["code"]> = ["a", "b"];
 export type operations = Record<string, never>;`,
         options: { enumValues: true },
@@ -1643,45 +1645,45 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Resource: {
-            items?: ({
-                nested: {
-                    /** @enum {string} */
-                    type: "simple";
-                };
-            } | {
-                nested: {
-                    /** @enum {string} */
-                    code: "a" | "b";
-                };
-            })[];
+  schemas: {
+    Resource: {
+      items?: ({
+        nested: {
+          /** @enum {string} */
+          type: "simple";
         };
+      } | {
+        nested: {
+          /** @enum {string} */
+          code: "a" | "b";
+        };
+      })[];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 type FlattenedDeepRequired<T> = {
-    [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
 };
 type ReadonlyArray<T> = [
-    Exclude<T, undefined>
+  Exclude<T, undefined>
 ] extends [
-    unknown[]
+  unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const resourceItemsOneOf0NestedTypeValues: ReadonlyArray<Extract<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["items"], {
-    nested: unknown;
+  nested: unknown;
 }>["nested"], {
-    type: unknown;
+  type: unknown;
 }>["type"]> = ["simple"];
 export const resourceItemsOneOf1NestedCodeValues: ReadonlyArray<Extract<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["items"], {
-    nested: unknown;
+  nested: unknown;
 }>["nested"], {
-    code: unknown;
+  code: unknown;
 }>["code"]> = ["a", "b"];
 export type operations = Record<string, never>;`,
         options: { enumValues: true },
@@ -1752,65 +1754,65 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Resource: {
-            outer?: {
-                /** @enum {string} */
-                kind: "typeA";
-                inner?: {
-                    /** @enum {string} */
-                    variant: "v1";
-                } | {
-                    /** @enum {string} */
-                    variant: "v2";
-                    deep?: {
-                        /** @enum {string} */
-                        code: "x" | "y";
-                    };
-                };
-            } | {
-                /** @enum {string} */
-                kind: "typeB";
-            };
+  schemas: {
+    Resource: {
+      outer?: {
+        /** @enum {string} */
+        kind: "typeA";
+        inner?: {
+          /** @enum {string} */
+          variant: "v1";
+        } | {
+          /** @enum {string} */
+          variant: "v2";
+          deep?: {
+            /** @enum {string} */
+            code: "x" | "y";
+          };
         };
+      } | {
+        /** @enum {string} */
+        kind: "typeB";
+      };
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 type FlattenedDeepRequired<T> = {
-    [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
 };
 type ReadonlyArray<T> = [
-    Exclude<T, undefined>
+  Exclude<T, undefined>
 ] extends [
-    unknown[]
+  unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const resourceOuterOneOf0KindValues: ReadonlyArray<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["outer"], {
-    kind: unknown;
+  kind: unknown;
 }>["kind"]> = ["typeA"];
 export const resourceOuterOneOf0InnerOneOf0VariantValues: ReadonlyArray<Extract<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["outer"], {
-    inner: unknown;
+  inner: unknown;
 }>["inner"], {
-    variant: unknown;
+  variant: unknown;
 }>["variant"]> = ["v1"];
 export const resourceOuterOneOf0InnerOneOf1VariantValues: ReadonlyArray<Extract<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["outer"], {
-    inner: unknown;
+  inner: unknown;
 }>["inner"], {
-    variant: unknown;
+  variant: unknown;
 }>["variant"]> = ["v2"];
 export const resourceOuterOneOf0InnerOneOf1DeepCodeValues: ReadonlyArray<Extract<Extract<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["outer"], {
-    inner: unknown;
+  inner: unknown;
 }>["inner"], {
-    deep: unknown;
+  deep: unknown;
 }>["deep"], {
-    code: unknown;
+  code: unknown;
 }>["code"]> = ["x", "y"];
 export const resourceOuterOneOf1KindValues: ReadonlyArray<Extract<FlattenedDeepRequired<components>["schemas"]["Resource"]["outer"], {
-    kind: unknown;
+  kind: unknown;
 }>["kind"]> = ["typeB"];
 export type operations = Record<string, never>;`,
         options: { enumValues: true },
@@ -1819,17 +1821,22 @@ export type operations = Record<string, never>;`,
   ];
 
   for (const [testName, { given, want, options, ci }] of tests) {
-    test.skipIf(ci?.skipIf)(
+    it.effect.skipIf(ci?.skipIf)(
       testName,
-      async () => {
-        const result = astToString(await openapiTS(given, options));
+      () =>
+        Effect.gen(function* () {
+          const result = astToString(yield* openapiTS(given, options));
 
-        if (want instanceof URL) {
-          await expect(`${COMMENT_HEADER}${result}`).toMatchFileSnapshot(fileURLToPath(want));
-        } else {
-          expect(result).toBe(`${want}\n`);
-        }
-      },
+          if (want instanceof URL) {
+            const formatted = yield* Effect.tryPromise(() =>
+              formatTypeScript(`${COMMENT_HEADER}${result}`),
+            );
+
+            yield* Effect.promise(() => expect(formatted).toMatchFileSnapshot(fileURLToPath(want)));
+          } else {
+            expect(result).toBe(`${want}\n`);
+          }
+        }),
       ci?.timeout || 5000,
     );
   }

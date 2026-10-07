@@ -53,56 +53,56 @@ describe("transformPathsObject", () => {
           },
         },
         want: `{
-    "/api/v1/user/{user_id}": {
-        parameters: {
-            query?: {
-                /** @description Page number. */
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page number. */
-                    page?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description User ID. */
-                    user_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        Link: components["headers"]["link"];
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            id: string;
-                            email: string;
-                            name?: string;
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/api/v1/user/{user_id}": {
+    parameters: {
+      query?: {
+        /** @description Page number. */
+        page?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: {
+          /** @description Page number. */
+          page?: number;
+        };
+        header?: never;
+        path: {
+          /** @description User ID. */
+          user_id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            Link: components["headers"]["link"];
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": {
+              id: string;
+              email: string;
+              name?: string;
+            };
+          };
+        };
+        404: components["responses"]["NotFound"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -123,30 +123,30 @@ describe("transformPathsObject", () => {
           },
         },
         want: `{
-    "/api/{version}/user/{user_id}": {
-        parameters: {
-            query?: {
-                utm_source?: components["parameters"]["utm_source"];
-                utm_email?: components["parameters"]["utm_email"];
-                utm_campaign?: components["parameters"]["utm_campaign"];
-                page?: number;
-            };
-            header?: never;
-            path: {
-                version: components["parameters"]["version"];
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/api/{version}/user/{user_id}": {
+    parameters: {
+      query?: {
+        utm_source?: components["parameters"]["utm_source"];
+        utm_email?: components["parameters"]["utm_email"];
+        utm_campaign?: components["parameters"]["utm_campaign"];
+        page?: number;
+      };
+      header?: never;
+      path: {
+        version: components["parameters"]["version"];
+        user_id: string;
+      };
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -208,30 +208,30 @@ describe("transformPathsObject", () => {
           },
         },
         want: `{
-    "/api/{version}/user/{user_id}": {
-        parameters: {
-            query?: {
-                page?: number;
-                utm_campaign?: components["parameters"]["utm_campaign"];
-                utm_email?: components["parameters"]["utm_email"];
-                utm_source?: components["parameters"]["utm_source"];
-            };
-            header?: never;
-            path: {
-                user_id: string;
-                version: components["parameters"]["version"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/api/{version}/user/{user_id}": {
+    parameters: {
+      query?: {
+        page?: number;
+        utm_campaign?: components["parameters"]["utm_campaign"];
+        utm_email?: components["parameters"]["utm_email"];
+        utm_source?: components["parameters"]["utm_source"];
+      };
+      header?: never;
+      path: {
+        user_id: string;
+        version: components["parameters"]["version"];
+      };
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }`,
         options: {
           ...DEFAULT_OPTIONS,
@@ -328,57 +328,57 @@ describe("transformPathsObject", () => {
           },
         },
         want: `{
-    [path: \`/api/v1/user/\${number}\`]: {
-        parameters: {
-            query?: {
-                /** @description Page number. */
-                page?: number;
-            };
-            header?: never;
-            path: {
-                user_id: number;
-            };
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page number. */
-                    page?: number;
-                };
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        Link: components["headers"]["link"];
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            id: string;
-                            email: string;
-                            name?: string;
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  [path: \`/api/v1/user/\${number}\`]: {
+    parameters: {
+      query?: {
+        /** @description Page number. */
+        page?: number;
+      };
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: {
+          /** @description Page number. */
+          page?: number;
+        };
+        header?: never;
+        path: {
+          user_id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            Link: components["headers"]["link"];
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": {
+              id: string;
+              email: string;
+              name?: string;
+            };
+          };
+        };
+        404: components["responses"]["NotFound"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }`,
         options: { ...DEFAULT_OPTIONS, pathParamsAsTypes: true },
       },

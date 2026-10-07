@@ -1,6 +1,7 @@
 import type ts from "#compiler";
 import { UNKNOWN } from "../lib/ts.js";
-import type { MediaTypeObject, TransformNodeOptions } from "../types.js";
+import type { Json as MediaTypeObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import transformSchemaObject from "./schema-object.js";
 
 /**

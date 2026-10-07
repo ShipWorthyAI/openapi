@@ -28,12 +28,12 @@ describe("transformRequestBodyObject", () => {
           },
         },
         want: `{
-    content: {
-        "application/json": {
-            required: string;
-            optional?: string;
-        };
+  content: {
+    "application/json": {
+      required: string;
+      optional?: string;
     };
+  };
 }`,
         // options: DEFAULT_OPTIONS,
       },
@@ -43,9 +43,9 @@ describe("transformRequestBodyObject", () => {
       {
         given: { content: {} },
         want: `{
-    content: {
-        "*/*"?: never;
-    };
+  content: {
+    "*/*"?: never;
+  };
 }`,
       },
     ],
@@ -54,9 +54,9 @@ describe("transformRequestBodyObject", () => {
       {
         given: {},
         want: `{
-    content: {
-        "*/*"?: never;
-    };
+  content: {
+    "*/*"?: never;
+  };
 }`,
       },
     ],
@@ -82,16 +82,16 @@ describe("transformRequestBodyObject", () => {
           description: "description",
         },
         want: `{
-    content: {
-        "application/x-www-form-urlencoded": {
-            required: string;
-            optional?: string;
-            /** @default false */
-            flag_optional?: boolean;
-            /** @default false */
-            flag_required: boolean;
-        };
+  content: {
+    "application/x-www-form-urlencoded": {
+      required: string;
+      optional?: string;
+      /** @default false */
+      flag_optional?: boolean;
+      /** @default false */
+      flag_required: boolean;
     };
+  };
 }`,
         options: {
           path: "#/paths/~post-item/post/requestBody/application~1x-www-form-urlencoded",
@@ -132,22 +132,22 @@ describe("transformRequestBodyObject", () => {
           description: "description",
         },
         want: `{
-    content: {
-        "application/json": {
-            /**
-             * Card Title
-             * @default Social Profile
-             */
-            card_title?: string;
-            /** Template */
-            template: string;
-            /**
-             * Socials
-             * @default {}
-             */
-            socials?: Record<string, never>;
-        };
+  content: {
+    "application/json": {
+      /**
+       * Card Title
+       * @default Social Profile
+       */
+      card_title?: string;
+      /** Template */
+      template: string;
+      /**
+       * Socials
+       * @default {}
+       */
+      socials?: Record<string, never>;
     };
+  };
 }`,
         options: {
           path: "#/components/requestBodies/social_profiles__Create/application~1json",

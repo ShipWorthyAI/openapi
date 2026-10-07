@@ -1,7 +1,8 @@
 import ts from "#compiler";
 import { addJSDocComment, NEVER, oapiRef, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
 import { createRef, getEntries } from "../lib/utils.js";
-import type { ResponsesObject, TransformNodeOptions } from "../types.js";
+import type { Json as ResponsesObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import transformResponseObject from "./response-object.js";
 
 /**

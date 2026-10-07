@@ -1,4 +1,5 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { JsonPointer } from "effect";
@@ -7,8 +8,11 @@ import {
   bundle,
   dereference,
   InvalidPointerError,
+  JSONParserErrorGroup,
   MissingPointerError,
   parse,
+  ResolverError,
+  TimeoutError,
   type FileInfo,
 } from "../src/index.js";
 import { joinPointer, parsePointer } from "../src/pointer.js";
@@ -47,13 +51,17 @@ describe("openapi bundle", () => {
 
     expect(bundled.paths["/pets"].get.responses["201"].$ref).toBe("#/components/responses/created");
     expect(bundled.components.responses.created.description).toBe("created");
+
     expect(bundled.paths["/pets"].post.requestBody.$ref).toBe(
       "#/components/requestBodies/pet-body",
     );
+
     expect(bundled.components.requestBodies["pet-body"].required).toBe(true);
+
     expect(bundled.paths["/pets"].get.responses["200"].headers["X-Rate"].$ref).toBe(
       "#/components/headers/rate",
     );
+
     expect(bundled.components.headers.rate.schema).toEqual({ type: "integer" });
 
     expect(
@@ -74,10 +82,13 @@ describe("openapi bundle", () => {
     ).toBe("#/components/examples/pet-example");
 
     expect(bundled.components.examples["pet-example"].value).toEqual({ name: "Rex" });
+
     expect(bundled.paths["/pets"].post.responses["200"].links.next.$ref).toBe(
       "#/components/links/pet-link",
     );
+
     expect(bundled.components.links["pet-link"].operationId).toBe("getPet");
+
     expect(bundled.paths["/pets"].post.callbacks.onPet.$ref).toBe(
       "#/components/callbacks/pet-callback",
     );
@@ -200,10 +211,12 @@ describe("openapi bundle", () => {
     });
 
     expect(bundled.components.schemas.Age).toEqual({ type: "integer", exclusiveMinimum: 0 });
+
     expect(bundled.components.schemas.Pair.prefixItems).toEqual([
       { type: "string" },
       { type: "number" },
     ]);
+
     expect(bundled.components.schemas.Pair.items).toBe(false);
     expect(bundled.components.schemas.Pair.additionalItems).toBeUndefined();
 
@@ -241,15 +254,18 @@ describe("openapi bundle", () => {
 
     const bundled = (await bundle(structuredClone(document))) as any;
     expect(bundled.components.schemas.Node.properties.child.$ref).toBe("#/components/schemas/Node");
+
     expect(bundled.components.schemas.Node.properties.label.$ref).toBe(
       "#/components/schemas/Label",
     );
 
     const dereferenced = (await dereference(structuredClone(document))) as any;
     expect(JSON.stringify(dereferenced)).toContain("#/components/schemas/Node");
+
     expect(dereferenced.components.schemas.Node.properties.child.$ref).toBe(
       "#/components/schemas/Node",
     );
+
     expect(dereferenced.components.schemas.Node.properties.label).toEqual({ type: "string" });
     expect(dereferenced.components.schemas.A.properties.b.$ref).toBe("#/components/schemas/B");
     expect(dereferenced.components.schemas.B.properties.a.$ref).toBe("#/components/schemas/A");
@@ -294,6 +310,7 @@ describe("openapi bundle", () => {
     expect(bundled.components.schemas.Tree.properties.left.$ref).toBe("#/components/schemas/Tree");
     expect(bundled.components.schemas.Tree.$defs).toBeUndefined();
     expect(bundled.components.schemas.Label).toEqual({ type: "string" });
+
     expect(bundled.components.schemas.Tree.properties.label.$ref).toBe(
       "#/components/schemas/Label",
     );
@@ -301,10 +318,12 @@ describe("openapi bundle", () => {
 
   it("rewrites discriminator mappings and inlines external values", async () => {
     const directory = await tempDir();
+
     await writeFile(
       path.join(directory, "dog.json"),
       JSON.stringify({ type: "object", properties: { bark: { type: "boolean" } } }),
     );
+
     await writeFile(path.join(directory, "sample.json"), JSON.stringify({ name: "Rex" }));
 
     const root = {
@@ -332,9 +351,11 @@ describe("openapi bundle", () => {
     };
 
     const bundled = (await bundle(path.join(directory, "root.json"), root)) as any;
+
     expect(bundled.components.schemas.Pet.discriminator.mapping.dog).toBe(
       "#/components/schemas/dog",
     );
+
     expect(bundled.components.schemas.Pet.oneOf[1].$ref).toBe("#/components/schemas/dog");
     expect(bundled.components.examples.sample).toEqual({ value: { name: "Rex" } });
   });
@@ -364,6 +385,7 @@ describe("openapi bundle", () => {
 
     expect(bundled.components.schemas.Local).toEqual({ type: "string" });
     expect(bundled.components.schemas.Remote.$ref).toBe("https://example.com/remote.json");
+
     expect(bundled.components.examples.remote.externalValue).toBe(
       "https://example.com/sample.json",
     );
@@ -418,6 +440,7 @@ describe("openapi bundle", () => {
 
     expect(bundled.components.responses.unauthorized).toEqual({ description: "no" });
     expect(bundled.components.responses.Unauthorized).toBeUndefined();
+
     expect(bundled.paths["/pets"].get.responses["401"].$ref).toBe(
       "#/components/responses/unauthorized",
     );
@@ -473,5 +496,77 @@ describe("openapi bundle", () => {
         components: { schemas: { A: { $ref: "#not-a-pointer" } } },
       }),
     ).rejects.toBeInstanceOf(InvalidPointerError);
+  });
+
+  it("groups continued resolver failures", async () => {
+    const directory = await tempDir();
+
+    const failure = await bundle(
+      path.join(directory, "root.json"),
+      {
+        openapi: "3.1.0",
+        info: { title: "Continue", version: "1" },
+        paths: {},
+        components: {
+          schemas: {
+            A: { $ref: "./missing-a.json" },
+            B: { $ref: "./missing-b.json" },
+          },
+        },
+      },
+      { continueOnError: true },
+    ).then(
+      () => undefined,
+      (cause: unknown) => cause,
+    );
+
+    expect(failure).toBeInstanceOf(JSONParserErrorGroup);
+    if (!(failure instanceof JSONParserErrorGroup)) return;
+    expect(failure.errors).toHaveLength(2);
+
+    expect(
+      failure.errors.every(
+        (error) => error instanceof ResolverError && error.ioErrorCode === "ENOENT",
+      ),
+    ).toBe(true);
+  });
+
+  it("reports the file url from a custom resolver failure", async () => {
+    await expect(
+      parse("mem://root.json", {
+        resolve: { file: false, http: false },
+        resolvers: [
+          {
+            canRead: () => true,
+            read: () => Promise.reject(Object.assign(new Error("nope"), { code: "ENOENT" })),
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      source: "mem://root.json",
+      ioErrorCode: "ENOENT",
+      message: "nope",
+    });
+  });
+
+  it("maps an HTTP timeout to TimeoutError", async () => {
+    const server = createServer(() => undefined);
+
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("expected a TCP port");
+
+    try {
+      await expect(
+        parse(`http://127.0.0.1:${address.port}/hang`, {
+          resolve: { file: false, http: { timeout: 50, safeUrlResolver: false } },
+        }),
+      ).rejects.toBeInstanceOf(TimeoutError);
+    } finally {
+      server.close();
+    }
   });
 });

@@ -8,7 +8,8 @@ import {
   tsPropertyIndex,
 } from "../lib/ts.js";
 import { createRef } from "../lib/utils.js";
-import type { OperationObject, RequestBodyObject, TransformNodeOptions } from "../types.js";
+import type { Json as OperationObject, Json as RequestBodyObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import { transformParametersArray } from "./parameters-array.js";
 import transformRequestBodyObject from "./request-body-object.js";
 import transformResponsesObject from "./responses-object.js";

@@ -1,6 +1,7 @@
 import { parseRef } from "./ref.js";
 import ts, { type LiteralTypeNode, type TypeLiteralNode } from "#compiler";
-import type { ParameterObject } from "../types.js";
+import { TypegenError } from "../errors.js";
+import type { Json as ParameterObject } from "../types.js";
 
 export const JS_PROPERTY_INDEX_RE = /^[A-Za-z_$][A-Za-z_$0-9]*$/;
 export const JS_ENUM_INVALID_CHARS_RE = /[^A-Za-z_$0-9]+(.)?/g;
@@ -87,12 +88,13 @@ export function addJSDocComment(
       continue;
     }
 
+    const value = schemaObject[field];
     const serialized =
-      typeof schemaObject[field] === "object"
-        ? JSON.stringify(schemaObject[field], null, 2)
-        : schemaObject[field];
+      typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+        ? String(value)
+        : JSON.stringify(value, null, 2);
 
-    output.push(`@${field} ${String(serialized).trim().replace(LB_RE, "\n *     ")}`);
+    output.push(`@${field} ${serialized.trim().replace(LB_RE, "\n *     ")}`);
   }
 
   if (Array.isArray(schemaObject.examples)) {
@@ -218,7 +220,7 @@ export function oapiRef(
   const { pointer } = parseRef(path);
 
   if (pointer.length === 0) {
-    throw new Error(`Error parsing $ref: ${path}. Is this a valid $ref?`);
+    throw new TypegenError({ message: `Error parsing $ref: ${path}. Is this a valid $ref?` });
   }
 
   const parametersObject = isParameterObject(resolved);
@@ -246,8 +248,8 @@ export function oapiRef(
       return acc;
     }
 
-    if (parametersObject && index === original.length - 1) {
-      return addIndexedAccess(acc, resolved.in, resolved.name);
+    if (parametersObject && resolved && index === original.length - 1) {
+      return addIndexedAccess(acc, String(resolved.in), String(resolved.name));
     }
 
     // If this segment is in the extractProperties list,
@@ -350,7 +352,7 @@ export function tsEnum(
   if (options?.shouldCache) {
     key = `${members
       .slice(0)
-      .sort()
+      .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
       .map((v, i) => {
         return `${metadata?.[i]?.name ?? String(v)}:${metadata?.[i]?.description || ""}`;
       })
@@ -367,7 +369,7 @@ export function tsEnum(
     /* members   */ members.map((value, i) => tsEnumMember(value, metadata?.[i])),
   );
 
-  options?.shouldCache && enumCache.set(key, enumDeclaration);
+  if (options?.shouldCache) enumCache.set(key, enumDeclaration);
   return enumDeclaration;
 }
 
@@ -389,7 +391,9 @@ export function tsArrayLiteralExpression(
     )
   ) {
     const helper = stringToAST(
-      "type FlattenedDeepRequired<T> = { [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>; };",
+      `type FlattenedDeepRequired<T> = {
+  [K in keyof T]-?: FlattenedDeepRequired<T[K] extends unknown[] | undefined | null ? Extract<T[K], unknown[]>[number] : T[K]>;
+};`,
     )[0] as any;
 
     options.injectFooter.push(helper);
@@ -678,8 +682,11 @@ export function tsWithRequired(
     )
   ) {
     const helper = stringToAST(
-      "type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };",
+      `type WithRequired<T, K extends keyof T> = T & {
+  [P in K]-?: T[P];
+};`,
     )[0] as any;
+
     injectFooter.push(helper);
   }
 
@@ -702,7 +709,11 @@ export function tsReadonlyArray(type: ts.TypeNode, injectFooter?: ts.Node[]): ts
     )
   ) {
     const helper = stringToAST(
-      "type ReadonlyArray<T> = [Exclude<T, undefined>] extends [unknown[]] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;",
+      `type ReadonlyArray<T> = [
+  Exclude<T, undefined>
+] extends [
+  unknown[]
+] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;`,
     )[0] as any;
 
     injectFooter.push(helper);

@@ -1,4 +1,5 @@
 import { Effect, type FileSystem } from "effect";
+import type { HttpClient } from "effect/http";
 import type { TaggedFailure } from "./errors.js";
 
 export interface FileInfo {
@@ -16,7 +17,7 @@ export interface ResolverPlugin {
 export interface ParserPlugin {
   order?: number;
   canParse: (file: FileInfo) => boolean;
-  parse: (file: FileInfo) => unknown | Promise<unknown>;
+  parse: (file: FileInfo) => unknown;
 }
 
 export interface HttpResolverOptions {
@@ -103,26 +104,25 @@ export function normalizeArguments(args: unknown[]): NormalizedArguments {
 export interface EffectPlugin<A> {
   order: number;
   can: (file: FileInfo) => boolean;
-  run: (file: FileInfo) => Effect.Effect<A, TaggedFailure, FileSystem.FileSystem>;
+  run: (
+    file: FileInfo,
+  ) => Effect.Effect<A, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient>;
 }
 
 export function promisePlugin<A>(
   order: number,
   can: (file: FileInfo) => boolean,
   run: (file: FileInfo) => A | Promise<A>,
-  onError: (cause: unknown) => TaggedFailure,
+  onError: (cause: unknown, file: FileInfo) => TaggedFailure,
 ): EffectPlugin<A> {
   return {
     order,
     can,
     run(file) {
       return Effect.tryPromise({
-        try: async () => {
-          const value = run(file);
-          return value instanceof Promise ? await value : value;
-        },
-        catch: onError,
-      }) as Effect.Effect<A, TaggedFailure, FileSystem.FileSystem>;
+        try: () => Promise.resolve(run(file)),
+        catch: (cause) => onError(cause, file),
+      });
     },
   };
 }

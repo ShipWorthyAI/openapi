@@ -1,44 +1,63 @@
+import { it } from "@effect/vitest";
+import { Effect } from "effect";
 import { openapiTS } from "./openapi-ts.js";
 
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 describe("Invalid schemas", () => {
-  test("Swagger 2.0 throws", async () => {
-    await expect(() => openapiTS({ swagger: "2.0" } as any)).rejects.toThrowError(
-      "Unsupported Swagger version: 2.x. Use OpenAPI 3.x instead.",
-    );
-  });
+  it.effect("Swagger 2.0 throws", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(openapiTS({ swagger: "2.0" }));
 
-  test("OpenAPI < 3 throws", async () => {
-    await expect(() =>
-      openapiTS({
-        openapi: "2.0",
-        info: { title: "Test", version: "1.0" },
-      }),
-    ).rejects.toThrowError("Unsupported OpenAPI version: 2.0");
-  });
+      expect(messageOf(error)).toContain(
+        "Unsupported Swagger version: 2.x. Use OpenAPI 3.x instead.",
+      );
+    }),
+  );
 
-  test("Other missing required fields", async () => {
-    await expect(() => openapiTS({} as any)).rejects.toThrowError(
-      "Unsupported schema format, expected `openapi: 3.x`",
-    );
-  });
+  it.effect("OpenAPI < 3 throws", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        openapiTS({
+          openapi: "2.0",
+          info: { title: "Test", version: "1.0" },
+        }),
+      );
 
-  test("Unresolved $ref error messages", async () => {
-    await expect(() =>
-      openapiTS({
-        openapi: "3.1",
-        info: { title: "test", version: "1.0" },
-        components: {
-          schemas: {
-            Pet: {
-              type: "object",
-              properties: {
-                category: { $ref: "#/components/schemas/NonExistingSchema" },
-                type: { $ref: "#/components/schemas/AnotherSchema" },
+      expect(messageOf(error)).toContain("Unsupported OpenAPI version: 2.0");
+    }),
+  );
+
+  it.effect("Other missing required fields", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(openapiTS({}));
+      expect(messageOf(error)).toContain("Unsupported schema format, expected `openapi: 3.x`");
+    }),
+  );
+
+  it.effect("Unresolved $ref error messages", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        openapiTS({
+          openapi: "3.1",
+          info: { title: "test", version: "1.0" },
+          components: {
+            schemas: {
+              Pet: {
+                type: "object",
+                properties: {
+                  category: { $ref: "#/components/schemas/NonExistingSchema" },
+                  type: { $ref: "#/components/schemas/AnotherSchema" },
+                },
               },
             },
           },
-        },
-      }),
-    ).rejects.toThrowError(/NonExistingSchema/);
-  });
+        }),
+      );
+
+      expect(messageOf(error)).toMatch(/NonExistingSchema/);
+    }),
+  );
 });

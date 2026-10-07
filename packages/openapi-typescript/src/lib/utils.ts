@@ -1,28 +1,42 @@
 import { escapePointer, parseRef } from "./ref.js";
-import c from "ansi-colors";
-import supportsColor from "supports-color";
 import ts from "#compiler";
-import type {
-  DiscriminatorObject,
-  OpenAPI3,
-  OpenAPITSOptions,
-  ReferenceObject,
-  SchemaObject,
-} from "../types.js";
+import type { DiscriminatorObject, Json, OpenAPITSOptions } from "../types.js";
 import { tsLiteral, tsModifiers, tsPropertyIndex } from "./ts.js";
 
-if (!supportsColor.stdout || supportsColor.stdout.hasBasic === false) {
-  c.enabled = false;
+/** Same TTY and `NO_COLOR` check as `CliOutput.defaultFormatter`. */
+function colorsEnabled(): boolean {
+  const current = globalThis.process;
+
+  if (typeof current !== "object" || current === null) return false;
+
+  const stdout = current.stdout;
+
+  if (typeof stdout !== "object" || stdout === null) return false;
+
+  return stdout.isTTY === true && !current.env?.NO_COLOR;
 }
 
-const DEBUG_GROUPS: Record<string, c.StyleFunction | undefined> = {
-  config: c.cyanBright,
-  lint: c.yellowBright,
-  bundle: c.magentaBright,
-  ts: c.blueBright,
+function paint(code: string) {
+  return (text: string) => (colorsEnabled() ? `\x1b[${code}m${text}\x1b[0m` : text);
+}
+
+const colors = {
+  bold: paint("1"),
+  red: paint("31"),
+  green: paint("32"),
+  yellow: paint("33"),
+  blue: paint("34"),
+  magenta: paint("35"),
+  cyan: paint("36"),
+  white: paint("37"),
 };
 
-export { c };
+const DEBUG_GROUPS: Record<string, ((text: string) => string) | undefined> = {
+  config: colors.cyan,
+  lint: colors.yellow,
+  bundle: colors.magenta,
+  ts: colors.blue,
+};
 
 /** Given a discriminator object, get the property name */
 export function createDiscriminatorProperty(
@@ -88,23 +102,21 @@ export function debug(msg: string, group?: string, time?: number) {
       process.env.DEBUG === "openapi-ts:*" ||
       process.env.DEBUG.toLocaleLowerCase() === `openapi-ts:${group.toLocaleLowerCase()}`)
   ) {
-    const groupColor = (group && DEBUG_GROUPS[group]) || c.whiteBright;
+    const groupColor = (group && DEBUG_GROUPS[group]) || colors.white;
     const groupName = groupColor(`openapi-ts:${group ?? "info"}`);
     let timeFormatted = "";
 
     if (typeof time === "number") {
-      timeFormatted = c.green(` ${formatTime(time)} `);
+      timeFormatted = colors.green(` ${formatTime(time)} `);
     }
 
-    // biome-ignore lint/suspicious/noConsole: this is a CLI
-    console.debug(`  ${c.bold(groupName)}${timeFormatted}${msg}`);
+    console.debug(`  ${colors.bold(groupName)}${timeFormatted}${msg}`);
   }
 }
 
 /** Print error message */
 export function error(msg: string) {
-  // biome-ignore lint/suspicious/noConsole: this is a CLI
-  console.error(c.red(` ✘  ${msg}`));
+  console.error(colors.red(` ✘  ${msg}`));
 }
 
 /** Format a performance log in a friendly format */
@@ -151,7 +163,7 @@ export function getEntries<T>(
 export function resolveRef<T>(
   schema: any,
   $ref: string,
-  { silent = false, visited = [] }: { silent: boolean; visited?: string[] },
+  { silent = false, visited = [] }: { silent?: boolean; visited?: string[] },
 ): T | undefined {
   const { pointer } = parseRef($ref);
 
@@ -186,7 +198,7 @@ export function resolveRef<T>(
   return node;
 }
 
-function createDiscriminatorEnum(values: string[], prevSchema?: SchemaObject): SchemaObject {
+function createDiscriminatorEnum(values: string[], prevSchema?: Json): Json {
   return {
     type: "string",
     enum: values,
@@ -198,14 +210,14 @@ function createDiscriminatorEnum(values: string[], prevSchema?: SchemaObject): S
 
 /** Adds or replaces the discriminator enum with the passed `values` in a schema defined by `ref` */
 function patchDiscriminatorEnum(
-  schema: SchemaObject,
+  schema: Json,
   ref: string,
   values: string[],
   discriminator: DiscriminatorObject,
   discriminatorRef: string,
   options: OpenAPITSOptions,
 ): boolean {
-  const resolvedSchema = resolveRef<SchemaObject>(schema, ref, {
+  const resolvedSchema = resolveRef<Json>(schema, ref, {
     silent: options.silent ?? false,
   });
 
@@ -241,7 +253,7 @@ function patchDiscriminatorEnum(
     // add/replace the discriminator enum property
     resolvedSchema.properties[discriminator.propertyName] = createDiscriminatorEnum(
       values,
-      resolvedSchema.properties[discriminator.propertyName] as SchemaObject,
+      resolvedSchema.properties[discriminator.propertyName] as Json,
     );
 
     return true;
@@ -260,7 +272,7 @@ function patchDiscriminatorEnum(
 type InternalDiscriminatorMapping = Record<string, { inferred?: string; defined?: string[] }>;
 
 /** Return a key–value map of discriminator objects found in a schema */
-export function scanDiscriminators(schema: OpenAPI3, options: OpenAPITSOptions) {
+export function scanDiscriminators(schema: Json, options: OpenAPITSOptions) {
   // all discriminator objects found in the schema
   const objects: Record<string, DiscriminatorObject> = {};
 
@@ -286,7 +298,7 @@ export function scanDiscriminators(schema: OpenAPI3, options: OpenAPITSOptions) 
       return;
     }
 
-    const oneOf: (SchemaObject | ReferenceObject)[] = obj.oneOf;
+    const oneOf: Json[] = obj.oneOf;
     const mapping: InternalDiscriminatorMapping = {};
 
     // the mapping can be inferred from the oneOf refs next to the discriminator object
@@ -335,12 +347,11 @@ export function scanDiscriminators(schema: OpenAPI3, options: OpenAPITSOptions) 
       // prefer defined values over automatically inferred ones
       // the inferred enum values from the schema might not represent the actual enum values of the discriminator,
       // so if we have defined values, use them instead
-      // biome-ignore lint/style/noNonNullAssertion: we just checked for this
       const mappedValues = defined ?? [inferred!];
 
       if (
         patchDiscriminatorEnum(
-          schema as unknown as SchemaObject,
+          schema as unknown as Json,
           mappedRef,
           mappedValues,
           discriminator,
@@ -381,7 +392,7 @@ export function scanDiscriminators(schema: OpenAPI3, options: OpenAPITSOptions) 
           if (mappedValues.length > 0) {
             if (
               patchDiscriminatorEnum(
-                schema as unknown as SchemaObject,
+                schema as unknown as Json,
                 ref,
                 mappedValues,
                 discriminator,
@@ -434,7 +445,6 @@ export function walk(
 /** Print warning message */
 export function warn(msg: string, silent = false) {
   if (!silent) {
-    // biome-ignore lint/suspicious/noConsole: this is a CLI
-    console.warn(c.yellow(` ⚠  ${msg}`));
+    console.warn(colors.yellow(` ⚠  ${msg}`));
   }
 }

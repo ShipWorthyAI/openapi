@@ -3,24 +3,28 @@ import { Document, Spectral, type RulesetDefinition } from "@stoplight/spectral-
 import { oas3 } from "@stoplight/spectral-formats";
 import { Json, Yaml } from "@stoplight/spectral-parsers";
 import { oas } from "@stoplight/spectral-rulesets";
-import c from "ansi-colors";
-import { Effect } from "effect";
-import supportsColor from "supports-color";
+import { Console, Context, Effect, Layer, Predicate } from "effect";
 import { LintError } from "./errors.js";
 
-if (!supportsColor.stdout || supportsColor.stdout.hasBasic === false) c.enabled = false;
+/** Same TTY and `NO_COLOR` check as `CliOutput.defaultFormatter`. */
+function colorsEnabled(): boolean {
+  const current = globalThis.process;
 
-const spectral = new Spectral();
+  if (typeof current !== "object" || current === null) return false;
 
-spectral.setRuleset({
-  extends: [oas as unknown as RulesetDefinition],
-  formats: [oas3],
-  parserOptions: {
-    // OpenAPI status codes are YAML numbers (`200:`). Spectral's parser can flag that.
-    incompatibleValues: "off",
-  },
-  rules: spectralRules(),
-});
+  const stdout = current.stdout;
+
+  if (typeof stdout !== "object" || stdout === null) return false;
+
+  return stdout.isTTY === true && !current.env?.NO_COLOR;
+}
+
+function paint(code: string) {
+  return (text: string) => (colorsEnabled() ? `\x1b[${code}m${text}\x1b[0m` : text);
+}
+
+const red = paint("31");
+const yellow = paint("33");
 
 function spectralRules(): Record<string, "off" | "warn" | "error"> {
   const rules: Record<string, "off" | "warn" | "error"> = {
@@ -31,20 +35,12 @@ function spectralRules(): Record<string, "off" | "warn" | "error"> {
   for (const [id, rule] of Object.entries(oas.rules ?? {})) {
     if (id === "operation-operationId-unique") continue;
 
-    if (rule && typeof rule === "object" && "severity" in rule && rule.severity === 0) {
+    if (Predicate.isObject(rule) && "severity" in rule && rule.severity === 0) {
       rules[id] = "warn";
     }
   }
 
   return rules;
-}
-
-export function error(message: string) {
-  console.error(c.red(` ✘  ${message}`));
-}
-
-export function warn(message: string, silent = false) {
-  if (!silent) console.warn(c.yellow(` ⚠  ${message}`));
 }
 
 function isExampleRefRead(result: {
@@ -69,28 +65,81 @@ function spectralTarget(document: LoadedDocument) {
   return new Document(document.sourceText, Yaml, document.absoluteRef);
 }
 
-export const lintDocument = Effect.fn("openapi-validator.lintDocument")(function* (
-  document: LoadedDocument,
-  silent = false,
-) {
-  const results = yield* Effect.tryPromise({
-    try: () => spectral.run(spectralTarget(document)),
-    catch: (cause) =>
-      new LintError({ text: cause instanceof Error ? cause.message : String(cause) }),
-  });
+function thrownMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
 
-  let failure: string | undefined;
+function pathSegments(path: readonly unknown[]): Array<string | number> {
+  return path.filter(
+    (segment): segment is string | number =>
+      Predicate.isString(segment) || Predicate.isNumber(segment),
+  );
+}
 
-  for (const result of results) {
-    const location = result.path.length ? ` at #/${result.path.join("/")}` : "";
-    const message = `${result.message}${location}`;
-    // Spectral's parser rejects merge tags this repo accepts, and example payloads
-    // use `$ref` as data. Those diagnostics are not document errors.
-    if (result.severity === 0 && result.code !== "parser" && !isExampleRefRead(result)) {
-      failure = message;
-      error(message);
-    } else warn(message, silent);
+export class Linter extends Context.Service<
+  Linter,
+  {
+    readonly lintDocument: (
+      document: LoadedDocument,
+      silent?: boolean,
+    ) => Effect.Effect<void, LintError>;
   }
+>()("@shipworthy/openapi-validator/Linter") {
+  static readonly layer = Layer.sync(Linter, () => {
+    const spectral = new Spectral();
 
-  if (failure) return yield* new LintError({ text: failure });
-});
+    spectral.setRuleset({
+      extends: [oas as unknown as RulesetDefinition],
+      formats: [oas3],
+      parserOptions: {
+        // OpenAPI status codes are YAML numbers (`200:`). Spectral's parser can flag that.
+        incompatibleValues: "off",
+      },
+      rules: spectralRules(),
+    });
+
+    const lintDocument = Effect.fn("Linter.lintDocument")(function* (
+      document: LoadedDocument,
+      silent = false,
+    ): Effect.fn.Return<void, LintError> {
+      const results = yield* Effect.tryPromise({
+        try: () => spectral.run(spectralTarget(document)),
+        catch: (cause) =>
+          new LintError({
+            message: thrownMessage(cause),
+            diagnostics: [],
+            cause,
+          }),
+      });
+
+      const failures: Array<{
+        code: string | number;
+        message: string;
+        path: Array<string | number>;
+      }> = [];
+
+      for (const result of results) {
+        const location = result.path.length ? ` at #/${result.path.join("/")}` : "";
+        const message = `${result.message}${location}`;
+
+        // Spectral's parser rejects merge tags this repo accepts, and example payloads
+        // use `$ref` as data. Those diagnostics are not document errors.
+        if (result.severity === 0 && result.code !== "parser" && !isExampleRefRead(result)) {
+          failures.push({ code: result.code, message, path: pathSegments(result.path) });
+          yield* Console.error(red(` ✘  ${message}`));
+        } else if (!silent) {
+          yield* Console.warn(yellow(` ⚠  ${message}`));
+        }
+      }
+
+      if (failures.length > 0) {
+        return yield* new LintError({
+          message: failures.map((diagnostic) => diagnostic.message).join("\n"),
+          diagnostics: failures,
+        });
+      }
+    });
+
+    return Linter.of({ lintDocument });
+  });
+}

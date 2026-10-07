@@ -25,7 +25,8 @@ import {
   UNKNOWN,
 } from "../lib/ts.js";
 import { createDiscriminatorProperty, createRef, getEntries } from "../lib/utils.js";
-import type { ReferenceObject, SchemaObject, TransformNodeOptions } from "../types.js";
+import type { ReferenceObject, SchemaObject } from "../schema.js";
+import type { TransformNodeOptions } from "../types.js";
 
 /**
  * Transform SchemaObject nodes (4.8.24)
@@ -334,6 +335,7 @@ export function transformSchemaObjectWithComposition(
 
   if (coreObjectType || allOfType.length) {
     const allOf: ts.TypeNode | undefined = allOfType.length ? tsIntersection(allOfType) : undefined;
+
     finalType = tsIntersection([
       ...(coreObjectType ? [coreObjectType] : []),
       ...(allOf ? [allOf] : []),
@@ -470,6 +472,7 @@ function transformSchemaObjectCore(
       if (schemaObject.prefixItems || Array.isArray(schemaObject.items)) {
         const prefixItems =
           schemaObject.prefixItems ?? (schemaObject.items as (SchemaObject | ReferenceObject)[]);
+
         itemType = ts.factory.createTupleTypeNode(
           prefixItems.map((item) => transformSchemaObject(item, options)),
         );

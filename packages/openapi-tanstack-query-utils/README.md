@@ -4,23 +4,25 @@ A thin `openapi-fetch` adapter for TanStack Query. `openapi-typescript` supplies
 the types; generation adds only an operation-ID-to-method/path table.
 
 ```sh
-openapi tanstack-query-utils http://hotels.shipworthy.localhost/docs/openapi.json -o src/generated --name hotels
+openapi generate tanstack-query http://hotels.shipworthy.localhost/docs/openapi.json -o src/generated --name hotels
 ```
 
 The CLI accepts local JSON/YAML or remote schemas, including references. It writes
-`hotels/types.ts` and `hotels/client.ts`. Operations must have unique IDs. Re-running
-the command overwrites both generated files after successful generation.
+`hotels/client.ts`. It also runs `openapi generate typescript` for the same schema when
+`hotels/types.ts` is missing or was generated from a different input. Operations must
+have unique IDs. Re-running the command overwrites `client.ts` after successful generation.
 
 ## Configure once in the application
 
 ```ts
 import { createHotelsApiClient, createHotelsApiQueryUtils } from "./generated/hotels/client";
+import type { operations, paths } from "./generated/hotels/types";
 
-const client = createHotelsApiClient({
+const client = createHotelsApiClient<paths>({
   baseUrl: "https://hotels.example.com",
   authToken: () => getHotelsAccessToken(),
 });
-export const hotelsApiQueryUtils = createHotelsApiQueryUtils(client);
+export const hotelsApiQueryUtils = createHotelsApiQueryUtils<operations>(client);
 ```
 
 `authToken` accepts a string or a sync/async getter, evaluated for each request.

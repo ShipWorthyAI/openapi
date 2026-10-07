@@ -1,0 +1,16 @@
+pre-commit:
+  piped: true
+  jobs:
+    - name: fix
+      glob:
+        - "**/*.js"
+        - "**/*.jsx"
+        - "**/*.ts"
+        - "**/*.tsx"
+        - "**/*.json"
+        - "**/*.jsonc"
+        - "**/*.css"
+      run: bun run fix
+      stage_fixed: true
+    - name: check
+      run: bun run check

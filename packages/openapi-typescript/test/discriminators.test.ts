@@ -1,4 +1,6 @@
 import { fileURLToPath } from "node:url";
+import { it } from "@effect/vitest";
+import { Effect } from "effect";
 import { astToString, type OpenAPITSOptions } from "../src/index.js";
 import { openapiTS } from "./openapi-ts.js";
 import type { TestCase } from "./test-helpers.js";
@@ -83,37 +85,37 @@ describe("3.1 discriminators", () => {
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Pet: {
-            petType: string;
-        };
-        Cat: {
-            petType: "Cat";
-        } & Omit<components["schemas"]["Pet"], "petType">;
-        Dog: Omit<components["schemas"]["Pet"], "petType"> & {
-            bark?: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            petType: "dog" | "poodle";
-        };
-        Lizard: {
-            petType: "Lizard";
-            lovesRocks?: boolean;
-        } & Omit<components["schemas"]["Pet"], "petType">;
-        LizardDog: {
-            petType: "LizardDog";
-        } & Omit<components["schemas"]["Dog"], "petType"> & Omit<components["schemas"]["Lizard"], "petType">;
-        AnimalSighting: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
-        Beast: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
+  schemas: {
+    Pet: {
+      petType: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    Cat: {
+      petType: "Cat";
+    } & Omit<components["schemas"]["Pet"], "petType">;
+    Dog: Omit<components["schemas"]["Pet"], "petType"> & {
+      bark?: string;
+    } & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      petType: "dog" | "poodle";
+    };
+    Lizard: {
+      petType: "Lizard";
+      lovesRocks?: boolean;
+    } & Omit<components["schemas"]["Pet"], "petType">;
+    LizardDog: {
+      petType: "LizardDog";
+    } & Omit<components["schemas"]["Dog"], "petType"> & Omit<components["schemas"]["Lizard"], "petType">;
+    AnimalSighting: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
+    Beast: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -161,28 +163,28 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Pet: {
-            petType: string;
-        };
-        Cat: {
-            petType: "Cat";
-        } & Omit<components["schemas"]["Pet"], "petType">;
-        Dog: {
-            petType: "Dog";
-        } & Omit<components["schemas"]["Pet"], "petType"> & {
-            bark?: string;
-        };
-        Lizard: {
-            petType: "Lizard";
-            lovesRocks?: boolean;
-        } & Omit<components["schemas"]["Pet"], "petType">;
+  schemas: {
+    Pet: {
+      petType: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    Cat: {
+      petType: "Cat";
+    } & Omit<components["schemas"]["Pet"], "petType">;
+    Dog: {
+      petType: "Dog";
+    } & (Omit<components["schemas"]["Pet"], "petType"> & {
+      bark?: string;
+    });
+    Lizard: {
+      petType: "Lizard";
+      lovesRocks?: boolean;
+    } & Omit<components["schemas"]["Pet"], "petType">;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -218,19 +220,19 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Cat: {
-            petType: "Cat";
-        } & Omit<{
-            name: string;
-            petType: string;
-        }, "petType">;
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    Cat: {
+      petType: "Cat";
+    } & Omit<{
+      name: string;
+      petType: string;
+    }, "petType">;
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -285,38 +287,38 @@ export type operations = Record<string, never>;`,
         want: `export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Pet: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
-        Cat: {
-            name?: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            petType: "Cat";
-        };
-        Dog: {
-            bark?: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            petType: "dog";
-        };
-        Lizard: {
-            lovesRocks?: boolean;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            petType: "Lizard";
-        };
+  schemas: {
+    Pet: components["schemas"]["Cat"] | components["schemas"]["Dog"] | components["schemas"]["Lizard"];
+    Cat: {
+      name?: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      petType: "Cat";
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    Dog: {
+      bark?: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      petType: "dog";
+    };
+    Lizard: {
+      lovesRocks?: boolean;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      petType: "Lizard";
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -398,69 +400,69 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    "/endpoint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["simpleObject"] | components["schemas"]["complexObject"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/endpoint": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["simpleObject"] | components["schemas"]["complexObject"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        simpleObject: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "simple";
-            simple?: boolean;
-        };
-        complexObject: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "complex";
-            complex?: boolean;
-        };
-        /** @enum {string} */
-        type: "simple" | "complex";
+  schemas: {
+    simpleObject: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "simple";
+      simple?: boolean;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    complexObject: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "complex";
+      complex?: boolean;
+    };
+    /** @enum {string} */
+    type: "simple" | "complex";
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -558,74 +560,74 @@ export type operations = Record<string, never>;`,
           },
         },
         want: `export interface paths {
-    "/endpoint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["simpleObject"] | components["schemas"]["complexObject"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/endpoint": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["simpleObject"] | components["schemas"]["complexObject"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        baseObject: {
-            type: components["schemas"]["type"];
-        };
-        simpleObject: components["schemas"]["baseObject"] & {
-            simple?: boolean;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "simple";
-        };
-        complexObject: components["schemas"]["baseObject"] & {
-            complex?: boolean;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "complex" | "tooComplex";
-        };
-        /** @enum {string} */
-        type: "simple" | "complex" | "tooComplex";
+  schemas: {
+    baseObject: {
+      type: components["schemas"]["type"];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    simpleObject: components["schemas"]["baseObject"] & {
+      simple?: boolean;
+    } & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "simple";
+    };
+    complexObject: components["schemas"]["baseObject"] & {
+      complex?: boolean;
+    } & {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "complex" | "tooComplex";
+    };
+    /** @enum {string} */
+    type: "simple" | "complex" | "tooComplex";
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;`,
@@ -634,17 +636,18 @@ export type operations = Record<string, never>;`,
   ];
 
   for (const [testName, { given, want, options, ci }] of tests) {
-    test.skipIf(ci?.skipIf)(
+    it.effect.skipIf(ci?.skipIf)(
       testName,
-      async () => {
-        const result = astToString(await openapiTS(given, options));
+      () =>
+        Effect.gen(function* () {
+          const result = astToString(yield* openapiTS(given, options));
 
-        if (want instanceof URL) {
-          await expect(result).toMatchFileSnapshot(fileURLToPath(want));
-        } else {
-          expect(result).toBe(`${want}\n`);
-        }
-      },
+          if (want instanceof URL) {
+            yield* Effect.promise(() => expect(result).toMatchFileSnapshot(fileURLToPath(want)));
+          } else {
+            expect(result).toBe(`${want}\n`);
+          }
+        }),
       ci?.timeout,
     );
   }

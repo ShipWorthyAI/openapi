@@ -1,0 +1,49 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {
+      "Subject": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "$ref": "#/components/schemas/Price"
+          }
+        },
+        "required": ["price", "name"],
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Product"
+          }
+        ]
+      },
+      "Price": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "required": ["value", "currency"]
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": ["id"]
+        }
+      }
+    }
+  }
+}

@@ -20,8 +20,8 @@
     "@shipworthy/openapi-standard-schema": "workspace:*",
     "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
-    "@shipworthy/typescript-config": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:"
   },
   "peerDependencies": {

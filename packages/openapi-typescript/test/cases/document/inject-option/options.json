@@ -1,0 +1,3 @@
+{
+  "inject": "type Foo = string;\ntype Bar = number;"
+}

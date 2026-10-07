@@ -1,7 +1,8 @@
 import ts from "#compiler";
 import { addJSDocComment, NEVER, QUESTION_TOKEN, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
 import { createRef, getEntries } from "../lib/utils.js";
-import type { RequestBodyObject, TransformNodeOptions } from "../types.js";
+import type { Json as RequestBodyObject } from "../types.js";
+import type { TransformNodeOptions } from "../types.js";
 import transformMediaTypeObject from "./media-type-object.js";
 import transformSchemaObject from "./schema-object.js";
 

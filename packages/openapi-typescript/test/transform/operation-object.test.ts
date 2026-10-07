@@ -39,40 +39,40 @@ describe("transformOperationObject", () => {
           },
         },
         want: `parameters: {
-    query?: never;
-    header?: never;
-    path?: never;
-    cookie?: never;
+  query?: never;
+  header?: never;
+  path?: never;
+  cookie?: never;
 };
 requestBody?: never;
 responses: {
-    /** @description OK */
-    "2XX": {
-        headers: {
-            [name: string]: unknown;
-        };
-        content: {
-            "application/json": string;
-        };
+  /** @description OK */
+  "2XX": {
+    headers: {
+      [name: string]: unknown;
     };
-    /** @description OK */
-    "4XX": {
-        headers: {
-            [name: string]: unknown;
-        };
-        content: {
-            "application/json": components["schemas"]["Error"];
-        };
+    content: {
+      "application/json": string;
     };
-    /** @description OK */
-    "5XX": {
-        headers: {
-            [name: string]: unknown;
-        };
-        content: {
-            "application/json": components["schemas"]["Error"];
-        };
+  };
+  /** @description OK */
+  "4XX": {
+    headers: {
+      [name: string]: unknown;
     };
+    content: {
+      "application/json": components["schemas"]["Error"];
+    };
+  };
+  /** @description OK */
+  "5XX": {
+    headers: {
+      [name: string]: unknown;
+    };
+    content: {
+      "application/json": components["schemas"]["Error"];
+    };
+  };
 };`,
       },
     ],
@@ -96,26 +96,26 @@ responses: {
           },
         },
         want: `parameters: {
-    query?: {
-        search?: string;
-    };
-    header?: {
-        "x-header"?: string;
-    };
-    path?: never;
-    cookie?: never;
+  query?: {
+    search?: string;
+  };
+  header?: {
+    "x-header"?: string;
+  };
+  path?: never;
+  cookie?: never;
 };
 requestBody?: never;
 responses: {
-    /** @description OK */
-    200: {
-        headers: {
-            [name: string]: unknown;
-        };
-        content: {
-            "application/json": string;
-        };
+  /** @description OK */
+  200: {
+    headers: {
+      [name: string]: unknown;
     };
+    content: {
+      "application/json": string;
+    };
+  };
 };`,
       },
     ],
@@ -135,26 +135,26 @@ responses: {
           },
         },
         want: `parameters: {
-    query?: {
-        search?: string;
-    };
-    header?: never;
-    path: {
-        user_id: string;
-    };
-    cookie?: never;
+  query?: {
+    search?: string;
+  };
+  header?: never;
+  path: {
+    user_id: string;
+  };
+  cookie?: never;
 };
 requestBody?: never;
 responses: {
-    /** @description OK */
-    200: {
-        headers: {
-            [name: string]: unknown;
-        };
-        content: {
-            "application/json": string;
-        };
+  /** @description OK */
+  200: {
+    headers: {
+      [name: string]: unknown;
     };
+    content: {
+      "application/json": string;
+    };
+  };
 };`,
       },
     ],
@@ -192,28 +192,28 @@ responses: {
           },
         },
         want: `parameters: {
-    query?: {
-        format?: string;
-    };
-    header?: never;
-    path?: never;
-    cookie?: never;
+  query?: {
+    format?: string;
+  };
+  header?: never;
+  path?: never;
+  cookie?: never;
 };
 requestBody?: never;
 responses: {
-    /** @description OK */
-    200: {
-        headers: {
-            [name: string]: unknown;
-        };
-        content: {
-            "application/json": {
-                /** @default true */
-                required: string;
-                optional?: boolean;
-            };
-        };
+  /** @description OK */
+  200: {
+    headers: {
+      [name: string]: unknown;
     };
+    content: {
+      "application/json": {
+        /** @default true */
+        required: string;
+        optional?: boolean;
+      };
+    };
+  };
 };`,
       },
     ],
@@ -257,28 +257,28 @@ responses: {
           },
         },
         want: `parameters: {
-    query?: {
-        search?: string;
-    };
-    header?: never;
-    path: {
-        user_id: string;
-    };
-    cookie?: never;
+  query?: {
+    search?: string;
+  };
+  header?: never;
+  path: {
+    user_id: string;
+  };
+  cookie?: never;
 };
 requestBody?: never;
 responses: {
-    /** @description OK */
-    200: {
-        headers: {
-            [name: string]: unknown;
-        };
-        content: {
-            "application/json": {
-                hello?: string;
-            };
-        };
+  /** @description OK */
+  200: {
+    headers: {
+      [name: string]: unknown;
     };
+    content: {
+      "application/json": {
+        hello?: string;
+      };
+    };
+  };
 };`,
       },
     ],

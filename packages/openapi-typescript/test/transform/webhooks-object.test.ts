@@ -47,49 +47,49 @@ describe("transformWebhooksObject", () => {
           },
         },
         want: `{
-    "user-created": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query: {
-                    signature: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        id: string;
-                        email: string;
-                        name?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Return a 200 status to indicate that the data was received successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "user-created": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query: {
+          signature: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            id: string;
+            email: string;
+            name?: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Return a 200 status to indicate that the data was received successfully */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }`,
       },
       // options: DEFAULT_OPTIONS,
@@ -114,29 +114,29 @@ describe("transformWebhooksObject", () => {
           },
         },
         want: `{
-    "user-created": {
-        parameters: {
-            query: {
-                signature: string;
-                utm_source?: components["parameters"]["utm_source"];
-                utm_email?: components["parameters"]["utm_email"];
-                utm_campaign?: components["parameters"]["utm_campaign"];
-            };
-            header?: never;
-            path: {
-                utm_campaign: components["parameters"]["version"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "user-created": {
+    parameters: {
+      query: {
+        signature: string;
+        utm_source?: components["parameters"]["utm_source"];
+        utm_email?: components["parameters"]["utm_email"];
+        utm_campaign?: components["parameters"]["utm_campaign"];
+      };
+      header?: never;
+      path: {
+        utm_campaign: components["parameters"]["version"];
+      };
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }`,
         options: {
           ...DEFAULT_OPTIONS,

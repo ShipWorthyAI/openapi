@@ -1,0 +1,24 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {
+      "Subject": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/parent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "parent": {
+        "propertyName": "operation"
+      }
+    }
+  }
+}

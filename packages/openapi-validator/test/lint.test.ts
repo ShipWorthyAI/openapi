@@ -1,7 +1,8 @@
 import type { LoadedDocument } from "@shipworthy/openapi-parser";
-import { Effect } from "effect";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { lintDocument } from "../src/index.js";
+import { assert, layer } from "@effect/vitest";
+import { Console, Effect, Layer, MutableRef } from "effect";
+import { TestConsole } from "effect/testing";
+import { Linter } from "../src/index.js";
 
 function loaded(sourceText: string): LoadedDocument {
   return {
@@ -11,41 +12,7 @@ function loaded(sourceText: string): LoadedDocument {
   };
 }
 
-describe("lintDocument", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("warns when servers are missing", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
-    await Effect.runPromise(
-      lintDocument(
-        loaded(`openapi: 3.1.0
-info:
-  title: Test
-  version: 1.0.0
-paths: {}
-`),
-      ),
-    );
-
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('OpenAPI "servers" must be present'),
-    );
-
-    expect(console.error).not.toHaveBeenCalled();
-  });
-
-  it("fails when operationIds are duplicated", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
-    await expect(
-      Effect.runPromise(
-        lintDocument(
-          loaded(`openapi: 3.1.0
+const duplicateOperationIds = loaded(`openapi: 3.1.0
 info:
   title: Test
   version: 1.0.0
@@ -64,21 +31,69 @@ paths:
       responses:
         "200":
           description: ok
+`);
+
+layer(Layer.mergeAll(Linter.layer, TestConsole.layer))("Linter", (it) => {
+  it.effect("warns when servers are missing", () =>
+    Effect.gen(function* () {
+      const warnings = MutableRef.make<Array<string>>([]);
+      const current = yield* Console.Console;
+
+      const recorder = Object.assign(Object.create(current), {
+        warn: (...args: ReadonlyArray<unknown>) => {
+          warnings.current.push(args.map(String).join(" "));
+        },
+      }) as Console.Console;
+
+      const linter = yield* Linter;
+
+      yield* linter
+        .lintDocument(
+          loaded(`openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths: {}
 `),
+        )
+        .pipe(Effect.provideService(Console.Console, recorder));
+
+      const errors = yield* TestConsole.errorLines;
+
+      assert.strictEqual(errors.length, 0);
+
+      assert.isTrue(
+        warnings.current.some((line) => line.includes('OpenAPI "servers" must be present')),
+      );
+    }),
+  );
+
+  it.effect("fails when operationIds are duplicated", () =>
+    Effect.gen(function* () {
+      const linter = yield* Linter;
+      const error = yield* Effect.flip(linter.lintDocument(duplicateOperationIds));
+      const errors = yield* TestConsole.errorLines;
+
+      assert.isTrue(/operationId/i.test(error.message));
+
+      assert.isTrue(
+        error.diagnostics.some(
+          (diagnostic) =>
+            diagnostic.code === "operation-operationId-unique" ||
+            /operationId/i.test(diagnostic.message),
         ),
-      ),
-    ).rejects.toThrow(/operationId/i);
+      );
 
-    expect(console.error).toHaveBeenCalled();
-  });
+      assert.isTrue(errors.length > 0);
+    }),
+  );
 
-  it("reports unresolved schema refs", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
+  it.effect("reports unresolved schema refs", () =>
+    Effect.gen(function* () {
+      const linter = yield* Linter;
 
-    await expect(
-      Effect.runPromise(
-        lintDocument({
+      const error = yield* Effect.flip(
+        linter.lintDocument({
           document: {
             openapi: "3.1.0",
             info: { title: "test", version: "1.0" },
@@ -96,15 +111,21 @@ paths:
           },
           absoluteRef: "memory://openapi.yaml",
         }),
-      ),
-    ).rejects.toThrow(/AnotherSchema/);
+      );
 
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("#/components/schemas/NonExistingSchema"),
-    );
+      const errors = yield* TestConsole.errorLines;
+      const rendered = errors.map(String).join("\n");
 
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("#/components/schemas/AnotherSchema"),
-    );
-  });
+      assert.isTrue(
+        error.diagnostics.some((diagnostic) => diagnostic.message.includes("NonExistingSchema")),
+      );
+
+      assert.isTrue(
+        error.diagnostics.some((diagnostic) => diagnostic.message.includes("AnotherSchema")),
+      );
+
+      assert.isTrue(rendered.includes("#/components/schemas/NonExistingSchema"));
+      assert.isTrue(rendered.includes("#/components/schemas/AnotherSchema"));
+    }),
+  );
 });

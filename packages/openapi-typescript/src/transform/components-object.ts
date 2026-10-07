@@ -3,12 +3,8 @@ import * as changeCase from "change-case";
 import ts from "#compiler";
 import { addJSDocComment, NEVER, QUESTION_TOKEN, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
 import { createRef, debug, getEntries } from "../lib/utils.js";
-import type {
-  ComponentsObject,
-  GlobalContext,
-  SchemaObject,
-  TransformNodeOptions,
-} from "../types.js";
+import type { Json as ComponentsObject, Json as SchemaObject } from "../types.js";
+import type { GlobalContext, TransformNodeOptions } from "../types.js";
 import transformHeaderObject from "./header-object.js";
 import transformParameterObject from "./parameter-object.js";
 import transformPathItemObject from "./path-item-object.js";
@@ -120,8 +116,10 @@ export default function transformComponentsObject(
 
           if (!shouldSkipEnumSchema) {
             const componentKey = changeCase.pascalCase(singularizeComponentKey(key));
+
             const componentName =
               ctx.rootTypesKeepCasing && key === "schemas" ? name : changeCase.pascalCase(name);
+
             let aliasName = `${componentKey}${componentName}`;
 
             // Add counter suffix (e.g. "_2") if conflict in name

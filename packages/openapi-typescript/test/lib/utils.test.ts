@@ -48,6 +48,7 @@ describe("createRef", () => {
     expect(createRef(["paths", "/foo/{bar}", "get", "parameters"])).toBe(
       "#/paths/~1foo~1{bar}/get/parameters",
     );
+
     expect(createRef(["components", "schemas", "~SchemaObject"])).toBe(
       "#/components/schemas/~0SchemaObject",
     );

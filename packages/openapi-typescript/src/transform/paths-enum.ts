@@ -1,7 +1,7 @@
 import type ts from "#compiler";
 import { tsEnum } from "../lib/ts.js";
 import { getEntries } from "../lib/utils.js";
-import type { PathsObject } from "../types.js";
+import type { Json as PathsObject } from "../types.js";
 
 export default function makeApiPathsEnum(pathsObject: PathsObject): ts.EnumDeclaration {
   const enumKeys = [];

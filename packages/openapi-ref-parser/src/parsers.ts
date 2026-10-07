@@ -38,6 +38,7 @@ function jsonParser(): EffectPlugin<unknown> {
           new ParserFailure({
             message: cause instanceof Error ? cause.message : "Parser Error",
             source: file.url,
+            cause,
           }),
       });
     },
@@ -55,6 +56,7 @@ function yamlParser(): EffectPlugin<unknown> {
     order: 200,
     can: (file) => {
       const extension = extensionOf(file.url);
+
       return (
         extension === ".yaml" || extension === ".yml" || extension === ".json" || extension === ""
       );
@@ -66,6 +68,7 @@ function yamlParser(): EffectPlugin<unknown> {
           new ParserFailure({
             message: cause instanceof Error ? cause.message : "Parser Error",
             source: file.url,
+            cause,
           }),
       });
     },
@@ -81,10 +84,11 @@ function customParser(plugin: ParserPlugin, index: number): EffectPlugin<unknown
     plugin.order ?? 300 + index,
     (file) => plugin.canParse(file),
     (file) => plugin.parse(file),
-    (cause) =>
+    (cause, file) =>
       new ParserFailure({
         message: cause instanceof Error ? cause.message : "Parser Error",
-        source: "",
+        source: file.url,
+        cause,
       }),
   );
 }

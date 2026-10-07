@@ -1,3 +1,5 @@
+import { ZodGenerationError } from "./errors";
+
 const reservedWords = new Set([
   "await",
   "break",
@@ -49,12 +51,6 @@ const reservedWords = new Set([
 
 const identifier = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
-export function assertPrefix(prefix: string): void {
-  if (!identifier.test(prefix) || reservedWords.has(prefix)) {
-    throw new Error("prefix must be a TypeScript identifier");
-  }
-}
-
 /** Reject names that cannot be emitted as `export const` bindings. */
 export function assertExportName(name: string, blocked: readonly string[]): void {
   if (
@@ -65,6 +61,8 @@ export function assertExportName(name: string, blocked: readonly string[]): void
     name === "constructor" ||
     name === "prototype"
   ) {
-    throw new Error(`${name}: Cannot emit this name as a schema export`);
+    throw new ZodGenerationError({
+      message: `${name}: Cannot emit this name as a schema export`,
+    });
   }
 }

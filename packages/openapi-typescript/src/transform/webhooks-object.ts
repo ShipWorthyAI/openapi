@@ -1,7 +1,8 @@
 import ts from "#compiler";
 import { tsModifiers, tsPropertyIndex } from "../lib/ts.js";
 import { createRef, getEntries } from "../lib/utils.js";
-import type { GlobalContext, WebhooksObject } from "../types.js";
+import type { Json as WebhooksObject } from "../types.js";
+import type { GlobalContext } from "../types.js";
 import transformPathItemObject from "./path-item-object.js";
 
 export default function transformWebhooksObject(

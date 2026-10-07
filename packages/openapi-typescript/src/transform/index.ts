@@ -2,7 +2,8 @@ import { performance } from "node:perf_hooks";
 import ts, { type InterfaceDeclaration, type TypeLiteralNode } from "#compiler";
 import { NEVER, STRING, stringToAST, tsModifiers, tsRecord } from "../lib/ts.js";
 import { createRef, debug } from "../lib/utils.js";
-import type { GlobalContext, OpenAPI3 } from "../types.js";
+import type { Json as OpenAPI3 } from "../types.js"
+import type { GlobalContext } from "../types.js";
 import transformComponentsObject from "./components-object.js";
 import makeApiPathsEnum from "./paths-enum.js";
 import transformPathsObject from "./paths-object.js";

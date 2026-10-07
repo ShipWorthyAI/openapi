@@ -21,8 +21,8 @@ describe("addJSDocComment", () => {
     addJSDocComment({ description: "Single-line comment" }, property);
 
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
-    /** @description Single-line comment */
-    comment: boolean;
+  /** @description Single-line comment */
+  comment: boolean;
 }`);
   });
 
@@ -39,26 +39,27 @@ describe("addJSDocComment", () => {
     );
 
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
-    /**
-     * This is the summary
-     * @deprecated
-     * @description Multi-line comment
-     *     Line 2
-     */
-    comment: boolean;
+  /**
+   * This is the summary
+   * @deprecated
+   * @description Multi-line comment
+   *     Line 2
+   */
+  comment: boolean;
 }`);
   });
 
   test("escapes internal comments", () => {
     const property = ts.factory.createPropertySignature(undefined, "comment", undefined, BOOLEAN);
+
     addJSDocComment(
       { title: "This is a comment with `/* an example comment */` within" },
       property,
     );
 
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
-    /** This is a comment with \`/* an example comment *\\/\` within */
-    comment: boolean;
+  /** This is a comment with \`/* an example comment *\\/\` within */
+  comment: boolean;
 }`);
   });
 
@@ -73,8 +74,8 @@ describe("addJSDocComment", () => {
     );
 
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
-    /** @example an-example */
-    comment: boolean;
+  /** @example an-example */
+  comment: boolean;
 }`);
   });
 
@@ -89,11 +90,11 @@ describe("addJSDocComment", () => {
     );
 
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
-    /**
-     * @example an-example
-     * @example another-example
-     */
-    comment: boolean;
+  /**
+   * @example an-example
+   * @example another-example
+   */
+  comment: boolean;
 }`);
   });
 
@@ -109,12 +110,12 @@ describe("addJSDocComment", () => {
     );
 
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
-    /**
-     * @example old-example
-     * @example an-example
-     * @example another-example
-     */
-    comment: boolean;
+  /**
+   * @example old-example
+   * @example an-example
+   * @example another-example
+   */
+  comment: boolean;
 }`);
   });
 
@@ -138,25 +139,25 @@ describe("addJSDocComment", () => {
     );
 
     expect(astToString(ts.factory.createTypeLiteralNode([property])).trim()).toBe(`{
-    /**
-     * @example {
-     *       "foo": "bar",
-     *       "results": [
-     *         1,
-     *         true,
-     *         "abc"
-     *       ]
-     *     }
-     * @example {
-     *       "foo": "bat",
-     *       "results": [
-     *         5,
-     *         false,
-     *         "def"
-     *       ]
-     *     }
-     */
-    comment: boolean;
+  /**
+   * @example {
+   *       "foo": "bar",
+   *       "results": [
+   *         1,
+   *         true,
+   *         "abc"
+   *       ]
+   *     }
+   * @example {
+   *       "foo": "bat",
+   *       "results": [
+   *         5,
+   *         false,
+   *         "def"
+   *       ]
+   *     }
+   */
+  comment: boolean;
 }`);
   });
 });
@@ -200,9 +201,9 @@ describe("oapiRef", () => {
 describe("tsEnum", () => {
   test("string members", () => {
     expect(astToString(tsEnum("-my-color-", ["green", "red", "blue"])).trim()).toBe(`enum MyColor {
-    green = "green",
-    red = "red",
-    blue = "blue"
+  green = "green",
+  red = "red",
+  blue = "blue"
 }`);
   });
 
@@ -214,9 +215,9 @@ describe("tsEnum", () => {
         }),
       ).trim(),
     ).toBe(`export enum MyColor {
-    green = "green",
-    red = "red",
-    blue = "blue"
+  green = "green",
+  red = "red",
+  blue = "blue"
 }`);
   });
 
@@ -224,25 +225,25 @@ describe("tsEnum", () => {
     expect(
       astToString(tsEnum("#/paths/url/get/parameters/query/status", ["active", "inactive"])).trim(),
     ).toBe(`enum PathsUrlGetParametersQueryStatus {
-    active = "active",
-    inactive = "inactive"
+  active = "active",
+  inactive = "inactive"
 }`);
   });
 
   test("string members with numeric prefix", () => {
     expect(astToString(tsEnum("/my/enum/", ["0a", "1b", "2c"])).trim()).toBe(`enum MyEnum {
-    Value0a = "0a",
-    Value1b = "1b",
-    Value2c = "2c"
+  Value0a = "0a",
+  Value1b = "1b",
+  Value2c = "2c"
 }`);
   });
 
   test("number members", () => {
     expect(astToString(tsEnum(".Error.code.", [100, 101, 102, -100])).trim()).toBe(`enum ErrorCode {
-    Value100 = 100,
-    Value101 = 101,
-    Value102 = 102,
-    ValueMinus100 = -100
+  Value100 = 100,
+  Value101 = 101,
+  Value102 = 102,
+  ValueMinus100 = -100
 }`);
   });
 
@@ -256,12 +257,12 @@ describe("tsEnum", () => {
         ),
       ).trim(),
     ).toBe(`enum ErrorCode {
-    // Code 100
-    Value100 = 100,
-    // Code 101
-    Value101 = 101,
-    // Code 102
-    Value102 = 102
+  // Code 100
+  Value100 = 100,
+  // Code 101
+  Value101 = 101,
+  // Code 102
+  Value102 = 102
 }`);
   });
 
@@ -275,9 +276,9 @@ describe("tsEnum", () => {
         ),
       ).trim(),
     ).toBe(`enum ErrorCode {
-    Unauthorized = 100,
-    NotFound = 101,
-    PermissionDenied = 102
+  Unauthorized = 100,
+  NotFound = 101,
+  PermissionDenied = 102
 }`);
   });
 
@@ -287,9 +288,9 @@ describe("tsEnum", () => {
         tsEnum(".Error.code.", [100, 101, 102], [{ name: "0a" }, { name: "1b" }, { name: "2c" }]),
       ).trim(),
     ).toBe(`enum ErrorCode {
-    Value0a = 100,
-    Value1b = 101,
-    Value2c = 102
+  Value0a = 100,
+  Value1b = 101,
+  Value2c = 102
 }`);
   });
 
@@ -307,10 +308,10 @@ describe("tsEnum", () => {
         ),
       ).trim(),
     ).toBe(`enum ErrorCode {
-    // User is unauthorized
-    Unauthorized = 100,
-    NotFound = 101,
-    Value102 = 102
+  // User is unauthorized
+  Unauthorized = 100,
+  NotFound = 101,
+  Value102 = 102
 }`);
   });
 
@@ -331,21 +332,21 @@ describe("tsEnum", () => {
         ),
       ).trim(),
     ).toBe(`enum ErrorCode {
-    // User is unauthorized
-    Unauthorized = 100,
-    // Item not found
-    NotFound = 101,
-    // User doesn't have permissions
-    PermissionDenied = 102
+  // User is unauthorized
+  Unauthorized = 100,
+  // Item not found
+  NotFound = 101,
+  // User doesn't have permissions
+  PermissionDenied = 102
 }`);
   });
 
   test("replace special character", () => {
     expect(astToString(tsEnum("FOO_ENUM", ["Etc/GMT+0", "Etc/GMT+1", "Etc/GMT-1"])).trim())
       .toBe(`enum FOO_ENUM {
-    Etc_GMTPlus0 = "Etc/GMT+0",
-    Etc_GMTPlus1 = "Etc/GMT+1",
-    Etc_GMT_1 = "Etc/GMT-1"
+  Etc_GMTPlus0 = "Etc/GMT+0",
+  Etc_GMTPlus1 = "Etc/GMT+1",
+  Etc_GMT_1 = "Etc/GMT-1"
 }`);
   });
 });
@@ -511,9 +512,9 @@ describe("tsUnion", () => {
     ]);
 
     expect(astToString(tsUnion([obj, obj, NULL])).trim()).toBe(`{
-    foo: string;
+  foo: string;
 } | {
-    foo: string;
+  foo: string;
 } | null`);
   });
 });

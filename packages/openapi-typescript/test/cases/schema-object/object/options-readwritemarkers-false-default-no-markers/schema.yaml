@@ -1,0 +1,15 @@
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0.0"
+components:
+  schemas:
+    Subject:
+      type: object
+      properties:
+        id:
+          type: number
+          readOnly: true
+        password:
+          type: string
+          writeOnly: true
