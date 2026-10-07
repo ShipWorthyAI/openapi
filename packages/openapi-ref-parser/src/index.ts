@@ -18,7 +18,7 @@ import type {
   ParserPlugin,
   ResolverPlugin,
 } from "./plugins.js";
-import { run, runDetailed, type RunResult } from "./run.js";
+import { bundleEffect, run, runDetailed, runEffect, type RunResult } from "./run.js";
 
 export type {
   DereferenceHooks,
@@ -104,6 +104,7 @@ export class $RefParser {
 export const parse = $RefParser.parse;
 export const resolve = $RefParser.resolve;
 export const bundle = $RefParser.bundle;
+export { bundleEffect, runEffect };
 export const dereference = $RefParser.dereference;
 
 export default $RefParser;

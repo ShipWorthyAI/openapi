@@ -1,10 +1,10 @@
-import type { Generator } from "@shipworthy/openapi-parser";
+import type { Generator } from "./generator.js";
 import { Context, Effect, Predicate } from "effect";
 import { InvalidPlugin, MissingPlugin } from "./errors.js";
 
 export const ModuleLoader = Context.Reference<{
   readonly load: (specifier: string) => Promise<unknown>;
-}>("@shipworthy/openapi-transformer/plugins/ModuleLoader", {
+}>("@shipworthy/openapi-generator/plugins/ModuleLoader", {
   defaultValue: () => ({ load: (specifier) => import(specifier) }),
 });
 

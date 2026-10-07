@@ -1,15 +1,18 @@
-import { Cache, Effect } from "effect";
+import { Cache, Effect, FileSystem, Predicate, Ref } from "effect";
+import type { HttpClient } from "effect/http";
 import {
-  GroupFailure,
-  JSONParserError,
-  MissingPointerError,
+  groupFailure,
+  isLeafFailure,
+  missingPointerFailure,
+  syncFailure,
   toPublicError,
+  type LeafFailure,
   type TaggedFailure,
 } from "./errors.js";
 import { hoistExternalRefs } from "./hoist.js";
-import { loadDocument, makeContext, provideFileSystem } from "./loader.js";
+import { loadDocument, makeContext, runtime } from "./loader.js";
 import { normalizeArguments, type Options } from "./plugins.js";
-import { asRecord, cloneData, joinPointer, parsePointer } from "./pointer.js";
+import { cloneData, joinPointer, parsePointer } from "./pointer.js";
 import { inlineRemaining, runSchemaPipeline } from "./pipeline.js";
 import { isOpenApi3, upgradeOpenApi3_0 } from "./upgraders/openapi-3_0.js";
 import { getHash, isHttp, normalizeRef, resolveAgainst, stripHash } from "./url.js";
@@ -19,40 +22,51 @@ export interface RunResult {
   documents: Map<string, unknown>;
 }
 
-export async function run(
-  mode: "parse" | "resolve" | "bundle" | "dereference",
-  args: unknown[],
-): Promise<unknown> {
-  const errors: JSONParserError[] = [];
+const loadConcurrency = 8;
 
-  const program = execute(mode, normalizeArguments(args), errors).pipe(
-    Effect.mapError((error) => toPublicError(error, errors)),
-  );
-
-  return Effect.runPromise(provideFileSystem(program)).then((result) => result.schema);
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return Predicate.isObject(value) ? value : undefined;
 }
 
-export async function runDetailed(
-  mode: "parse" | "resolve" | "bundle" | "dereference",
+export type RunMode = "parse" | "resolve" | "bundle" | "dereference";
+
+export const runEffect = Effect.fn("openapi-ref-parser.run")(function* (
+  mode: RunMode,
   args: unknown[],
-): Promise<RunResult> {
-  const errors: JSONParserError[] = [];
+): Effect.fn.Return<RunResult, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
+  return yield* execute(mode, normalizeArguments(args));
+});
 
-  const program = execute(mode, normalizeArguments(args), errors).pipe(
-    Effect.mapError((error) => toPublicError(error, errors)),
-  );
+export const bundleEffect = Effect.fnUntraced(function* (
+  path: string,
+  schema: unknown,
+): Effect.fn.Return<unknown, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
+  const result = yield* runEffect("bundle", [path, schema]);
+  return result.schema;
+});
 
-  return Effect.runPromise(provideFileSystem(program));
+export async function run(mode: RunMode, args: unknown[]): Promise<unknown> {
+  const result = await runtime.runPromise(publicRun(mode, args));
+  return result.schema;
+}
+
+export async function runDetailed(mode: RunMode, args: unknown[]): Promise<RunResult> {
+  return runtime.runPromise(publicRun(mode, args));
+}
+
+function publicRun(mode: RunMode, args: unknown[]) {
+  return runEffect(mode, args).pipe(Effect.mapError(toPublicError));
 }
 
 const execute = Effect.fnUntraced(function* (
-  mode: "parse" | "resolve" | "bundle" | "dereference",
+  mode: RunMode,
   args: { path: string; schema: unknown; options: Options },
-  errors: JSONParserError[],
-) {
+): Effect.fn.Return<RunResult, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
   const options = args.options;
   const rootUrl = normalizeRef(args.path);
   const context = makeContext(rootUrl, options);
+  const failures = yield* Ref.make<Array<LeafFailure>>([]);
+  const recorded = new Set<string>();
 
   const cache = yield* Cache.make({
     capacity: 10_000,
@@ -67,12 +81,10 @@ const execute = Effect.fnUntraced(function* (
 
   const root =
     args.schema === undefined
-      ? yield* loadCaught(cache, rootKey, options, errors)
-      : cloneSchema(args.schema);
+      ? yield* loadCaught(cache, rootKey, options, failures, recorded)
+      : cloneData(args.schema);
 
-  if (root === undefined) {
-    return yield* failCollected(rootUrl, errors);
-  }
+  if (root === undefined) return yield* failCollected(rootUrl, failures);
 
   documents.set(rootKey, root);
   if (mode === "parse") return { schema: root, documents };
@@ -81,66 +93,68 @@ const execute = Effect.fnUntraced(function* (
   const ids = new Map<string, object>();
   const keep = (ref: string) => Boolean(options.keepUrlRefs && isHttp(ref));
   if (typeof root === "object" && root !== null) absolutize(root, rootUrl, ids, keep, kept);
-  yield* loadClosure(root, cache, documents, ids, keep, kept, options, errors);
-  if (errors.length > 0 && options.continueOnError) return yield* failCollected(rootUrl, errors);
+  yield* loadClosure(root, cache, documents, ids, keep, kept, options, failures, recorded);
+
+  const collected = yield* Ref.get(failures);
+  if (collected.length > 0 && options.continueOnError)
+    return yield* failCollected(rootUrl, failures);
   if (mode === "resolve") return { schema: root, documents };
   if (typeof root !== "object" || root === null || Array.isArray(root))
     return { schema: root, documents };
 
   const record = root as Record<string, unknown>;
 
-  const placed = hoistExternalRefs(
-    record,
-    (url) => documents.get(stripHash(url)),
-    options.bundle,
-    (ref) => kept.has(ref) || ids.has(stripHash(ref)),
-  );
+  yield* Effect.try({
+    try: () => {
+      const placed = hoistExternalRefs(
+        record,
+        (url) => documents.get(stripHash(url)),
+        options.bundle,
+        (ref) => kept.has(ref) || ids.has(stripHash(ref)),
+      );
 
-  rewriteIdRefs(record, ids);
-  rewriteMappings(record, placed, ids);
+      rewriteIdRefs(record, ids);
+      rewriteMappings(record, placed, ids);
 
-  if (isOpenApi3(record)) {
-    upgradeOpenApi3_0(record);
+      if (isOpenApi3(record)) {
+        upgradeOpenApi3_0(record);
 
-    runSchemaPipeline(
-      record,
-      mode === "dereference" ? "dereference" : "bundle",
-      options.dereference,
-    );
-  } else if (mode === "dereference") {
-    inlineRemaining(record, new Set(), options.dereference);
-  }
+        runSchemaPipeline(
+          record,
+          mode === "dereference" ? "dereference" : "bundle",
+          options.dereference,
+        );
+      } else if (mode === "dereference") {
+        inlineRemaining(record, new Set(), options.dereference);
+      }
+    },
+    catch: syncFailure,
+  });
 
-  yield* inlineExternalValues(record, cache, rootUrl, keep, kept, options, errors);
-  if (errors.length > 0) return yield* failCollected(rootUrl, errors);
+  yield* inlineExternalValues(record, cache, keep, kept, options, failures, recorded);
+  if ((yield* Ref.get(failures)).length > 0) return yield* failCollected(rootUrl, failures);
   return { schema: root, documents };
 });
 
-function failCollected(
-  source: string,
-  errors: JSONParserError[],
-): Effect.Effect<never, GroupFailure> {
-  return Effect.fail(
-    new GroupFailure({ source, messages: errors.map((error) => error.message).join("\n") }),
+function failCollected(source: string, failures: Ref.Ref<Array<LeafFailure>>) {
+  return Ref.get(failures).pipe(
+    Effect.flatMap((errors) => Effect.fail(groupFailure(source, errors))),
   );
-}
-
-function cloneSchema(schema: unknown): unknown {
-  return cloneData(schema);
 }
 
 const loadCaught = Effect.fnUntraced(function* (
   cache: Cache.Cache<string, unknown, TaggedFailure>,
   url: string,
   options: Options,
-  errors: JSONParserError[],
+  failures: Ref.Ref<Array<LeafFailure>>,
+  recorded: Set<string>,
 ) {
   return yield* Cache.get(cache, url).pipe(
     Effect.catch((error: TaggedFailure) => {
-      const publicError = toPublicError(error);
-      if (!options.continueOnError) return Effect.fail(error);
-      if (publicError instanceof JSONParserError) errors.push(publicError);
-      return Effect.succeed(undefined);
+      if (!options.continueOnError || !isLeafFailure(error)) return Effect.fail(error);
+      if (recorded.has(url)) return Effect.void;
+      recorded.add(url);
+      return Ref.update(failures, (list) => [...list, error]).pipe(Effect.asVoid);
     }),
   );
 });
@@ -153,7 +167,8 @@ const loadClosure = Effect.fnUntraced(function* (
   keep: (ref: string) => boolean,
   kept: Set<string>,
   options: Options,
-  errors: JSONParserError[],
+  failures: Ref.Ref<Array<LeafFailure>>,
+  recorded: Set<string>,
 ) {
   const pending = new Set<string>();
 
@@ -162,28 +177,31 @@ const loadClosure = Effect.fnUntraced(function* (
 
     for (const ref of externalRefs(root, kept)) {
       const url = stripHash(ref);
-      if (ids.has(url) || documents.has(url) || kept.has(ref)) continue;
+      if (ids.has(url) || documents.has(url) || kept.has(ref) || recorded.has(url)) continue;
       pending.add(url);
     }
 
     for (const document of documents.values()) {
       for (const ref of externalRefs(document, kept)) {
         const url = stripHash(ref);
-        if (ids.has(url) || documents.has(url) || kept.has(ref)) continue;
+        if (ids.has(url) || documents.has(url) || kept.has(ref) || recorded.has(url)) continue;
         pending.add(url);
       }
     }
 
     if (pending.size === 0) return;
 
-    for (const url of pending) {
-      const loaded = yield* loadCaught(cache, url, options, errors);
-      if (loaded === undefined) continue;
-      absolutize(loaded, url, ids, keep, kept);
-      documents.set(url, loaded);
-    }
-
-    if (errors.length > 0 && !options.continueOnError) return;
+    yield* Effect.forEach(
+      pending,
+      (url) =>
+        Effect.gen(function* () {
+          const loaded = yield* loadCaught(cache, url, options, failures, recorded);
+          if (loaded === undefined) return;
+          absolutize(loaded, url, ids, keep, kept);
+          documents.set(url, loaded);
+        }),
+      { concurrency: loadConcurrency, discard: true },
+    );
   }
 });
 
@@ -382,11 +400,11 @@ function walkRecords(
 const inlineExternalValues = Effect.fnUntraced(function* (
   root: Record<string, unknown>,
   cache: Cache.Cache<string, unknown, TaggedFailure>,
-  rootUrl: string,
   keep: (ref: string) => boolean,
   kept: Set<string>,
   options: Options,
-  errors: JSONParserError[],
+  failures: Ref.Ref<Array<LeafFailure>>,
+  recorded: Set<string>,
 ) {
   const pending: Record<string, unknown>[] = [];
 
@@ -395,28 +413,42 @@ const inlineExternalValues = Effect.fnUntraced(function* (
       pending.push(record);
   });
 
-  for (const record of pending) {
-    const externalValue = record.externalValue;
-    if (typeof externalValue !== "string") continue;
-    if (kept.has(externalValue) || keep(externalValue)) continue;
-    const loaded = yield* loadCaught(cache, stripHash(externalValue), options, errors);
-    if (loaded === undefined) continue;
-    const hash = getHash(externalValue);
+  yield* Effect.forEach(
+    pending,
+    (record) =>
+      Effect.gen(function* () {
+        const externalValue = record.externalValue;
+        if (typeof externalValue !== "string") return;
+        if (kept.has(externalValue) || keep(externalValue)) return;
 
-    try {
-      record.value = hash === "#" ? loaded : valueAt(loaded, hash);
-    } catch (error) {
-      if (error instanceof MissingPointerError) {
-        if (!options.continueOnError) throw error;
-        errors.push(error);
-        continue;
-      }
+        const loaded = yield* loadCaught(
+          cache,
+          stripHash(externalValue),
+          options,
+          failures,
+          recorded,
+        );
 
-      throw error;
-    }
+        if (loaded === undefined) return;
+        const hash = getHash(externalValue);
 
-    delete record.externalValue;
-  }
+        const resolved = yield* Effect.try({
+          try: () => ({ value: hash === "#" ? loaded : valueAt(loaded, hash) }),
+          catch: syncFailure,
+        }).pipe(
+          Effect.catchIf(
+            (error): error is LeafFailure =>
+              options.continueOnError === true && isLeafFailure(error),
+            (error) => Ref.update(failures, (list) => [...list, error]).pipe(Effect.asVoid),
+          ),
+        );
+
+        if (!resolved) return;
+        record.value = resolved.value;
+        delete record.externalValue;
+      }),
+    { concurrency: loadConcurrency, discard: true },
+  );
 });
 
 function valueAt(document: unknown, hash: string): unknown {
@@ -425,7 +457,7 @@ function valueAt(document: unknown, hash: string): unknown {
 
   for (const token of tokens) {
     if (typeof current !== "object" || current === null || !Object.hasOwn(current, token)) {
-      throw new MissingPointerError(token, hash);
+      throw missingPointerFailure(token, hash);
     }
 
     current = (current as Record<string, unknown>)[token];

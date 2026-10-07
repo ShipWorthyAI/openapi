@@ -25,15 +25,30 @@ import {
   UNKNOWN,
 } from "../lib/ts.js";
 import { createDiscriminatorProperty, createRef, getEntries } from "../lib/utils.js";
-import type { ReferenceObject, SchemaObject } from "../schema.js";
+import { Result, Schema } from "effect";
+import { TypegenError } from "../errors.js";
+import type { Json } from "../types.js";
 import type { TransformNodeOptions } from "../types.js";
 
+const JsonSchema = Schema.Union([Schema.Boolean, Schema.Record(Schema.String, Schema.Unknown)]);
+
+function decodeJsonSchema(value: unknown, path: string | undefined): void {
+  const decoded = Schema.decodeUnknownResult(JsonSchema)(value);
+
+  if (Result.isFailure(decoded)) {
+    const received = Array.isArray(value) ? "Array" : value === null ? "null" : typeof value;
+    throw new TypegenError({
+      message: `Expected Json, received ${received} at ${path ?? ""}`,
+    });
+  }
+}
+
 /**
- * Transform SchemaObject nodes (4.8.24)
+ * Transform Json nodes (4.8.24)
  * @see https://spec.openapis.org/oas/v3.1.0#schema-object
  */
 export default function transformSchemaObject(
-  schemaObject: SchemaObject | ReferenceObject,
+  schemaObject: Json | boolean | null | undefined,
   options: TransformNodeOptions,
   fromAdditionalProperties = false,
 ): ts.TypeNode {
@@ -55,13 +70,14 @@ export default function transformSchemaObject(
 }
 
 /**
- * Transform SchemaObjects
+ * Transform Jsons
  */
 export function transformSchemaObjectWithComposition(
-  schemaObject: SchemaObject | ReferenceObject,
+  input: Json | boolean | null | undefined,
   options: TransformNodeOptions,
   fromAdditionalProperties = false,
 ): ts.TypeNode {
+  let schemaObject = input;
   /**
    * Unexpected types & edge cases
    */
@@ -76,15 +92,16 @@ export function transformSchemaObjectWithComposition(
     return UNKNOWN;
   }
 
-  // for any other unexpected type, throw error
   if (Array.isArray(schemaObject) || typeof schemaObject !== "object") {
-    throw new Error(
-      `Expected SchemaObject, received ${Array.isArray(schemaObject) ? "Array" : typeof schemaObject} at ${options.path}`,
-    );
+    throw new TypegenError({
+      message: `Expected Json, received ${Array.isArray(schemaObject) ? "Array" : typeof schemaObject} at ${options.path}`,
+    });
   }
 
+  decodeJsonSchema(schemaObject, options.path);
+
   /**
-   * ReferenceObject
+   * Json
    */
   if ("$ref" in schemaObject) {
     return oapiRef(schemaObject.$ref);
@@ -250,7 +267,7 @@ export function transformSchemaObjectWithComposition(
 
   /** Collect oneOf/anyOf */
   function collectUnionCompositions(
-    items: (SchemaObject | ReferenceObject)[],
+    items: (Json)[],
     unionKey: "anyOf" | "oneOf",
   ) {
     const output: ts.TypeNode[] = [];
@@ -270,7 +287,7 @@ export function transformSchemaObjectWithComposition(
 
   /** Collect allOf with Omit<> for discriminators */
   function collectAllOfCompositions(
-    items: (SchemaObject | ReferenceObject)[],
+    items: (Json)[],
     required?: string[],
   ): ts.TypeNode[] {
     const output: ts.TypeNode[] = [];
@@ -283,7 +300,7 @@ export function transformSchemaObjectWithComposition(
       if ("$ref" in item) {
         itemType = transformSchemaObject(item, options);
 
-        const resolved = options.ctx.resolve<SchemaObject>(item.$ref);
+        const resolved = options.ctx.resolve<Json>(item.$ref);
 
         // make keys required, if necessary
         if (
@@ -355,7 +372,7 @@ export function transformSchemaObjectWithComposition(
     schemaObject.oneOf ||
       ("type" in schemaObject &&
         schemaObject.type === "object" &&
-        (schemaObject.enum as (SchemaObject | ReferenceObject)[])) ||
+        (schemaObject.enum as (Json)[])) ||
       [],
     "oneOf",
   );
@@ -390,7 +407,7 @@ export function transformSchemaObjectWithComposition(
  */
 function shouldTransformToTsEnum(
   options: TransformNodeOptions,
-  schemaObject: SchemaObject,
+  schemaObject: Json,
 ): boolean {
   // Enum conversion not enabled or no enum present
   if (!options.ctx.enum || !schemaObject.enum) {
@@ -419,10 +436,10 @@ function shouldTransformToTsEnum(
 }
 
 /**
- * Handle SchemaObject minus composition (anyOf/allOf/oneOf)
+ * Handle Json minus composition (anyOf/allOf/oneOf)
  */
 function transformSchemaObjectCore(
-  schemaObject: SchemaObject,
+  schemaObject: Json,
   options: TransformNodeOptions,
 ): ts.TypeNode | undefined {
   if ("type" in schemaObject && schemaObject.type) {
@@ -471,7 +488,7 @@ function transformSchemaObjectCore(
       // tuple type
       if (schemaObject.prefixItems || Array.isArray(schemaObject.items)) {
         const prefixItems =
-          schemaObject.prefixItems ?? (schemaObject.items as (SchemaObject | ReferenceObject)[]);
+          schemaObject.prefixItems ?? (schemaObject.items as (Json)[]);
 
         itemType = ts.factory.createTupleTypeNode(
           prefixItems.map((item) => transformSchemaObject(item, options)),
@@ -578,7 +595,7 @@ function transformSchemaObjectCore(
             t === "null" || t === null
               ? NULL
               : transformSchemaObject(
-                  { ...schemaObject, type: t, oneOf: undefined } as SchemaObject, // don’t stack oneOf transforms
+                  { ...schemaObject, type: t, oneOf: undefined } as Json, // don’t stack oneOf transforms
                   options,
                 ),
           );
@@ -589,7 +606,7 @@ function transformSchemaObjectCore(
             uniqueTypes.push(NULL);
           } else {
             uniqueTypes.push(
-              transformSchemaObject({ ...schemaObject, type: t } as SchemaObject, options),
+              transformSchemaObject({ ...schemaObject, type: t } as Json, options),
             );
           }
         }
@@ -646,11 +663,11 @@ function transformSchemaObjectCore(
     ) {
       for (const [k, v] of getEntries(schemaObject.properties ?? {}, options.ctx)) {
         if ((typeof v !== "object" && typeof v !== "boolean") || Array.isArray(v)) {
-          throw new Error(
-            `${options.path}: invalid property ${k}. Expected Schema Object or boolean, got ${
+          throw new TypegenError({
+            message: `${options.path}: invalid property ${k}. Expected Schema Object or boolean, got ${
               Array.isArray(v) ? "Array" : typeof v
             }`,
-          );
+          });
         }
 
         const { $ref, readOnly, writeOnly, hasDefault } =
@@ -665,9 +682,9 @@ function transformSchemaObjectCore(
 
         // handle excludeDeprecated option
         if (options.ctx.excludeDeprecated) {
-          const resolved = $ref ? options.ctx.resolve<SchemaObject>($ref) : v;
+          const resolved = $ref ? options.ctx.resolve<Json>($ref) : v;
 
-          if ((resolved as SchemaObject)?.deprecated) {
+          if ((resolved as Json)?.deprecated) {
             continue;
           }
         }
@@ -691,7 +708,7 @@ function transformSchemaObjectCore(
             });
 
         if (typeof options.ctx.transform === "function") {
-          const result = options.ctx.transform(v as SchemaObject, options);
+          const result = options.ctx.transform(v as Json, options);
 
           if (result && typeof result === "object") {
             if ("schema" in result) {
@@ -716,7 +733,7 @@ function transformSchemaObjectCore(
 
         // Apply transformProperty hook if available
         if (typeof options.ctx.transformProperty === "function") {
-          const result = options.ctx.transformProperty(property, v as SchemaObject, {
+          const result = options.ctx.transformProperty(property, v as Json, {
             ...options,
             path: createRef([options.path, k]),
           });
@@ -761,7 +778,7 @@ function transformSchemaObjectCore(
 
         // Apply transformProperty hook if available
         if (typeof options.ctx.transformProperty === "function") {
-          const result = options.ctx.transformProperty(property, v as SchemaObject, {
+          const result = options.ctx.transformProperty(property, v as Json, {
             ...options,
             path: createRef([options.path, "$defs", k]),
           });
@@ -808,7 +825,7 @@ function transformSchemaObjectCore(
 
     if (hasExplicitAdditionalProperties) {
       stringIndexTypes.push(
-        transformSchemaObject(schemaObject.additionalProperties as SchemaObject, options, true),
+        transformSchemaObject(schemaObject.additionalProperties as Json, options, true),
       );
     }
 
@@ -825,7 +842,7 @@ function transformSchemaObjectCore(
       typeof patternProperties === "object"
     ) {
       for (const [_, v] of getEntries(
-        patternProperties as Record<string, SchemaObject | ReferenceObject>,
+        patternProperties as Record<string, Json>,
         options.ctx,
       )) {
         stringIndexTypes.push(transformSchemaObject(v, options));
@@ -879,7 +896,7 @@ function hasKey<K extends string>(
 function applyAdditionalPropertiesToEnum(
   hasAdditionalProperties: boolean,
   unionType: ts.TypeNode,
-  schemaObject: SchemaObject,
+  schemaObject: Json,
 ) {
   // If additionalProperties is true, add (string & {}) to the union
   if (hasAdditionalProperties && schemaObject.type === "string") {
