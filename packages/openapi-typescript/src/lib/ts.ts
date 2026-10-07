@@ -1,7 +1,13 @@
-import { parseRef } from "./ref.js";
+import type {
+  ParsedExample,
+  ParsedParameter,
+  ParsedRef,
+  ParsedSchema,
+} from "@shipworthy/openapi-transformer";
+import { Effect, type JsonSchema, Predicate } from "effect";
 import ts, { type LiteralTypeNode, type TypeLiteralNode } from "#compiler";
 import { TypegenError } from "../errors.js";
-import type { Json as ParameterObject } from "../types.js";
+import { parseRef } from "./ref.js";
 
 export const JS_PROPERTY_INDEX_RE = /^[A-Za-z_$][A-Za-z_$0-9]*$/;
 export const JS_ENUM_INVALID_CHARS_RE = /[^A-Za-z_$0-9]+(.)?/g;
@@ -25,19 +31,36 @@ export const UNKNOWN = ts.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKey
 const LB_RE = /\r?\n/g;
 const COMMENT_RE = /\*\//g;
 
-export interface AnnotatedSchemaObject {
-  const?: unknown; // jsdoc without value
-  default?: unknown; // jsdoc with value
-  deprecated?: boolean; // jsdoc without value
-  description?: string; // jsdoc with value
-  enum?: unknown[]; // jsdoc without value
-  example?: string; // jsdoc with value
-  examples?: unknown;
-  format?: string; // not jsdoc
-  nullable?: boolean; // Node information
-  summary?: string; // not jsdoc
-  title?: string; // not jsdoc
-  type?: string | string[]; // Type of node
+/**
+ * The JSDoc fields of a parsed parameter, header, response, or other non-schema node.
+ *
+ * A node reached through a `$ref` prints as a reference, so by default only the Reference
+ * Object's own `summary` and `description` apply. With `inherit`, the target's fields fill in
+ * whatever the Reference Object leaves out.
+ */
+export function annotationsOf(
+  node: {
+    readonly id?: string;
+    readonly reference?: ParsedRef;
+    readonly summary?: string;
+    readonly description?: string;
+    readonly deprecated?: boolean;
+    readonly examples?: readonly ParsedExample[];
+  },
+  { inherit = false }: { inherit?: boolean } = {},
+): JsonSchema.JsonSchema {
+  const own = node.reference && !inherit ? {} : node;
+  const summary = node.reference?.summary ?? own.summary;
+  const description = node.reference?.description ?? own.description;
+  // the `example` keyword, not a named example that happens to be called `default`
+  const example = own.examples?.find((entry) => entry.id === `${node.id}/example`);
+
+  return {
+    ...(summary !== undefined ? { summary } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(own.deprecated ? { deprecated: true } : {}),
+    ...(example && "value" in example ? { example: example.value } : {}),
+  };
 }
 
 /**
@@ -45,32 +68,29 @@ export interface AnnotatedSchemaObject {
  * @see {comment} for output examples
  * @returns void if not comments or jsdoc format comment string
  */
-export function addJSDocComment(
-  schemaObject: AnnotatedSchemaObject,
-  node: ts.PropertySignature,
-): void {
-  if (!schemaObject || typeof schemaObject !== "object" || Array.isArray(schemaObject)) {
+export function addJSDocComment(schema: ParsedSchema, node: ts.PropertySignature): void {
+  if (!Predicate.isObject(schema)) {
     return;
   }
 
   const output: string[] = [];
 
   // Not JSDoc tags: [title, format]
-  if (schemaObject.title) {
-    output.push(schemaObject.title.trim().replace(LB_RE, "\n *     "));
+  if (Predicate.isString(schema.title) && schema.title) {
+    output.push(schema.title.trim().replace(LB_RE, "\n *     "));
   }
 
-  if (schemaObject.summary) {
-    output.push(schemaObject.summary.trim().replace(LB_RE, "\n *     "));
+  if (Predicate.isString(schema.summary) && schema.summary) {
+    output.push(schema.summary.trim().replace(LB_RE, "\n *     "));
   }
 
-  if (schemaObject.format) {
-    output.push(`Format: ${schemaObject.format}`);
+  if (Predicate.isString(schema.format) && schema.format) {
+    output.push(`Format: ${schema.format}`);
   }
 
   // JSDoc tags without value
   // 'Deprecated' without value
-  if (schemaObject.deprecated) {
+  if (schema.deprecated) {
     output.push("@deprecated");
   }
 
@@ -79,16 +99,16 @@ export function addJSDocComment(
 
   for (const field of supportedJsDocTags) {
     const allowEmptyString = field === "default" || field === "example";
+    const value = schema[field];
 
-    if (schemaObject[field] === undefined) {
+    if (value === undefined) {
       continue;
     }
 
-    if (schemaObject[field] === "" && !allowEmptyString) {
+    if (value === "" && !allowEmptyString) {
       continue;
     }
 
-    const value = schemaObject[field];
     const serialized =
       typeof value === "string" || typeof value === "number" || typeof value === "boolean"
         ? String(value)
@@ -97,29 +117,29 @@ export function addJSDocComment(
     output.push(`@${field} ${serialized.trim().replace(LB_RE, "\n *     ")}`);
   }
 
-  if (Array.isArray(schemaObject.examples)) {
-    for (const example of schemaObject.examples) {
+  if (Array.isArray(schema.examples)) {
+    for (const example of schema.examples) {
       const serialized = typeof example === "object" ? JSON.stringify(example, null, 2) : example;
       output.push(`@example ${String(serialized).trim().replace(LB_RE, "\n *     ")}`);
     }
   }
 
   // JSDoc 'Constant' without value
-  if ("const" in schemaObject) {
+  if ("const" in schema) {
     output.push("@constant");
   }
 
   // JSDoc 'Enum' with type
-  if (schemaObject.enum) {
+  if (schema.enum) {
     let type = "unknown";
 
-    if (Array.isArray(schemaObject.type)) {
-      type = schemaObject.type.join("|");
-    } else if (typeof schemaObject.type === "string") {
-      type = schemaObject.type;
+    if (Array.isArray(schema.type)) {
+      type = schema.type.join("|");
+    } else if (typeof schema.type === "string") {
+      type = schema.type;
     }
 
-    output.push(`@enum {${type}${schemaObject.nullable ? "|null" : ""}}`);
+    output.push(`@enum {${type}}`);
   }
 
   // attach comment if it has content
@@ -142,16 +162,6 @@ export function addJSDocComment(
       /* hasTrailingNewLine */ true,
     );
   }
-}
-
-function isOasRef(obj: object): obj is { $ref: string } {
-  return "$ref" in obj && typeof obj.$ref === "string";
-}
-
-type OapiRefResolved = ParameterObject | { $ref: string };
-
-function isParameterObject(obj: OapiRefResolved | undefined): obj is ParameterObject {
-  return Boolean(obj && !isOasRef(obj) && obj.in);
 }
 
 function addIndexedAccess(node: ts.TypeNode, ...segments: readonly string[]) {
@@ -214,7 +224,7 @@ export interface OapiRefOptions {
  **/
 export function oapiRef(
   path: string,
-  resolved?: OapiRefResolved,
+  resolved?: ParsedParameter,
   options: OapiRefOptions = {},
 ): ts.TypeNode {
   const { pointer } = parseRef(path);
@@ -223,7 +233,6 @@ export function oapiRef(
     throw new TypegenError({ message: `Error parsing $ref: ${path}. Is this a valid $ref?` });
   }
 
-  const parametersObject = isParameterObject(resolved);
   const extractSet = new Set(options.extractProperties ?? []);
 
   // Initial segments are handled in a fixed , then remaining segments are treated
@@ -248,7 +257,7 @@ export function oapiRef(
       return acc;
     }
 
-    if (parametersObject && resolved && index === original.length - 1) {
+    if (resolved && index === original.length - 1) {
       return addIndexedAccess(acc, String(resolved.in), String(resolved.name));
     }
 
@@ -262,6 +271,19 @@ export function oapiRef(
 
     return addIndexedAccess(acc, segment);
   }, leadingType);
+}
+
+/** {@link oapiRef} as an Effect: a `$ref` that is not a JSON Pointer fails with `TypegenError`. */
+export function refType(
+  path: string,
+  resolved?: ParsedParameter,
+  options?: OapiRefOptions,
+): Effect.Effect<ts.TypeNode, TypegenError> {
+  return Effect.try({
+    try: () => oapiRef(path, resolved, options),
+    catch: (cause) =>
+      cause instanceof TypegenError ? cause : new TypegenError({ message: String(cause) }),
+  });
 }
 
 export interface AstToStringOptions {
@@ -346,7 +368,7 @@ export function tsEnum(
   options?: { export?: boolean; shouldCache?: boolean },
 ) {
   let enumName = sanitizeMemberName(name);
-  enumName = `${enumName[0].toUpperCase()}${enumName.substring(1)}`;
+  enumName = `${enumName.charAt(0).toUpperCase()}${enumName.substring(1)}`;
   let key = "";
 
   if (options?.shouldCache) {
@@ -381,7 +403,7 @@ export function tsArrayLiteralExpression(
   options?: { export?: boolean; readonly?: boolean; injectFooter?: ts.Node[] },
 ) {
   let variableName = sanitizeMemberName(name);
-  variableName = `${variableName[0].toLowerCase()}${variableName.substring(1)}`;
+  variableName = `${variableName.charAt(0).toLowerCase()}${variableName.substring(1)}`;
 
   if (
     options?.injectFooter &&
@@ -436,7 +458,7 @@ export function tsArrayLiteralExpression(
 
 function sanitizeMemberName(name: string) {
   let sanitizedName = name.replace(JS_ENUM_INVALID_CHARS_RE, (c) => {
-    const last = c[c.length - 1];
+    const last = c.charAt(c.length - 1);
     return JS_PROPERTY_INDEX_INVALID_CHARS_RE.test(last) ? "" : last.toUpperCase();
   });
 
@@ -468,7 +490,7 @@ export function tsEnumMember(
         name = `"${name}"`;
       } else {
         name = name.replace(JS_PROPERTY_INDEX_INVALID_CHARS_RE, (s) => {
-          return s in SPECIAL_CHARACTER_MAP ? SPECIAL_CHARACTER_MAP[s] : "_";
+          return SPECIAL_CHARACTER_MAP[s] ?? "_";
         });
       }
     }
@@ -514,7 +536,7 @@ export function tsIntersection(types: ts.TypeNode[]): ts.TypeNode {
     return NEVER;
   }
 
-  if (types.length === 1) {
+  if (types.length === 1 && types[0]) {
     return types[0];
   }
 
@@ -658,7 +680,7 @@ export function tsUnion(types: ts.TypeNode[]): ts.TypeNode {
     return NEVER;
   }
 
-  if (types.length === 1) {
+  if (types.length === 1 && types[0]) {
     return types[0];
   }
 

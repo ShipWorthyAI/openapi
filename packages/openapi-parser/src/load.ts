@@ -1,10 +1,10 @@
 import { Readable } from "node:stream";
 import { NodeStream } from "@effect/platform-node";
-import { parseYamlDocument } from "@shipworthy/openapi-ref-parser/yaml";
 import { Effect, FileSystem, Path, Predicate, Stream } from "effect";
 import { HttpClient } from "effect/http";
-import { unsupportedVersion, type OpenAPIDocument } from "./document.js";
+import { decodeDocument, type OpenAPIDocument } from "./document.js";
 import { EmptySource, InvalidSource, ParseError, type LoadError } from "./errors.js";
+import { parseYamlDocument } from "./yaml.js";
 
 export interface LoadOptions {
   readonly cwd?: URL | string;
@@ -30,15 +30,21 @@ export const loadDocument = Effect.fn("loadDocument")(function* (
 
   if (source == null || source === "") return yield* new EmptySource({ message: emptyPath });
   const loaded = yield* parseSource(source, cwd);
-  const problem = unsupportedVersion(loaded.document);
-  if (problem) return yield* problem;
-  return loaded;
+  const document = yield* Effect.fromResult(decodeDocument(loaded.document));
+  return { ...loaded, document };
 });
+
+/** A parsed source, before its version is checked. */
+interface SourceDocument {
+  readonly document: Record<string, unknown>;
+  readonly absoluteRef: string;
+  readonly sourceText?: string;
+}
 
 const parseSource = Effect.fnUntraced(function* (
   source: unknown,
   absoluteRef: string,
-): Effect.fn.Return<LoadedDocument, LoadError, LoadServices> {
+): Effect.fn.Return<SourceDocument, LoadError, LoadServices> {
   if (source == null || source === "") return yield* new EmptySource({ message: emptySchema });
 
   if (source instanceof URL) {
@@ -81,8 +87,7 @@ const parseSource = Effect.fnUntraced(function* (
     return { document, absoluteRef, sourceText: source };
   }
 
-  if (Predicate.isObject(source))
-    return { document: source as unknown as OpenAPIDocument, absoluteRef };
+  if (Predicate.isObject(source)) return { document: source, absoluteRef };
 
   return yield* new InvalidSource({
     message: `Expected string, object, or Buffer. Got ${Array.isArray(source) ? "Array" : typeof source}`,
@@ -150,8 +155,8 @@ const parseText = Effect.fnUntraced(function* (source: string) {
 
 const requireDocument = Effect.fnUntraced(function* (
   value: unknown,
-): Effect.fn.Return<OpenAPIDocument, InvalidSource> {
-  if (Predicate.isObject(value)) return value as unknown as OpenAPIDocument;
+): Effect.fn.Return<Record<string, unknown>, InvalidSource> {
+  if (Predicate.isObject(value)) return value;
 
   return yield* new InvalidSource({
     message: `Expected an OpenAPI document object. Got ${valueKind(value)}`,

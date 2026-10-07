@@ -1,5 +1,5 @@
 {
-  "name": "@shipworthy/openapi-transformer",
+  "name": "@shipworthy/openapi-generator",
   "version": "0.0.1",
   "private": true,
   "description": "Load, resolve, and parse an OpenAPI document, then run one generator plugin.",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@shipworthy/openapi-parser": "workspace:*",
-    "@shipworthy/openapi-ref-parser": "workspace:*",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

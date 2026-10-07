@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
-    "@shipworthy/openapi-parser": "workspace:*",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

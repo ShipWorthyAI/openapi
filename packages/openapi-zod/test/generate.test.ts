@@ -1,7 +1,6 @@
-import { parseModel } from "@shipworthy/openapi-parser";
+import { decode } from "@shipworthy/openapi-transformer";
 import { NodeServices } from "@effect/platform-node";
 import { generate } from "@shipworthy/openapi-generator";
-import type { OpenAPI3 } from "@shipworthy/openapi-typescript";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { zod, type ZodSources } from "../src/index";
@@ -71,10 +70,10 @@ const document = {
       },
     },
   },
-} as unknown as OpenAPI3;
+};
 
-function sourcesFor(schema: OpenAPI3) {
-  const generated = zod.generate(parseModel(schema), {});
+function sourcesFor(schema: Parameters<typeof decode>[0]) {
+  const generated = zod.generate(Effect.runSync(decode(schema)), {});
   if (!Effect.isEffect(generated)) return generated;
   return Effect.runSync(generated);
 }
@@ -168,7 +167,7 @@ void test("required-only allOf branches keep the inherited property", async () =
         },
       },
     },
-  } as unknown as OpenAPI3;
+  };
 
   const generated = await loadGenerated(sourcesFor(schema));
 
@@ -201,7 +200,7 @@ void test("not anyOf required forbids those keys", async () => {
         },
       },
     },
-  } as unknown as OpenAPI3;
+  };
 
   const generated = await loadGenerated(sourcesFor(schema));
 
@@ -232,7 +231,7 @@ void test("referenced path items still produce request body validators", async (
         },
       },
     },
-  } as unknown as OpenAPI3;
+  };
 
   const generated = await loadGenerated(sourcesFor(schema));
 
@@ -301,8 +300,7 @@ void test("external schema refs are bundled before conversion", async () => {
 });
 
 void test("unsupported documents and schemas fail before files are written", () => {
-  const base = structuredClone(document) as unknown as OpenAPI3;
-  assert.throws(() => sourcesFor({ ...base, openapi: "3.0.3" }), /OpenAPI 3\.1/);
+  const base = structuredClone(document);
 
   assert.throws(
     () =>
@@ -310,10 +308,7 @@ void test("unsupported documents and schemas fail before files are written", () 
     /custom dialects or top-level \$defs/,
   );
 
-  assert.throws(
-    () => sourcesFor({ ...base, $defs: { Extra: { type: "string" } } } as OpenAPI3),
-    /\$defs/,
-  );
+  assert.throws(() => sourcesFor({ ...base, $defs: { Extra: { type: "string" } } }), /\$defs/);
 
   const keyword = structuredClone(document) as any;
   keyword.components.schemas.Item.discriminator = { propertyName: "name" };

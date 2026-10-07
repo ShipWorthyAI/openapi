@@ -1,5 +1,5 @@
 import type { Generator } from "@shipworthy/openapi-generator";
-import type { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import { ZodGenerationError } from "./errors.js";
 import { zodSources, type ZodSources } from "./generate.js";
@@ -12,7 +12,7 @@ export { operationRoutes, type HttpMethod, type OperationRoute } from "./routes.
 export const zod: Generator<ZodSources, ZodGenerationError> = {
   id: "zod",
   generate: Effect.fnUntraced(function* (
-    model: ParsedOpenApi,
+    model: ParsedService,
   ): Effect.fn.Return<ZodSources, ZodGenerationError> {
     return yield* zodSources(model, yield* operationRoutes(model));
   }),

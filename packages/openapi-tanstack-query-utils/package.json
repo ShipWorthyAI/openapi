@@ -13,12 +13,12 @@
   },
   "dependencies": {
     "@shipworthy/openapi-fetch": "workspace:*",
-    "@shipworthy/openapi-parser": "workspace:*",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
-    "@shipworthy/openapi-transformer": "workspace:*",
+    "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",

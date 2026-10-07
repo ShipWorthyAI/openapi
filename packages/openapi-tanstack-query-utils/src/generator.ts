@@ -1,5 +1,5 @@
 import type { Generator } from "@shipworthy/openapi-generator";
-import type { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, Schema } from "effect";
 import { TanstackGenerationError } from "./errors";
 import type { OperationRoute } from "./query-utils";
@@ -19,7 +19,7 @@ function reject(message: string) {
 
 /** operationId → [METHOD, path]. Every operation needs an id. */
 export const operationRoutes = Effect.fnUntraced(function* (
-  model: ParsedOpenApi,
+  model: ParsedService,
 ): Effect.fn.Return<Record<string, OperationRoute>, TanstackGenerationError> {
   const routes: Record<string, OperationRoute> = Object.create(null);
 
@@ -38,7 +38,7 @@ export const operationRoutes = Effect.fnUntraced(function* (
 export const tanstackQuery: Generator<string, TanstackGenerationError> = {
   id: "tanstack-query",
   generate: Effect.fnUntraced(function* (
-    model: ParsedOpenApi,
+    model: ParsedService,
     options: Readonly<Record<string, unknown>>,
   ): Effect.fn.Return<string, TanstackGenerationError> {
     const decoded = yield* Effect.mapError(Schema.decodeEffect(PluginOptions)(options), (cause) =>

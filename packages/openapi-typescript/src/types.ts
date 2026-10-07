@@ -1,3 +1,13 @@
+import type { PathLike } from "node:fs";
+import type { ParsedDiscriminator, ParsedSchema } from "@shipworthy/openapi-transformer";
+import type { JsonSchema } from "effect";
+import type ts from "#compiler";
+
+/** A `transform` result that also decides whether the property is optional. */
+export interface TransformObject {
+  schema: ts.TypeNode;
+  questionToken: boolean;
+}
 
 export interface OpenAPITSOptions {
   /** Treat all objects as if they have `additionalProperties: true` by default (default: false) */
@@ -16,7 +26,7 @@ export interface OpenAPITSOptions {
   excludeDeprecated?: boolean;
   /** Manually transform certain Schema Objects with a custom TypeScript type */
   transform?: (
-    schemaObject: SchemaObject,
+    schemaObject: JsonSchema.JsonSchema,
     options: TransformNodeOptions,
   ) => ts.TypeNode | TransformObject | undefined;
   /** Modify TypeScript types built from Schema Objects */
@@ -24,7 +34,7 @@ export interface OpenAPITSOptions {
   /** Modify property signatures for Schema Object properties */
   transformProperty?: (
     property: ts.PropertySignature,
-    schemaObject: SchemaObject,
+    schemaObject: JsonSchema.JsonSchema,
     options: TransformNodeOptions,
   ) => ts.PropertySignature | undefined;
   /** Add readonly properties and readonly arrays? (default: false) */
@@ -71,7 +81,7 @@ export interface GlobalContext {
   arrayLength: boolean;
   defaultNonNullable: boolean;
   discriminators: {
-    objects: Record<string, DiscriminatorObject>;
+    objects: Record<string, ParsedDiscriminator>;
     refsHandled: string[];
   };
   emptyObjectsUnknown: boolean;
@@ -92,19 +102,18 @@ export interface GlobalContext {
   silent: boolean;
   transform: OpenAPITSOptions["transform"];
   transformProperty: OpenAPITSOptions["transformProperty"];
-  /** retrieve a node by $ref */
-  resolve<T>($ref: string): T | undefined;
+  /** Retrieve a node of the parsed model by `$ref`. */
+  resolve($ref: string): unknown;
   inject?: string;
   makePathsEnum: boolean;
   generatePathParams: boolean;
   readWriteMarkers: boolean;
 }
 
-export type $defs = Record<string, SchemaObject>;
-
-/** generic options for most internal transform* functions */
+/** What the `transform`, `postTransform`, and `transformProperty` hooks receive. */
 export interface TransformNodeOptions {
+  /** JSON Pointer of the schema in the bundled document. */
   path?: string;
-  schema?: SchemaObject | ReferenceObject;
+  schema?: ParsedSchema;
   ctx: GlobalContext;
 }

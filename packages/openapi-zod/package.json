@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
-    "@shipworthy/openapi-parser": "workspace:*",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "effect": "catalog:",
     "zod": "4.6.5"

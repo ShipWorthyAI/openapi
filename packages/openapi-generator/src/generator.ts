@@ -1,10 +1,10 @@
-import type { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { ParsedService } from "@shipworthy/openapi-transformer";
 import type { Effect } from "effect";
 
 export interface Generator<A, E = never> {
   readonly id: string;
   generate(
-    model: ParsedOpenApi,
+    model: ParsedService,
     options: Readonly<Record<string, unknown>>,
   ): A | Effect.Effect<A, E>;
 }

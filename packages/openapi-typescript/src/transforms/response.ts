@@ -1,0 +1,94 @@
+import type { ParsedResponse } from "@shipworthy/openapi-transformer";
+import { Effect } from "effect";
+import ts from "#compiler";
+import { TypegenContext } from "../context.js";
+import type { TypegenError } from "../errors.js";
+import {
+  addJSDocComment,
+  annotationsOf,
+  NEVER,
+  QUESTION_TOKEN,
+  refType,
+  STRING,
+  tsModifiers,
+  tsPropertyIndex,
+  UNKNOWN,
+} from "../lib/ts.js";
+import { createRef, getEntries } from "../lib/utils.js";
+import { transformHeader } from "./header.js";
+import { transformMediaType } from "./media-type.js";
+
+/**
+ * Transform a Response Object (4.8.17) into `{ headers; content }`.
+ * @see https://spec.openapis.org/oas/v3.1.0#response-object
+ */
+export const transformResponse = Effect.fnUntraced(function* (
+  response: ParsedResponse,
+  path: string,
+): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
+  const ctx = yield* TypegenContext;
+  const headers: ts.TypeElement[] = [];
+  const declared = Object.fromEntries(response.headers.map((header) => [header.name, header]));
+
+  for (const [name, header] of getEntries(declared, ctx)) {
+    const property = ts.factory.createPropertySignature(
+      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+      /* name          */ tsPropertyIndex(name),
+      // a referenced header has always printed as required
+      /* questionToken */ header.reference || header.required ? undefined : QUESTION_TOKEN,
+      /* type          */ header.reference
+        ? yield* refType(header.reference.$ref)
+        : yield* transformHeader(header, createRef([path, "headers", name])),
+    );
+
+    addJSDocComment(annotationsOf(header), property);
+    headers.push(property);
+  }
+
+  // allow additional unknown headers
+  headers.push(
+    ts.factory.createIndexSignature(
+      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+      /* parameters */ [
+        ts.factory.createParameterDeclaration(
+          /* modifiers      */ undefined,
+          /* dotDotDotToken */ undefined,
+          /* name           */ ts.factory.createIdentifier("name"),
+          /* questionToken  */ undefined,
+          /* type           */ STRING,
+        ),
+      ],
+      /* type          */ UNKNOWN,
+    ),
+  );
+
+  const content: ts.TypeElement[] = [];
+  const contents = Object.fromEntries(response.contents.map((media) => [media.mediaType, media]));
+
+  for (const [mediaType, media] of getEntries(contents, ctx)) {
+    const property = ts.factory.createPropertySignature(
+      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+      /* name          */ tsPropertyIndex(mediaType),
+      /* questionToken */ undefined,
+      /* type          */ yield* transformMediaType(media, createRef([path, "content", mediaType])),
+    );
+
+    addJSDocComment(annotationsOf(media), property);
+    content.push(property);
+  }
+
+  return ts.factory.createTypeLiteralNode([
+    ts.factory.createPropertySignature(
+      /* modifiers     */ undefined,
+      /* name          */ tsPropertyIndex("headers"),
+      /* questionToken */ undefined,
+      /* type          */ ts.factory.createTypeLiteralNode(headers),
+    ),
+    ts.factory.createPropertySignature(
+      /* modifiers     */ undefined,
+      /* name          */ tsPropertyIndex("content"),
+      /* questionToken */ content.length ? undefined : QUESTION_TOKEN,
+      /* type          */ content.length ? ts.factory.createTypeLiteralNode(content) : NEVER,
+    ),
+  ]);
+});

@@ -1,27 +1,16 @@
 import { Predicate, Result, Schema } from "effect";
 import { UnsupportedVersion } from "./errors.js";
 
-export interface OpenAPIDocument {
-  openapi: string;
-  info?: { title?: string; version?: string; [key: string]: unknown };
-  jsonSchemaDialect?: string;
-  servers?: unknown[];
-  paths?: Record<string, unknown>;
-  webhooks?: Record<string, unknown>;
-  components?: {
-    schemas?: Record<string, unknown>;
-    securitySchemes?: Record<string, unknown>;
-    [key: string]: unknown;
-  };
-  security?: unknown[];
-  tags?: unknown[];
-  externalDocs?: unknown;
-  $defs?: Record<string, unknown>;
-  [key: string]: unknown;
-}
+/** An OpenAPI document: its `openapi` version, with every other field unchecked. */
+export const OpenAPIDocument = Schema.StructWithRest(Schema.Struct({ openapi: Schema.String }), [
+  Schema.Record(Schema.String, Schema.Unknown),
+]);
+
+export type OpenAPIDocument = typeof OpenAPIDocument.Type;
 
 const unsupportedFormat = "Unsupported schema format, expected `openapi: 3.x`";
 
+/** Rejects anything but OpenAPI 3.x, with the messages users see. */
 const openApi3 = Schema.Unknown.check(
   Schema.makeFilter((document: unknown): string | undefined => {
     if (!Predicate.isObject(document)) return unsupportedFormat;
@@ -29,7 +18,6 @@ const openApi3 = Schema.Unknown.check(
 
     const openapi = document.openapi;
     if (typeof openapi !== "string" || openapi.length === 0) return unsupportedFormat;
-
     const version = Number.parseFloat(openapi);
 
     if (Number.isNaN(version) || version < 3 || version >= 4) {
@@ -40,9 +28,15 @@ const openApi3 = Schema.Unknown.check(
   }),
 );
 
-/** Rejects anything other than an OpenAPI 3.x document. Callers keep the original value. */
-export function unsupportedVersion(document: unknown): UnsupportedVersion | undefined {
-  const result = Schema.decodeUnknownResult(openApi3)(document);
-  if (Result.isSuccess(result)) return undefined;
-  return new UnsupportedVersion({ message: result.failure.message });
+const decodeVersion = Schema.decodeUnknownResult(openApi3);
+const decodeEnvelope = Schema.decodeUnknownResult(OpenAPIDocument);
+
+/** An OpenAPI 3.x document, as loaded and before bundling. */
+export function decodeDocument(
+  document: unknown,
+): Result.Result<OpenAPIDocument, UnsupportedVersion> {
+  return decodeVersion(document).pipe(
+    Result.flatMap(decodeEnvelope),
+    Result.mapError((issue) => new UnsupportedVersion({ message: issue.message })),
+  );
 }

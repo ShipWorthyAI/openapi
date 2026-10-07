@@ -1,4 +1,4 @@
-import { parseModel } from "@shipworthy/openapi-parser";
+import { decode } from "@shipworthy/openapi-transformer";
 import { it } from "@effect/vitest";
 import { Effect } from "effect";
 import assert from "node:assert/strict";
@@ -28,7 +28,13 @@ function sourceFor(
   schemas: Record<string, unknown>,
   defs?: Record<string, unknown>,
 ) {
-  const generated = standardSchema.generate(parseModel(document(openapi, schemas, defs)), {});
+  const generated = standardSchema.generate(
+    Effect.runSync(decode(document(openapi, schemas, defs))),
+    {},
+  );
+
+
+
   if (Effect.isEffect(generated)) return generated;
   return Effect.succeed(generated);
 }
@@ -174,9 +180,9 @@ it.effect("reads a document $def that shares a component name", () =>
   }),
 );
 
-it.effect("converts OpenAPI 3.0 nullable strings", () =>
+it.effect("converts nullable strings", () =>
   Effect.gen(function* () {
-    const source = yield* sourceFor("3.0.3", { Name: { type: "string", nullable: true } });
+    const source = yield* sourceFor("3.1.0", { Name: { type: ["string", "null"] } });
     assert.match(source, /Schema\.Union\(\[Schema\.String, Schema\.Null\]\)/);
 
     const loaded = yield* Effect.tryPromise(() => load(source));

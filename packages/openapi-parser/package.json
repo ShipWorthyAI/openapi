@@ -2,17 +2,17 @@
   "name": "@shipworthy/openapi-parser",
   "version": "0.0.1",
   "private": true,
-  "description": "Load an OpenAPI 3 document and parse it into ParsedOpenApi.",
+  "description": "Load an OpenAPI document, then resolve, bundle, upgrade, and dereference its references.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./yaml": "./src/yaml.ts"
   },
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
-    "@shipworthy/openapi-ref-parser": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

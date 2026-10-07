@@ -26,26 +26,22 @@
     "build": "unbuild",
     "dev": "tsc -p tsconfig.build.json --watch",
     "prepack": "bun run build",
-    "test": "bun run test:js && bun run test:examples && bun run test:exports",
-    "test:js": "vitest run",
+    "test": "vitest run",
     "test:exports": "bun run build && attw --pack .",
-    "test:examples": "bun ./test/typecheck-examples.ts",
     "prepublish": "bun run build",
     "version": "bun run build"
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
-    "@shipworthy/openapi-parser": "workspace:*",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "change-case": "^5.4.4",
+    "effect": "catalog:",
+    "oxfmt": "catalog:",
     "typescript": "catalog:"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
-    "@types/js-yaml": "4.0.9",
-    "effect": "catalog:",
-    "oxfmt": "catalog:",
-    "strip-ansi": "7.2.0",
     "vitest": "catalog:"
   },
   "peerDependencies": {

@@ -1,4 +1,4 @@
-import type { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, Predicate, Schema } from "effect";
 import * as z from "zod";
 import { ZodGenerationError } from "./errors";
@@ -135,7 +135,7 @@ function definitionName(ref: string): string {
 }
 
 function objectProperties(
-  document: ParsedOpenApi,
+  document: ParsedService,
   schema: SchemaNode,
   path: string,
   seen: ReadonlySet<string>,
@@ -160,7 +160,7 @@ function objectProperties(
 }
 
 function normalize(
-  document: ParsedOpenApi,
+  document: ParsedService,
   schema: SchemaNode,
   path: string,
   inherited: Record<string, SchemaNode> = {},
@@ -408,7 +408,7 @@ function source(
   return `${header}${imports.join("\n")}\n\n${exports.join("\n\n")}\n`;
 }
 
-function compile(model: ParsedOpenApi, routes: Record<string, OperationRoute>): ZodSources {
+function compile(model: ParsedService, routes: Record<string, OperationRoute>): ZodSources {
   if (!model.openapi.startsWith("3.1.")) reject("Zod generation requires OpenAPI 3.1");
 
   if (model.jsonSchemaDialect || Object.keys(model.$defs).length > 0) {
@@ -437,13 +437,11 @@ function compile(model: ParsedOpenApi, routes: Record<string, OperationRoute>): 
     const id = operation.operationId;
     if (!id || !Object.hasOwn(routes, id)) continue;
     const location = `${operation.method} ${operation.path}`;
-    if (!operation.requestBody) continue;
+    const body = operation.request.body;
+    if (!body) continue;
+    const content = body.contents.find((entry) => entry.mediaType === "application/json");
 
-    const content = operation.requestBody.contents.find(
-      (entry) => entry.mediaType === "application/json",
-    );
-
-    if (operation.requestBody.contents.length !== 1 || !content) {
+    if (body.contents.length !== 1 || !content) {
       reject(`${location}: Request bodies require a single application/json media type`);
     }
 
@@ -495,7 +493,7 @@ function failure(cause: unknown): ZodGenerationError {
  * `operationRoutes` builds that table from the document.
  */
 export const zodSources = Effect.fn("zodSources")(function* (
-  document: ParsedOpenApi,
+  document: ParsedService,
   routes: Record<string, OperationRoute>,
 ): Effect.fn.Return<ZodSources, ZodGenerationError> {
   return yield* Effect.try({

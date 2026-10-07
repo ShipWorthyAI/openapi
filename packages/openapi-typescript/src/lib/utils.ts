@@ -1,6 +1,8 @@
-import { escapePointer, parseRef } from "./ref.js";
+import type { ParsedDiscriminator, ParsedService } from "@shipworthy/openapi-transformer";
+import { type JsonSchema, Predicate } from "effect";
 import ts from "#compiler";
-import type { DiscriminatorObject, Json, OpenAPITSOptions } from "../types.js";
+import { escapePointer, parseRef } from "./ref.js";
+import { discriminatorOf, stringList } from "./schema.js";
 import { tsLiteral, tsModifiers, tsPropertyIndex } from "./ts.js";
 
 /** Same TTY and `NO_COLOR` check as `CliOutput.defaultFormatter`. */
@@ -40,7 +42,7 @@ const DEBUG_GROUPS: Record<string, ((text: string) => string) | undefined> = {
 
 /** Given a discriminator object, get the property name */
 export function createDiscriminatorProperty(
-  discriminator: DiscriminatorObject,
+  discriminator: ParsedDiscriminator,
   { path, readonly = false }: { path: string; readonly?: boolean },
 ): ts.TypeElement {
   // get the inferred propertyName value from the last section of the path (as the spec suggests to do)
@@ -159,9 +161,9 @@ export function getEntries<T>(
   return entries;
 }
 
-/** resolve a $ref in a schema */
-export function resolveRef<T>(
-  schema: any,
+/** Follow a local `$ref` through a parsed model. Its components, `$defs`, and path maps keep the document's keys. */
+export function resolveRef<T = unknown>(
+  model: unknown,
   $ref: string,
   { silent = false, visited = [] }: { silent?: boolean; visited?: string[] },
 ): T | undefined {
@@ -171,57 +173,61 @@ export function resolveRef<T>(
     return undefined;
   }
 
-  let node = schema;
+  let node: unknown = model;
 
   for (const key of pointer) {
-    if (node && typeof node === "object" && node[key]) {
-      node = node[key];
-    } else {
+    const next = Predicate.isObject(node) ? node[key] : undefined;
+
+    if (next === undefined || next === null) {
       warn(`Could not resolve $ref "${$ref}"`, silent);
       return undefined;
     }
+
+    node = next;
   }
 
   // if this is also a $ref, keep tracing
-  if (node && typeof node === "object" && node.$ref) {
+  if (Predicate.isObject(node) && typeof node.$ref === "string") {
     if (visited.includes(node.$ref)) {
       warn(`Could not resolve circular $ref "${$ref}"`, silent);
       return undefined;
     }
 
-    return resolveRef(schema, node.$ref, {
-      silent,
-      visited: [...visited, node.$ref],
-    });
+    return resolveRef<T>(model, node.$ref, { silent, visited: [...visited, node.$ref] });
   }
 
-  return node;
+  return node as T;
 }
 
-function createDiscriminatorEnum(values: string[], prevSchema?: Json): Json {
+function createDiscriminatorEnum(values: string[], prevSchema?: unknown): JsonSchema.JsonSchema {
+  const description =
+    Predicate.isObject(prevSchema) && typeof prevSchema.description === "string"
+      ? prevSchema.description
+      : undefined;
+
   return {
     type: "string",
     enum: values,
-    description: prevSchema?.description
-      ? `${prevSchema.description} (enum property replaced by openapi-typescript)`
+    description: description
+      ? `${description} (enum property replaced by openapi-typescript)`
       : "discriminator enum property added by openapi-typescript",
   };
 }
 
 /** Adds or replaces the discriminator enum with the passed `values` in a schema defined by `ref` */
 function patchDiscriminatorEnum(
-  schema: Json,
+  model: ParsedService,
   ref: string,
   values: string[],
-  discriminator: DiscriminatorObject,
+  discriminator: ParsedDiscriminator,
   discriminatorRef: string,
-  options: OpenAPITSOptions,
+  silent: boolean,
 ): boolean {
-  const resolvedSchema = resolveRef<Json>(schema, ref, {
-    silent: options.silent ?? false,
-  });
+  // the scan patches schemas in place
+  const resolved = resolveRef<unknown>(model, ref, { silent });
+  const resolvedSchema = Predicate.isObject(resolved) ? resolved : undefined;
 
-  if (resolvedSchema?.allOf) {
+  if (Array.isArray(resolvedSchema?.allOf)) {
     // if the schema is an allOf, we can append a new schema object to the allOf array
     resolvedSchema.allOf.push({
       type: "object",
@@ -233,28 +239,27 @@ function patchDiscriminatorEnum(
     });
 
     return true;
-  } else if (
-    typeof resolvedSchema === "object" &&
-    "type" in resolvedSchema &&
-    resolvedSchema.type === "object"
-  ) {
+  } else if (resolvedSchema?.type === "object") {
     // if the schema is an object, we can apply the discriminator enums to its properties
-    if (!resolvedSchema.properties) {
-      resolvedSchema.properties = {};
-    }
+    const properties = Predicate.isObject(resolvedSchema.properties)
+      ? resolvedSchema.properties
+      : {};
 
     // discriminator enum properties always need to be required
-    if (!resolvedSchema.required) {
-      resolvedSchema.required = [discriminator.propertyName];
-    } else if (!resolvedSchema.required.includes(discriminator.propertyName)) {
-      resolvedSchema.required.push(discriminator.propertyName);
+    const required = stringList(resolvedSchema.required) ?? [];
+
+    if (!required.includes(discriminator.propertyName)) {
+      resolvedSchema.required = [...required, discriminator.propertyName];
     }
 
     // add/replace the discriminator enum property
-    resolvedSchema.properties[discriminator.propertyName] = createDiscriminatorEnum(
-      values,
-      resolvedSchema.properties[discriminator.propertyName] as Json,
-    );
+    resolvedSchema.properties = {
+      ...properties,
+      [discriminator.propertyName]: createDiscriminatorEnum(
+        values,
+        properties[discriminator.propertyName],
+      ),
+    };
 
     return true;
   }
@@ -263,7 +268,7 @@ function patchDiscriminatorEnum(
     `Discriminator mapping has an invalid schema (neither an object schema nor an allOf array): ${ref} => ${values.join(
       ", ",
     )} (Discriminator: ${discriminatorRef})`,
-    options.silent,
+    silent,
   );
 
   return false;
@@ -271,19 +276,22 @@ function patchDiscriminatorEnum(
 
 type InternalDiscriminatorMapping = Record<string, { inferred?: string; defined?: string[] }>;
 
-/** Return a key–value map of discriminator objects found in a schema */
-export function scanDiscriminators(schema: Json, options: OpenAPITSOptions) {
+/**
+ * Collect the discriminators of a parsed model, keyed by JSON Pointer. Schemas a discriminator
+ * maps to get its property as a single-value enum, in place.
+ */
+export function scanDiscriminators(model: ParsedService, { silent = false }: { silent?: boolean }) {
   // all discriminator objects found in the schema
-  const objects: Record<string, DiscriminatorObject> = {};
+  const objects: Record<string, ParsedDiscriminator> = {};
 
   // refs of all mapped schema objects we have successfully handled to infer the discriminator enum value
   const refsHandled: string[] = [];
 
   // perform 2 passes: first, collect all discriminator definitions and handle oneOf and mappings
-  walk(schema, (obj, path) => {
-    const discriminator = obj?.discriminator as DiscriminatorObject | undefined;
+  walk(model, (obj, path) => {
+    const discriminator = discriminatorOf(obj.discriminator);
 
-    if (!discriminator?.propertyName) {
+    if (!discriminator) {
       return;
     }
 
@@ -294,45 +302,35 @@ export function scanDiscriminators(schema: Json, options: OpenAPITSOptions) {
 
     // if a mapping is available we will help Typescript to infer properties by adding the discriminator enum with its single mapped value to each schema
     // we only handle the mapping in advance for discriminator + oneOf compositions right now
-    if (!obj?.oneOf || !Array.isArray(obj.oneOf)) {
+    if (!Array.isArray(obj.oneOf)) {
       return;
     }
 
-    const oneOf: Json[] = obj.oneOf;
     const mapping: InternalDiscriminatorMapping = {};
 
     // the mapping can be inferred from the oneOf refs next to the discriminator object
-    for (const item of oneOf) {
-      if ("$ref" in item) {
-        // the name of the schema is the inferred discriminator enum value
-        const value = item.$ref.split("/").pop();
+    for (const item of obj.oneOf) {
+      if (!Predicate.isObject(item) || typeof item.$ref !== "string") {
+        continue;
+      }
 
-        if (value) {
-          if (!mapping[item.$ref]) {
-            mapping[item.$ref] = { inferred: value };
-          } else {
-            mapping[item.$ref].inferred = value;
-          }
-        }
+      // the name of the schema is the inferred discriminator enum value
+      const value = item.$ref.split("/").pop();
+
+      if (value) {
+        mapping[item.$ref] = { ...mapping[item.$ref], inferred: value };
       }
     }
 
     // the mapping can be defined in the discriminator object itself
-    if (discriminator.mapping) {
-      for (const mappedValue in discriminator.mapping) {
-        const mappedRef = discriminator.mapping[mappedValue];
-
-        if (!mappedRef) {
-          continue;
-        }
-
-        if (!mapping[mappedRef]?.defined) {
-          // this overrides inferred values, but we don't need them anymore as soon as we have a defined value
-          mapping[mappedRef] = { defined: [] };
-        }
-
-        mapping[mappedRef].defined?.push(mappedValue);
+    for (const [mappedValue, mappedRef] of Object.entries(discriminator.mapping ?? {})) {
+      if (!mappedRef) {
+        continue;
       }
+
+      // this overrides inferred values, but we don't need them anymore as soon as we have a defined value
+      const defined = mapping[mappedRef]?.defined ?? [];
+      mapping[mappedRef] = { defined: [...defined, mappedValue] };
     }
 
     for (const [mappedRef, { inferred, defined }] of Object.entries(mapping)) {
@@ -340,25 +338,16 @@ export function scanDiscriminators(schema: Json, options: OpenAPITSOptions) {
         continue;
       }
 
-      if (!inferred && !defined) {
-        continue;
-      }
-
       // prefer defined values over automatically inferred ones
       // the inferred enum values from the schema might not represent the actual enum values of the discriminator,
       // so if we have defined values, use them instead
-      const mappedValues = defined ?? [inferred!];
+      const mappedValues = defined ?? (inferred ? [inferred] : []);
 
-      if (
-        patchDiscriminatorEnum(
-          schema as unknown as Json,
-          mappedRef,
-          mappedValues,
-          discriminator,
-          ref,
-          options,
-        )
-      ) {
+      if (mappedValues.length === 0) {
+        continue;
+      }
+
+      if (patchDiscriminatorEnum(model, mappedRef, mappedValues, discriminator, ref, silent)) {
         refsHandled.push(mappedRef);
       }
     }
@@ -367,49 +356,46 @@ export function scanDiscriminators(schema: Json, options: OpenAPITSOptions) {
   // second, collect the schema objects that inherit from discriminators
   // (sometimes this mapping is implicit, so it can’t be done until we know
   // about every discriminator in the document)
-  walk(schema, (obj, path) => {
-    if (!obj || !Array.isArray(obj.allOf)) {
+  walk(model, (obj, path) => {
+    if (!Array.isArray(obj.allOf)) {
       return;
     }
 
-    for (const item of (obj as any).allOf) {
-      if ("$ref" in item) {
-        if (!objects[item.$ref]) {
+    for (const item of obj.allOf) {
+      if (!Predicate.isObject(item)) {
+        continue;
+      }
+
+      if (typeof item.$ref === "string") {
+        const parent = objects[item.$ref];
+
+        if (!parent) {
           return;
         }
 
         const ref = createRef(path);
-        const discriminator = objects[item.$ref];
         const mappedValues: string[] = [];
 
-        if (discriminator.mapping) {
-          for (const mappedValue in discriminator.mapping) {
-            if (discriminator.mapping[mappedValue] === ref) {
-              mappedValues.push(mappedValue);
-            }
-          }
-
-          if (mappedValues.length > 0) {
-            if (
-              patchDiscriminatorEnum(
-                schema as unknown as Json,
-                ref,
-                mappedValues,
-                discriminator,
-                item.$ref,
-                options,
-              )
-            ) {
-              refsHandled.push(ref);
-            }
+        for (const [mappedValue, mappedRef] of Object.entries(parent.mapping ?? {})) {
+          if (mappedRef === ref) {
+            mappedValues.push(mappedValue);
           }
         }
 
-        objects[ref] = {
-          ...objects[item.$ref],
-        };
-      } else if (item.discriminator?.propertyName) {
-        objects[createRef(path)] = { ...item.discriminator };
+        if (
+          mappedValues.length > 0 &&
+          patchDiscriminatorEnum(model, ref, mappedValues, parent, item.$ref, silent)
+        ) {
+          refsHandled.push(ref);
+        }
+
+        objects[ref] = { ...parent };
+      } else {
+        const discriminator = discriminatorOf(item.discriminator);
+
+        if (discriminator) {
+          objects[createRef(path)] = { ...discriminator };
+        }
       }
     }
   });

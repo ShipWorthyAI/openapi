@@ -12,7 +12,7 @@
   "dependencies": {
     "@effect/platform-bun": "catalog:",
     "@shipworthy/openapi-parser": "workspace:*",
-    "@shipworthy/openapi-transformer": "workspace:*",
+    "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-validator": "workspace:*",
     "effect": "catalog:"
   },

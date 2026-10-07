@@ -1,4 +1,4 @@
-import type { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import { ZodGenerationError } from "./errors";
 
@@ -11,7 +11,7 @@ const blockedOperationIds = new Set(["__proto__", "constructor", "prototype"]);
 
 /** operationId → [METHOD, path], in document order. Every operation needs an id. */
 export const operationRoutes = Effect.fnUntraced(function* (
-  model: ParsedOpenApi,
+  model: ParsedService,
 ): Effect.fn.Return<Record<string, OperationRoute>, ZodGenerationError> {
   const routes: Record<string, OperationRoute> = Object.create(null);
 

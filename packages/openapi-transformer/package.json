@@ -1,0 +1,24 @@
+{
+  "name": "@shipworthy/openapi-transformer",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Decode a bundled OpenAPI object into the ParsedService HTTP meta model.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-parser": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@shipworthy/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
