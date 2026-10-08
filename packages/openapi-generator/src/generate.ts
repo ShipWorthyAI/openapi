@@ -1,4 +1,4 @@
-import { bundleDocument, loadDocument, type LoadError } from "@shipworthy/openapi-parser";
+import { bundleDocument } from "@shipworthy/openapi-parser";
 import { decode, type ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, FileSystem, Path, Predicate } from "effect";
 import { HttpClient } from "effect/http";
@@ -18,9 +18,7 @@ type GenerateServices = FileSystem.FileSystem | Path.Path | HttpClient.HttpClien
 export const generate = Effect.fn("generate")(function* (
   options: GenerateOptions,
 ): Effect.fn.Return<unknown, GenerateError, GenerateServices> {
-  const loaded = yield* loadDocument(options.source, { cwd: options.cwd });
-
-  const document = yield* bundleDocument(loaded).pipe(
+  const document = yield* bundleDocument(options.source, { cwd: options.cwd }).pipe(
     Effect.mapError((cause) => new ResolveError({ message: cause.message, cause })),
   );
 
@@ -59,9 +57,4 @@ const render = Effect.fnUntraced(function* (
   return yield* Effect.mapError(value, pluginFailure);
 });
 
-export type GenerateError =
-  | ResolveError
-  | TransformError
-  | MissingPlugin
-  | InvalidPlugin
-  | LoadError;
+export type GenerateError = ResolveError | TransformError | MissingPlugin | InvalidPlugin;

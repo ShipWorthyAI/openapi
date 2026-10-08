@@ -1,4 +1,4 @@
-import { OpenApiReference, type ParsedOpenApi } from "@shipworthy/openapi-parser";
+import { OpenApiReference, type ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect, JsonPointer, Predicate, Schema, SchemaIssue } from "effect";
 import type { ParsedRef } from "../../model/index.js";
 

@@ -5,19 +5,18 @@ import {
   isLeafFailure,
   missingPointerFailure,
   syncFailure,
-  toPublicError,
   type LeafFailure,
   type TaggedFailure,
 } from "./errors.js";
 import { hoistExternalRefs } from "./hoist.js";
-import { loadDocument, makeContext, runtime } from "./loader.js";
+import { loadDocument, makeContext } from "./loader.js";
 import { normalizeArguments, type Options } from "./plugins.js";
 import { cloneData, joinPointer, parsePointer } from "./pointer.js";
 import { inlineRemaining, runSchemaPipeline } from "./pipeline.js";
 import { isOpenApi3, upgradeOpenApi3_0 } from "./upgraders/3.0-to-3.1.js";
 import { getHash, isHttp, normalizeRef, resolveAgainst, stripHash } from "./url.js";
 
-export interface RunResult {
+interface RunResult {
   schema: unknown;
   documents: Map<string, unknown>;
 }
@@ -28,7 +27,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return Predicate.isObject(value) ? value : undefined;
 }
 
-export type RunMode = "parse" | "resolve" | "bundle" | "dereference";
+type RunMode = "parse" | "resolve" | "bundle" | "dereference";
 
 export const runEffect = Effect.fn("openapi-parser.run")(function* (
   mode: RunMode,
@@ -36,27 +35,6 @@ export const runEffect = Effect.fn("openapi-parser.run")(function* (
 ): Effect.fn.Return<RunResult, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
   return yield* execute(mode, normalizeArguments(args));
 });
-
-export const bundleEffect = Effect.fnUntraced(function* (
-  path: string,
-  schema: unknown,
-): Effect.fn.Return<unknown, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
-  const result = yield* runEffect("bundle", [path, schema]);
-  return result.schema;
-});
-
-export async function run(mode: RunMode, args: unknown[]): Promise<unknown> {
-  const result = await runtime.runPromise(publicRun(mode, args));
-  return result.schema;
-}
-
-export async function runDetailed(mode: RunMode, args: unknown[]): Promise<RunResult> {
-  return runtime.runPromise(publicRun(mode, args));
-}
-
-function publicRun(mode: RunMode, args: unknown[]) {
-  return runEffect(mode, args).pipe(Effect.mapError(toPublicError));
-}
 
 const execute = Effect.fnUntraced(function* (
   mode: RunMode,

@@ -4,17 +4,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { JsonPointer } from "effect";
 import { describe, expect, it } from "vitest";
+import { bundle, dereference, parse } from "./reference-engine.js";
 import {
-  bundle,
-  dereference,
-  InvalidPointerError,
-  JSONParserErrorGroup,
-  MissingPointerError,
-  parse,
-  ResolverError,
-  TimeoutError,
-  type FileInfo,
-} from "../src/index.js";
+  InvalidPointerFailure,
+  GroupFailure,
+  MissingPointerFailure,
+  ResolverFailure,
+  TimeoutFailure,
+} from "../src/errors.js";
+import type { FileInfo } from "../src/plugins.js";
 import { joinPointer, parsePointer } from "../src/pointer.js";
 
 const openapiRoot = path.resolve(import.meta.dirname, "fixtures/bundle-openapi/root.yaml");
@@ -529,7 +527,7 @@ describe("openapi bundle", () => {
         paths: {},
         components: { schemas: { A: { $ref: "#/components/schemas/Missing" } } },
       }),
-    ).rejects.toBeInstanceOf(MissingPointerError);
+    ).rejects.toBeInstanceOf(MissingPointerFailure);
 
     await expect(
       bundle({
@@ -538,7 +536,7 @@ describe("openapi bundle", () => {
         paths: {},
         components: { schemas: { A: { $ref: "#not-a-pointer" } } },
       }),
-    ).rejects.toBeInstanceOf(InvalidPointerError);
+    ).rejects.toBeInstanceOf(InvalidPointerFailure);
   });
 
   it("groups continued resolver failures", async () => {
@@ -563,13 +561,13 @@ describe("openapi bundle", () => {
       (cause: unknown) => cause,
     );
 
-    expect(failure).toBeInstanceOf(JSONParserErrorGroup);
-    if (!(failure instanceof JSONParserErrorGroup)) return;
+    expect(failure).toBeInstanceOf(GroupFailure);
+    if (!(failure instanceof GroupFailure)) return;
     expect(failure.errors).toHaveLength(2);
 
     expect(
       failure.errors.every(
-        (error) => error instanceof ResolverError && error.ioErrorCode === "ENOENT",
+        (error) => error instanceof ResolverFailure && error.ioErrorCode === "ENOENT",
       ),
     ).toBe(true);
   });
@@ -592,7 +590,7 @@ describe("openapi bundle", () => {
     });
   });
 
-  it("maps an HTTP timeout to TimeoutError", async () => {
+  it("maps an HTTP timeout to TimeoutFailure", async () => {
     const server = createServer(() => undefined);
 
     await new Promise<void>((resolve) => {
@@ -607,7 +605,7 @@ describe("openapi bundle", () => {
         parse(`http://127.0.0.1:${address.port}/hang`, {
           resolve: { file: false, http: { timeout: 50, safeUrlResolver: false } },
         }),
-      ).rejects.toBeInstanceOf(TimeoutError);
+      ).rejects.toBeInstanceOf(TimeoutFailure);
     } finally {
       server.close();
     }

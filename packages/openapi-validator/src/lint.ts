@@ -1,4 +1,3 @@
-import type { LoadedDocument } from "@shipworthy/openapi-parser";
 import { Document, Spectral, type RulesetDefinition } from "@stoplight/spectral-core";
 import { oas3 } from "@stoplight/spectral-formats";
 import { Json, Yaml } from "@stoplight/spectral-parsers";
@@ -28,7 +27,7 @@ const yellow = paint("33");
 
 function spectralRules(): Record<string, "off" | "warn" | "error"> {
   const rules: Record<string, "off" | "warn" | "error"> = {
-    // Partial documents and versions such as "3.1" are valid generator input.
+    // Lint can inspect partial documents; the parser owns structural validation.
     "oas3-schema": "off",
   };
 
@@ -55,14 +54,19 @@ function isExampleRefRead(result: {
   );
 }
 
-function spectralTarget(document: LoadedDocument) {
-  if (!document.sourceText) return document.document as unknown as Record<string, unknown>;
+interface LintOptions {
+  readonly sourceUrl?: string;
+  readonly silent?: boolean;
+}
 
-  if (document.sourceText.trimStart().startsWith("{")) {
-    return new Document(document.sourceText, Json, document.absoluteRef);
+function spectralTarget(source: string | Record<string, unknown>, sourceUrl: string | undefined) {
+  if (typeof source !== "string") return source;
+
+  if (source.trimStart().startsWith("{")) {
+    return new Document(source, Json, sourceUrl);
   }
 
-  return new Document(document.sourceText, Yaml, document.absoluteRef);
+  return new Document(source, Yaml, sourceUrl);
 }
 
 function thrownMessage(cause: unknown): string {
@@ -80,8 +84,8 @@ export class Linter extends Context.Service<
   Linter,
   {
     readonly lintDocument: (
-      document: LoadedDocument,
-      silent?: boolean,
+      source: string | Record<string, unknown>,
+      options?: LintOptions,
     ) => Effect.Effect<void, LintError>;
   }
 >()("@shipworthy/openapi-validator/Linter") {
@@ -99,11 +103,25 @@ export class Linter extends Context.Service<
     });
 
     const lintDocument = Effect.fn("Linter.lintDocument")(function* (
-      document: LoadedDocument,
-      silent = false,
+      source: string | Record<string, unknown>,
+      options: LintOptions = {},
     ): Effect.fn.Return<void, LintError> {
+      const target = yield* Effect.try({
+        try: () => spectralTarget(source, options.sourceUrl),
+        catch: (cause) => new LintError({ message: thrownMessage(cause), diagnostics: [], cause }),
+      });
+
+      if (!oas3(target instanceof Document ? target.data : target, options.sourceUrl ?? null)) {
+        const message = "Expected an OpenAPI 3.x document";
+
+        return yield* new LintError({
+          message,
+          diagnostics: [{ code: "unsupported-format", message, path: [] }],
+        });
+      }
+
       const results = yield* Effect.tryPromise({
-        try: () => spectral.run(spectralTarget(document)),
+        try: () => spectral.run(target),
         catch: (cause) =>
           new LintError({
             message: thrownMessage(cause),
@@ -127,7 +145,7 @@ export class Linter extends Context.Service<
         if (result.severity === 0 && result.code !== "parser" && !isExampleRefRead(result)) {
           failures.push({ code: result.code, message, path: pathSegments(result.path) });
           yield* Console.error(red(` ✘  ${message}`));
-        } else if (!silent) {
+        } else if (!options.silent) {
           yield* Console.warn(yellow(` ⚠  ${message}`));
         }
       }

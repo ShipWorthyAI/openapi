@@ -4,7 +4,7 @@ import {
   type OpenApiOperation,
   type OpenApiReference,
   type ParsedOpenApi,
-} from "@shipworthy/openapi-parser";
+} from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
 import { child, resolve } from "./pointer.js";
 import { readExtensions } from "./extensions.js";

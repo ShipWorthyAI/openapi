@@ -1,18 +1,9 @@
-import type { LoadedDocument } from "@shipworthy/openapi-parser";
 import { assert, layer } from "@effect/vitest";
 import { Console, Effect, Layer, MutableRef } from "effect";
 import { TestConsole } from "effect/testing";
 import { Linter } from "../src/index.js";
 
-function loaded(sourceText: string): LoadedDocument {
-  return {
-    document: { openapi: "3.1.0" },
-    absoluteRef: "file:///openapi.yaml",
-    sourceText,
-  };
-}
-
-const duplicateOperationIds = loaded(`openapi: 3.1.0
+const duplicateOperationIds = `openapi: 3.1.0
 info:
   title: Test
   version: 1.0.0
@@ -31,9 +22,21 @@ paths:
       responses:
         "200":
           description: ok
-`);
+`;
 
 layer(Layer.mergeAll(Linter.layer, TestConsole.layer))("Linter", (it) => {
+  it.effect("rejects input that is not an OpenAPI 3 document", () =>
+    Effect.gen(function* () {
+      const linter = yield* Linter;
+
+      for (const source of ["[]", "swagger: '2.0'\n", {}]) {
+        const error = yield* Effect.flip(linter.lintDocument(source));
+        assert.equal(error._tag, "LintError");
+        assert.equal(error.diagnostics[0]?.code, "unsupported-format");
+      }
+    }),
+  );
+
   it.effect("warns when servers are missing", () =>
     Effect.gen(function* () {
       const warnings = MutableRef.make<Array<string>>([]);
@@ -49,12 +52,13 @@ layer(Layer.mergeAll(Linter.layer, TestConsole.layer))("Linter", (it) => {
 
       yield* linter
         .lintDocument(
-          loaded(`openapi: 3.1.0
+          `openapi: 3.1.0
 info:
   title: Test
   version: 1.0.0
 paths: {}
-`),
+`,
+          { sourceUrl: "file:///openapi.yaml" },
         )
         .pipe(Effect.provideService(Console.Console, recorder));
 
@@ -71,7 +75,11 @@ paths: {}
   it.effect("fails when operationIds are duplicated", () =>
     Effect.gen(function* () {
       const linter = yield* Linter;
-      const error = yield* Effect.flip(linter.lintDocument(duplicateOperationIds));
+
+      const error = yield* Effect.flip(
+        linter.lintDocument(duplicateOperationIds, { sourceUrl: "file:///openapi.yaml" }),
+      );
+
       const errors = yield* TestConsole.errorLines;
 
       assert.isTrue(/operationId/i.test(error.message));
@@ -94,22 +102,19 @@ paths: {}
 
       const error = yield* Effect.flip(
         linter.lintDocument({
-          document: {
-            openapi: "3.1.0",
-            info: { title: "test", version: "1.0" },
-            components: {
-              schemas: {
-                Pet: {
-                  type: "object",
-                  properties: {
-                    category: { $ref: "#/components/schemas/NonExistingSchema" },
-                    type: { $ref: "#/components/schemas/AnotherSchema" },
-                  },
+          openapi: "3.1.0",
+          info: { title: "test", version: "1.0" },
+          components: {
+            schemas: {
+              Pet: {
+                type: "object",
+                properties: {
+                  category: { $ref: "#/components/schemas/NonExistingSchema" },
+                  type: { $ref: "#/components/schemas/AnotherSchema" },
                 },
               },
             },
           },
-          absoluteRef: "memory://openapi.yaml",
         }),
       );
 

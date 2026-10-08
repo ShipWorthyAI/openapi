@@ -1,4 +1,4 @@
-import type { OpenApiSchema } from "@shipworthy/openapi-parser";
+import type { OpenApiSchema } from "@shipworthy/openapi-parser/schemas/3.1";
 import type { ParsedSchema } from "../../model/index.js";
 
 /** JSON Schema keywords and references already have the parser's canonical representation. */

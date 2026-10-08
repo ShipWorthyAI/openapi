@@ -2,11 +2,11 @@
   "name": "@shipworthy/openapi-parser",
   "version": "0.0.1",
   "private": true,
-  "description": "Load an OpenAPI document, then resolve, bundle, upgrade, and dereference its references.",
+  "description": "Parse, bundle, and upgrade OpenAPI documents with Effect schemas.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./yaml": "./src/yaml.ts"
+    "./schemas/3.1": "./src/schemas/3.1/index.ts"
   },
   "scripts": {
     "test": "vitest run"

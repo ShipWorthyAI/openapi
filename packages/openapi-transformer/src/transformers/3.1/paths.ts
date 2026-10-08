@@ -1,4 +1,4 @@
-import { OpenApiPathItem } from "@shipworthy/openapi-parser";
+import { OpenApiPathItem } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
 import type { TransformContext } from "./context.js";
 import { transformOperation } from "./operation.js";

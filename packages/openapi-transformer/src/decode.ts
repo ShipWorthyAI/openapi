@@ -1,4 +1,4 @@
-import { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import { ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Schema, SchemaGetter } from "effect";
 import { ParsedService } from "./model/index.js";
 import { transformService } from "./transformers/3.1/index.js";

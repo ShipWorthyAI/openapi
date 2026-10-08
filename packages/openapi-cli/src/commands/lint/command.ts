@@ -1,13 +1,24 @@
-import { loadDocument } from "@shipworthy/openapi-parser";
 import { Linter } from "@shipworthy/openapi-validator";
-import { Effect } from "effect";
+import { Effect, FileSystem, Path } from "effect";
 import { Argument, Command } from "effect/cli";
+import { HttpClient } from "effect/http";
 import { asCliError, schemaSource } from "../input";
+
+const readSource = Effect.fnUntraced(function* (input: URL) {
+  if (input.protocol === "file:") {
+    const path = yield* Path.Path;
+    const fs = yield* FileSystem.FileSystem;
+    return yield* fs.readFileString(yield* path.fromFileUrl(input));
+  }
+
+  const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
+  return yield* client.get(input.href).pipe(Effect.flatMap((response) => response.text));
+});
 
 const run = Effect.fn("run")(
   function* ({ input }: { readonly input: URL }) {
-    const document = yield* loadDocument(input);
-    yield* Linter.use((linter) => linter.lintDocument(document));
+    const source = yield* readSource(input);
+    yield* Linter.use((linter) => linter.lintDocument(source, { sourceUrl: input.href }));
   },
   Effect.mapError(asCliError),
   Effect.provide(Linter.layer),

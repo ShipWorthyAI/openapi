@@ -25,7 +25,6 @@
       "dependencies": {
         "@effect/platform-bun": "catalog:",
         "@shipworthy/openapi-generator": "workspace:*",
-        "@shipworthy/openapi-parser": "workspace:*",
         "@shipworthy/openapi-validator": "workspace:*",
         "effect": "catalog:",
       },
@@ -197,7 +196,6 @@
       "name": "@shipworthy/openapi-validator",
       "version": "0.0.1",
       "dependencies": {
-        "@shipworthy/openapi-parser": "workspace:*",
         "@stoplight/spectral-core": "1.24.0",
         "@stoplight/spectral-formats": "1.9.0",
         "@stoplight/spectral-parsers": "1.0.5",

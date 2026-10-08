@@ -1,4 +1,4 @@
-import type { OpenApiPathItem } from "@shipworthy/openapi-parser";
+import type { OpenApiPathItem } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
 import type { TransformContext } from "./context.js";
 import { transformCallbackList } from "./callbacks.js";

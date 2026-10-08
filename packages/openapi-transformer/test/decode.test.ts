@@ -2,7 +2,8 @@ import { describe, it } from "@effect/vitest";
 import { strict as assert } from "node:assert";
 import { Effect, FileSystem, Layer, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
-import { OpenApiSource, ParsedOpenApi, ParsedOpenApiFromString } from "@shipworthy/openapi-parser";
+import { ParsedOpenApiFromString } from "@shipworthy/openapi-parser";
+import { ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
 import { decode, ParsedService, ParsedServiceFromParsedOpenApi } from "../src/index.js";
 
 /** Decode a document that is expected to succeed. */
@@ -474,14 +475,13 @@ describe("decode schemas", () => {
 describe("ParsedService schema", () => {
   it.effect("composes the text and service codecs", () =>
     Effect.gen(function* () {
-      const codec = ParsedOpenApiFromString.pipe(Schema.decodeTo(ParsedServiceFromParsedOpenApi));
+      const codec = ParsedOpenApiFromString({ sourceUrl: "file:///specs/openapi.yaml" }).pipe(
+        Schema.decodeTo(ParsedServiceFromParsedOpenApi),
+      );
 
       const model = yield* Schema.decodeEffect(codec)(
         "openapi: 3.0.3\ninfo: { title: Pets, version: '1' }\npaths: {}\n",
-      ).pipe(
-        Effect.provideService(OpenApiSource, "file:///specs/openapi.yaml"),
-        Effect.provide(Layer.mergeAll(FileSystem.layerNoop({}), FetchHttpClient.layer)),
-      );
+      ).pipe(Effect.provide(Layer.mergeAll(FileSystem.layerNoop({}), FetchHttpClient.layer)));
 
       assert.equal(model.openapi, "3.1.0");
       assert.equal(model.name, "Pets");

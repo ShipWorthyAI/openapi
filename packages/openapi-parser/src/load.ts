@@ -10,10 +10,9 @@ export interface LoadOptions {
   readonly cwd?: URL | string;
 }
 
-export interface LoadedDocument {
+interface LoadedDocument {
   readonly document: OpenAPIDocument;
   readonly absoluteRef: string;
-  readonly sourceText?: string;
 }
 
 const emptyPath = "Empty schema. Please specify a URL or file path";
@@ -38,7 +37,6 @@ export const loadDocument = Effect.fn("loadDocument")(function* (
 interface SourceDocument {
   readonly document: Record<string, unknown>;
   readonly absoluteRef: string;
-  readonly sourceText?: string;
 }
 
 const parseSource = Effect.fnUntraced(function* (
@@ -55,7 +53,7 @@ const parseSource = Effect.fnUntraced(function* (
 
     const parsed = yield* parseText(sourceText);
     const document = yield* requireDocument(parsed);
-    return { document, absoluteRef: ref, sourceText };
+    return { document, absoluteRef: ref };
   }
 
   if (source instanceof Readable) {
@@ -84,7 +82,7 @@ const parseSource = Effect.fnUntraced(function* (
 
     const parsed = yield* parseText(source);
     const document = yield* requireDocument(parsed);
-    return { document, absoluteRef, sourceText: source };
+    return { document, absoluteRef };
   }
 
   if (Predicate.isObject(source)) return { document: source, absoluteRef };

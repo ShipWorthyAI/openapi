@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import type { OpenApiComponents, ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { OpenApiComponents, ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
 import type { ParsedService } from "../../model/index.js";
 import { transformCallbackMap } from "./callbacks.js";
 import type { TransformContext } from "./context.js";

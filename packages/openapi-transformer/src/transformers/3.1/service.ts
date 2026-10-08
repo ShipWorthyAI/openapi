@@ -1,4 +1,8 @@
-import type { OpenApiContact, OpenApiLicense, OpenApiTag } from "@shipworthy/openapi-parser";
+import type {
+  OpenApiContact,
+  OpenApiLicense,
+  OpenApiTag,
+} from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
 import { transformExternalDocs } from "./servers.js";
 import { child } from "./pointer.js";

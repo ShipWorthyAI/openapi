@@ -3,29 +3,27 @@ import { describe, it } from "@effect/vitest";
 import { strict as assert } from "node:assert";
 import { Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/http";
-import {
-  OpenApiSource,
-  bundleDocument,
-  loadDocument,
-  ParsedOpenApi,
-  ParsedOpenApiFromString,
-} from "../src/index.js";
+import * as parser from "../src/index.js";
+import { bundleDocument, ParsedOpenApiFromString } from "../src/index.js";
+import { ParsedOpenApi } from "../src/schemas/3.1/index.js";
 
-const decode = Schema.decodeUnknownEffect(ParsedOpenApiFromString);
-const encode = Schema.encodeEffect(ParsedOpenApiFromString);
 const sourceUrl = "https://api.example.com/spec/openapi.yaml";
+const codec = ParsedOpenApiFromString({ sourceUrl });
+const decode = Schema.decodeEffect(codec);
+const encode = Schema.encodeEffect(codec);
 const layer = Layer.mergeAll(FileSystem.layerNoop({}), FetchHttpClient.layer);
 
 function parse(source: string) {
-  return decode(source).pipe(
-    Effect.provideService(OpenApiSource, sourceUrl),
-    Effect.provide(layer),
-  );
+  return decode(source).pipe(Effect.provide(layer));
 }
 
 const info = { title: "Pets", version: "1.0" };
 
 describe("ParsedOpenApiFromString", () => {
+  it("exports only the codec factory and bundler at runtime", () => {
+    assert.deepEqual(Object.keys(parser).sort(), ["ParsedOpenApiFromString", "bundleDocument"]);
+  });
+
   it.effect("accepts flow-style YAML, indented YAML, and JSON with a BOM", () =>
     Effect.gen(function* () {
       for (const source of [
@@ -53,14 +51,14 @@ describe("ParsedOpenApiFromString", () => {
         }),
       );
 
-      const document = yield* loadDocument(
+      const document = yield* bundleDocument(
         JSON.stringify({
           openapi: "3.1.0",
           info,
           components: { schemas: { Pet: { $ref: "./pet.json" } } },
         }),
         { cwd: "/specs" },
-      ).pipe(Effect.flatMap(bundleDocument), Effect.provide(local));
+      ).pipe(Effect.provide(local));
 
       assert.deepEqual(files, ["/specs/pet.json"]);
       assert.deepEqual(document.components?.schemas?.Pet, { type: "string" });
@@ -158,14 +156,15 @@ describe("ParsedOpenApiFromString", () => {
         );
       });
 
-      const document = yield* decode(
+      const document = yield* Schema.decodeEffect(
+        ParsedOpenApiFromString({ sourceUrl: "http://localhost:3000/spec/openapi.yaml" }),
+      )(
         JSON.stringify({
           openapi: "3.1.0",
           info,
           paths: { "/pets": { get: { responses: { "200": { $ref: "./responses/ok.json" } } } } },
         }),
       ).pipe(
-        Effect.provideService(OpenApiSource, "http://localhost:3000/spec/openapi.yaml"),
         Effect.provide(
           Layer.mergeAll(FileSystem.layerNoop({}), Layer.succeed(HttpClient.HttpClient)(client)),
         ),
@@ -184,16 +183,15 @@ describe("ParsedOpenApiFromString", () => {
 
   it.effect("bundles file references using the root file URL", () =>
     Effect.gen(function* () {
-      const document = yield* decode(
+      const document = yield* Schema.decodeEffect(
+        ParsedOpenApiFromString({ sourceUrl: new URL("./openapi.json", import.meta.url) }),
+      )(
         JSON.stringify({
           openapi: "3.1.0",
           info,
           components: { schemas: { Pet: { $ref: "./fixtures/bundle-openapi/models/pet.yaml" } } },
         }),
-      ).pipe(
-        Effect.provideService(OpenApiSource, new URL("./openapi.json", import.meta.url).href),
-        Effect.provide(Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)),
-      );
+      ).pipe(Effect.provide(Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)));
 
       assert.ok(document.components?.schemas?.Pet);
     }),

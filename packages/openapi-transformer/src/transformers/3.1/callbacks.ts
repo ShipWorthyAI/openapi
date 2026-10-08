@@ -3,7 +3,7 @@ import {
   type OpenApiComponents,
   type OpenApiOperation,
   type OpenApiReference,
-} from "@shipworthy/openapi-parser";
+} from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect, type SchemaIssue } from "effect";
 import type { TransformContext } from "./context.js";
 import { child, resolve } from "./pointer.js";

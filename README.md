@@ -14,26 +14,25 @@ The generation pipeline has three stages:
 
 ## Parse JSON or YAML
 
-`ParsedOpenApiFromString` parses JSON or YAML, bundles external references, upgrades OpenAPI 3.0 to 3.1, and validates the result. Compose it with `ParsedServiceFromParsedOpenApi` to obtain the HTTP meta model:
+`ParsedOpenApiFromString({ sourceUrl })` creates a codec that parses JSON or YAML, bundles external references, upgrades OpenAPI 3.0 to 3.1, and validates the result. Compose it with `ParsedServiceFromParsedOpenApi` to obtain the HTTP meta model:
 
 ```ts
-import { OpenApiSource, ParsedOpenApiFromString } from "@shipworthy/openapi-parser";
+import { ParsedOpenApiFromString } from "@shipworthy/openapi-parser";
 import { ParsedServiceFromParsedOpenApi } from "@shipworthy/openapi-transformer";
-import { Effect, Schema } from "effect";
+import { Schema } from "effect";
 
-const serviceFromString = ParsedOpenApiFromString.pipe(
-  Schema.decodeTo(ParsedServiceFromParsedOpenApi),
-);
+const serviceFromString = ParsedOpenApiFromString({
+  sourceUrl: "https://example.com/openapi.yaml",
+}).pipe(Schema.decodeTo(ParsedServiceFromParsedOpenApi));
 
-const parseService = (text: string, sourceUrl: string) =>
-  Schema.decodeUnknownEffect(serviceFromString)(text).pipe(
-    Effect.provideService(OpenApiSource, sourceUrl),
-  );
+const parseService = Schema.decodeEffect(serviceFromString);
 ```
 
-Set `OpenApiSource` to the root document's URL or absolute file path so relative references resolve correctly. `parseService` returns an Effect; provide Effect's filesystem and HTTP client services when running it.
+Set `sourceUrl` to the root document's URL or absolute file path so relative references resolve correctly. `parseService` returns an Effect; provide Effect's filesystem and HTTP client services when running it.
 
-For a file URL or an existing document object, use `loadDocument` followed by `bundleDocument`. Object input is processed directly, without serialization.
+Use `bundleDocument(source, { cwd })` to load and prepare a file URL, HTTP URL, JSON/YAML string, stream, Buffer, or existing document object. Loading is internal, and object input is processed without serialization. Provide Effect's path, filesystem, and HTTP client services when running the returned Effect.
+
+The package root exports only `ParsedOpenApiFromString` and `bundleDocument` at runtime, plus their supporting types. Individual OpenAPI schemas are available from `@shipworthy/openapi-parser/schemas/3.1`.
 
 ## Validation and encoding
 

@@ -3,7 +3,7 @@ import type {
   OpenApiMediaType,
   OpenApiResponse,
   ParsedOpenApi,
-} from "@shipworthy/openapi-parser";
+} from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
 import { child } from "./pointer.js";
 import { readExtensions } from "./extensions.js";

@@ -1,6 +1,4 @@
-import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem";
-import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
-import { Effect, FileSystem, Layer, ManagedRuntime } from "effect";
+import { Effect, FileSystem } from "effect";
 import type { HttpClient } from "effect/http";
 import {
   ResolverFailure,
@@ -123,7 +121,3 @@ function ioCode(cause: unknown): { ioErrorCode: string } | undefined {
   const ioErrorCode = nodeErrorCode(cause);
   return ioErrorCode ? { ioErrorCode } : undefined;
 }
-
-export const runtime = ManagedRuntime.make(
-  Layer.mergeAll(NodeFileSystem.layer, NodeHttpClient.layerUndici),
-);

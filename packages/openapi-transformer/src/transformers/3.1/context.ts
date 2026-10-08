@@ -1,4 +1,4 @@
-import type { ParsedOpenApi } from "@shipworthy/openapi-parser";
+import type { ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
 import type {
   ParsedSecurityRequirement,
   ParsedSecurityScheme,
