@@ -8,7 +8,7 @@ import { transformOperationResponses } from "./responses.js";
 import { transformSecurityRequirements } from "./securities.js";
 import { transformExternalDocs, transformServerList } from "./servers.js";
 import { child } from "./pointer.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import type {
   HttpMethodName,
   ParsedOperation,

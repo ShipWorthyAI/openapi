@@ -8,7 +8,7 @@ import {
 } from "@shipworthy/openapi-parser";
 import { Effect } from "effect";
 import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import type { ParsedLink, ParsedOperationResponse, ParsedResponse } from "../../model/index.js";
 import { transformBodyContent } from "./content.js";
 import { transformHeaderList } from "./headers.js";

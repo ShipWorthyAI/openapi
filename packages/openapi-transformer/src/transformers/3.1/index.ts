@@ -7,7 +7,7 @@ import { transformExampleMap } from "./examples.js";
 import { transformHeaderMap } from "./headers.js";
 import { transformParameterMap } from "./parameters.js";
 import { transformPathItemMap } from "./paths.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import { transformRequestBodyMap } from "./request.js";
 import { transformLinkMap, transformResponseMap } from "./responses.js";
 import { transformSchemaMap } from "./schemas.js";

@@ -2,7 +2,7 @@ import type { OpenApiContact, OpenApiLicense, OpenApiTag } from "@shipworthy/ope
 import { Effect } from "effect";
 import { transformExternalDocs } from "./servers.js";
 import { child } from "./pointer.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import type { ParsedContact, ParsedLicense, ParsedTag } from "../../model/index.js";
 
 export const transformContact = (value: OpenApiContact | undefined) =>

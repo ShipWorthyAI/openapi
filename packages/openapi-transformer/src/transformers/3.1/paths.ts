@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import type { TransformContext } from "./context.js";
 import { transformOperation } from "./operation.js";
 import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import { httpMethods, type ParsedPathItem } from "../../model/index.js";
 import { transformParameterList } from "./parameters.js";
 import { transformServerList } from "./servers.js";

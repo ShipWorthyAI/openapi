@@ -5,7 +5,7 @@ import type {
 } from "@shipworthy/openapi-parser";
 import { Effect } from "effect";
 import { child } from "./pointer.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import type { ParsedExternalDocs, ParsedServer, ParsedServerVariable } from "../../model/index.js";
 
 export const transformExternalDocs = (value: OpenApiExternalDocs | undefined) =>

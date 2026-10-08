@@ -6,7 +6,7 @@ import {
 } from "@shipworthy/openapi-parser";
 import { Effect, type SchemaIssue } from "effect";
 import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import type { ParsedHeader } from "../../model/index.js";
 import { transformContent } from "./content.js";
 import { transformExampleList } from "./examples.js";

@@ -6,7 +6,7 @@ import type {
 } from "@shipworthy/openapi-parser";
 import { Effect } from "effect";
 import { child } from "./pointer.js";
-import { readExtensions } from "./read.js";
+import { readExtensions } from "./extensions.js";
 import type { ParsedBodyMediaType, ParsedEncoding, ParsedMediaType } from "../../model/index.js";
 import { transformExampleList } from "./examples.js";
 import { transformHeaderList } from "./headers.js";
