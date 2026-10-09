@@ -9,7 +9,7 @@
     },
     "generate": {
       "dependsOn": ["bundle"],
-      "inputs": ["package.json"],
+      "inputs": ["openapi/v1/bundled.openapi.json", "package.json"],
       "outputs": ["src/generated/hotels/**"]
     }
   }
