@@ -12,8 +12,7 @@ import { ParsedSecurityRequirement, ParsedSecurityScheme } from "./security.js";
 import { ParsedServer } from "./server.js";
 import { ParsedTag } from "./tag.js";
 
-/** The service: an OpenAPI document as an HTTP API. */
-export const ParsedService = Schema.Struct({
+const parsedServiceFields = {
   ...node,
   openapi: Schema.String,
   jsonSchemaDialect: optionalString,
@@ -39,6 +38,11 @@ export const ParsedService = Schema.Struct({
   webhooks: Schema.Record(Schema.String, ParsedPathItem),
   components: ParsedComponents,
   $defs: Schema.Record(Schema.String, ParsedSchema),
-});
+};
 
-export type ParsedService = typeof ParsedService.Type;
+export interface ParsedServiceSchema extends Schema.Struct<typeof parsedServiceFields> {}
+
+/** The service: an OpenAPI document as an HTTP API. */
+export const ParsedService: ParsedServiceSchema = Schema.Struct(parsedServiceFields);
+
+export interface ParsedService extends Schema.Schema.Type<ParsedServiceSchema> {}

@@ -14,6 +14,14 @@
     "typescript"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-typescript"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "imports": {
     "#compiler": "./src/compiler.ts"
@@ -22,28 +30,52 @@
     ".": "./src/index.ts",
     "./compiler": "./src/compiler.ts"
   },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "imports": {
+      "#compiler": {
+        "types": "./dist/compiler.d.ts",
+        "default": "./dist/compiler.js"
+      }
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./compiler": {
+        "types": "./dist/compiler.d.ts",
+        "default": "./dist/compiler.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
   "scripts": {
-    "build": "unbuild",
-    "dev": "tsc -p tsconfig.build.json --watch",
-    "prepack": "bun run build",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
     "test": "vitest run",
-    "test:exports": "bun run build && attw --pack .",
-    "prepublish": "bun run build",
-    "version": "bun run build"
+    "version": "bun run build",
+    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
-    "effect": "catalog:",
-    "oxfmt": "catalog:",
-    "typescript": "catalog:"
+    "oxfmt": "catalog:"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
+    "effect": "^4.0.0",
     "typescript": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
   }
 }

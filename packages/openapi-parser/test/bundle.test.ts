@@ -1,4 +1,6 @@
+import nodePath from "node:path";
 import { Readable } from "node:stream";
+import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { describe, it } from "@effect/vitest";
 import { strict as assert } from "node:assert";
 import { Effect, FileSystem, Layer, Path } from "effect";
@@ -15,6 +17,10 @@ const fileLayer = Layer.mergeAll(
   Path.layer,
   FetchHttpClient.layer,
 );
+
+const nodeLayer = Layer.mergeAll(NodeFileSystem.layer, NodePath.layer, FetchHttpClient.layer);
+const fixtures = nodePath.resolve(import.meta.dirname, "fixtures/bundle-openapi");
+const rootPath = nodePath.join(fixtures, "root.yaml");
 
 const notFound = HttpClient.make((request) =>
   Effect.succeed(
@@ -167,5 +173,95 @@ describe("bundleDocument", () => {
       assert.strictEqual(error._tag, "SchemaError");
       assert.match(error.message, /404/);
     }).pipe(Effect.provide(httpLayer)),
+  );
+});
+
+describe("bundleDocument with a filesystem path string", () => {
+  const expectBundled = (document: Effect.Success<ReturnType<typeof bundleDocument>>) => {
+    assert.equal(document.info.title, "Pets");
+
+    assert.deepEqual(document.components?.parameters?.limit, {
+      name: "limit",
+      in: "query",
+      schema: { type: "integer" },
+    });
+  };
+
+  it.effect("loads an absolute path and resolves its relative $refs against the file", () =>
+    Effect.gen(function* () {
+      expectBundled(yield* bundleDocument(rootPath, { cwd: "/nonexistent" }));
+    }).pipe(Effect.provide(nodeLayer)),
+  );
+
+  it.effect("loads a ./ path relative to the process cwd", () =>
+    Effect.gen(function* () {
+      const relative = `./${nodePath.relative(process.cwd(), rootPath)}`;
+      expectBundled(yield* bundleDocument(relative));
+    }).pipe(Effect.provide(nodeLayer)),
+  );
+
+  it.effect("loads ../ and bare-name paths relative to the cwd option", () =>
+    Effect.gen(function* () {
+      expectBundled(
+        yield* bundleDocument("../../bundle-openapi/root.yaml", { cwd: `${fixtures}/models` }),
+      );
+
+      expectBundled(yield* bundleDocument("root.yaml", { cwd: fixtures }));
+      expectBundled(yield* bundleDocument("  root.yaml\t", { cwd: fixtures }));
+    }).pipe(Effect.provide(nodeLayer)),
+  );
+
+  it.effect("reads the path through FileSystem", () =>
+    Effect.gen(function* () {
+      const files: string[] = [];
+
+      const local = Layer.mergeAll(
+        FileSystem.layerNoop({
+          readFileString: (file) => {
+            files.push(file);
+            return Effect.succeed('{"openapi":"3.1.0","info":{"title":"Pets","version":"1"}}');
+          },
+        }),
+        Path.layer,
+        FetchHttpClient.layer,
+      );
+
+      for (const source of ["./openapi.json", "/specs/openapi.json", "specs/openapi.YML"]) {
+        const document = yield* bundleDocument(source, { cwd: "/specs" }).pipe(
+          Effect.provide(local),
+        );
+
+        assert.equal(document.info.title, "Pets");
+      }
+
+      assert.deepEqual(files, [
+        "/specs/openapi.json",
+        "/specs/openapi.json",
+        "/specs/specs/openapi.YML",
+      ]);
+    }),
+  );
+
+  it.effect("fails with the file error when the path does not exist", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(bundleDocument("./missing.yaml", { cwd: fixtures }));
+      assert.strictEqual(error._tag, "SchemaError");
+      assert.match(error.message, /missing\.yaml/);
+    }).pipe(Effect.provide(nodeLayer)),
+  );
+
+  it.effect("still parses one-line inline documents as text", () =>
+    Effect.gen(function* () {
+      for (const source of [
+        "{ openapi: 3.1.0, info: { title: Pets, version: '1' }, servers: [{ url: /api.json }] }",
+        '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"x-file":"a.yaml"}',
+      ]) {
+        const document = yield* bundleDocument(source);
+        assert.equal(document.info.title, "Pets");
+      }
+
+      const scalar = yield* Effect.flip(bundleDocument("x-file: a.yaml"));
+      assert.match(scalar.message, /openapi/);
+    }).pipe(Effect.provide(layer)),
   );
 });

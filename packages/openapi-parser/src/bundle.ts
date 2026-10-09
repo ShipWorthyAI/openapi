@@ -5,7 +5,7 @@ import { loadDocument, type LoadOptions } from "./load.js";
 export type BundleOptions = LoadOptions;
 
 /**
- * Load a file URL, HTTP URL, JSON/YAML string, stream, Buffer, or object, then bundle,
+ * Load a file path, file URL, HTTP URL, JSON/YAML string, stream, Buffer, or object, then bundle,
  * upgrade, and validate it as OpenAPI 3.1. Object input is never serialized.
  */
 export const bundleDocument = Effect.fn("bundleDocument")(function* (

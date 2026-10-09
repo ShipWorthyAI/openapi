@@ -8,11 +8,15 @@ export const ParameterLocation = Schema.Literals(parameterLocations);
 
 export type ParameterLocation = typeof ParameterLocation.Type;
 
-export const ParsedParameter = Schema.Struct({
+const parsedParameterFields = {
   ...ParsedHeader.fields,
   in: ParameterLocation,
   allowEmptyValue: optionalBoolean,
   allowReserved: optionalBoolean,
-});
+};
 
-export type ParsedParameter = typeof ParsedParameter.Type;
+export interface ParsedParameterSchema extends Schema.Struct<typeof parsedParameterFields> {}
+
+export const ParsedParameter: ParsedParameterSchema = Schema.Struct(parsedParameterFields);
+
+export interface ParsedParameter extends Schema.Schema.Type<ParsedParameterSchema> {}

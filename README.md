@@ -52,3 +52,14 @@ Versions and changelogs are managed with [Changesets](https://changesets.dev).
 3. Merging that PR runs `bun run release`, which publishes every public package whose version is not yet on npm with `bun publish` (so `workspace:` and `catalog:` dependencies are resolved) and creates git tags.
 
 The workflow requires an `NPM_TOKEN` repository secret with publish access to the `@shipworthy` scope.
+
+### Package builds
+
+In the workspace, each package's `exports` (and `bin`/`imports`) point at TypeScript in `src`, so tests and tools run without a build. Published packages contain compiled ESM and `.d.ts` files in `dist`:
+
+- `bun run build` runs `tsc -p tsconfig.build.json` in every package (via Turborepo).
+- `prepack` builds the package, then `scripts/publish-manifest.ts` promotes the `dist` entries in `publishConfig` to the top level of `package.json`. `postpack` restores the development manifest. Bun ignores most `publishConfig` fields, so this swap is what makes `bun pm pack` and `bun publish` emit the right `exports`.
+
+## License
+
+MIT. See [LICENSE](./LICENSE).

@@ -2,23 +2,57 @@
   "name": "@shipworthy/openapi-parser",
   "version": "0.0.1",
   "description": "Parse, bundle, and upgrade OpenAPI documents with Effect schemas.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-parser"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./schemas/3.1": "./src/schemas/3.1/index.ts"
   },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./schemas/3.1": {
+        "types": "./dist/schemas/3.1/index.d.ts",
+        "default": "./dist/schemas/3.1/index.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
   },
   "dependencies": {
-    "@effect/platform-node": "catalog:",
-    "effect": "catalog:"
+    "@effect/platform-node": "catalog:"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "effect": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
   }
 }

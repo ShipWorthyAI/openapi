@@ -34,27 +34,32 @@ yarn add @shipworthy/openapi-tanstack-query @tanstack/react-query react
 bun add @shipworthy/openapi-tanstack-query @tanstack/react-query react
 ```
 
-Add the code generators as dev dependencies:
+Add the code generators as dev dependencies. `effect` and
+`@shipworthy/openapi-generator` are optional peer dependencies that only the
+`./generator` entry point needs, and the TypeScript generator needs
+`typescript@^7`:
 
 ```sh
-npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript
+npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript @shipworthy/openapi-generator effect typescript@^7
 # or: pnpm add -D … / yarn add -D … / bun add -d …
 ```
 
-| Requirement          | Value                                                                                                                                                       |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peer dependencies    | `@tanstack/react-query` `^5.104.1`, `react` `^18.0.0 \|\| ^19.0.0`                                                                                          |
-| Runtime dependencies | `@shipworthy/openapi-fetch`, `@shipworthy/openapi-transformer`, `effect` `4.0.0` (installed automatically)                                                  |
-| Module format        | ESM only (`"type": "module"`)                                                                                                                               |
-| Entry points         | `.` and `./generator` both point at TypeScript source (`src/*.ts`). A `react-native` field points at `./src/index.ts`.                                      |
-| Runtime              | Any environment with `fetch`, `Request`, and `Response`, or pass your own `fetch`. You also need a TypeScript-aware toolchain, such as Bun, Vite, or Metro. |
-| CLI runtime          | The `openapi` binary from `@shipworthy/openapi-cli` runs with **Bun** (`#!/usr/bin/env bun`).                                                               |
-| OpenAPI versions     | 3.0.x and 3.1.x. 3.0 documents are upgraded to 3.1 internally. Swagger 2.x is rejected.                                                                     |
+| Requirement          | Value                                                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Peer dependencies    | `@tanstack/react-query` `^5.104.1`, `react` `^18.0.0 \|\| ^19.0.0`                                                                                                     |
+| Optional peers       | `effect` `^4.0.0` and `@shipworthy/openapi-generator`, needed only for `./generator` (the CLI and programmatic generation)                                             |
+| Runtime dependencies | `@shipworthy/openapi-fetch`, `@shipworthy/openapi-transformer` (installed automatically)                                                                               |
+| Module format        | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                                             |
+| Entry points         | `.` (runtime) and `./generator` (generator plugin), both compiled JavaScript with `.d.ts` declarations in `dist/`. A `react-native` field points at `./dist/index.js`. |
+| Runtime              | Any environment with `fetch`, `Request`, and `Response`, or pass your own `fetch`. No TypeScript transpilation of `node_modules` is needed.                            |
+| CLI runtime          | The `openapi` binary from `@shipworthy/openapi-cli` runs on **Node.js** `>=22.19.0` (`npx openapi`) or **Bun** (`bunx openapi`).                                       |
+| OpenAPI versions     | 3.0.x and 3.1.x. 3.0 documents are upgraded to 3.1 internally. Swagger 2.x is rejected.                                                                                |
 
 `@shipworthy/openapi-cli` loads the generator with
 `import("@shipworthy/openapi-tanstack-query/generator")`. It loads
-`@shipworthy/openapi-typescript` for `types.ts`. Both packages must be
-resolvable from the directory where you run the CLI.
+`@shipworthy/openapi-typescript` for `types.ts`. Both packages, plus `effect`
+and `@shipworthy/openapi-generator`, must be resolvable from the directory where
+you run the CLI.
 
 ## Quick start
 
@@ -486,7 +491,6 @@ import {
 | `operationRoutes(model)`             | `Effect<Record<string, OperationRoute>, TanstackGenerationError>`. Maps each `operationId` to `[METHOD, path]`. Fails on a missing, duplicate, or reserved (`__proto__`, `constructor`, `prototype`) `operationId`.                                                                                                                                                                                                                |
 | `clientSource(prefix, name, routes)` | `string`. Prints `client.ts` source for the given export prefix, cache-key prefix, and routes.                                                                                                                                                                                                                                                                                                                                     |
 | `TanstackGenerationError`            | Effect `Schema.TaggedError` with `_tag: "TanstackGenerationError"` and `message: string`.                                                                                                                                                                                                                                                                                                                                          |
-| `reactQueryClientSource(prefix)`     | Legacy. It prints a client that imports from `@shipworthy/openapi-react-query`, not from this package. The CLI does not use it.                                                                                                                                                                                                                                                                                                    |
 
 Programmatic generation with `@shipworthy/openapi-generator`, which is what
 the CLI does:
@@ -501,7 +505,7 @@ const program = generate({
   pluginOptions: { prefix: "Hotels", name: "hotels" },
 });
 // Effect<unknown, GenerateError, FileSystem | Path | HttpClient | ModuleLoader>;
-// provide platform layers (e.g. @effect/platform-bun) and a ModuleLoader, then run.
+// provide platform layers (e.g. @effect/platform-node (NodeServices) or @effect/platform-bun) and a ModuleLoader, then run.
 ```
 
 This program writes neither `types.ts` nor the stamp header. The CLI adds
@@ -524,8 +528,6 @@ both.
   custom encoding, set `querySerializer` in `createApiClient`.
 - **Cookies are handled by `fetch`.** Cookie behavior follows
   `@shipworthy/openapi-fetch` and your `fetch` implementation.
-- **The package ships TypeScript source.** The `exports` point at `.ts` files,
-  so your bundler or runtime must compile TypeScript from dependencies.
 
 ## Troubleshooting
 
@@ -534,8 +536,8 @@ both.
 | `<METHOD> <path>: Missing operationId` / `Duplicate operationId: …`  | Add unique `operationId`s to the OpenAPI document.                                                                  |
 | `--name must start with a letter …`                                  | Use letters and digits, with single `-` or `_` separators, such as `hotels` or `sdk-core`.                          |
 | `types.ts` was not regenerated after editing generator settings      | It is regenerated only when the schema hash or generator version changes. Pass `--force`.                           |
-| CLI cannot load `@shipworthy/openapi-tanstack-query/generator`       | Install this package, and `@shipworthy/openapi-typescript`, in the project where you run `openapi`.                 |
-| `env: bun: No such file or directory` when running `openapi`         | Install [Bun](https://bun.sh). The CLI runs on Bun.                                                                 |
+| CLI cannot load `@shipworthy/openapi-tanstack-query/generator`       | Install this package, `@shipworthy/openapi-typescript`, `@shipworthy/openapi-generator`, and `effect` in the project. |
+| `openapi` fails to start on an older Node.js                         | The CLI needs Node.js `>=22.19.0`. Upgrade Node.js, or run it with `bunx openapi`.                                  |
 | `error instanceof Error` is false in `onError`                       | This is expected for HTTP errors: the error is the parsed error body. See [errors](#requests-responses-and-errors). |
 | Two APIs with the same `--name` overwrite each other's cache entries | Pass a different `prefix` to `create<Prefix>ApiQueryUtils(client, { prefix })`.                                     |
 
@@ -543,9 +545,12 @@ both.
 
 - **Install:** `@shipworthy/openapi-tanstack-query`, plus peers
   `@tanstack/react-query@^5.104.1` and `react@^18 || ^19`. Use ESM only.
+  Ships compiled JavaScript and `.d.ts` files. For `./generator`, also install
+  the optional peers `effect@^4` and `@shipworthy/openapi-generator`.
 - **Generate:** run
   `openapi generate tanstack-query <spec> -o <dir> --name <name>` from
-  `@shipworthy/openapi-cli`, which needs Bun. The output is
+  `@shipworthy/openapi-cli` (`npx openapi` on Node.js >=22.19.0, or
+  `bunx openapi`). The output is
   `<dir>/<name>/types.ts` and `<dir>/<name>/client.ts`. Do not edit generated
   files.
 - **Generated exports** (Prefix is the PascalCase of `name`):
@@ -574,4 +579,4 @@ both.
 
 ## License
 
-No license file has been published for this package yet.
+MIT. See [LICENSE](./LICENSE).

@@ -17,11 +17,11 @@ bun add @shipworthy/openapi-transformer @shipworthy/openapi-parser effect @effec
 
 Requirements:
 
-- **`effect` `4.0.0`.** It is a regular dependency, not a peer dependency. `decode` returns an `Effect` and the model types are Effect `Schema`s, so your app needs the same `effect` version to run and compose them.
+- **`effect` `^4.0.0`.** It is a peer dependency, so install it yourself. `decode` returns an `Effect` and the model types are Effect `Schema`s, so your app and this package must share one copy of `effect` to run and compose them.
 - **`@shipworthy/openapi-parser`.** It is a dependency. You install it yourself to produce the input document, and its `bundleDocument` / `ParsedOpenApiFromString` are the usual entry points.
-- **`@effect/platform-node` `4.0.0`** (or `@effect/platform-bun`), only for the services the quick start provides to the parser. This package does not depend on it.
-- **ESM only** (`"type": "module"`). There is no CommonJS build.
-- **TypeScript source.** The package's `exports` points at `./src/index.ts`, so you need a runtime or toolchain that loads TypeScript directly. The repository develops and tests it with Bun (`bun@1.4.2`) and Vitest.
+- **`@effect/platform-node` `^4.0.0`** (or `@effect/platform-bun`), only because the quick start imports `NodeServices` to provide services to the parser. This package does not depend on it.
+- **ESM only** (`"type": "module"`). There is no CommonJS build. The package ships compiled JavaScript with `.d.ts` declarations, so no TypeScript loader or bundler is needed.
+- **Node.js `>=22.19.0` or Bun.**
 
 ## Quick start
 
@@ -397,7 +397,7 @@ function requiresAuth(operation: ParsedOperation) {
 
 ## Key facts (for AI agents)
 
-- Import from `@shipworthy/openapi-transformer`. It has one entry point, is ESM-only, ships TypeScript source, and depends on `effect@4.0.0`.
+- Import from `@shipworthy/openapi-transformer`. It has one entry point, is ESM-only, ships compiled JavaScript, peers on `effect` `^4.0.0`, and runs on Node.js `>=22.19.0` or Bun.
 - Pipeline: `bundleDocument(source)` (from `@shipworthy/openapi-parser`, needs FileSystem/Path/HttpClient layers) → `decode(document)` → `ParsedService`.
 - `decode` is `Schema.decodeEffect(ParsedServiceFromParsedOpenApi)`. It returns `Effect<ParsedService, Schema.SchemaError>` and needs no services. Run it with `Effect.runSync` or `Effect.runPromise`.
 - Generators and plugins must type their input as `ParsedService` and walk it through the exported `Parsed*` types. Schema nodes are `ParsedSchema` (`JsonSchema | boolean`). Do not use a local `{ [key: string]: any }` stand-in.
@@ -410,4 +410,4 @@ function requiresAuth(operation: ParsedOperation) {
 
 ## License
 
-No license has been declared for this package yet.
+MIT. See [LICENSE](./LICENSE).

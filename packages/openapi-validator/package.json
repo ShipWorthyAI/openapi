@@ -2,25 +2,55 @@
   "name": "@shipworthy/openapi-validator",
   "version": "0.0.1",
   "description": "Lint an OpenAPI document.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-validator"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
   },
   "dependencies": {
     "@stoplight/spectral-core": "1.24.0",
     "@stoplight/spectral-formats": "1.9.0",
     "@stoplight/spectral-parsers": "1.0.5",
-    "@stoplight/spectral-rulesets": "1.23.0",
-    "effect": "catalog:"
+    "@stoplight/spectral-rulesets": "1.23.0"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "effect": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
   }
 }

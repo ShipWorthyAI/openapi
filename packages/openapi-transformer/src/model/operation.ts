@@ -30,17 +30,29 @@ const operationFields = {
   securityDeclaration: SecurityDeclaration,
 };
 
+const parsedCallbackOperationFields = { ...operationFields, key: Schema.String };
+
+export interface ParsedCallbackOperationSchema extends Schema.Struct<
+  typeof parsedCallbackOperationFields
+> {}
+
 /**
  * An operation of a callback. `key` is the callback's name and `path` its expression. As in
  * Stoplight's model, callback operations have no callbacks of their own.
  */
-export const ParsedCallbackOperation = Schema.Struct({ ...operationFields, key: Schema.String });
+export const ParsedCallbackOperation: ParsedCallbackOperationSchema = Schema.Struct(
+  parsedCallbackOperationFields,
+);
 
-export type ParsedCallbackOperation = typeof ParsedCallbackOperation.Type;
+export interface ParsedCallbackOperation extends Schema.Schema.Type<ParsedCallbackOperationSchema> {}
 
-export const ParsedOperation = Schema.Struct({
+const parsedOperationFields = {
   ...operationFields,
   callbacks: Schema.Array(ParsedCallbackOperation),
-});
+};
 
-export type ParsedOperation = typeof ParsedOperation.Type;
+export interface ParsedOperationSchema extends Schema.Struct<typeof parsedOperationFields> {}
+
+export const ParsedOperation: ParsedOperationSchema = Schema.Struct(parsedOperationFields);
+
+export interface ParsedOperation extends Schema.Schema.Type<ParsedOperationSchema> {}

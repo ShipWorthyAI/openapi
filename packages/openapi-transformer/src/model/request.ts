@@ -5,31 +5,43 @@ import { optionalField, optionalString } from "./optional.js";
 import { ParsedParameter } from "./parameter.js";
 import { ParsedRef } from "./reference.js";
 
-export const ParsedRequestBody = Schema.Struct({
+const parsedRequestBodyFields = {
   ...node,
   ...shareable,
   description: optionalString,
   required: Schema.Boolean,
   contents: Schema.Array(ParsedBodyMediaType),
-});
+};
 
-export type ParsedRequestBody = typeof ParsedRequestBody.Type;
+export interface ParsedRequestBodySchema extends Schema.Struct<typeof parsedRequestBodyFields> {}
 
-/** Parameters grouped by location, in declaration order. */
-export const ParsedParameters = Schema.Struct({
+export const ParsedRequestBody: ParsedRequestBodySchema = Schema.Struct(parsedRequestBodyFields);
+
+export interface ParsedRequestBody extends Schema.Schema.Type<ParsedRequestBodySchema> {}
+
+const parsedParametersFields = {
   path: Schema.Array(ParsedParameter),
   query: Schema.Array(ParsedParameter),
   headers: Schema.Array(ParsedParameter),
   cookie: Schema.Array(ParsedParameter),
   /** Parameter `$ref`s that point at nothing, so their location is unknown. */
   unknown: Schema.Array(ParsedRef),
-});
+};
 
-export type ParsedParameters = typeof ParsedParameters.Type;
+export interface ParsedParametersSchema extends Schema.Struct<typeof parsedParametersFields> {}
 
-export const ParsedRequest = Schema.Struct({
+/** Parameters grouped by location, in declaration order. */
+export const ParsedParameters: ParsedParametersSchema = Schema.Struct(parsedParametersFields);
+
+export interface ParsedParameters extends Schema.Schema.Type<ParsedParametersSchema> {}
+
+const parsedRequestFields = {
   ...ParsedParameters.fields,
   body: optionalField(ParsedRequestBody),
-});
+};
 
-export type ParsedRequest = typeof ParsedRequest.Type;
+export interface ParsedRequestSchema extends Schema.Struct<typeof parsedRequestFields> {}
+
+export const ParsedRequest: ParsedRequestSchema = Schema.Struct(parsedRequestFields);
+
+export interface ParsedRequest extends Schema.Schema.Type<ParsedRequestSchema> {}

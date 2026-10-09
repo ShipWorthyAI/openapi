@@ -16,33 +16,36 @@
     "vue"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-fetch"
+  },
   "files": [
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./src/index.ts",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "bun": "./src/index.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
+    ".": "./src/index.ts"
   },
   "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
         "default": "./dist/index.js"
-      }
-    }
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run build",
-    "version": "bun run build"
+    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "version": "bun run build",
+    "test": "vitest run",
+    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
   },
   "devDependencies": {
     "typescript": "catalog:",

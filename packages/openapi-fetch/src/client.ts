@@ -1,6 +1,7 @@
 import type { MediaType } from "./helpers.js";
 import { mergeHeaders } from "./headers.js";
 import { defaultBodySerializer } from "./serializers/body.js";
+import { serializeCookieParams } from "./serializers/cookie.js";
 import { defaultPathSerializer } from "./serializers/path.js";
 import { createQuerySerializer } from "./serializers/query.js";
 import { createFinalURL, removeTrailingSlash } from "./serializers/url.js";
@@ -155,6 +156,18 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       headers,
       params.header,
     );
+
+    // cookie params are appended to any Cookie header supplied through headers
+    const serializedCookies = serializeCookieParams(params.cookie);
+
+    if (serializedCookies) {
+      const existingCookie = finalHeaders.get("Cookie");
+
+      finalHeaders.set(
+        "Cookie",
+        existingCookie ? `${existingCookie}; ${serializedCookies}` : serializedCookies,
+      );
+    }
 
     // Client level middleware take priority over request-level middleware
     const finalMiddlewares = [...globalMiddlewares, ...requestMiddlewares];

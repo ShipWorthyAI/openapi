@@ -1,4 +1,4 @@
-import { ZodGenerationError } from "./errors";
+import { ZodGenerationError } from "./errors.js";
 
 const reservedWords = new Set([
   "await",

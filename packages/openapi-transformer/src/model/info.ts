@@ -2,20 +2,28 @@ import { Schema } from "effect";
 import { ParsedExtensions } from "./extensions.js";
 import { optionalString } from "./optional.js";
 
-export const ParsedContact = Schema.Struct({
+const parsedContactFields = {
   name: optionalString,
   url: optionalString,
   email: optionalString,
   extensions: ParsedExtensions,
-});
+};
 
-export type ParsedContact = typeof ParsedContact.Type;
+export interface ParsedContactSchema extends Schema.Struct<typeof parsedContactFields> {}
 
-export const ParsedLicense = Schema.Struct({
+export const ParsedContact: ParsedContactSchema = Schema.Struct(parsedContactFields);
+
+export interface ParsedContact extends Schema.Schema.Type<ParsedContactSchema> {}
+
+const parsedLicenseFields = {
   name: Schema.String,
   url: optionalString,
   identifier: optionalString,
   extensions: ParsedExtensions,
-});
+};
 
-export type ParsedLicense = typeof ParsedLicense.Type;
+export interface ParsedLicenseSchema extends Schema.Struct<typeof parsedLicenseFields> {}
+
+export const ParsedLicense: ParsedLicenseSchema = Schema.Struct(parsedLicenseFields);
+
+export interface ParsedLicense extends Schema.Schema.Type<ParsedLicenseSchema> {}

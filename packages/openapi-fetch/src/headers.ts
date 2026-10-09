@@ -1,5 +1,21 @@
 import type { HeadersOptions } from "./types.js";
 
+type HeaderValue = string | number | boolean | (string | number | boolean)[] | null | undefined;
+
+/** Iterate any `HeadersOptions` form (plain object, `Headers`, or `[name, value]` tuples) as entries */
+function headerEntries(h: HeadersOptions): Iterable<[string, HeaderValue]> {
+  if (h instanceof Headers) {
+    return h.entries();
+  }
+
+  if (Array.isArray(h)) {
+    // Normalize tuple arrays through `Headers` so repeated names combine like any other `HeadersInit`
+    return new Headers(h).entries();
+  }
+
+  return Object.entries(h);
+}
+
 /** Merge headers a and b, with b taking priority */
 export function mergeHeaders(...allHeaders: (HeadersOptions | undefined)[]): Headers {
   const finalHeaders = new Headers();
@@ -9,9 +25,7 @@ export function mergeHeaders(...allHeaders: (HeadersOptions | undefined)[]): Hea
       continue;
     }
 
-    const iterator = h instanceof Headers ? h.entries() : Object.entries(h);
-
-    for (const [k, v] of iterator) {
+    for (const [k, v] of headerEntries(h)) {
       if (v === null) {
         finalHeaders.delete(k);
       } else if (Array.isArray(v)) {

@@ -1,11 +1,15 @@
 import { Schema } from "effect";
 import { optionalString } from "./optional.js";
 
-/** A Reference Object as written. `unknown` parameters are ones whose target is missing. */
-export const ParsedRef = Schema.Struct({
+const parsedRefFields = {
   $ref: Schema.String,
   summary: optionalString,
   description: optionalString,
-});
+};
 
-export type ParsedRef = typeof ParsedRef.Type;
+export interface ParsedRefSchema extends Schema.Struct<typeof parsedRefFields> {}
+
+/** A Reference Object as written. `unknown` parameters are ones whose target is missing. */
+export const ParsedRef: ParsedRefSchema = Schema.Struct(parsedRefFields);
+
+export interface ParsedRef extends Schema.Schema.Type<ParsedRefSchema> {}

@@ -1,8 +1,8 @@
 import { Command } from "effect/cli";
-import { standardSchema } from "./plugins/standard-schema/plugin";
-import { tanstackQuery } from "./plugins/tanstack-query/plugin";
-import { typescript } from "./plugins/typescript/plugin";
-import { zod } from "./plugins/zod/plugin";
+import { standardSchema } from "./plugins/standard-schema/plugin.js";
+import { tanstackQuery } from "./plugins/tanstack-query/plugin.js";
+import { typescript } from "./plugins/typescript/plugin.js";
+import { zod } from "./plugins/zod/plugin.js";
 
 export const generate = Command.make("generate").pipe(
   Command.withDescription("Convert an OpenAPI schema to TypeScript."),

@@ -5,21 +5,33 @@ import { ParsedHeader } from "./header.js";
 import { ParsedLink } from "./link.js";
 import { optionalString } from "./optional.js";
 
-export const ParsedResponse = Schema.Struct({
+const parsedResponseFields = {
   ...node,
   ...shareable,
   description: optionalString,
   headers: Schema.Array(ParsedHeader),
   contents: Schema.Array(ParsedBodyMediaType),
   links: Schema.Array(ParsedLink),
-});
+};
 
-export type ParsedResponse = typeof ParsedResponse.Type;
+export interface ParsedResponseSchema extends Schema.Struct<typeof parsedResponseFields> {}
 
-export const ParsedOperationResponse = Schema.Struct({
+export const ParsedResponse: ParsedResponseSchema = Schema.Struct(parsedResponseFields);
+
+export interface ParsedResponse extends Schema.Schema.Type<ParsedResponseSchema> {}
+
+const parsedOperationResponseFields = {
   ...ParsedResponse.fields,
   /** A status code, a range such as `4XX`, or `default`. */
   code: Schema.String,
-});
+};
 
-export type ParsedOperationResponse = typeof ParsedOperationResponse.Type;
+export interface ParsedOperationResponseSchema extends Schema.Struct<
+  typeof parsedOperationResponseFields
+> {}
+
+export const ParsedOperationResponse: ParsedOperationResponseSchema = Schema.Struct(
+  parsedOperationResponseFields,
+);
+
+export interface ParsedOperationResponse extends Schema.Schema.Type<ParsedOperationResponseSchema> {}

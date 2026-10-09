@@ -1,10 +1,17 @@
 import { type JsonSchema, Schema } from "effect";
 
-/** The OpenAPI `discriminator` keyword of a schema. */
-export const ParsedDiscriminator = Schema.Struct({
+const parsedDiscriminatorFields = {
   propertyName: Schema.String,
   mapping: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-});
+};
+
+export interface ParsedDiscriminatorSchema extends Schema.Struct<
+  typeof parsedDiscriminatorFields
+> {}
+
+/** The OpenAPI `discriminator` keyword of a schema. */
+export const ParsedDiscriminator: ParsedDiscriminatorSchema =
+  Schema.Struct(parsedDiscriminatorFields);
 
 export type ParsedDiscriminator = typeof ParsedDiscriminator.Type;
 

@@ -4,13 +4,13 @@
 
 ## Requirements
 
-- **Bun.** The `openapi` binary is a TypeScript file with a `#!/usr/bin/env bun` shebang, and it runs on `@effect/platform-bun`. It does not run under plain Node.js. The repository is developed with Bun 1.4.x.
-- **ESM only.** The package sets `"type": "module"` and ships TypeScript sources.
+- **Node.js `>=22.19.0` or Bun.** The `openapi` binary is compiled JavaScript (`dist/bin.js`) with a `#!/usr/bin/env node` shebang, and it runs on `@effect/platform-node`. Run it with `npx openapi …` on Node.js or `bunx openapi …` on Bun.
+- **ESM only.** The package sets `"type": "module"` and ships compiled ESM JavaScript with `.d.ts` declarations. There is no CommonJS build.
 - **Input:** OpenAPI 3.x documents in JSON or YAML. `generate` upgrades OpenAPI 3.0 documents to 3.1 before generating. Swagger 2.0 is rejected.
 
 ## Installation
 
-Install the CLI and the generator packages you need as dev dependencies:
+Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, and `@shipworthy/openapi-validator`):
 
 ```sh
 # npm
@@ -41,12 +41,18 @@ The generated files import packages at runtime, so your application needs those 
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `types.ts` (TypeScript)      | nothing (types only)                                                                                                                          |
 | Zod output                   | `zod` (v4; the generator is built against `zod@4.6.5`) and `./types`                                                                          |
-| Standard Schema output       | `effect` (`4.0.0`)                                                                                                                            |
+| Standard Schema output       | `effect` (`^4.0.0`)                                                                                                                           |
 | `client.ts` (TanStack Query) | `@shipworthy/openapi-tanstack-query` (a runtime dependency), which peers on `@tanstack/react-query@^5.104.1` and `react@^18.0.0 \|\| ^19.0.0` |
 
 ## Quick start
 
 ```sh
+# npm
+npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript
+npx openapi lint ./openapi.yaml
+npx openapi generate typescript ./openapi.yaml -o ./src/generated/types.ts
+
+# bun
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 bunx openapi lint ./openapi.yaml
 bunx openapi generate typescript ./openapi.yaml -o ./src/generated/types.ts
@@ -151,18 +157,20 @@ These flags come from the Effect CLI framework and work on every command:
 | `--completions <bash\|zsh\|fish\|sh>` | Print a shell completion script.                                                                 |
 | `--log-level <level>`                 | Minimum log level: `all`, `trace`, `debug`, `info`, `warn`, `warning`, `error`, `fatal`, `none`. |
 
-### `openapi lint <input>`
+### `openapi lint [--strict] <input>`
 
 Lints an OpenAPI 3.x document with Spectral's `oas` ruleset and prints diagnostics.
 
 ```sh
 openapi lint ./openapi.yaml
 openapi lint https://example.com/openapi.yaml
+openapi lint --strict ./openapi.yaml
 ```
 
 - Warnings print as ` ⚠  <message> at #/<json/pointer>`. Errors print as ` ✘  <message> at #/<json/pointer>`. Colors are used only when stdout is a TTY and `NO_COLOR` is unset.
 - Rules whose `oas` severity is `error` are downgraded to warnings. The exception is `operation-operationId-unique`, so duplicate `operationId`s are an error.
 - `oas3-schema` is turned off. Structural validation belongs to the parser that `generate` uses.
+- `--strict` (default off) keeps Spectral's original `oas` severities, so every `error` rule (for example `path-params`) fails the run, and YAML/JSON syntax errors fail too. `oas3-schema` stays off.
 - **Exit code:** `0` when there are only warnings or no diagnostics. `1` when there is at least one error, and the error messages are repeated under `ERROR`.
 - A document that is not OpenAPI 3.x fails with `Expected an OpenAPI 3.x document`.
 
@@ -328,11 +336,11 @@ The package entry point (`@shipworthy/openapi-cli`) exports one value:
 export const openapi: Command<"openapi", …>; // an `effect/cli` Command with `generate` and `lint` subcommands
 ```
 
-Use it to embed the CLI in your own Bun entry point. This example mirrors the package's own binary:
+Use it to embed the CLI in your own entry point. This example mirrors the package's own binary:
 
 ```ts
-#!/usr/bin/env bun
-import { BunRuntime, BunServices } from "@effect/platform-bun";
+#!/usr/bin/env node
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import { openapi } from "@shipworthy/openapi-cli";
 import { Effect, Layer } from "effect";
 import { Command } from "effect/cli";
@@ -340,12 +348,12 @@ import { FetchHttpClient } from "effect/http";
 
 openapi.pipe(
   Command.run({ version: "1.0.0" }), // parses process.argv
-  Effect.provide(Layer.mergeAll(BunServices.layer, FetchHttpClient.layer)),
-  BunRuntime.runMain,
+  Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
+  NodeRuntime.runMain,
 );
 ```
 
-This requires `effect@4.0.0` and `@effect/platform-bun@4.0.0`, which the CLI also depends on. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
+This requires `effect` `^4.0.0` and `@effect/platform-node` `^4.0.0`, which the CLI also depends on. Add them to your own `package.json` if your code imports them directly. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
 
 ## Errors and exit codes
 
@@ -365,7 +373,6 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 
 ## Limitations
 
-- Bun only. Node.js cannot run the binary.
 - One input per run. Globs are not supported.
 - Only `generate typescript` reads from stdin. Only `generate typescript` and `generate standard-schema` write to stdout.
 - Only `generate typescript` supports `--check`. Only `generate zod` and `generate tanstack-query` support `--force`.
@@ -374,9 +381,9 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 
 ## Key facts (for AI agents)
 
-- Binary: `openapi`. Requires the **Bun** runtime. ESM only. OpenAPI 3.0 and 3.1 input (3.0 is upgraded), JSON or YAML, as a local path or URL. Swagger 2.0 is rejected.
+- Binary: `openapi` (compiled `dist/bin.js`). Runs on **Node.js `>=22.19.0`** (`npx openapi`) or **Bun** (`bunx openapi`). ESM only. OpenAPI 3.0 and 3.1 input (3.0 is upgraded), JSON or YAML, as a local path or URL. Swagger 2.0 is rejected.
 - Commands:
-  - `openapi lint <input>`: exits 1 only on errors such as duplicate `operationId`.
+  - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
   - `openapi generate typescript [<input>] [-o file] [--check] [type flags]`: reads stdin when `<input>` is omitted and writes stdout when `-o` is omitted.
   - `openapi generate zod <input> -o <file> [--force]`: also writes `types.ts` in the same directory.
   - `openapi generate tanstack-query <input> -o <dir> --name <name> [--force]`: writes `<dir>/<name>/client.ts` and `<dir>/<name>/types.ts`.
@@ -388,4 +395,4 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 
 ## License
 
-No license has been declared for this package yet. Check the published package metadata before use.
+MIT. See [LICENSE](./LICENSE).

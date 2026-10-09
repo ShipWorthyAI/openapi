@@ -9,7 +9,7 @@ import { ParsedRequestBody } from "./request.js";
 import { ParsedResponse } from "./response.js";
 import { ParsedSchema } from "./schema.js";
 
-export const ParsedComponents = Schema.Struct({
+const parsedComponentsFields = {
   schemas: Schema.Record(Schema.String, ParsedSchema),
   responses: Schema.Record(Schema.String, ParsedResponse),
   parameters: Schema.Record(Schema.String, ParsedParameter),
@@ -19,6 +19,10 @@ export const ParsedComponents = Schema.Struct({
   links: Schema.Record(Schema.String, ParsedLink),
   callbacks: Schema.Record(Schema.String, Schema.Array(ParsedCallbackOperation)),
   pathItems: Schema.Record(Schema.String, ParsedPathItem),
-});
+};
 
-export type ParsedComponents = typeof ParsedComponents.Type;
+export interface ParsedComponentsSchema extends Schema.Struct<typeof parsedComponentsFields> {}
+
+export const ParsedComponents: ParsedComponentsSchema = Schema.Struct(parsedComponentsFields);
+
+export interface ParsedComponents extends Schema.Schema.Type<ParsedComponentsSchema> {}

@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest";
 import { ParsedService } from "@shipworthy/openapi-transformer";
-import { Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
+import { Effect, FileSystem, Layer, Path, PlatformError, Result, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { strict as assert } from "node:assert";
 import { generate, ModuleLoader, type Generator } from "../src/index.js";
@@ -85,6 +85,82 @@ describe("generator preparation", () => {
       assert.equal(error._tag, "ResolveError");
       assert.match(error.message, /info.*version/s);
       assert.equal(loaded, false);
+    }),
+  );
+});
+
+describe("generator path sources", () => {
+  const files: Record<string, string> = {
+    "/specs/api/openapi.yaml":
+      "openapi: 3.0.3\ninfo: { title: Pets, version: '1' }\ncomponents:\n  schemas:\n    Pet: { $ref: ./models/pet.yaml }\n",
+    "/specs/api/models/pet.yaml": "type: string\nnullable: true\n",
+  };
+
+  const read = (file: string) =>
+    file in files
+      ? Effect.succeed(files[file] ?? "")
+      : Effect.fail(
+          PlatformError.systemError({
+            _tag: "NotFound",
+            module: "FileSystem",
+            method: "readFile",
+            pathOrDescriptor: file,
+          }),
+        );
+
+  const memoryLayer = (reads: string[]) =>
+    Layer.mergeAll(
+      FileSystem.layerNoop({
+        readFileString: (file) => {
+          reads.push(file);
+          return read(file);
+        },
+        readFile: (file) => {
+          reads.push(file);
+          return Effect.map(read(file), (text) => new TextEncoder().encode(text));
+        },
+      }),
+      Path.layer,
+      FetchHttpClient.layer,
+    );
+
+  for (const [source, cwd] of [
+    ["./api/openapi.yaml", "/specs"],
+    ["api/openapi.yaml", "/specs"],
+    ["../api/openapi.yaml", "/specs/other"],
+    ["/specs/api/openapi.yaml", undefined],
+  ] as const) {
+    it.effect(`loads ${source} as a file and resolves refs against it`, () =>
+      Effect.gen(function* () {
+        const reads: string[] = [];
+
+        const model = yield* modelSchema(
+          yield* generate({ specifier: "fixture", exportName: "plugin", source, cwd }).pipe(
+            Effect.provideService(ModuleLoader, { load: () => Promise.resolve({ plugin }) }),
+            Effect.provide(memoryLayer(reads)),
+          ),
+        );
+
+        assert.deepEqual(reads, ["/specs/api/openapi.yaml", "/specs/api/models/pet.yaml"]);
+        assert.equal(model.openapi, "3.1.0");
+        assert.deepEqual(model.components.schemas.Pet, { type: ["string", "null"] });
+      }),
+    );
+  }
+
+  it.effect("fails with ResolveError when the path does not exist", () =>
+    Effect.gen(function* () {
+      const result = yield* Effect.result(
+        generate({ specifier: "fixture", exportName: "plugin", source: "./missing.json" }).pipe(
+          Effect.provideService(ModuleLoader, { load: () => Promise.resolve({ plugin }) }),
+          Effect.provide(memoryLayer([])),
+        ),
+      );
+
+      assert.ok(Result.isFailure(result));
+      const error = result.failure;
+      assert.equal(error._tag, "ResolveError");
+      assert.match(error.message, /missing\.json/);
     }),
   );
 });

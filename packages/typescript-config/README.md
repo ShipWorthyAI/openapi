@@ -16,7 +16,7 @@ Use this package when you want a project to type-check with the same settings as
 Install it as a dev dependency. Install `typescript` too.
 
 ```sh
-npm install --save-dev @shipworthy/typescript-config typescript
+npm install -D @shipworthy/typescript-config typescript
 pnpm add -D @shipworthy/typescript-config typescript
 yarn add -D @shipworthy/typescript-config typescript
 bun add -d @shipworthy/typescript-config typescript
@@ -191,4 +191,4 @@ Choose `library.json` for code that runs in both browsers and Node.js/Bun, or co
 
 ## License
 
-This package's `package.json` does not declare a license yet. Check the published package metadata or the repository before redistributing.
+MIT. See [LICENSE](./LICENSE).

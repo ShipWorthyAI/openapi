@@ -11,19 +11,18 @@ yarn add -D @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
 bun add -d @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
 ```
 
-The generated file imports `effect`, so your app needs `effect` as a runtime dependency:
+The generated file imports `effect`, and the package lists it as a peer dependency, so your app needs `effect` as a runtime dependency:
 
 ```sh
-npm install effect@4.0.0
+npm install effect@^4
 ```
 
 Requirements:
 
-- **Effect 4.** The package depends on `effect@4.0.0`, and the generated code uses Effect 4 Schema APIs (`Schema.toStandardSchemaV1`, `Schema.StructWithRest`, `Schema.isPattern`, and others). Effect 3 will not run it.
-- **ESM only.** The package sets `"type": "module"` and has a single `.` export.
-- **TypeScript source.** The `.` export points to `./src/index.ts`, so the runtime or bundler must load TypeScript.
-- **Bun for the CLI.** The `openapi` binary starts with `#!/usr/bin/env bun`.
-- **No peer dependencies.** The package installs its own dependencies: `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `effect`.
+- **Effect 4.** `effect` `^4.0.0` is a peer dependency, so every package shares one Effect instance. The generated code uses Effect 4 Schema APIs (`Schema.toStandardSchemaV1`, `Schema.StructWithRest`, `Schema.isPattern`, and others). Effect 3 will not run it.
+- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js (`npx openapi ...`) or Bun (`bunx openapi ...`).
+- **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
+- **Bundled dependencies.** The package installs `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`.
 
 `@shipworthy/openapi-cli` lists this package as an optional peer dependency. It loads the package by name with `import("@shipworthy/openapi-standard-schema")`, so install both.
 
@@ -128,10 +127,11 @@ const standardSchema: Generator<string, SchemaGenerationError>;
 `generate` loads, bundles, and validates the document. It upgrades OpenAPI 3.0 to 3.1, builds the model, and then runs the plugin. The CLI uses this path.
 
 ```ts
-import { BunServices } from "@effect/platform-bun";
+import { NodeServices } from "@effect/platform-node";
 import { generate } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
+import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 const source = await Effect.runPromise(
@@ -139,11 +139,13 @@ const source = await Effect.runPromise(
     specifier: "@shipworthy/openapi-standard-schema",
     exportName: "standardSchema",
     source: pathToFileURL("./openapi.yaml"),
-  }).pipe(Effect.provide(Layer.mergeAll(BunServices.layer, FetchHttpClient.layer))),
+  }).pipe(Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer))),
 );
 
-await Bun.write("./src/generated/standard-schema.ts", source as string);
+await writeFile("./src/generated/standard-schema.ts", source as string);
 ```
+
+This example also needs `@effect/platform-node` and `@shipworthy/openapi-generator`. On Bun, `BunServices` from `@effect/platform-bun` works in place of `NodeServices`.
 
 #### Directly on a model
 
@@ -240,21 +242,21 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 ## Troubleshooting
 
 - **`Install @shipworthy/openapi-standard-schema to load standardSchema.`** (`MissingPlugin`): the CLI could not import this package. Install it in the same project as `@shipworthy/openapi-cli`.
-- **`Cannot find module 'effect'` when importing the generated file**: install `effect@4.0.0` as a runtime dependency.
+- **`Cannot find module 'effect'` when importing the generated file**: install `effect` (`^4.0.0`) as a runtime dependency.
 - **`<path>: expected a JSON schema`** (`SchemaGenerationError`): the component schema at `<path>` is not an object or boolean.
 - **Empty output file**: the document has no `components.schemas`.
 
 ## Key facts (for AI agents)
 
-- Package: `@shipworthy/openapi-standard-schema`, ESM-only TypeScript source. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
-- CLI: `openapi generate standard-schema <input> [-o <file>]` (from `@shipworthy/openapi-cli`, run with Bun). Without `-o`, output goes to stdout.
+- Package: `@shipworthy/openapi-standard-schema`, ESM-only compiled JavaScript with `.d.ts` declarations. Node.js `>=22.19.0` or Bun. Peer dependency `effect@^4`. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
+- CLI: `openapi generate standard-schema <input> [-o <file>]` (from `@shipworthy/openapi-cli`, runs on Node.js or Bun). Without `-o`, output goes to stdout.
 - `standardSchema.generate(model: ParsedService, {})` returns `Effect<string, SchemaGenerationError>`. The string is a TS module, or `""` when there are no component schemas.
 - Output: for each `components.schemas` entry `Name`, `export type Name` and `export const Name = Schema.toStandardSchemaV1(...)`. Validate with `Name["~standard"].validate(value)`, which is synchronous and returns `{ value }` or `{ issues }`. `vendor` is `"effect"`.
-- The generated code needs `effect@4.0.0` at runtime.
+- The generated code needs `effect` (`^4.0.0`) at runtime.
 - Input: OpenAPI 3.0/3.1 through the CLI or `@shipworthy/openapi-generator`. 3.0 is upgraded to 3.1.
 - Not generated: request bodies, responses, parameters. Validators are standalone and are not called by a fetch client.
 - Do not edit generated files. Re-run the CLI instead.
 
 ## License
 
-This package does not declare a license yet. Check `package.json` in the published version.
+MIT. See [LICENSE](./LICENSE).

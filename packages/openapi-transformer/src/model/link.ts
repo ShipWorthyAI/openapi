@@ -2,7 +2,7 @@ import { Schema } from "effect";
 import { node, shareable } from "./fields.js";
 import { optionalField, optionalString } from "./optional.js";
 
-export const ParsedLink = Schema.Struct({
+const parsedLinkFields = {
   ...node,
   ...shareable,
   key: Schema.String,
@@ -11,6 +11,10 @@ export const ParsedLink = Schema.Struct({
   parameters: optionalField(Schema.Record(Schema.String, Schema.Unknown)),
   requestBody: optionalField(Schema.Unknown),
   description: optionalString,
-});
+};
 
-export type ParsedLink = typeof ParsedLink.Type;
+export interface ParsedLinkSchema extends Schema.Struct<typeof parsedLinkFields> {}
+
+export const ParsedLink: ParsedLinkSchema = Schema.Struct(parsedLinkFields);
+
+export interface ParsedLink extends Schema.Schema.Type<ParsedLinkSchema> {}

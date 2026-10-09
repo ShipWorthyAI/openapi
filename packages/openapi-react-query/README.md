@@ -25,27 +25,29 @@ bun add @shipworthy/openapi-react-query @tanstack/react-query react
 To generate types, also install the CLI and the TypeScript generator as dev dependencies:
 
 ```sh
+npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 ```
 
-| Requirement                  | Value                                                                                                                                              |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peer `@tanstack/react-query` | `^5.104.1`                                                                                                                                         |
-| Peer `react`                 | `^18.0.0 \|\| ^19.0.0`                                                                                                                             |
-| Dependency                   | `@shipworthy/openapi-fetch` (installed automatically)                                                                                              |
-| Module format                | ESM only (`"type": "module"`)                                                                                                                      |
-| Shipped files                | TypeScript source (`exports["."]` is `./src/index.ts`, with a `react-native` field pointing to the same file). The package has no compiled `dist`. |
-| CLI runtime                  | The `openapi` binary runs with Bun (`#!/usr/bin/env bun`)                                                                                          |
+| Requirement                  | Value                                                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Peer `@tanstack/react-query` | `^5.104.1`                                                                                                                        |
+| Peer `react`                 | `^18.0.0 \|\| ^19.0.0`                                                                                                            |
+| Dependency                   | `@shipworthy/openapi-fetch` (installed automatically)                                                                             |
+| Module format                | ESM only (`"type": "module"`). There is no CommonJS build.                                                                        |
+| Shipped files                | Compiled JavaScript and `.d.ts` declarations in `dist/` (`exports["."]` and the `react-native` field point to `./dist/index.js`). |
+| CLI runtime                  | The `openapi` binary runs on Node.js `>=22.19.0` (`npx openapi`) or Bun (`bunx openapi`)                                          |
 
-Your bundler or runtime must compile `.ts`/`.tsx` files from `node_modules`. Bun, Vite, and
-Metro can do this. The provider uses JSX with the automatic runtime and has no `import React`.
-The package declares no Node.js `engines` range.
+No TypeScript or TSX transpilation of `node_modules` is needed. The provider's JSX is compiled
+with the automatic runtime (`react/jsx-runtime`), so there is no `import React`. The package
+declares no Node.js `engines` range.
 
 ## Quick start
 
 ### 1. Generate the `paths` type
 
 ```sh
+npx openapi generate typescript ./openapi.yaml -o ./src/generated/api.ts
 bunx openapi generate typescript ./openapi.yaml -o ./src/generated/api.ts
 ```
 
@@ -422,7 +424,6 @@ query, whatever its `init`.
   in the tree, where it rarely re-renders.
 - **Thrown errors are response bodies,** not `Error` objects, so `error instanceof Error` is
   `false` for HTTP errors.
-- **The package ships TypeScript source only.** See [Installation](#installation).
 - **OpenAPI support** depends on `@shipworthy/openapi-typescript`, which generates the `paths`
   type. That package describes itself as converting OpenAPI 3.0 and 3.1 schemas.
 
@@ -435,7 +436,6 @@ query, whatever its `init`.
 | A path is not accepted                               | That path has no operation for the method. Pass the method explicitly, e.g. `useQuery("/x", "post", …)`. |
 | Argument-count error when you omit `init`            | The operation has required path, query, or header params, or a required body, so `init` is required.     |
 | Infinite query never sends a page                    | The API expects a query param other than `cursor`. Set `pageParamName`.                                  |
-| Unexpected token / JSX errors from `node_modules`    | Your toolchain doesn't compile TS/TSX from dependencies. Configure it to transpile this package.         |
 
 ## Key facts (for AI agents)
 
@@ -456,8 +456,8 @@ query, whatever its `init`.
 - Hooks throw the typed error body. Query and suspense hooks resolve empty `204` responses as
   `null`.
 - `createApiClient(baseUrl, authToken?)` is for non-React use. The hooks don't use it.
-- Peers: `react` `^18 || ^19`, `@tanstack/react-query` `^5.104.1`. ESM-only TypeScript source.
+- Peers: `react` `^18 || ^19`, `@tanstack/react-query` `^5.104.1`. ESM-only compiled JavaScript with `.d.ts` declarations.
 
 ## License
 
-This package's `package.json` declares no license.
+MIT. See [LICENSE](./LICENSE).

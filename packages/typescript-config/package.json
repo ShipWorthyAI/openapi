@@ -1,9 +1,21 @@
 {
   "name": "@shipworthy/typescript-config",
   "version": "0.0.1",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/typescript-config"
+  },
+  "files": [
+    "base.json",
+    "library.json"
+  ],
   "exports": {
     "./base.json": "./base.json",
     "./library.json": "./library.json"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

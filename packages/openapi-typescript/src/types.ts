@@ -1,4 +1,3 @@
-import type { PathLike } from "node:fs";
 import type { ParsedDiscriminator, ParsedSchema } from "@shipworthy/openapi-transformer";
 import type { JsonSchema } from "effect";
 import type ts from "#compiler";
@@ -18,9 +17,7 @@ export interface OpenAPITSOptions {
   arrayLength?: boolean;
   /** Allow schema objects with no specified properties to have additional properties if not expressly forbidden? (default: false) */
   emptyObjectsUnknown?: boolean;
-  /** Provide current working directory (cwd) which helps resolve relative remote schemas */
-  cwd?: PathLike;
-  /** Should schema objects with a default value not be considered optional? */
+  /** Treat schema object properties that have a `default` as required instead of optional (default: true) */
   defaultNonNullable?: boolean;
   /** Exclude deprecated fields from types? (default: false) */
   excludeDeprecated?: boolean;
@@ -41,8 +38,6 @@ export interface OpenAPITSOptions {
   immutable?: boolean;
   /** (optional) Should logging be suppressed? (necessary for STDOUT) */
   silent?: boolean;
-  /** (optional) OpenAPI version. Must be present if parsing raw schema */
-  version?: number;
   /** (optional) Export type instead of interface */
   exportType?: boolean;
   /** Export true TypeScript enums instead of unions */

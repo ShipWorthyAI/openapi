@@ -1,24 +1,25 @@
 # @shipworthy/openapi-generator
 
-Load, bundle, and parse an OpenAPI 3.x document, then run one generator plugin on the result. `generate` takes a document (a URL, file URL, JSON/YAML text, `Buffer`, Node `Readable`, or plain object). It resolves external `$ref`s, upgrades OpenAPI 3.0 to 3.1, decodes the document into the `ParsedService` model from `@shipworthy/openapi-transformer`, loads a plugin by module specifier and export name, and returns whatever the plugin's `generate` returns. Use this package to drive an existing `@shipworthy/*` generator from code, such as `@shipworthy/openapi-typescript` (export `typescript`) or `@shipworthy/openapi-zod` (export `zod`), or to write your own generator against the `Generator` interface. The `openapi` CLI (`@shipworthy/openapi-cli`) is built on this package. If you only want generated files on disk, use the CLI.
+Load, bundle, and parse an OpenAPI 3.x document, then run one generator plugin on the result. `generate` takes a document (a file path, a URL, file URL, JSON/YAML text, `Buffer`, Node `Readable`, or plain object). It resolves external `$ref`s, upgrades OpenAPI 3.0 to 3.1, decodes the document into the `ParsedService` model from `@shipworthy/openapi-transformer`, loads a plugin by module specifier and export name, and returns whatever the plugin's `generate` returns. Use this package to drive an existing `@shipworthy/*` generator from code, such as `@shipworthy/openapi-typescript` (export `typescript`) or `@shipworthy/openapi-zod` (export `zod`), or to write your own generator against the `Generator` interface. The `openapi` CLI (`@shipworthy/openapi-cli`) is built on this package. If you only want generated files on disk, use the CLI.
 
 The API is built on [Effect](https://effect.website) 4. `generate` returns an `Effect`, not a `Promise`.
 
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-generator effect@4.0.0 @effect/platform-node@4.0.0
-pnpm add @shipworthy/openapi-generator effect@4.0.0 @effect/platform-node@4.0.0
-yarn add @shipworthy/openapi-generator effect@4.0.0 @effect/platform-node@4.0.0
-bun add @shipworthy/openapi-generator effect@4.0.0 @effect/platform-bun@4.0.0
+npm install @shipworthy/openapi-generator effect @effect/platform-node
+pnpm add @shipworthy/openapi-generator effect @effect/platform-node
+yarn add @shipworthy/openapi-generator effect @effect/platform-node
+bun add @shipworthy/openapi-generator effect @effect/platform-node
 ```
 
 Requirements:
 
-- **`effect` 4.0.0.** This is a direct dependency of the package. Install the same version in your project, because you build, run, and provide services to the returned `Effect` with your own copy of `effect`.
+- **`effect` `^4.0.0`.** This is a peer dependency, so install it yourself. Every package then shares one copy of `effect`, which you use to build, run, and provide services to the returned `Effect`.
+- **`@effect/platform-node` `^4.0.0`**, only because the examples below import `NodeServices` from it. `@shipworthy/openapi-parser` already depends on it, but your own code needs it in your `package.json` to import it.
 - **A platform layer.** `generate` requires the `FileSystem`, `Path`, and `HttpClient` services. Provide them with `NodeServices.layer` from `@effect/platform-node` or `BunServices.layer` from `@effect/platform-bun`, plus `FetchHttpClient.layer` from `effect/http`. `HttpClient` is required even when the source is inline, because it's part of the effect's type.
-- **ESM only.** The package is `"type": "module"`. It has no CommonJS build.
-- **Node.js or Bun.** The loader uses Node APIs (`Buffer`, `node:stream`) through its `@shipworthy/openapi-parser` dependency. It doesn't run in browsers.
+- **ESM only.** The package is `"type": "module"` and ships compiled ESM JavaScript with `.d.ts` declarations. It has no CommonJS build, and it needs no TypeScript loader or bundler.
+- **Node.js `>=22.19.0` or Bun.** The loader uses Node APIs (`Buffer`, `node:stream`) through its `@shipworthy/openapi-parser` dependency. It doesn't run in browsers.
 - **The plugin package.** Each plugin is loaded with dynamic `import()` when `generate` runs. Install it too, for example `@shipworthy/openapi-typescript`.
 
 ## Quick start
@@ -60,8 +61,8 @@ const program = generate({
   // Pass a local plugin as an absolute file URL.
   specifier: new URL("./operation-ids.ts", import.meta.url).href,
   exportName: "operationIds",
-  // Pass files as URL objects. Plain strings are parsed as document text (see "Sources").
-  source: new URL("./openapi.yaml", import.meta.url),
+  // A path string is resolved against process.cwd() (see "Sources").
+  source: "./openapi.yaml",
 }).pipe(
   Effect.tap((output) => Effect.log(output)), // ["GET /pets"]
   Effect.catchTags({
@@ -108,13 +109,13 @@ interface GenerateOptions {
 }
 ```
 
-| Option          | Required | Default         | Description                                                                                                                                                                                                                     |
-| --------------- | -------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `specifier`     | yes      | —               | Module to import the plugin from: a package name such as `"@shipworthy/openapi-typescript"`, or an absolute `file://` URL string. Passed to `ModuleLoader.load`.                                                                |
-| `exportName`    | yes      | —               | Named export of that module that holds the `Generator`, for example `"typescript"` or `"zod"`.                                                                                                                                  |
-| `source`        | yes      | —               | The OpenAPI document. See [Sources](#sources).                                                                                                                                                                                  |
-| `cwd`           | no       | `process.cwd()` | Base location for resolving relative `$ref`s when `source` is inline (text, `Buffer`, stream, or object). A string is resolved as a directory path. A `URL` is used as is. URL sources resolve refs against their own location. |
-| `pluginOptions` | no       | `{}`            | Passed unchanged as the second argument of the plugin's `generate`. Each plugin defines its own keys.                                                                                                                           |
+| Option          | Required | Default         | Description                                                                                                                                                                                                                                                     |
+| --------------- | -------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `specifier`     | yes      | —               | Module to import the plugin from: a package name such as `"@shipworthy/openapi-typescript"`, or an absolute `file://` URL string. Passed to `ModuleLoader.load`.                                                                                                |
+| `exportName`    | yes      | —               | Named export of that module that holds the `Generator`, for example `"typescript"` or `"zod"`.                                                                                                                                                                  |
+| `source`        | yes      | —               | The OpenAPI document. See [Sources](#sources).                                                                                                                                                                                                                  |
+| `cwd`           | no       | `process.cwd()` | Base location for a relative path `source` and for relative `$ref`s when `source` is inline (text, `Buffer`, stream, or object). A string is resolved as a directory path. A `URL` is used as is. File and URL sources resolve refs against their own location. |
+| `pluginOptions` | no       | `{}`            | Passed unchanged as the second argument of the plugin's `generate`. Each plugin defines its own keys.                                                                                                                                                           |
 
 `generate` runs these steps in order:
 
@@ -151,17 +152,18 @@ const nodes = await Effect.runPromise(
 
 `source` accepts:
 
-| Value                                                    | Treatment                                                                                                                                                            |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `URL` with `file:` protocol                              | Read from disk with `FileSystem`.                                                                                                                                    |
-| `URL` with `http:`/`https:` protocol                     | Fetched with `HttpClient`. A non-2xx status fails.                                                                                                                   |
-| String starting with `http://`, `https://`, or `file://` | Converted to a `URL` and handled as above.                                                                                                                           |
-| Any other string                                         | Parsed as document **text**. Text starting with `{` or `[` is tried as JSON first, with a YAML fallback. Anything else is parsed as YAML. A leading BOM is stripped. |
-| `Buffer`                                                 | Decoded as UTF-8 text.                                                                                                                                               |
-| Node `Readable` stream                                   | Read to the end as text.                                                                                                                                             |
-| Plain object                                             | Used directly as the document.                                                                                                                                       |
+| Value                                                    | Treatment                                                                                                                                                        |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `URL` with `file:` protocol                              | Read from disk with `FileSystem`.                                                                                                                                |
+| `URL` with `http:`/`https:` protocol                     | Fetched with `HttpClient`. A non-2xx status fails.                                                                                                               |
+| String starting with `http://`, `https://`, or `file://` | Converted to a `URL` and handled as above.                                                                                                                       |
+| File path string (see below)                             | Resolved against `cwd` and read from disk with `FileSystem`. Relative `$ref`s resolve against the file.                                                          |
+| Any other string                                         | Parsed as document text. Text starting with `{` or `[` is tried as JSON first, with a YAML fallback. Anything else is parsed as YAML. A leading BOM is stripped. |
+| `Buffer`                                                 | Decoded as UTF-8 text.                                                                                                                                           |
+| Node `Readable` stream                                   | Read to the end as text.                                                                                                                                         |
+| Plain object                                             | Used directly as the document.                                                                                                                                   |
 
-A relative file path string such as `"./openapi.yaml"` is **not** read from disk. It's parsed as YAML text and fails with `ResolveError: Expected an OpenAPI document object. Got string`. To read a file, pass a `URL`, for example `pathToFileURL(path.resolve("openapi.yaml"))` or `new URL("./openapi.yaml", import.meta.url)`.
+A string is a file path when, after trimming, it is a single line and either starts with `/`, `./`, `../`, `\`, `.\`, `..\`, or a drive letter (`C:\`, `C:/`), or ends in `.json`, `.yaml`, or `.yml`, contains no `: `, and doesn't start with `{` or `[`. So `"./openapi.yaml"`, `"/srv/openapi.json"`, and `"specs/openapi.yml"` are read from disk, while inline JSON and YAML documents are still parsed as text. A missing file fails with a `ResolveError` that carries the `FileSystem` error, such as `NotFound: FileSystem.readFile (/abs/openapi.yaml)`.
 
 ### `Generator<A, E>`
 
@@ -285,7 +287,7 @@ Defects, such as an `Effect.die` inside a plugin's effect, aren't converted to `
 
 - Entry point: `import { generate, importPlugin, ModuleLoader, ResolveError, TransformError, MissingPlugin, InvalidPlugin, type Generator, type GenerateOptions, type GenerateError } from "@shipworthy/openapi-generator"`.
 - `generate({ specifier, exportName, source, cwd?, pluginOptions? })` returns `Effect<unknown, GenerateError, FileSystem | Path | HttpClient>`. It's not a Promise. Run it with `Effect.runPromise` after providing `NodeServices.layer` (or `BunServices.layer`) and `FetchHttpClient.layer`.
-- Requires `effect@4.0.0`. ESM only. Runs on Node.js or Bun.
+- Requires `effect` `^4.0.0` (peer dependency). ESM only, compiled JavaScript. Runs on Node.js `>=22.19.0` or Bun.
 - Pipeline: bundle (`ResolveError`), then decode to `ParsedService` (`TransformError`), then import the plugin (`MissingPlugin` / `InvalidPlugin`), then `plugin.generate(model, pluginOptions ?? {})` (plugin failures become `TransformError`).
 - File-path strings are parsed as YAML text. Pass `URL` objects for files. Strings starting with `http(s)://` or `file://` are fetched or read.
 - OpenAPI 3.0 is upgraded to 3.1. Swagger 2.0 is rejected.
@@ -295,4 +297,4 @@ Defects, such as an `Effect.die` inside a plugin's effect, aren't converted to `
 
 ## License
 
-No license is declared in this package's `package.json` yet. Check the repository before redistributing.
+MIT. See [LICENSE](./LICENSE).

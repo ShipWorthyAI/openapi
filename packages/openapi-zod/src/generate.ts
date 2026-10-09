@@ -1,10 +1,10 @@
 import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, Predicate, Schema } from "effect";
 import * as z from "zod";
-import { ZodGenerationError } from "./errors";
-import { assertExportName } from "./names";
-import { resolveDocumentRef } from "./refs";
-import type { OperationRoute } from "./routes";
+import { ZodGenerationError } from "./errors.js";
+import { assertExportName } from "./names.js";
+import { resolveDocumentRef } from "./refs.js";
+import type { OperationRoute } from "./routes.js";
 
 type JsonSchema = z.core.JSONSchema.JSONSchema;
 type SchemaNode = JsonSchema | boolean;

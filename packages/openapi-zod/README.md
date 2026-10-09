@@ -5,10 +5,10 @@ Generate [Zod 4](https://zod.dev) validators from an OpenAPI 3.1 document. Every
 ## Installation
 
 ```sh
-npm install -D @shipworthy/openapi-zod @shipworthy/openapi-cli
-pnpm add -D @shipworthy/openapi-zod @shipworthy/openapi-cli
-yarn add -D @shipworthy/openapi-zod @shipworthy/openapi-cli
-bun add -d @shipworthy/openapi-zod @shipworthy/openapi-cli
+npm install -D @shipworthy/openapi-zod @shipworthy/openapi-cli effect typescript@^7
+pnpm add -D @shipworthy/openapi-zod @shipworthy/openapi-cli effect typescript@^7
+yarn add -D @shipworthy/openapi-zod @shipworthy/openapi-cli effect typescript@^7
+bun add -d @shipworthy/openapi-zod @shipworthy/openapi-cli effect typescript@^7
 ```
 
 The generated file imports `zod`, so your app needs this exact version as a runtime dependency:
@@ -20,10 +20,10 @@ npm install zod@4.6.5
 Requirements:
 
 - **Zod 4.6.5.** The generated code calls `z.fromJSONSchema` and `z.compile`. `fromJSONSchema` is experimental in Zod, so the package pins `zod@4.6.5`. Use the same version in your app.
-- **ESM only.** The package sets `"type": "module"` and has a single `.` export.
-- **TypeScript source.** The `.` export points to `./src/index.ts`, so the runtime or bundler must load TypeScript.
-- **Bun for the CLI.** The `openapi` binary starts with `#!/usr/bin/env bun`.
-- **No peer dependencies.** The package installs its own dependencies: `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, `@shipworthy/openapi-typescript`, `effect@4.0.0`, and `zod@4.6.5`.
+- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js (`npx openapi ...`) or Bun (`bunx openapi ...`).
+- **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
+- **Peer dependencies.** `effect` `^4.0.0`, installed by you so every package shares one Effect instance. `@shipworthy/openapi-typescript` (a dependency) also needs `typescript` `^7.0.0` as a peer. npm 7+ installs peers automatically, but install both explicitly as shown above.
+- **Bundled dependencies.** The package installs `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, `@shipworthy/openapi-typescript`, and `zod@4.6.5`.
 
 `@shipworthy/openapi-cli` lists this package as an optional peer dependency. The CLI loads it by name with `import("@shipworthy/openapi-zod")`, so install both packages in the same project.
 
@@ -77,6 +77,8 @@ Requirements:
 Generate:
 
 ```sh
+npx openapi generate zod ./openapi.json -o ./src/generated/hotels/zod-schema.ts
+# or
 bunx openapi generate zod ./openapi.json -o ./src/generated/hotels/zod-schema.ts
 ```
 
@@ -365,7 +367,7 @@ Not generated:
 ## Key facts (for AI agents)
 
 - Purpose: OpenAPI 3.1 document → one TypeScript module of Zod 4 validators. 3.0 input is upgraded only when run through the CLI or `generate()`.
-- Run: `openapi generate zod <input> -o <dir>/<file>.ts [--force]` (CLI from `@shipworthy/openapi-cli`, requires Bun). It also writes `<dir>/types.ts` when that file is missing or stale.
+- Run: `openapi generate zod <input> -o <dir>/<file>.ts [--force]` (CLI from `@shipworthy/openapi-cli`, runs on Node.js `>=22.19.0` or Bun). It also writes `<dir>/types.ts` when that file is missing or stale.
 - Exports from generated file: `<ComponentName>` for each `components.schemas` entry, and `<operationId>RequestBody` for each operation with a single `application/json` request body. Nothing for responses or parameters.
 - Each export is `z.compile(z.fromJSONSchema(...)) as z.ZodType<T>`, where `T` comes from `./types`. Use `.parse` / `.safeParse`.
 - `default` values are stripped. Parsing never injects defaults.
@@ -373,8 +375,8 @@ Not generated:
 - Package exports: `zod` (generator plugin), `zodSources`, `operationRoutes`, `ZodGenerationError`, and the types `ZodSource`, `OperationRoute`, `HttpMethod`. All functions return Effect 4 values.
 - Generation is all-or-nothing for the Zod file. Unsupported keywords fail with a JSON-pointer message, but the CLI may already have written `types.ts`.
 - Every operation needs a unique `operationId`. Component names must be valid JS identifiers.
-- The package ships TypeScript source (`./src/index.ts`) and is ESM only.
+- The package ships compiled ESM JavaScript with `.d.ts` declarations (no CommonJS build). Peer dependency `effect@^4`; `typescript@^7` is needed by `@shipworthy/openapi-typescript`.
 
 ## License
 
-The package's `package.json` does not declare a license yet.
+MIT. See [LICENSE](./LICENSE).

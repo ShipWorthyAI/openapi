@@ -1,26 +1,26 @@
 # @shipworthy/openapi-parser
 
-Load an OpenAPI 3.0 or 3.1 document from a URL, a JSON or YAML string, a `Buffer`, a Node `Readable`, or a plain object. The parser bundles every external `$ref` into the document's `components`, upgrades OpenAPI 3.0 to 3.1, and validates the result against an [Effect](https://effect.website) schema of the OpenAPI 3.1 object model. You get back one self-contained, typed `ParsedOpenApi` document. Use it to turn a multi-file or 3.0 spec into a single 3.1 document before you inspect it or generate code from it. The other `@shipworthy/*` packages use it as their first step. `@shipworthy/openapi-generator` calls `bundleDocument`, and `@shipworthy/openapi-transformer` decodes the resulting `ParsedOpenApi` into its `ParsedService` model.
+Load an OpenAPI 3.0 or 3.1 document from a file path, a URL, a JSON or YAML string, a `Buffer`, a Node `Readable`, or a plain object. The parser bundles every external `$ref` into the document's `components`, upgrades OpenAPI 3.0 to 3.1, and validates the result against an [Effect](https://effect.website) schema of the OpenAPI 3.1 object model. You get back one self-contained, typed `ParsedOpenApi` document. Use it to turn a multi-file or 3.0 spec into a single 3.1 document before you inspect it or generate code from it. The other `@shipworthy/*` packages use it as their first step. `@shipworthy/openapi-generator` calls `bundleDocument`, and `@shipworthy/openapi-transformer` decodes the resulting `ParsedOpenApi` into its `ParsedService` model.
 
 The API is Effect-native. Every entry point is an `Effect` or an Effect `Schema` codec, so you need [`effect`](https://www.npmjs.com/package/effect) v4 to run it.
 
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-parser effect@4.0.0 @effect/platform-node@4.0.0
-pnpm add @shipworthy/openapi-parser effect@4.0.0 @effect/platform-node@4.0.0
-yarn add @shipworthy/openapi-parser effect@4.0.0 @effect/platform-node@4.0.0
-bun add @shipworthy/openapi-parser effect@4.0.0 @effect/platform-node@4.0.0
+npm install @shipworthy/openapi-parser effect @effect/platform-node
+pnpm add @shipworthy/openapi-parser effect @effect/platform-node
+yarn add @shipworthy/openapi-parser effect @effect/platform-node
+bun add @shipworthy/openapi-parser effect @effect/platform-node
 ```
 
 ### Requirements
 
 | Requirement   | Details                                                                                                                                                                                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `effect`      | `4.0.0`. The package depends on it directly. Your application needs the same copy to run the returned effects and to use the schemas.                                                                                                                               |
-| Platform      | `@effect/platform-node` `4.0.0` is a dependency. The parser imports `node:stream`, `node:url`, `node:path`, `node:dns/promises`, `node:net`, and the `Buffer` global, so it needs Node.js (`>=18` per `@effect/platform-node`) or Bun. It does not run in browsers. |
-| Module format | ESM only (`"type": "module"`).                                                                                                                                                                                                                                      |
-| Peer deps     | None declared.                                                                                                                                                                                                                                                      |
+| `effect`      | `^4.0.0`, a peer dependency. Install it yourself so your application and the parser share one copy to run the returned effects and to use the schemas.                                                                                                              |
+| Platform      | `@effect/platform-node` `^4.0.0` is a regular dependency. Install it yourself only if your code imports it, as the examples here do for `NodeServices`. The parser imports `node:stream`, `node:url`, `node:path`, `node:dns/promises`, `node:net`, and the `Buffer` global, so it needs Node.js `>=22.19.0` or Bun. It does not run in browsers. |
+| Module format | ESM only (`"type": "module"`). Ships compiled JavaScript with `.d.ts` declarations; no TypeScript loader or bundler is needed.                                                                                                                                       |
+| Peer deps     | `effect` `^4.0.0`.                                                                                                                                                                                                                                                  |
 
 ## Quick start
 
@@ -53,14 +53,13 @@ properties:
 `main.ts`:
 
 ```ts
-import { pathToFileURL } from "node:url";
 import { NodeServices } from "@effect/platform-node";
 import { bundleDocument } from "@shipworthy/openapi-parser";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 
 const program = Effect.gen(function* () {
-  const document = yield* bundleDocument(pathToFileURL("./openapi.yaml"));
+  const document = yield* bundleDocument("./openapi.yaml");
   console.log(JSON.stringify(document, null, 2));
 });
 
@@ -130,29 +129,40 @@ declare function bundleDocument(
 >;
 
 interface BundleOptions {
-  /** Base for relative `$ref`s in inline (string, Buffer, stream, or object) sources. Default: process.cwd(). */
+  /** Base for relative path strings and for relative `$ref`s in inline (text, Buffer, stream, or object) sources. Default: process.cwd(). */
   readonly cwd?: URL | string;
 }
 ```
 
 This function loads a source, bundles it, upgrades it, and validates it as OpenAPI 3.1. How it reads `source` depends on the value:
 
-| `source`                                                   | Behavior                                                                                                                                                                                 |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `URL` with `file:` protocol                                | Reads the file through `FileSystem`. Relative refs resolve against the file.                                                                                                             |
-| `URL` with `http:` or `https:` protocol                    | Fetches the file with the provided `HttpClient`. A non-2xx response fails. Relative refs resolve against the URL.                                                                        |
-| `string` starting with `http://`, `https://`, or `file://` | Treated as a URL, as in the rows above.                                                                                                                                                  |
-| Any other `string`                                         | Parsed as document **text**, not as a path. Text that starts with `{` or `[` is parsed as JSON first and falls back to YAML. Anything else is parsed as YAML. A leading BOM is stripped. |
-| `Buffer`                                                   | Decoded as UTF-8 text.                                                                                                                                                                   |
-| Node `Readable`                                            | Read to the end and decoded as text.                                                                                                                                                     |
-| Plain object                                               | Used directly, without a serialization round trip.                                                                                                                                       |
+| `source`                                                   | Behavior                                                                                                                                                              |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `URL` with `file:` protocol                                | Reads the file through `FileSystem`. Relative refs resolve against the file.                                                                                          |
+| `URL` with `http:` or `https:` protocol                    | Fetches the file with the provided `HttpClient`. A non-2xx response fails. Relative refs resolve against the URL.                                                     |
+| `string` starting with `http://`, `https://`, or `file://` | Treated as a URL, as in the rows above.                                                                                                                               |
+| File path `string` (see below)                             | Resolved against `cwd` and read through `FileSystem`, as a `file:` URL is. Relative refs resolve against the file.                                                    |
+| Any other `string`                                         | Parsed as document text. Text that starts with `{` or `[` is parsed as JSON first and falls back to YAML. Anything else is parsed as YAML. A leading BOM is stripped. |
+| `Buffer`                                                   | Decoded as UTF-8 text.                                                                                                                                                |
+| Node `Readable`                                            | Read to the end and decoded as text.                                                                                                                                  |
+| Plain object                                               | Used directly, without a serialization round trip.                                                                                                                    |
 
-`cwd` accepts a directory path, which is resolved to an absolute path, or a `URL`. It applies only to inline sources. A URL source resolves its refs against itself.
+A string is a file path when, after trimming whitespace, it is a single line (no newline) and either:
+
+- starts with `/`, `./`, `../`, `\`, `.\`, `..\`, or a drive letter such as `C:\` or `C:/`, or
+- ends in `.json`, `.yaml`, or `.yml` (any case), contains no `: `, and doesn't start with `{` or `[`.
+
+No inline OpenAPI document matches this rule. A one-line YAML document needs `key: value` or a `{ ... }` flow mapping, and JSON starts with `{`. A path that doesn't exist fails with the `FileSystem` error, such as `NotFound: FileSystem.readFile (/abs/openapi.yaml)`.
+
+`cwd` accepts a directory path, which is resolved to an absolute path, or a `URL`. It is the base for relative path strings and for refs in inline sources. A file or URL source resolves its refs against itself.
 
 ```ts
 import { bundleDocument } from "@shipworthy/openapi-parser";
 
-// File path → pass a URL; a bare path string would be parsed as YAML text.
+// File paths, relative to process.cwd() or absolute. Refs resolve against the file.
+bundleDocument("./openapi.yaml");
+bundleDocument("/srv/specs/openapi.yaml");
+bundleDocument("openapi.yaml", { cwd: "/srv/specs" });
 bundleDocument(new URL("file:///srv/specs/openapi.yaml"));
 bundleDocument("https://api.example.com/openapi.json");
 
@@ -323,7 +333,6 @@ None of these settings can be configured through the public API.
 - The output is bundled, not fully dereferenced. Local `$ref`s stay as `#/components/...` pointers.
 - Schema Objects are validated only as object-or-boolean. Use a JSON Schema validator if you need deeper checks.
 - The parser can add empty containers, such as `components: { schemas: {} }`, to a document that had none.
-- `package.json` `exports` currently point at TypeScript sources (`./src/*.ts`). Use a runtime or bundler that handles `.ts` files, such as Bun, Vite, or tsx, until a compiled build ships.
 
 ## Troubleshooting
 
@@ -345,9 +354,9 @@ None of these settings can be configured through the public API.
 - Load files with `URL` or `file://` strings. Bare strings are parsed as JSON or YAML text.
 - Input can be OpenAPI 3.0 or 3.1. Output is always bundled and upgraded OpenAPI 3.1 (`openapi: "3.1.0"` when upgraded from 3.0), with external refs moved into `components`.
 - Every error is a `Schema.SchemaError`. Read `error.message`.
-- Requires `effect@4.0.0`, ESM, and Node.js or Bun. It does not run in browsers.
+- Requires `effect` `^4.0.0` (peer dependency), ESM, and Node.js `>=22.19.0` or Bun. Ships compiled JavaScript. It does not run in browsers.
 - Next step in the toolchain: pass the result to `decode` from `@shipworthy/openapi-transformer` to get a `ParsedService` for code generators.
 
 ## License
 
-`package.json` does not declare a license yet.
+MIT. See [LICENSE](./LICENSE).

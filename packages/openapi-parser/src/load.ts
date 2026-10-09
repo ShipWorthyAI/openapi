@@ -80,6 +80,9 @@ const parseSource = Effect.fnUntraced(function* (
       return yield* parseSource(url, absoluteRef);
     }
 
+    if (isFilePath(source))
+      return yield* parseSource(yield* fileUrl(source, absoluteRef), absoluteRef);
+
     const parsed = yield* parseText(source);
     const document = yield* requireDocument(parsed);
     return { document, absoluteRef };
@@ -90,6 +93,35 @@ const parseSource = Effect.fnUntraced(function* (
   return yield* new InvalidSource({
     message: `Expected string, object, or Buffer. Got ${Array.isArray(source) ? "Array" : typeof source}`,
   });
+});
+
+/**
+ * A string is a filesystem path, not document text, when it is one line and either starts with
+ * `/`, `./`, `../`, `\`, `.\`, `..\`, or a drive letter (`C:\`, `C:/`), or ends in `.json`,
+ * `.yaml`, or `.yml`, has no `: `, and doesn't start with `{` or `[`. No inline OpenAPI document
+ * matches: one-line YAML needs `key: value` or `{...}`, and JSON starts with `{`.
+ */
+function isFilePath(source: string): boolean {
+  const value = source.trim();
+  if (value === "" || /[\r\n]/.test(value)) return false;
+  if (/^(\.{0,2}[\\/]|[a-z]:[\\/])/i.test(value)) return true;
+  return /\.(json|ya?ml)$/i.test(value) && !value.includes(": ") && !/^[{[]/.test(value);
+}
+
+/** Resolve a path string against the `cwd` directory URL. */
+const fileUrl = Effect.fnUntraced(function* (
+  source: string,
+  cwd: string,
+): Effect.fn.Return<URL, ParseError, Path.Path> {
+  const path = yield* Path.Path;
+  const value = source.trim();
+
+  if (!path.isAbsolute(value) && !cwd.startsWith("file:")) {
+    return yield* Effect.try({ try: () => new URL(value, cwd), catch: parseFailure });
+  }
+
+  const directory = path.isAbsolute(value) ? "" : yield* filePath(new URL(cwd));
+  return yield* path.toFileUrl(path.resolve(directory, value)).pipe(Effect.mapError(parseFailure));
 });
 
 function resolveCwd(path: Path.Path, cwd: LoadOptions["cwd"]) {

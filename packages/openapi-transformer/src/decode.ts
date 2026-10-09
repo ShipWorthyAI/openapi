@@ -1,13 +1,17 @@
 import { ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Schema, SchemaGetter } from "effect";
+import { type Effect, Schema, type SchemaAST, SchemaGetter } from "effect";
 import { ParsedService } from "./model/index.js";
+import type { ParsedServiceSchema } from "./model/service.js";
 import { transformService } from "./transformers/3.1/index.js";
 
 /**
  * Convert a prepared OpenAPI 3.1 document into the HTTP meta model. Input validation and
  * expected transformation failures share the SchemaError channel.
  */
-export const ParsedServiceFromParsedOpenApi = ParsedOpenApi.pipe(
+export const ParsedServiceFromParsedOpenApi: Schema.decodeTo<
+  ParsedServiceSchema,
+  typeof ParsedOpenApi
+> = ParsedOpenApi.pipe(
   Schema.decodeTo(ParsedService, {
     decode: SchemaGetter.transformEffect(transformService),
     encode: SchemaGetter.forbidden(
@@ -16,4 +20,9 @@ export const ParsedServiceFromParsedOpenApi = ParsedOpenApi.pipe(
   }),
 );
 
-export const decode = Schema.decodeEffect(ParsedServiceFromParsedOpenApi);
+export const decode: (
+  input: typeof ParsedServiceFromParsedOpenApi.Encoded,
+  options?: SchemaAST.ParseOptions,
+) => Effect.Effect<ParsedService, Schema.SchemaError> = Schema.decodeEffect(
+  ParsedServiceFromParsedOpenApi,
+);

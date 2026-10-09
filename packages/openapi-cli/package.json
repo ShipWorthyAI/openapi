@@ -1,18 +1,45 @@
 {
   "name": "@shipworthy/openapi-cli",
   "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-cli"
+  },
   "bin": {
     "openapi": "./src/bin.ts"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/cli.ts"
   },
+  "publishConfig": {
+    "bin": {
+      "openapi": "./dist/bin.js"
+    },
+    "main": "./dist/cli.js",
+    "types": "./dist/cli.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/cli.d.ts",
+        "default": "./dist/cli.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && sed -i.bak '1s|^#!.*|#!/usr/bin/env node|' dist/bin.js && rm dist/bin.js.bak",
+    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
   },
   "dependencies": {
-    "@effect/platform-bun": "catalog:",
+    "@effect/platform-node": "catalog:",
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-validator": "workspace:*",
     "effect": "catalog:"
@@ -24,6 +51,7 @@
     "@shipworthy/openapi-zod": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
@@ -45,5 +73,8 @@
     "@shipworthy/openapi-zod": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": ">=22.19.0"
   }
 }

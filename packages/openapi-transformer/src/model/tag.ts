@@ -3,12 +3,16 @@ import { ParsedExternalDocs } from "./external-docs.js";
 import { node } from "./fields.js";
 import { optionalField, optionalString } from "./optional.js";
 
-export const ParsedTag = Schema.Struct({
+const parsedTagFields = {
   ...node,
   name: Schema.String,
   description: optionalString,
   /** Only set on tags the document declares. */
   externalDocs: optionalField(ParsedExternalDocs),
-});
+};
 
-export type ParsedTag = typeof ParsedTag.Type;
+export interface ParsedTagSchema extends Schema.Struct<typeof parsedTagFields> {}
+
+export const ParsedTag: ParsedTagSchema = Schema.Struct(parsedTagFields);
+
+export interface ParsedTag extends Schema.Schema.Type<ParsedTagSchema> {}

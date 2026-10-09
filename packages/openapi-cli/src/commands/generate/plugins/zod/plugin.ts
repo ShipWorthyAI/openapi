@@ -1,11 +1,11 @@
 import { generate as transform } from "@shipworthy/openapi-generator";
 import { Clock, Effect, Path, Result, Schema } from "effect";
 import { Argument, CliError, Command, Flag } from "effect/cli";
-import { asCliError, schemaSource } from "../../../input";
-import { ensureDependencies } from "../../ensure";
-import { force } from "../../force";
-import { publish } from "../../publish";
-import { fileHeader, generatorStamp } from "../../stamp";
+import { asCliError, schemaSource } from "../../../input.js";
+import { ensureDependencies } from "../../ensure.js";
+import { force } from "../../force.js";
+import { publish } from "../../publish.js";
+import { fileHeader, generatorStamp } from "../../stamp.js";
 
 export const dependencies = ["typescript"] as const;
 

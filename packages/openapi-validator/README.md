@@ -98,7 +98,11 @@ class Linter extends Context.Service<
   {
     readonly lintDocument: (
       source: string | Record<string, unknown>,
-      options?: { readonly sourceUrl?: string; readonly silent?: boolean },
+      options?: {
+        readonly sourceUrl?: string;
+        readonly silent?: boolean;
+        readonly strict?: boolean;
+      },
     ) => Effect.Effect<void, LintError>;
   }
 >()("@shipworthy/openapi-validator/Linter") {
@@ -107,7 +111,8 @@ class Linter extends Context.Service<
 ```
 
 - **`Linter.layer`**: a `Layer` with no requirements. It builds one configured
-  Spectral instance, and you can reuse that instance for many `lintDocument` calls.
+  Spectral instance per mode (default and strict), and you can reuse them for many
+  `lintDocument` calls.
   Provide it with `Effect.provide(Linter.layer)`.
 - **`Linter.use(fn)`**: the standard `Context.Service` accessor. Use it for one-off
   calls:
@@ -125,6 +130,7 @@ class Linter extends Context.Service<
 | `source`            | `string \| Record<string, unknown>` | (required)  | The document. A string whose first non-whitespace character is `{` is parsed as JSON. Any other string is parsed as YAML. An object is linted as-is.         |
 | `options.sourceUrl` | `string`                            | `undefined` | The document's URI (for example `file:///abs/openapi.yaml` or `https://…/openapi.yaml`). Spectral uses it to identify the document when it resolves `$ref`s. |
 | `options.silent`    | `boolean`                           | `false`     | Suppresses warning output. Errors are always printed.                                                                                                        |
+| `options.strict`    | `boolean`                           | `false`     | Keeps Spectral's original `spectral:oas` severities and fails on YAML/JSON syntax errors. See [Strict mode](#strict-mode).                                   |
 
 **Returns:** `Effect<void, LintError>`. The effect succeeds with `undefined` when no
 blocking diagnostics are found, even if the linter printed warnings.
@@ -229,7 +235,22 @@ listed above.
 `operation-success-response`, `oas3-unused-component`, `duplicated-entry-in-enum`,
 `path-params`, and the other recommended `spectral:oas` rules.
 
-You cannot change the rules. The package does not support a `.spectral.yaml` file,
+### Strict mode
+
+Pass `strict: true` to turn off the lenient overrides:
+
+- Every `spectral:oas` rule keeps its original severity. Rules that default to `error`
+  (`path-params`, `array-items`, `no-$ref-siblings`, and the others listed above) fail
+  the run.
+- `parser` diagnostics (YAML or JSON syntax errors, such as duplicate keys) fail the run.
+- `oas3-schema` stays **off**, and `invalid-ref` diagnostics for `$ref`s inside
+  `examples` are still warnings.
+
+```ts
+yield * linter.lintDocument(spec, { sourceUrl: "file:///openapi.yaml", strict: true });
+```
+
+Apart from `strict`, you cannot change the rules. The package does not support a `.spectral.yaml` file,
 custom rulesets, or per-rule overrides.
 
 ## Supported OpenAPI versions
@@ -244,8 +265,8 @@ custom rulesets, or per-rule overrides.
 - **The linter does not validate the document's structure.** Because `oas3-schema` is
   off, a document with no `paths` or a wrongly typed `info` still passes. Spectral only
   prints warnings for those problems.
-- **YAML syntax errors do not fail.** They appear only as `⚠` warnings. If you need
-  strict syntax checking, parse the document yourself first and pass the object in.
+- **YAML syntax errors do not fail by default.** They appear only as `⚠` warnings.
+  Pass `strict: true` to make them fail the run.
 - **JSON detection relies on the first character.** A string is treated as JSON only
   if its first non-whitespace character is `{`. Every other string is parsed as YAML.
   JSON is a subset of YAML, so most JSON still lints correctly through the YAML path.
@@ -270,19 +291,22 @@ custom rulesets, or per-rule overrides.
 - Exports: `Linter` (an Effect `Context.Service` with `Linter.layer`) and `LintError`
   (an Effect `Schema.TaggedError`, `_tag: "LintError"`). There are no other exports.
 - Call pattern:
-  `Linter.use((l) => l.lintDocument(source, { sourceUrl?, silent? })).pipe(Effect.provide(Linter.layer))`.
+  `Linter.use((l) => l.lintDocument(source, { sourceUrl?, silent?, strict? })).pipe(Effect.provide(Linter.layer))`.
 - `source` can be a JSON string, a YAML string, or a plain object. The call returns
   `Effect<void, LintError>`.
 - Inputs that are not OpenAPI 3.x fail with diagnostic code `unsupported-format`.
 - The ruleset is `spectral:oas` (recommended) with `oas3-schema` off. Error-level oas
   rules are downgraded to warnings, except `operation-operationId-unique`.
   `openapi-tags-uniqueness` and `invalid-ref` also fail. Parser errors only warn.
-- The rules are not configurable.
+- `strict: true` keeps Spectral's original `oas` severities and makes parser
+  (syntax) diagnostics fail. `oas3-schema` stays off in both modes. Nothing else is
+  configurable.
 - Output goes through Effect `Console` (`error` for blocking diagnostics, `warn`
   otherwise). Color is used only on a TTY without `NO_COLOR`.
 - Requirements: ESM only, ships TypeScript source (`./src/index.ts`), and needs
   `effect@4.0.0`.
-- The CLI equivalent is `openapi lint <file-or-url>` from `@shipworthy/openapi-cli`.
+- The CLI equivalent is `openapi lint [--strict] <file-or-url>` from
+  `@shipworthy/openapi-cli`.
 
 ## License
 

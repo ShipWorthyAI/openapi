@@ -1,10 +1,37 @@
 {
   "name": "@shipworthy/openapi-react-query",
   "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-react-query"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "react-native": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "react-native": "./dist/index.js",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
   },
   "dependencies": {
     "@shipworthy/openapi-fetch": "workspace:*"
@@ -14,7 +41,8 @@
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
-    "react": "catalog:"
+    "react": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/react-query": "catalog:",

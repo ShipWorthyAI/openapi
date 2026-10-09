@@ -2,23 +2,53 @@
   "name": "@shipworthy/openapi-generator",
   "version": "0.0.1",
   "description": "Load, resolve, and parse an OpenAPI document, then run one generator plugin.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-generator"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
   },
   "dependencies": {
     "@shipworthy/openapi-parser": "workspace:*",
-    "@shipworthy/openapi-transformer": "workspace:*",
-    "effect": "catalog:"
+    "@shipworthy/openapi-transformer": "workspace:*"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "effect": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
   }
 }

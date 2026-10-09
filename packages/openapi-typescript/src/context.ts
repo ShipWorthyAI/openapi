@@ -22,7 +22,6 @@ const PluginOptions = Schema.Struct({
   alphabetize: flag(false),
   arrayLength: flag(false),
   emptyObjectsUnknown: flag(false),
-  cwd: Schema.optionalKey(Schema.Unknown),
   defaultNonNullable: flag(true),
   excludeDeprecated: flag(false),
   transform: hook,
@@ -30,7 +29,6 @@ const PluginOptions = Schema.Struct({
   transformProperty: hook,
   immutable: flag(false),
   silent: flag(false),
-  version: Schema.optionalKey(Schema.Finite),
   exportType: flag(false),
   enum: flag(false),
   enumValues: flag(false),
@@ -57,16 +55,9 @@ export const makeTypegenContext = Effect.fnUntraced(function* (
   model: ParsedService,
   raw: Readonly<Record<string, unknown>>,
 ): Effect.fn.Return<GlobalContext, TypegenError> {
-  const {
-    cwd: _cwd,
-    version: _version,
-    transform,
-    postTransform,
-    transformProperty,
-    ...options
-  } = yield* Schema.decodeEffect(PluginOptions)(raw).pipe(
-    Effect.mapError((cause) => new TypegenError({ message: cause.message })),
-  );
+  const { transform, postTransform, transformProperty, ...options } = yield* Schema.decodeEffect(
+    PluginOptions,
+  )(raw).pipe(Effect.mapError((cause) => new TypegenError({ message: cause.message })));
 
   return {
     ...options,

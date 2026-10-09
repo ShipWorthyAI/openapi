@@ -12,24 +12,25 @@ based on. `@shipworthy/openapi-tanstack-query` uses these types for its generate
 ## Installation
 
 ```sh
-npm install -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7
-pnpm add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7
-yarn add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7
-bun add -d @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7
+npm install -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
+pnpm add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
+yarn add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
+bun add -d @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
 ```
 
 Install `@shipworthy/openapi-cli` only if you use the CLI. If you call the plugin from code, also
-install `effect@4.0.0` and `@shipworthy/openapi-transformer`.
+install `@shipworthy/openapi-transformer`.
 
 Requirements:
 
-| Requirement     | Detail                                                                                                                                                |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peer dependency | `typescript` `^7.0.0`. The generator builds its AST with the `typescript/unstable` API that ships with TypeScript 7.                                  |
-| Module format   | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                            |
-| Entry points    | `exports` points at TypeScript source files (`./src/index.ts`, `./src/compiler.ts`). Use Bun or another runtime or bundler that can load `.ts` files. |
-| CLI runtime     | The `openapi` binary from `@shipworthy/openapi-cli` runs on Bun (`#!/usr/bin/env bun`).                                                               |
-| Bundled deps    | `effect` 4.0.0, `oxfmt` ^0.71.0 (used by `formatTypeScript`).                                                                                         |
+| Requirement       | Detail                                                                                                                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Peer dependencies | `typescript` `^7.0.0`: the generator builds its AST with the `typescript/unstable` API that ships with TypeScript 7. `effect` `^4.0.0`: install it yourself so every package shares one Effect instance. |
+| Runtime           | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed.                                                    |
+| Module format     | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                                                                               |
+| Entry points      | `.` and `./compiler`.                                                                                                                                                                                    |
+| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js (`npx openapi ...`) or Bun (`bunx openapi ...`).                                                                                     |
+| Bundled deps      | `oxfmt` ^0.72.0 (used by `formatTypeScript`).                                                                                                                                                            |
 
 ## Quick start
 
@@ -417,11 +418,7 @@ You can pass these to `typescript.generate(model, options)`, through `pluginOpti
 | `postTransform`               | function | none    | `(type: ts.TypeNode, options: TransformNodeOptions) => ts.TypeNode \| undefined`. Modifies each generated schema type.                                                                     |
 | `transformProperty`           | function | none    | `(property: ts.PropertySignature, schemaObject, options: TransformNodeOptions) => ts.PropertySignature \| undefined`. Modifies each object property signature.                             |
 
-`OpenAPITSOptions` also declares `cwd` and `version`. The plugin accepts them (`version` must be
-a finite number) but ignores them. To load relative files, pass `cwd` to the generator instead.
-
-The source comment on `OpenAPITSOptions.defaultNonNullable` does not give a default, but the
-actual default is `true`. That is true for both the plugin and the CLI.
+To load relative files, pass `cwd` to `generate` from `@shipworthy/openapi-generator`.
 
 ### Hook example
 
@@ -486,7 +483,7 @@ const program = generate({
 const source = await formatTypeScript(await Effect.runPromise(program));
 ```
 
-This example also needs `@effect/platform-node@4.0.0` (or `@effect/platform-bun`) and
+This example also needs `@effect/platform-node` (or `@effect/platform-bun` on Bun) and
 `@shipworthy/openapi-generator`. `generate` needs `FileSystem`, `Path`, and `HttpClient` services. It fails with `ResolveError`
 (load, bundle, or validation), `TransformError` (decoding, or any plugin failure including
 `TypegenError`), `MissingPlugin`, or `InvalidPlugin`.
@@ -529,7 +526,6 @@ This example also needs `@effect/platform-node@4.0.0` (or `@effect/platform-bun`
   first.
 - `./compiler` is a subset of the compiler API built on `typescript/unstable`. Its behavior can
   change along with TypeScript 7's unstable API.
-- `cwd` and `version` have no effect.
 - Errors from hooks are converted to `TypegenError`. The original stack trace is not kept in the
   error, only the message.
 
@@ -546,8 +542,9 @@ This example also needs `@effect/platform-node@4.0.0` (or `@effect/platform-bun`
 
 ## Key facts (for AI agents)
 
-- Package: `@shipworthy/openapi-typescript`. ESM only. Peer dependency `typescript@^7`. Exports
-  `.` and `./compiler`, and both point to `.ts` source.
+- Package: `@shipworthy/openapi-typescript`. ESM only, compiled JavaScript with `.d.ts` in
+  `dist/`. Node.js `>=22.19.0` or Bun. Peer dependencies `typescript@^7` and `effect@^4`. Exports
+  `.` and `./compiler`.
 - Main export: `typescript`, a `Generator` with `id: "typescript"` and
   `generate(model: ParsedService, options) => Effect<ts.Node[], TypegenError>`.
 - Other exports from `.`: `astToString`, `formatTypeScript` (async, oxfmt, width 100),
@@ -556,7 +553,7 @@ This example also needs `@effect/platform-node@4.0.0` (or `@effect/platform-bun`
 - `./compiler` default export `ts`: a subset of `ts.factory`, guards, the printer, and
   `SyntaxKind`. Use it to build nodes inside hooks.
 - CLI: `openapi generate typescript [input] [-o file] [--check] [--<option-kebab>]` from
-  `@shipworthy/openapi-cli` (Bun). The CLI reads stdin when there is no input and writes to
+  `@shipworthy/openapi-cli` (Node.js or Bun). The CLI reads stdin when there is no input and writes to
   stdout when there is no `-o`.
 - Output roots: `paths`, `webhooks`, `components`, `$defs`, and `operations`. Use them as
   `components["schemas"]["X"]` and `operations["id"]["responses"][200]["content"]["application/json"]`.
@@ -564,9 +561,8 @@ This example also needs `@effect/platform-node@4.0.0` (or `@effect/platform-bun`
   are validated, and invalid values fail with `TypegenError`.
 - Raw 3.1 objects: `decode` and then `typescript.generate`. Files, URLs, 3.0 documents, or
   external `$ref`s: `generate` from `@shipworthy/openapi-generator` or the CLI.
-- Do not pass a raw OpenAPI document to `typescript.generate`, and do not rely on `cwd` or
-  `version`.
+- Do not pass a raw OpenAPI document to `typescript.generate`.
 
 ## License
 
-MIT
+MIT. See [LICENSE](./LICENSE).

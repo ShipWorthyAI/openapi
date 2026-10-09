@@ -5,12 +5,7 @@ import { ParsedOperation } from "./operation.js";
 import { ParsedParameter } from "./parameter.js";
 import { ParsedServer } from "./server.js";
 
-/**
- * A path item: the operations under one URL template, webhook, callback expression, or
- * `components.pathItems` entry. Stoplight flattens these away; generators that print per-path
- * types need the path-level parameters and `reference`.
- */
-export const ParsedPathItem = Schema.Struct({
+const parsedPathItemFields = {
   ...node,
   ...shareable,
   summary: optionalString,
@@ -20,6 +15,15 @@ export const ParsedPathItem = Schema.Struct({
   /** In `get`, `put`, `post`, `delete`, `options`, `head`, `patch`, `trace` order. */
   operations: Schema.Array(ParsedOperation),
   servers: Schema.Array(ParsedServer),
-});
+};
 
-export type ParsedPathItem = typeof ParsedPathItem.Type;
+export interface ParsedPathItemSchema extends Schema.Struct<typeof parsedPathItemFields> {}
+
+/**
+ * A path item: the operations under one URL template, webhook, callback expression, or
+ * `components.pathItems` entry. Stoplight flattens these away; generators that print per-path
+ * types need the path-level parameters and `reference`.
+ */
+export const ParsedPathItem: ParsedPathItemSchema = Schema.Struct(parsedPathItemFields);
+
+export interface ParsedPathItem extends Schema.Schema.Type<ParsedPathItemSchema> {}

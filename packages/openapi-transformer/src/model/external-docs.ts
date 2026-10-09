@@ -2,10 +2,14 @@ import { Schema } from "effect";
 import { ParsedExtensions } from "./extensions.js";
 import { optionalString } from "./optional.js";
 
-export const ParsedExternalDocs = Schema.Struct({
+const parsedExternalDocsFields = {
   url: Schema.String,
   description: optionalString,
   extensions: ParsedExtensions,
-});
+};
 
-export type ParsedExternalDocs = typeof ParsedExternalDocs.Type;
+export interface ParsedExternalDocsSchema extends Schema.Struct<typeof parsedExternalDocsFields> {}
+
+export const ParsedExternalDocs: ParsedExternalDocsSchema = Schema.Struct(parsedExternalDocsFields);
+
+export interface ParsedExternalDocs extends Schema.Schema.Type<ParsedExternalDocsSchema> {}

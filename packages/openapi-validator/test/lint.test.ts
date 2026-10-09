@@ -24,6 +24,27 @@ paths:
           description: ok
 `;
 
+const missingPathParam = `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /pets/{id}:
+    get:
+      operationId: getPet
+      responses:
+        "200":
+          description: ok
+`;
+
+const malformedYaml = `openapi: 3.1.0
+info:
+  title: Test
+  title: Duplicate
+  version: 1.0.0
+paths: {}
+`;
+
 layer(Layer.mergeAll(Linter.layer, TestConsole.layer))("Linter", (it) => {
   it.effect("rejects input that is not an OpenAPI 3 document", () =>
     Effect.gen(function* () {
@@ -131,6 +152,41 @@ paths: {}
 
       assert.isTrue(rendered.includes("#/components/schemas/NonExistingSchema"));
       assert.isTrue(rendered.includes("#/components/schemas/AnotherSchema"));
+    }),
+  );
+
+  it.effect("warns on missing path params unless strict", () =>
+    Effect.gen(function* () {
+      const linter = yield* Linter;
+
+      yield* linter.lintDocument(missingPathParam, { silent: true });
+
+      const error = yield* Effect.flip(linter.lintDocument(missingPathParam, { strict: true }));
+
+      assert.isTrue(error.diagnostics.some((diagnostic) => diagnostic.code === "path-params"));
+    }),
+  );
+
+  it.effect("fails on YAML syntax errors only when strict", () =>
+    Effect.gen(function* () {
+      const linter = yield* Linter;
+
+      yield* linter.lintDocument(malformedYaml, { silent: true });
+
+      const error = yield* Effect.flip(linter.lintDocument(malformedYaml, { strict: true }));
+
+      assert.isTrue(error.diagnostics.some((diagnostic) => diagnostic.code === "parser"));
+    }),
+  );
+
+  it.effect("keeps oas3-schema off when strict", () =>
+    Effect.gen(function* () {
+      const linter = yield* Linter;
+
+      yield* linter.lintDocument(
+        { openapi: "3.1.0", info: { title: "Test", version: "1" } },
+        { silent: true, strict: true },
+      );
     }),
   );
 });

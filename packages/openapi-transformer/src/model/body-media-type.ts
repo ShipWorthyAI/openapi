@@ -5,7 +5,7 @@ import { ParsedMediaType } from "./media-type.js";
 import { optionalBoolean, optionalString } from "./optional.js";
 import { ParamStyle } from "./param-style.js";
 
-export const ParsedEncoding = Schema.Struct({
+const parsedEncodingFields = {
   property: Schema.String,
   mediaType: optionalString,
   style: ParamStyle,
@@ -13,14 +13,25 @@ export const ParsedEncoding = Schema.Struct({
   allowReserved: optionalBoolean,
   headers: Schema.Array(ParsedHeader),
   extensions: ParsedExtensions,
-});
+};
 
-export type ParsedEncoding = typeof ParsedEncoding.Type;
+export interface ParsedEncodingSchema extends Schema.Struct<typeof parsedEncodingFields> {}
 
-/** A media type of a request or response body. Only bodies have encodings. */
-export const ParsedBodyMediaType = Schema.Struct({
+export const ParsedEncoding: ParsedEncodingSchema = Schema.Struct(parsedEncodingFields);
+
+export interface ParsedEncoding extends Schema.Schema.Type<ParsedEncodingSchema> {}
+
+const parsedBodyMediaTypeFields = {
   ...ParsedMediaType.fields,
   encodings: Schema.Array(ParsedEncoding),
-});
+};
 
-export type ParsedBodyMediaType = typeof ParsedBodyMediaType.Type;
+export interface ParsedBodyMediaTypeSchema extends Schema.Struct<
+  typeof parsedBodyMediaTypeFields
+> {}
+
+/** A media type of a request or response body. Only bodies have encodings. */
+export const ParsedBodyMediaType: ParsedBodyMediaTypeSchema =
+  Schema.Struct(parsedBodyMediaTypeFields);
+
+export interface ParsedBodyMediaType extends Schema.Schema.Type<ParsedBodyMediaTypeSchema> {}

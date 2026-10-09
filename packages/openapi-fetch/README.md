@@ -127,9 +127,9 @@ The `init` argument is required when the operation has required parameters or a 
 | `params.path`     | Values for `{placeholders}` in the path.                                                                                                                                                                                                                                     |
 | `params.query`    | Query parameters. `undefined`, `null`, and empty arrays are omitted.                                                                                                                                                                                                         |
 | `params.header`   | Header parameters. They have the highest header precedence.                                                                                                                                                                                                                  |
-| `params.cookie`   | Typed from the schema. The client does **not** serialize it into a `Cookie` header, but it is available to middleware as `params.cookie`.                                                                                                                                    |
+| `params.cookie`   | Cookie parameters. They are serialized into the `Cookie` header (see [Cookies](#cookies)) and are also available to middleware as `params.cookie`.                                                                                                                           |
 | `body`            | Request body, typed from the operation's `requestBody`. Required when the schema marks the body as required.                                                                                                                                                                 |
-| `headers`         | Per-request headers.                                                                                                                                                                                                                                                         |
+| `headers`         | Per-request headers, in any `HeadersOptions` form (see [Headers](#headers)).                                                                                                                                                                                                 |
 | `baseUrl`         | Overrides the client `baseUrl` for this request.                                                                                                                                                                                                                             |
 | `parseAs`         | `"json"` (default), `"text"`, `"blob"`, `"arrayBuffer"`, or `"stream"`. It changes how and whether `data` is parsed. The type of `data` follows it: `"text"` gives `string`, `"stream"` gives `ReadableStream \| null`, and so on. It does not affect how `error` is parsed. |
 | `querySerializer` | A function replaces the serializer. An options object is merged over the client-level options object.                                                                                                                                                                        |
@@ -219,7 +219,7 @@ The order of the hooks and their valid return values:
 
 - **`onRequest`** runs in registration order, client-level first and then per-request `middleware`.
   - Return a `Request` to replace the request.
-  - Return a `Response` to skip `fetch`, the remaining `onRequest` hooks, and **all** `onResponse` hooks.
+  - Return a `Response` to skip `fetch`, the remaining `onRequest` hooks, and **all** `onResponse` hooks. The returned `Response` is used as-is: no `onResponse` hook runs for it, including hooks registered before the one that returned it. This matches upstream openapi-fetch.
   - Return `undefined` to leave the request unchanged.
   - Any other truthy value throws `Error("onRequest: must return new Request() or Response() when modifying the request")`.
 - **`onError`** runs in reverse order, and only when `fetch` throws.
@@ -248,7 +248,13 @@ The values in a `HeadersOptions` object follow these rules:
 - Arrays append one value per element.
 - Numbers and booleans are converted to strings.
 
-You can also pass a `Headers` instance.
+Client and per-request `headers` accept every `HeadersInit` form as well as the object form above:
+
+- A plain object, using the rules above.
+- A `Headers` instance.
+- An array of `[name, value]` tuples. Repeated names are combined as `Headers` would combine them, and the result overrides lower-precedence values for those names.
+
+`null` removal only applies to the plain object form.
 
 ```ts
 const client = createClient<paths>({
@@ -258,6 +264,9 @@ const client = createClient<paths>({
 
 // Override one client header and remove another for a single request
 await client.GET("/pets", { headers: { "X-Client": "cli", "Accept-Language": null } });
+
+// Tuple arrays and Headers instances work at either level
+await client.GET("/pets", { headers: [["X-Request-Id", "123"]] });
 ```
 
 #### `mergeHeaders(...headers)`
@@ -271,6 +280,27 @@ Merges the arguments left to right using the rules above. Later arguments win.
 ```ts
 mergeHeaders({ A: "1", B: "2" }, { B: null, C: ["x", "y"] }); // Headers { a: "1", c: "x, y" }
 ```
+
+### Cookies
+
+`params.cookie` is serialized into a `Cookie` header with the OpenAPI default for cookies (`style: form`, `explode: true`):
+
+- Primitives become `name=value`. Values are URI-encoded with `encodeURIComponent`.
+- Arrays repeat the name: `{ tags: ["a", "b"] }` becomes `tags=a; tags=b`.
+- Objects emit one pair per key: `{ prefs: { theme: "dark" } }` becomes `theme=dark`.
+- `undefined` and `null` values are skipped. If nothing remains, no `Cookie` header is added.
+
+Pairs are joined with `; ` and appended after any `Cookie` header already set through client `headers`, per-request `headers`, or `params.header`.
+
+```ts
+await client.GET("/session", {
+  headers: { Cookie: "theme=dark" },
+  params: { cookie: { session: "abc 123" } },
+});
+// Cookie: theme=dark; session=abc%20123
+```
+
+Browsers treat `Cookie` as a forbidden request header and drop it from `fetch`. In a browser, rely on `credentials: "include"` and the browser's cookie jar instead. Server runtimes such as Node.js and Bun send the header.
 
 ### Request bodies
 
@@ -495,14 +525,15 @@ Without the flag, the types are unchanged.
 
 ## Supported OpenAPI versions
 
-`openapi-fetch` works with whatever `paths` type it is given. With the `@shipworthy` toolchain, OpenAPI 3.0 documents are upgraded to 3.1 before types are generated, so both 3.0 and 3.1 schemas work. Path, query, and header parameters, request bodies of any media type, and responses keyed by status code, `"2XX"`/`"4XX"`/`"5XX"`, or `default` are all reflected in the types.
+`openapi-fetch` works with whatever `paths` type it is given. With the `@shipworthy` toolchain, OpenAPI 3.0 documents are upgraded to 3.1 before types are generated, so both 3.0 and 3.1 schemas work. Path, query, header, and cookie parameters, request bodies of any media type, and responses keyed by status code, `"2XX"`/`"4XX"`/`"5XX"`, or `default` are all reflected in the types.
 
 ## Limitations and caveats
 
 - **No runtime validation.** Response data is cast to the generated type, not checked. To validate, use a runtime validator such as `@shipworthy/openapi-zod`.
 - **HTTP errors do not throw.** Always check `error` (or `response.ok`).
 - **Only the first level of query values.** Nested arrays or objects inside query values throw unless you provide your own `querySerializer`.
-- **Cookie parameters are not sent.** Set cookies through `credentials` or a middleware.
+- **Cookie parameters are dropped in browsers.** The `Cookie` header is forbidden there, so use `credentials` instead (see [Cookies](#cookies)).
+- **An `onRequest` hook that returns a `Response` skips every `onResponse` hook.** This matches upstream openapi-fetch.
 - **`parseAs` affects only `data`.** Error bodies are always read as text, with JSON parsing attempted.
 - **Avoid empty-body truthiness checks.** `data` can be `undefined` on a successful empty response (for example 204). Use `response.status` to tell the cases apart.
 - **Call methods with the path template, not a filled-in URL.** Write `client.GET("/pets/{petId}", { params: { path: { petId } } })`, not ``client.GET(`/pets/${id}`)``.
@@ -521,18 +552,19 @@ Without the flag, the types are unchanged.
 
 - Import: `import createClient from "@shipworthy/openapi-fetch"`, a **default** export. ESM only, with no dependencies.
 - Typical setup: `createClient<paths>({ baseUrl })`, where `paths` comes from `openapi generate typescript <schema> -o schema.ts`.
-- Call signature: `client.GET("/template/{param}", { params: { path, query, header }, body, headers, parseAs, signal })`. Methods are uppercase: `GET PUT POST DELETE OPTIONS HEAD PATCH TRACE`. `client.request("get", path, init)` is also available.
+- Call signature: `client.GET("/template/{param}", { params: { path, query, header, cookie }, body, headers, parseAs, signal })`. Methods are uppercase: `GET PUT POST DELETE OPTIONS HEAD PATCH TRACE`. `client.request("get", path, init)` is also available.
 - Result: `{ data, error, response }`. The promise does not reject on 4XX/5XX. It rejects on network errors, invalid JSON in a successful response that has a `Content-Length`, and misbehaving middleware.
 - Default serialization:
   - Body is JSON with `Content-Type: application/json`.
   - `FormData` passes through.
   - `application/x-www-form-urlencoded` produces `URLSearchParams`.
   - Query arrays repeat the key (`a=1&a=2`), and query objects use `deepObject` (`o[x]=1`).
-- Header precedence: client `headers` < request `headers` < `params.header`. `null` deletes a header.
+- Header precedence: client `headers` < request `headers` < `params.header`. `null` deletes a header. `headers` accepts a plain object, a `Headers` instance, or `[name, value]` tuples.
+- `params.cookie` is sent as a `Cookie` header (form/explode, URI-encoded), appended to any existing `Cookie` header.
 - Middleware: `client.use({ onRequest, onResponse, onError })`. `onRequest` runs in order; `onResponse` and `onError` run in reverse.
 - Path-based alternative: `createPathBasedClient<paths>(opts)["/pets/{id}"].GET(init)`.
 - Response data is not validated at runtime.
 
 ## License
 
-MIT
+MIT. See [LICENSE](./LICENSE).
