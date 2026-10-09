@@ -12,6 +12,8 @@
     "test": {
       "dependsOn": ["transit"]
     },
+    "generate:schemas": {},
+    "check:schemas": {},
     "//#quality": {
       "dependsOn": ["//#lint", "//#format"]
     },

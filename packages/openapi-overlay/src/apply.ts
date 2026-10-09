@@ -123,10 +123,22 @@ function remove(nodes: Node[]): void {
   }
 }
 
-function applyAction(document: Schema.MutableJsonObject, action: OverlayAction): void {
+function applyAction(
+  document: Schema.MutableJsonObject,
+  action: OverlayAction,
+  version: string,
+): void {
+  if (version !== "1.0" && version !== "1.1") {
+    throw new TypeError(`Overlay ${version} action behavior is not implemented`);
+  }
+
   const nodes = select(document, action.target);
 
   if (nodes.length === 0) return;
+
+  if (version === "1.0" && nodes.some((node) => kind(node.value) === "primitive")) {
+    throw new TypeError("Overlay 1.0 targets must select objects or arrays, not primitives");
+  }
 
   if (action.remove === true) {
     remove(nodes);
@@ -134,14 +146,15 @@ function applyAction(document: Schema.MutableJsonObject, action: OverlayAction):
   }
 
   const hasUpdate = Object.hasOwn(action, "update");
+  const copy = version === "1.1" && typeof action.copy === "string" ? action.copy : undefined;
 
-  if (hasUpdate && action.copy !== undefined) {
+  if (hasUpdate && copy !== undefined) {
     throw new TypeError("An action cannot contain both update and copy");
   }
 
-  if (!hasUpdate && action.copy === undefined) return;
+  if (!hasUpdate && copy === undefined) return;
 
-  if (new Set(nodes.map((node) => kind(node.value))).size > 1) {
+  if (version === "1.1" && new Set(nodes.map((node) => kind(node.value))).size > 1) {
     throw new TypeError(
       "All selected nodes must be objects, arrays, or primitives of the same category",
     );
@@ -149,14 +162,19 @@ function applyAction(document: Schema.MutableJsonObject, action: OverlayAction):
 
   let update = action.update;
 
-  if (action.copy !== undefined) {
-    const sources = select(document, action.copy);
+  if (copy !== undefined) {
+    const sources = select(document, copy);
 
     if (sources.length !== 1) throw new TypeError("copy must select exactly one source node");
     update = clone(sources[0]!.value);
   }
 
   for (const node of uniqueNodes(nodes)) {
+    if (version === "1.0" && Array.isArray(node.value)) {
+      node.value.push(clone(update!));
+      continue;
+    }
+
     const value = merge(node.value, update!, true);
 
     if (Array.isArray(node.parent)) node.parent[Number(node.key)] = value;
@@ -171,7 +189,7 @@ function applyAction(document: Schema.MutableJsonObject, action: OverlayAction):
   }
 }
 
-/** Apply ordered Overlay 1.1 actions to a JSON/YAML document or object without mutating inputs. */
+/** Apply version-specific Overlay actions to a JSON/YAML document or object without mutating inputs. */
 export const applyOverlay = Effect.fn("applyOverlay")(function* (
   document: unknown,
   overlay: unknown,
@@ -193,10 +211,11 @@ export const applyOverlay = Effect.fn("applyOverlay")(function* (
   );
 
   const result = cloneObject(source);
+  const version = parsed.overlay.split(".").slice(0, 2).join(".");
 
   for (const [index, action] of parsed.actions.entries()) {
     yield* Effect.try({
-      try: () => applyAction(result, action),
+      try: () => applyAction(result, action, version),
       catch: (cause) =>
         new OverlayError({
           message: `Overlay action ${index + 1} (${action.target}): ${String(cause)}`,

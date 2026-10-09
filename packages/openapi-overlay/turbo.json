@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "generate:schemas": {
+      "inputs": ["schemas/**", "scripts/generate-schemas.ts", "package.json"],
+      "outputs": ["src/schemas/**"]
+    },
+    "check:schemas": {
+      "dependsOn": ["$TURBO_EXTENDS$", "generate:schemas"]
+    },
+    "transit": {
+      "dependsOn": ["$TURBO_EXTENDS$", "generate:schemas"]
+    },
+    "build": {
+      "dependsOn": ["$TURBO_EXTENDS$", "check:schemas"],
+      "inputs": ["$TURBO_DEFAULT$", "!src/schemas/**"]
+    },
+    "test": {
+      "dependsOn": ["$TURBO_EXTENDS$", "check:schemas"],
+      "inputs": ["$TURBO_DEFAULT$", "!src/schemas/**"]
+    }
+  }
+}

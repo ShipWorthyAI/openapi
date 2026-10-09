@@ -94,6 +94,37 @@ test("requires --overlay and -o", () => {
   expect(() => overlay("openapi.yaml", "--overlay", "overlay.yaml")).toThrow(/output/);
 });
 
+test("dispatches Overlay 1.0 validation and behavior", () => {
+  writeFileSync(
+    join(dir, "overlay.yaml"),
+    `overlay: 1.0.42
+info: { title: Test, version: '1' }
+actions:
+  - target: $.info
+    update: { title: Public Pets }
+`,
+  );
+
+  overlay("openapi.yaml", "--overlay", "overlay.yaml", "-o", "output.json");
+  expect(JSON.parse(readFileSync(join(dir, "output.json"), "utf8")).info.title).toBe("Public Pets");
+
+  writeFileSync(
+    join(dir, "overlay.yaml"),
+    `overlay: 1.0.42
+info: { title: Test, version: '1' }
+actions:
+  - target: $.info.title
+    update: Invalid primitive target
+`,
+  );
+
+  expect(() => overlay("openapi.yaml", "--overlay", "overlay.yaml", "-o", "invalid.json")).toThrow(
+    /1.0 targets must select objects or arrays/,
+  );
+
+  expect(existsSync(join(dir, "invalid.json"))).toBe(false);
+});
+
 test("loads remote YAML overlays and rejects non-success HTTP responses", async () => {
   const server = createServer((request, response) => {
     response.statusCode = request.url === "/overlay.yaml" ? 200 : 404;

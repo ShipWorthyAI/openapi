@@ -1,7 +1,7 @@
 {
   "name": "@shipworthy/overlay",
   "version": "0.0.1",
-  "description": "Apply OpenAPI Overlay 1.1 documents with Effect.",
+  "description": "Apply versioned OpenAPI Overlay documents with Effect.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -13,7 +13,9 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./schemas/1.0": "./src/schemas/1.0.ts",
+    "./schemas/1.1": "./src/schemas/1.1.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -23,14 +25,24 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       },
+      "./schemas/1.0": {
+        "types": "./dist/schemas/1.0.d.ts",
+        "default": "./dist/schemas/1.0.js"
+      },
+      "./schemas/1.1": {
+        "types": "./dist/schemas/1.1.d.ts",
+        "default": "./dist/schemas/1.1.js"
+      },
       "./package.json": "./package.json"
     },
     "access": "public"
   },
   "scripts": {
+    "generate:schemas": "bun scripts/generate-schemas.ts",
+    "check:schemas": "bun scripts/generate-schemas.ts --check",
     "test": "vitest run",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run build && bun run publish-manifest prepack",
+    "prepack": "bun run turbo run build --filter=@shipworthy/overlay && bun run publish-manifest prepack",
     "postpack": "bun run publish-manifest postpack"
   },
   "dependencies": {
@@ -43,6 +55,8 @@
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "effect": "catalog:",
+    "oxfmt": "catalog:",
+    "turbo": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

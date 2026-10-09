@@ -163,7 +163,8 @@ Parent directories are created automatically. An existing output file is overwri
 
 Bundles the OpenAPI document first, resolving external references and upgrading OpenAPI 3.0 to
 3.1. Then applies an [OpenAPI Overlay 1.1](https://github.com/OAI/Overlay-Specification/blob/main/versions/1.1.0.md)
-and writes formatted JSON. Requires no generator packages.
+and writes formatted JSON. Requires no generator packages. Overlay 1.0 and 1.1 are supported;
+the declared `overlay` version selects validation and action behavior.
 
 ```sh
 openapi overlay openapi.yaml --overlay overlay.yaml -o bundled.openapi.json
@@ -413,7 +414,7 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 
 - Binary: `openapi` (compiled `dist/bin.js`). Runs on **Node.js `>=22.19.0`** or **Bun** (`bunx --bun @shipworthy/openapi-cli`). ESM only. OpenAPI 3.0 and 3.1 input (3.0 is upgraded), JSON or YAML, as a local path or URL. Swagger 2.0 is rejected.
 - Commands:
-  - `openapi overlay <input> --overlay <overlay> -o <output>`: bundles and upgrades first, then applies Overlay 1.1 actions and writes JSON.
+  - `openapi overlay <input> --overlay <overlay> -o <output>`: bundles and upgrades first, then applies actions using the declared Overlay 1.0 or 1.1 version and writes JSON.
   - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
   - `openapi generate typescript [<input>] [-o file] [--check] [type flags]`: reads stdin when `<input>` is omitted and writes stdout when `-o` is omitted.
   - `openapi generate zod <input> -o <file> [--force]`: also writes `types.ts` in the same directory.
