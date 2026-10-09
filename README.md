@@ -1,75 +1,75 @@
 # @shipworthy/openapi
 
-Libraries for parsing OpenAPI documents, generating TypeScript types and runtime validators, and building typed API clients.
+OpenAPI tooling for TypeScript: bundle and lint API documents, generate types and runtime
+validators, and build typed Fetch and TanStack Query clients.
 
-The generator, fetch client, and supporting helpers are based on [openapi-typescript](https://github.com/openapi-ts/openapi-typescript).
+Accepts OpenAPI 3.0 and 3.1 documents in JSON or YAML, including external `$ref`s. The generation
+pipeline bundles references and upgrades OpenAPI 3.0 documents to 3.1 before generating code.
 
-## Parsing and transformation
+## Quick start
 
-The generation pipeline has three stages:
-
-1. **Parse:** `@shipworthy/openapi-parser` bundles and validates an OpenAPI document, producing `ParsedOpenApi`. OpenAPI 3.1 objects are defined with Effect v4 schemas, and their TypeScript types are inferred from those schemas.
-2. **Transform:** `@shipworthy/openapi-transformer` converts the prepared document into `ParsedService`, the shared HTTP meta model.
-3. **Generate:** Generator plugins consume `ParsedService` to produce TypeScript types, runtime validators, and other output.
-
-## Parse JSON or YAML
-
-`ParsedOpenApiFromString({ sourceUrl })` creates a codec that parses JSON or YAML, bundles external references, upgrades OpenAPI 3.0 to 3.1, and validates the result. Compose it with `ParsedServiceFromParsedOpenApi` to obtain the HTTP meta model:
-
-```ts
-import { ParsedOpenApiFromString } from "@shipworthy/openapi-parser";
-import { ParsedServiceFromParsedOpenApi } from "@shipworthy/openapi-transformer";
-import { Schema } from "effect";
-
-const serviceFromString = ParsedOpenApiFromString({
-  sourceUrl: "https://example.com/openapi.yaml",
-}).pipe(Schema.decodeTo(ParsedServiceFromParsedOpenApi));
-
-const parseService = Schema.decodeEffect(serviceFromString);
-```
-
-Set `sourceUrl` to the root document's URL or absolute file path so relative references resolve correctly. `parseService` returns an Effect; provide Effect's filesystem and HTTP client services when running it.
-
-Use `bundleDocument(source, { cwd })` to load and prepare a file URL, HTTP URL, JSON/YAML string, stream, Buffer, or existing document object. Loading is internal, and object input is processed without serialization. Provide Effect's path, filesystem, and HTTP client services when running the returned Effect.
-
-The package root exports only `ParsedOpenApiFromString` and `bundleDocument` at runtime, plus their supporting types. Individual OpenAPI schemas are available from `@shipworthy/openapi-parser/schemas/3.1`.
-
-## Validation and encoding
-
-Validation and transformation failures are reported as `SchemaError`. The OpenAPI schemas validate document structure. Embedded JSON Schemas are checked only for an object or boolean shape; their keywords are not validated.
-
-The parser preserves the distinction between omitted fields and explicit empty arrays so the transformer can apply inheritance correctly.
-
-- **`ParsedOpenApiFromString`:** Encoding produces the prepared document as JSON. It does not restore the original file layout or YAML formatting.
-- **`ParsedServiceFromParsedOpenApi`:** Encoding is forbidden; conversion to the HTTP meta model is one-way.
-
-## Examples
-
-Run these commands from the repository root to process all packages in `examples` with Turborepo:
+Install the CLI, the TypeScript generator, and its peer dependencies in your project:
 
 ```sh
-bun run examples:bundle
-bun run examples:generate
+npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 typescript@^7
 ```
 
-Each example's source document is `openapi/v1/openapi.yaml`, with relative references to individual operation and component YAML files. Bundling writes `openapi/v1/bundled.openapi.json`. Generation updates its SDK files in `src/generated`. Both tasks run without caching so they use the current contracts and generator code.
+Lint your API document and generate TypeScript types:
 
-## Releasing
+```sh
+npx @shipworthy/openapi-cli lint ./openapi.yaml
+npx @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/api.ts
+```
 
-Versions and changelogs are managed with [Changesets](https://changesets.dev).
+The generated file exports `paths`, `components`, and `operations` types. Use them directly in
+your application, or with [`@shipworthy/openapi-fetch`](./packages/openapi-fetch/README.md) for
+typed HTTP requests.
 
-1. Run `bun run changeset` in your PR to describe the change and choose a bump for each affected package.
-2. On merge to `main`, the release workflow opens a "chore: version packages" PR that applies pending changesets (`bun run version-packages`).
-3. Merging that PR runs `bun run release`, which publishes every public package whose version is not yet on npm with `bun publish` (so `workspace:` and `catalog:` dependencies are resolved) and creates git tags.
+With Bun, use `bun add -d` to install the same packages and `bunx --bun @shipworthy/openapi-cli`
+to run the commands.
 
-The workflow requires an `NPM_TOKEN` repository secret with publish access to the `@shipworthy` scope.
+The CLI requires Node.js **22.19.0 or later**, or Bun. Packages ship ESM JavaScript and TypeScript
+declarations. Install only the generators you need; see the
+[CLI documentation](./packages/openapi-cli/README.md) for bundling, other generators, and their
+dependencies.
 
-### Package builds
+## Packages
 
-In the workspace, each package's `exports` (and `bin`/`imports`) point at TypeScript in `src`, so tests and tools run without a build. Published packages contain compiled ESM and `.d.ts` files in `dist`:
+Each package's README includes installation instructions, examples, and API documentation.
 
-- `bun run build` runs `tsc -p tsconfig.build.json` in every package (via Turborepo).
-- `prepack` builds the package, then the private `@shipworthy/publisher` command, `publish-manifest prepack`, promotes the `dist` entries in `publishConfig` to the top level of `package.json`. `postpack` restores the development manifest. Bun ignores most `publishConfig` fields, so this swap is what makes `bun pm pack` and `bun publish` emit the right `exports`.
+### Code generation and clients
+
+| Package                                                                               | Use it to                                                                       |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`@shipworthy/openapi-cli`](./packages/openapi-cli/README.md)                         | Bundle, lint, and generate code from the command line.                          |
+| [`@shipworthy/openapi-typescript`](./packages/openapi-typescript/README.md)           | Generate TypeScript types for paths, operations, and components.                |
+| [`@shipworthy/openapi-fetch`](./packages/openapi-fetch/README.md)                     | Make typed HTTP requests using generated `paths` types.                         |
+| [`@shipworthy/openapi-react-query`](./packages/openapi-react-query/README.md)         | Use path-based React hooks with an API client provider.                         |
+| [`@shipworthy/openapi-tanstack-query`](./packages/openapi-tanstack-query/README.md)   | Generate operation-based query options, keys, and mutations for TanStack Query. |
+| [`@shipworthy/openapi-zod`](./packages/openapi-zod/README.md)                         | Generate Zod 4 runtime validators.                                              |
+| [`@shipworthy/openapi-standard-schema`](./packages/openapi-standard-schema/README.md) | Generate Standard Schema validators backed by Effect Schema.                    |
+
+### Programmatic tooling
+
+The parsing and generation APIs use Effect 4. The pipeline parses an OpenAPI document, transforms
+it into a shared `ParsedService` model, then passes that model to a generator plugin.
+
+| Package                                                                       | Use it to                                                               |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [`@shipworthy/openapi-parser`](./packages/openapi-parser/README.md)           | Load, bundle, upgrade, and validate OpenAPI documents.                  |
+| [`@shipworthy/openapi-transformer`](./packages/openapi-transformer/README.md) | Convert a bundled OpenAPI document into the `ParsedService` HTTP model. |
+| [`@shipworthy/openapi-generator`](./packages/openapi-generator/README.md)     | Run generator plugins from code or write your own.                      |
+| [`@shipworthy/openapi-validator`](./packages/openapi-validator/README.md)     | Lint API documents with Spectral.                                       |
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for local setup, checks, example generation, and the
+release workflow.
+
+## Acknowledgments
+
+The TypeScript generator, Fetch client, and supporting helpers are based on
+[openapi-typescript](https://github.com/openapi-ts/openapi-typescript).
 
 ## License
 
