@@ -7,6 +7,7 @@
       "devDependencies": {
         "@changesets/cli": "3.0.3",
         "@effect/tsgo": "catalog:",
+        "@shipworthy/oxlint-plugin": "workspace:*",
         "@shipworthy/publisher": "workspace:*",
         "@stylistic/eslint-plugin": "5.10.0",
         "effect": "catalog:",
@@ -336,6 +337,21 @@
         "zod": "4.6.5",
       },
     },
+    "packages/oxlint-plugin": {
+      "name": "@shipworthy/oxlint-plugin",
+      "version": "0.0.0",
+      "dependencies": {
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@effect/platform-node": "catalog:",
+        "@effect/vitest": "catalog:",
+        "@oxlint/plugins": "1.87.0",
+        "@types/node": "catalog:",
+        "oxlint": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "packages/publisher": {
       "name": "@shipworthy/publisher",
       "version": "0.0.0",
@@ -624,6 +640,8 @@
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.87.0", "", { "os": "win32", "cpu": "x64" }, "sha512-k+m/EShyXE29J/r1fjk0HlAzhN5JhIvj044oSJkXTEkCLrWZQgXb/3r4q5LTw/eaKW/4GuMXG2xmiJs3s5rPNw=="],
 
+    "@oxlint/plugins": ["@oxlint/plugins@1.87.0", "", {}, "sha512-OtSZ6NxNkS7bkVy7zk9zGnajz2hVIu0uRPP/dJvJesGRaXtimpA4lpxap7FaIJndG2UIoKhnBU4DxyDQIWv6yg=="],
+
     "@pnpm/deps.graph-sequencer": ["@pnpm/deps.graph-sequencer@1100.0.1", "", {}, "sha512-pOr5+q1fLYKwFN3LAJuGZEnfXDcQ73zqgDHMtGy+K+uIoUqyY+6MeDCWFwfu+4EFuq76I5EPFofoNAI+Bmmq4A=="],
 
     "@redis/bloom": ["@redis/bloom@6.3.0", "", { "peerDependencies": { "@redis/client": "^6.3.0" } }, "sha512-NQ5poYpZr0jv6zazN1cy6JY5kIipKFZ3R9GTL4kOUTX3a9YAfY29U8bsE4lWhVQEM+G4V0BXVC57mubIdDijeA=="],
@@ -717,6 +735,8 @@
     "@shipworthy/openapi-zod": ["@shipworthy/openapi-zod@workspace:packages/openapi-zod"],
 
     "@shipworthy/overlay": ["@shipworthy/overlay@workspace:packages/openapi-overlay"],
+
+    "@shipworthy/oxlint-plugin": ["@shipworthy/oxlint-plugin@workspace:packages/oxlint-plugin"],
 
     "@shipworthy/publisher": ["@shipworthy/publisher@workspace:packages/publisher"],
 

@@ -49,11 +49,12 @@ export const transformExampleList = Effect.fnUntraced(function* (
     });
   }
 
-  for (const [key, entry] of Object.entries(value.examples ?? {})) {
-    examples.push(yield* transformExample(document, key, entry, child(at, "examples", key)));
-  }
+  const namedExamples = yield* Effect.forEach(
+    Object.entries(value.examples ?? {}),
+    ([key, entry]) => transformExample(document, key, entry, child(at, "examples", key)),
+  );
 
-  return examples;
+  return [...examples, ...namedExamples];
 });
 
 export const transformExampleMap = Effect.fnUntraced(function* (

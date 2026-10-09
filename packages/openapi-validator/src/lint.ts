@@ -3,11 +3,12 @@ import { oas3 } from "@stoplight/spectral-formats";
 // spectral-parsers is CommonJS without statically detectable named exports, so Node needs a default import.
 import spectralParsers from "@stoplight/spectral-parsers";
 import { oas } from "@stoplight/spectral-rulesets";
-import { Console, Context, Effect, Layer, Predicate } from "effect";
+import { Array as EffectArray, Config, Console, Context, Effect, Layer, Predicate } from "effect";
 import { LintError } from "./errors.ts";
 
 /** Same TTY and `NO_COLOR` check as `CliOutput.defaultFormatter`. */
-function colorsEnabled(): boolean {
+const colorsEnabled = Effect.gen(function* () {
+  const noColor = yield* Config.String("NO_COLOR").pipe(Config.withDefault(""), Effect.orDie);
   const current = globalThis.process;
 
   if (typeof current !== "object" || current === null) return false;
@@ -16,15 +17,12 @@ function colorsEnabled(): boolean {
 
   if (typeof stdout !== "object" || stdout === null) return false;
 
-  return stdout.isTTY === true && !current.env?.NO_COLOR;
-}
+  return stdout.isTTY === true && !noColor;
+});
 
-function paint(code: string) {
-  return (text: string) => (colorsEnabled() ? `\x1b[${code}m${text}\x1b[0m` : text);
+function paint(code: string, enabled: boolean) {
+  return (text: string) => (enabled ? `\x1b[${code}m${text}\x1b[0m` : text);
 }
-
-const red = paint("31");
-const yellow = paint("33");
 
 function spectralRules(strict: boolean): Record<string, "off" | "warn" | "error"> {
   const rules: Record<string, "off" | "warn" | "error"> = {
@@ -145,30 +143,33 @@ export class Linter extends Context.Service<
           }),
       });
 
-      const failures: Array<{
-        code: string | number;
-        message: string;
-        path: Array<string | number>;
-      }> = [];
+      const useColors = yield* colorsEnabled;
+      const red = paint("31", useColors);
+      const yellow = paint("33", useColors);
 
-      for (const result of results) {
-        const location = result.path.length ? ` at #/${result.path.join("/")}` : "";
-        const message = `${result.message}${location}`;
+      const failures = yield* Effect.forEach(
+        results,
+        Effect.fnUntraced(function* (result) {
+          const location = result.path.length ? ` at #/${result.path.join("/")}` : "";
+          const message = `${result.message}${location}`;
 
-        // Spectral's parser rejects merge tags this repo accepts, and example payloads
-        // use `$ref` as data. Those diagnostics are not document errors unless strict.
-        const blocking =
-          result.severity === 0 &&
-          (isStrict || result.code !== "parser") &&
-          !isExampleRefRead(result);
+          // Spectral's parser rejects merge tags this repo accepts, and example payloads
+          // use `$ref` as data. Those diagnostics are not document errors unless strict.
+          const blocking =
+            result.severity === 0 &&
+            (isStrict || result.code !== "parser") &&
+            !isExampleRefRead(result);
 
-        if (blocking) {
-          failures.push({ code: result.code, message, path: pathSegments(result.path) });
-          yield* Console.error(red(` ✘  ${message}`));
-        } else if (!options.silent) {
-          yield* Console.warn(yellow(` ⚠  ${message}`));
-        }
-      }
+          if (blocking) {
+            yield* Console.error(red(` ✘  ${message}`));
+            return { code: result.code, message, path: pathSegments(result.path) };
+          } else if (!options.silent) {
+            yield* Console.warn(yellow(` ⚠  ${message}`));
+          }
+
+          return undefined;
+        }),
+      ).pipe(Effect.map(EffectArray.filter(Predicate.isNotUndefined)));
 
       if (failures.length > 0) {
         return yield* new LintError({

@@ -485,10 +485,14 @@ const sameSchema = Effect.fnUntraced(function* (
   left: JsonSchema.JsonSchema | undefined,
   right: JsonSchema.JsonSchema,
 ) {
-  return yield* Effect.try({
-    try: () => JSON.stringify(left) === JSON.stringify(right),
-    catch: failure,
-  });
+  const encode = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));
+
+  const [leftJson, rightJson] = yield* Effect.all([
+    left === undefined ? Effect.void : encode(left),
+    encode(right),
+  ]).pipe(Effect.mapError(failure));
+
+  return leftJson === rightJson;
 });
 
 function uniqueAgainst(used: ReadonlySet<string>, name: string): string {

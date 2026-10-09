@@ -45,6 +45,23 @@ bun run typecheck
 bun run build
 ```
 
+## Effect lint rules
+
+Oxlint uses the installed `@effect/tsgo` strict preset, type-aware rules, and TypeScript
+checking. Effect-native rules are errors in package implementation sources. The native fetch
+and React Query clients retain their Promise contracts; the TanStack generator is checked
+separately from its runtime adapter. Generated example SDKs remain excluded. Tests retain
+the strict Effect correctness checks without the native-API restrictions used for implementation.
+
+`shipworthy/prefer-effect-for-each` reports effectful `for...of` loops in inline
+`Effect.gen`, `Effect.fn`, and `Effect.fnUntraced` generators. Replace them with Effect collection
+operators while preserving order and failure behavior. This rule has no automatic fix.
+Its tests run as part of `bun run check`; run just those tests with
+`bun run test --filter=@shipworthy/oxlint-plugin`.
+
+Compatibility boundaries that require a synchronous or native API use a suppression on the
+specific statement with an explanation. Unused suppression directives fail lint.
+
 ## Parsing and generation pipeline
 
 The generation pipeline has three stages:

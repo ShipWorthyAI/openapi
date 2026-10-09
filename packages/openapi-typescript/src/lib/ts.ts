@@ -4,7 +4,7 @@ import type {
   ParsedRef,
   ParsedSchema,
 } from "@shipworthy/openapi-transformer";
-import { Effect, type JsonSchema, Predicate } from "effect";
+import { Effect, type JsonSchema, Predicate, Schema } from "effect";
 import ts, { type LiteralTypeNode, type TypeLiteralNode } from "#compiler";
 import { TypegenError } from "../errors.ts";
 import { parseRef } from "./ref.ts";
@@ -282,7 +282,7 @@ export function refType(
   return Effect.try({
     try: () => oapiRef(path, resolved, options),
     catch: (cause) =>
-      cause instanceof TypegenError ? cause : new TypegenError({ message: String(cause) }),
+      Schema.is(TypegenError)(cause) ? cause : new TypegenError({ message: String(cause) }),
   });
 }
 

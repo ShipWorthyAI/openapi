@@ -25,18 +25,18 @@ const transformDefs = Effect.fnUntraced(function* (
   $defs: ParsedService["$defs"],
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
-  const members: ts.TypeElement[] = [];
 
-  for (const [name, schema] of getEntries($defs, ctx)) {
-    members.push(
-      ts.factory.createPropertySignature(
+  const members = yield* Effect.forEach(
+    getEntries($defs, ctx),
+    Effect.fnUntraced(function* ([name, schema]) {
+      return ts.factory.createPropertySignature(
         /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
         /* name          */ tsPropertyIndex(name),
         /* questionToken */ undefined,
         /* type          */ yield* transformSchema(schema, createRef(["$defs", name])),
-      ),
-    );
-  }
+      );
+    }),
+  );
 
   return ts.factory.createTypeLiteralNode(members);
 });
@@ -69,46 +69,52 @@ export const transformDocument = Effect.fnUntraced(function* (
     ["$defs", transformDefs(model.$defs)],
   ];
 
-  for (const [root, transform] of roots) {
-    const rootT = performance.now();
-    const nodes = [yield* transform].flat();
+  const rootTypes = yield* Effect.forEach(
+    roots,
+    Effect.fnUntraced(function* ([root, transform]) {
+      const rootT = performance.now();
+      const nodes = [yield* transform].flat();
 
-    for (const node of nodes) {
-      if (ts.isTypeLiteralNode(node) && node.members.length) {
-        type.push(
-          ctx.exportType
-            ? ts.factory.createTypeAliasDeclaration(
-                /* modifiers      */ tsModifiers({ export: true }),
-                /* name           */ root,
-                /* typeParameters */ undefined,
-                /* type           */ node,
-              )
-            : ts.factory.createInterfaceDeclaration(
-                /* modifiers       */ tsModifiers({ export: true }),
-                /* name            */ root,
-                /* typeParameters  */ undefined,
-                /* heritageClauses */ undefined,
-                /* members         */ node.members,
-              ),
-        );
+      return yield* Effect.forEach(
+        nodes,
+        Effect.fnUntraced(function* (node) {
+          if (ts.isTypeLiteralNode(node) && node.members.length) {
+            const declaration = ctx.exportType
+              ? ts.factory.createTypeAliasDeclaration(
+                  /* modifiers      */ tsModifiers({ export: true }),
+                  /* name           */ root,
+                  /* typeParameters */ undefined,
+                  /* type           */ node,
+                )
+              : ts.factory.createInterfaceDeclaration(
+                  /* modifiers       */ tsModifiers({ export: true }),
+                  /* name            */ root,
+                  /* typeParameters  */ undefined,
+                  /* heritageClauses */ undefined,
+                  /* members         */ node.members,
+                );
 
-        debug(`${root} done`, "ts", performance.now() - rootT);
-      } else if (ts.isTypeAliasDeclaration(node)) {
-        type.push(node);
-      } else {
-        type.push(
-          ts.factory.createTypeAliasDeclaration(
-            /* modifiers      */ tsModifiers({ export: true }),
-            /* name           */ root,
-            /* typeParameters */ undefined,
-            /* type           */ tsRecord(STRING, NEVER),
-          ),
-        );
+            yield* debug(`${root} done`, "ts", performance.now() - rootT);
+            return declaration;
+          } else if (ts.isTypeAliasDeclaration(node)) {
+            return node;
+          } else {
+            const declaration = ts.factory.createTypeAliasDeclaration(
+              /* modifiers      */ tsModifiers({ export: true }),
+              /* name           */ root,
+              /* typeParameters */ undefined,
+              /* type           */ tsRecord(STRING, NEVER),
+            );
 
-        debug(`${root} done (skipped)`, "ts", 0);
-      }
-    }
-  }
+            yield* debug(`${root} done (skipped)`, "ts", 0);
+            return declaration;
+          }
+        }),
+      );
+    }),
+  );
+
+  type.push(...rootTypes.flat());
 
   type.push(...ctx.injectFooter);
 

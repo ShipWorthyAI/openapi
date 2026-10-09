@@ -23,9 +23,11 @@ export const writeGenerated = Effect.fn("writeGenerated")(function* (
   const output = path.resolve(directory, name);
   yield* fs.makeDirectory(output, { recursive: true });
 
-  for (const [file, contents] of Object.entries(files)) {
-    yield* fs.writeFileString(path.join(output, file), contents);
-  }
+  yield* Effect.forEach(
+    Object.entries(files),
+    ([file, contents]) => fs.writeFileString(path.join(output, file), contents),
+    { discard: true },
+  );
 
   const written = Object.keys(files).map((file) => `${output}/${file}`);
   yield* Console.log(`Generated ${written.join(", ")}`);

@@ -1,6 +1,6 @@
-import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { Effect } from "effect";
+import { NodePath } from "@effect/platform-node";
+import { fileURLToPath } from "node:url";
+import { Effect, Path } from "effect";
 import { ResolverFailure, nodeErrorCode } from "./errors.ts";
 
 const unsafeDomainSuffixes = [
@@ -54,11 +54,25 @@ export function httpOrigin(value: string): string | undefined {
   }
 }
 
-export function normalizeRef(input: string | undefined): string {
-  if (!input || input === "/") return pathToFileURL(`${process.cwd()}${path.sep}`).href;
-  if (/^[a-z][a-z0-9+.-]*:/i.test(input)) return input;
-  return pathToFileURL(path.resolve(input)).href;
-}
+export const normalizeRef = Effect.fnUntraced(function* (input: string | undefined) {
+  if (input && /^[a-z][a-z0-9+.-]*:/i.test(input)) return input;
+  const path = yield* Path.Path;
+
+  const absolute =
+    !input || input === "/" ? `${path.resolve(".")}${path.sep}` : path.resolve(input);
+
+  return yield* path.toFileUrl(absolute).pipe(
+    Effect.map((url) => url.href),
+    Effect.mapError(
+      (cause) =>
+        new ResolverFailure({
+          message: cause.message,
+          source: input ?? "",
+          cause,
+        }),
+    ),
+  );
+}, Effect.provide(NodePath.layer));
 
 export function resolveAgainst(from: string, to: string): string {
   if (/^[a-z][a-z0-9+.-]*:/i.test(to)) return to;
@@ -120,24 +134,22 @@ export const resolveUrlSafety = Effect.fnUntraced(function* (href: string) {
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return { unsafe: false };
 
-  const addresses = yield* Effect.tryPromise({
-    try: async () => {
-      const dns = (await import("node:dns/promises")) as {
-        lookup(
-          hostname: string,
-          options: { all: true; verbatim: true },
-        ): Promise<ResolvedUrlAddress[]>;
-      };
+  const onError = (cause: unknown) =>
+    new ResolverFailure({
+      message: `Error downloading ${href}: ${cause instanceof Error ? cause.message : String(cause)}`,
+      source: href,
+      cause,
+      ...ioCode(cause),
+    });
 
-      return dns.lookup(normalizeHostname(parsed.hostname), { all: true, verbatim: true });
-    },
-    catch: (cause) =>
-      new ResolverFailure({
-        message: `Error downloading ${href}: ${cause instanceof Error ? cause.message : String(cause)}`,
-        source: href,
-        cause,
-        ...ioCode(cause),
-      }),
+  const dns = yield* Effect.tryPromise({
+    try: () => import("node:dns/promises"),
+    catch: onError,
+  });
+
+  const addresses = yield* Effect.tryPromise({
+    try: () => dns.lookup(normalizeHostname(parsed.hostname), { all: true, verbatim: true }),
+    catch: onError,
   });
 
   if (addresses.length === 0 || addresses.some(({ address }) => isUnsafeHostname(address))) {

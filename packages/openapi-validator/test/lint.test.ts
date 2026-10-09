@@ -50,11 +50,15 @@ layer(Layer.mergeAll(Linter.layer, TestConsole.layer))("Linter", (it) => {
     Effect.gen(function* () {
       const linter = yield* Linter;
 
-      for (const source of ["[]", "swagger: '2.0'\n", {}]) {
-        const error = yield* Effect.flip(linter.lintDocument(source));
-        assert.equal(error._tag, "LintError");
-        assert.equal(error.diagnostics[0]?.code, "unsupported-format");
-      }
+      yield* Effect.forEach(
+        ["[]", "swagger: '2.0'\n", {}],
+        Effect.fnUntraced(function* (source) {
+          const error = yield* Effect.flip(linter.lintDocument(source));
+          assert.equal(error._tag, "LintError");
+          assert.equal(error.diagnostics[0]?.code, "unsupported-format");
+        }),
+        { discard: true },
+      );
     }),
   );
 

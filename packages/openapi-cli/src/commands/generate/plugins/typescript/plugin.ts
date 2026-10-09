@@ -43,7 +43,7 @@ export const renderTypescript = Effect.fn("renderTypescript")(function* (options
   readonly outputLabel: string;
   readonly started: number;
 }) {
-  if (options.outputPath) yield* Console.info(`openapi generate typescript ${version}`);
+  if (options.outputPath) yield* Console.info(`openapi generate typescript ${yield* version}`);
 
   const nodes = yield* transform({
     specifier: typescriptSpecifier,

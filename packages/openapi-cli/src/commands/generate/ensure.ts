@@ -15,16 +15,16 @@ export const ensureDependencies = Effect.fn("ensureDependencies")(function* (
   dependencies: readonly string[],
   target: EnsureTarget,
 ) {
-  for (const dependency of dependencies) {
-    if (dependency === "typescript") {
-      yield* ensureTypescript(target);
-      continue;
-    }
-
-    return yield* new CliError.UserError({
-      cause: `Unknown generator dependency: ${dependency}.`,
-    });
-  }
+  yield* Effect.forEach(
+    dependencies,
+    (dependency) =>
+      dependency === "typescript"
+        ? ensureTypescript(target)
+        : Effect.fail(
+            new CliError.UserError({ cause: `Unknown generator dependency: ${dependency}.` }),
+          ),
+    { discard: true },
+  );
 });
 
 const ensureTypescript = Effect.fn("ensureTypescript")(function* (target: EnsureTarget) {

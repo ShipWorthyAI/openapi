@@ -15,21 +15,24 @@ export const operationRoutes = Effect.fnUntraced(function* (
 ): Effect.fn.Return<Record<string, OperationRoute>, ZodGenerationError> {
   const routes: Record<string, OperationRoute> = Object.create(null);
 
-  for (const operation of model.operations) {
-    const label = `${operation.method} ${operation.path}`;
-    const id = operation.operationId;
-    if (!id) return yield* new ZodGenerationError({ message: `${label}: Missing operationId` });
+  return yield* Effect.reduce(
+    model.operations,
+    () => routes,
+    Effect.fnUntraced(function* (routes, operation) {
+      const label = `${operation.method} ${operation.path}`;
+      const id = operation.operationId;
+      if (!id) return yield* new ZodGenerationError({ message: `${label}: Missing operationId` });
 
-    if (blockedOperationIds.has(id)) {
-      return yield* new ZodGenerationError({ message: `Unsupported operationId: ${id}` });
-    }
+      if (blockedOperationIds.has(id)) {
+        return yield* new ZodGenerationError({ message: `Unsupported operationId: ${id}` });
+      }
 
-    if (Object.hasOwn(routes, id)) {
-      return yield* new ZodGenerationError({ message: `Duplicate operationId: ${id}` });
-    }
+      if (Object.hasOwn(routes, id)) {
+        return yield* new ZodGenerationError({ message: `Duplicate operationId: ${id}` });
+      }
 
-    routes[id] = [operation.method, operation.path];
-  }
-
-  return routes;
+      routes[id] = [operation.method, operation.path];
+      return routes;
+    }),
+  );
 });

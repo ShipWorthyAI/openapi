@@ -1,4 +1,4 @@
-import { Predicate } from "effect";
+import { Predicate, Schema } from "effect";
 import { MissingPointerFailure, bundleFailure } from "./errors.ts";
 import type { BundleHooks } from "./plugins.ts";
 import { cloneData, getAt, joinPointer, parsePointer, setAt } from "./pointer.ts";
@@ -219,7 +219,7 @@ function collapseRefChains(root: Record<string, unknown>): void {
             changed = true;
           }
         } catch (error) {
-          if (!(error instanceof MissingPointerFailure)) throw error;
+          if (!Schema.is(MissingPointerFailure)(error)) throw error;
         }
       }
 
@@ -511,7 +511,7 @@ function valueAtSafe(root: object, pointer: string): unknown {
   try {
     return getAt(root, pointer);
   } catch (error) {
-    if (error instanceof MissingPointerFailure) return undefined;
+    if (Schema.is(MissingPointerFailure)(error)) return undefined;
     throw error;
   }
 }

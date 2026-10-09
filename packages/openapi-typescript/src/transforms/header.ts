@@ -32,20 +32,22 @@ export const transformHeader = Effect.fnUntraced(function* (
     return UNKNOWN;
   }
 
-  const type: ts.TypeElement[] = [];
   const contents = Object.fromEntries(header.contents.map((media) => [media.mediaType, media]));
 
-  for (const [mediaType, media] of getEntries(contents, ctx)) {
-    const property = ts.factory.createPropertySignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
-      /* name          */ tsPropertyIndex(mediaType),
-      /* questionToken */ undefined,
-      /* type          */ yield* transformMediaType(media, createRef([path, mediaType])),
-    );
+  const type = yield* Effect.forEach(
+    getEntries(contents, ctx),
+    Effect.fnUntraced(function* ([mediaType, media]) {
+      const property = ts.factory.createPropertySignature(
+        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* name          */ tsPropertyIndex(mediaType),
+        /* questionToken */ undefined,
+        /* type          */ yield* transformMediaType(media, createRef([path, mediaType])),
+      );
 
-    addJSDocComment(annotationsOf(media), property);
-    type.push(property);
-  }
+      addJSDocComment(annotationsOf(media), property);
+      return property;
+    }),
+  );
 
   return ts.factory.createTypeLiteralNode(type);
 });

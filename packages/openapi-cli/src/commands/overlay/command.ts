@@ -1,6 +1,6 @@
 import { applyOverlay } from "@shipworthy/overlay";
 import { bundleDocument } from "@shipworthy/openapi-parser";
-import { Console, Effect, FileSystem, Path } from "effect";
+import { Console, Effect, FileSystem, Path, Schema } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { fileURLToPath } from "node:url";
@@ -31,7 +31,12 @@ const run = Effect.fn("overlay")(function* ({
   const outputPath = path.resolve(output);
 
   yield* fs.makeDirectory(path.dirname(outputPath), { recursive: true });
-  yield* fs.writeFileString(outputPath, `${JSON.stringify(result, null, 2)}\n`);
+
+  const serialized = yield* Schema.encodeEffect(
+    Schema.fromJsonString(Schema.Unknown, { space: 2 }),
+  )(result);
+
+  yield* fs.writeFileString(outputPath, `${serialized}\n`);
   yield* Console.log(`${input.href} + ${overlay.href} → ${output}`);
 }, Effect.mapError(asCliError));
 

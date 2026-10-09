@@ -23,20 +23,25 @@ export const transformRequestBody = Effect.fnUntraced(function* (
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
-  const type: ts.TypeElement[] = [];
   const contents = Object.fromEntries(body.contents.map((media) => [media.mediaType, media]));
 
-  for (const [mediaType, media] of getEntries(contents, ctx)) {
-    const property = ts.factory.createPropertySignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
-      /* name          */ tsPropertyIndex(mediaType),
-      /* questionToken */ undefined,
-      /* type          */ yield* transformMediaType(media, createRef([path, "content", mediaType])),
-    );
+  const type = yield* Effect.forEach(
+    getEntries(contents, ctx),
+    Effect.fnUntraced(function* ([mediaType, media]) {
+      const property = ts.factory.createPropertySignature(
+        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* name          */ tsPropertyIndex(mediaType),
+        /* questionToken */ undefined,
+        /* type          */ yield* transformMediaType(
+          media,
+          createRef([path, "content", mediaType]),
+        ),
+      );
 
-    addJSDocComment(annotationsOf(media), property);
-    type.push(property);
-  }
+      addJSDocComment(annotationsOf(media), property);
+      return property;
+    }),
+  );
 
   return ts.factory.createTypeLiteralNode([
     ts.factory.createPropertySignature(

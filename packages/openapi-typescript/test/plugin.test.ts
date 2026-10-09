@@ -156,11 +156,15 @@ describe("typescript plugin", () => {
 
   it.effect("validates hook options instead of silently ignoring non-functions", () =>
     Effect.gen(function* () {
-      for (const name of ["transform", "postTransform", "transformProperty"]) {
-        const error = yield* Effect.flip(run(document({}), { [name]: "invalid" }));
-        expect(error._tag).toBe("TypegenError");
-        expect(error.message).toContain(name);
-      }
+      yield* Effect.forEach(
+        ["transform", "postTransform", "transformProperty"],
+        Effect.fnUntraced(function* (name) {
+          const error = yield* Effect.flip(run(document({}), { [name]: "invalid" }));
+          expect(error._tag).toBe("TypegenError");
+          expect(error.message).toContain(name);
+        }),
+        { discard: true },
+      );
 
       yield* run(document({}), {
         transform: undefined,

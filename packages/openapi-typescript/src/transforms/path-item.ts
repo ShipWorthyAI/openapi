@@ -83,54 +83,62 @@ export const transformPathItem = Effect.fnUntraced(function* (
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
 
-  const type: ts.TypeElement[] = [
-    yield* transformParameters(item.parameters, createRef([path, "parameters"]), url),
-  ];
+  const parameters = yield* transformParameters(
+    item.parameters,
+    createRef([path, "parameters"]),
+    url,
+  );
 
-  for (const method of httpMethods) {
-    const operation: ParsedOperation | undefined = item.operations.find(
-      (entry) => entry.method.toLowerCase() === method,
-    );
+  const methods = yield* Effect.forEach(
+    httpMethods,
+    Effect.fnUntraced(function* (method) {
+      const operation: ParsedOperation | undefined = item.operations.find(
+        (entry) => entry.method.toLowerCase() === method,
+      );
 
-    if (!operation || (ctx.excludeDeprecated && operation.deprecated)) {
-      type.push(
-        ts.factory.createPropertySignature(
+      if (!operation || (ctx.excludeDeprecated && operation.deprecated)) {
+        return ts.factory.createPropertySignature(
           /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
           /* name          */ tsPropertyIndex(method),
           /* questionToken */ QUESTION_TOKEN,
           /* type          */ NEVER,
-        ),
+        );
+      }
+
+      const operationPath = createRef([path, method]);
+      let operationType: ts.TypeNode;
+
+      if (operation.operationId) {
+        // Operation ids can contain "#" when a ref was parsed as part of the id.
+        const operationId = operation.operationId.replace(HASH_RE, "/");
+        // the interface comes before anything the operation adds to the footer
+        const index = operationsIndex(ctx);
+
+        injectOperation(
+          ctx,
+          index,
+          operationId,
+          yield* transformOperation(operation, operationPath),
+        );
+
+        operationType = oapiRef(createRef(["operations", operationId]));
+      } else {
+        operationType = ts.factory.createTypeLiteralNode(
+          yield* transformOperation(operation, operationPath),
+        );
+      }
+
+      const property = ts.factory.createPropertySignature(
+        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* name          */ tsPropertyIndex(method),
+        /* questionToken */ undefined,
+        /* type          */ operationType,
       );
 
-      continue;
-    }
+      addJSDocComment(annotationsOf(operation), property);
+      return property;
+    }),
+  );
 
-    const operationPath = createRef([path, method]);
-    let operationType: ts.TypeNode;
-
-    if (operation.operationId) {
-      // Operation ids can contain "#" when a ref was parsed as part of the id.
-      const operationId = operation.operationId.replace(HASH_RE, "/");
-      // the interface comes before anything the operation adds to the footer
-      const index = operationsIndex(ctx);
-      injectOperation(ctx, index, operationId, yield* transformOperation(operation, operationPath));
-      operationType = oapiRef(createRef(["operations", operationId]));
-    } else {
-      operationType = ts.factory.createTypeLiteralNode(
-        yield* transformOperation(operation, operationPath),
-      );
-    }
-
-    const property = ts.factory.createPropertySignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
-      /* name          */ tsPropertyIndex(method),
-      /* questionToken */ undefined,
-      /* type          */ operationType,
-    );
-
-    addJSDocComment(annotationsOf(operation), property);
-    type.push(property);
-  }
-
-  return ts.factory.createTypeLiteralNode(type);
+  return ts.factory.createTypeLiteralNode([parameters, ...methods]);
 });

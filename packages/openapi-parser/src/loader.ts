@@ -112,13 +112,10 @@ function fileResolver(): EffectPlugin<Uint8Array> {
 }
 
 function customResolver(plugin: ResolverPlugin, index: number): EffectPlugin<Uint8Array> {
-  return promisePlugin(
+  const wrapped = promisePlugin(
     plugin.order ?? 300 + index,
     (file) => plugin.canRead(file),
-    async (file) => {
-      const data = await plugin.read(file);
-      return typeof data === "string" ? new TextEncoder().encode(data) : data;
-    },
+    (file) => plugin.read(file),
     (cause, file) =>
       new ResolverFailure({
         message: cause instanceof Error ? cause.message : `Error reading file "${file.url}"`,
@@ -127,6 +124,16 @@ function customResolver(plugin: ResolverPlugin, index: number): EffectPlugin<Uin
         ...ioCode(cause),
       }),
   );
+
+  return {
+    ...wrapped,
+    run: (file) =>
+      wrapped
+        .run(file)
+        .pipe(
+          Effect.map((data) => (typeof data === "string" ? new TextEncoder().encode(data) : data)),
+        ),
+  };
 }
 
 function fileInfo(url: string): FileInfo {

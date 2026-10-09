@@ -159,10 +159,14 @@ describe("bundleDocument", () => {
         FetchHttpClient.layer,
       );
 
-      for (const source of [new URL("file:///specs/open%23api.json"), "/specs/open#api.json"]) {
-        const document = yield* bundleDocument(source).pipe(Effect.provide(local));
-        assert.equal(document.info.title, "Hash filename");
-      }
+      yield* Effect.forEach(
+        [new URL("file:///specs/open%23api.json"), "/specs/open#api.json"],
+        Effect.fnUntraced(function* (source) {
+          const document = yield* bundleDocument(source).pipe(Effect.provide(local));
+          assert.equal(document.info.title, "Hash filename");
+        }),
+        { discard: true },
+      );
 
       assert.deepEqual(files, ["/specs/open#api.json", "/specs/open#api.json"]);
     }),
@@ -307,13 +311,17 @@ describe("bundleDocument with a filesystem path string", () => {
         FetchHttpClient.layer,
       );
 
-      for (const source of ["./openapi.json", "/specs/openapi.json", "specs/openapi.YML"]) {
-        const document = yield* bundleDocument(source, { cwd: "/specs" }).pipe(
-          Effect.provide(local),
-        );
+      yield* Effect.forEach(
+        ["./openapi.json", "/specs/openapi.json", "specs/openapi.YML"],
+        Effect.fnUntraced(function* (source) {
+          const document = yield* bundleDocument(source, { cwd: "/specs" }).pipe(
+            Effect.provide(local),
+          );
 
-        assert.equal(document.info.title, "Pets");
-      }
+          assert.equal(document.info.title, "Pets");
+        }),
+        { discard: true },
+      );
 
       assert.deepEqual(files, [
         "/specs/openapi.json",
@@ -333,13 +341,17 @@ describe("bundleDocument with a filesystem path string", () => {
 
   it.effect("still parses one-line inline documents as text", () =>
     Effect.gen(function* () {
-      for (const source of [
-        "{ openapi: 3.1.0, info: { title: Pets, version: '1' }, servers: [{ url: /api.json }] }",
-        '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"x-file":"a.yaml"}',
-      ]) {
-        const document = yield* bundleDocument(source);
-        assert.equal(document.info.title, "Pets");
-      }
+      yield* Effect.forEach(
+        [
+          "{ openapi: 3.1.0, info: { title: Pets, version: '1' }, servers: [{ url: /api.json }] }",
+          '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"x-file":"a.yaml"}',
+        ],
+        Effect.fnUntraced(function* (source) {
+          const document = yield* bundleDocument(source);
+          assert.equal(document.info.title, "Pets");
+        }),
+        { discard: true },
+      );
 
       const scalar = yield* Effect.flip(bundleDocument("x-file: a.yaml"));
       assert.match(scalar.message, /openapi/);

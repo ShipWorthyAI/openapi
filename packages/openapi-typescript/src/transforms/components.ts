@@ -103,54 +103,57 @@ function transformGroup<A>(
   return Effect.gen(function* () {
     const ctx = yield* TypegenContext;
     const componentT = performance.now();
-    const items: ts.TypeElement[] = [];
 
-    for (const [name, node] of getEntries(nodes, ctx)) {
-      const { type, questionToken, doc } = yield* transform(
-        node,
-        createRef(["components", key, name]),
-      );
-
-      const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
-        /* name          */ tsPropertyIndex(name),
-        /* questionToken */ questionToken ? QUESTION_TOKEN : undefined,
-        /* type          */ type,
-      );
-
-      addJSDocComment(doc, property);
-      items.push(property);
-
-      // with --enum, an enum schema is already exported as a TypeScript enum
-      if (ctx.rootTypes && !(ctx.enum && key === "schemas" && isEnumSchema(node))) {
-        const componentKey = String.pascalCase(singularizeComponentKey(key));
-
-        const componentName =
-          ctx.rootTypesKeepCasing && key === "schemas" ? name : String.pascalCase(name);
-
-        let aliasName = `${componentKey}${componentName}`;
-
-        // Add counter suffix (e.g. "_2") if conflict in name
-        for (let counter = 2; rootTypeAliases[aliasName] !== undefined; counter++) {
-          aliasName = `${componentKey}${componentName}_${counter}`;
-        }
-
-        const ref = ts.factory.createTypeReferenceNode(`components['${key}']['${name}']`);
-
-        if (ctx.rootTypesNoSchemaPrefix && key === "schemas") {
-          aliasName = aliasName.replace(componentKey, "");
-        }
-
-        rootTypeAliases[aliasName] = ts.factory.createTypeAliasDeclaration(
-          /* modifiers      */ tsModifiers({ export: true }),
-          /* name           */ aliasName,
-          /* typeParameters */ undefined,
-          /* type           */ ref,
+    const items = yield* Effect.forEach(
+      getEntries(nodes, ctx),
+      Effect.fnUntraced(function* ([name, node]) {
+        const { type, questionToken, doc } = yield* transform(
+          node,
+          createRef(["components", key, name]),
         );
-      }
-    }
 
-    debug(`Transformed components → ${key}`, "ts", performance.now() - componentT);
+        const property = ts.factory.createPropertySignature(
+          /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+          /* name          */ tsPropertyIndex(name),
+          /* questionToken */ questionToken ? QUESTION_TOKEN : undefined,
+          /* type          */ type,
+        );
+
+        addJSDocComment(doc, property);
+
+        // with --enum, an enum schema is already exported as a TypeScript enum
+        if (ctx.rootTypes && !(ctx.enum && key === "schemas" && isEnumSchema(node))) {
+          const componentKey = String.pascalCase(singularizeComponentKey(key));
+
+          const componentName =
+            ctx.rootTypesKeepCasing && key === "schemas" ? name : String.pascalCase(name);
+
+          let aliasName = `${componentKey}${componentName}`;
+
+          // Add counter suffix (e.g. "_2") if conflict in name
+          for (let counter = 2; rootTypeAliases[aliasName] !== undefined; counter++) {
+            aliasName = `${componentKey}${componentName}_${counter}`;
+          }
+
+          const ref = ts.factory.createTypeReferenceNode(`components['${key}']['${name}']`);
+
+          if (ctx.rootTypesNoSchemaPrefix && key === "schemas") {
+            aliasName = aliasName.replace(componentKey, "");
+          }
+
+          rootTypeAliases[aliasName] = ts.factory.createTypeAliasDeclaration(
+            /* modifiers      */ tsModifiers({ export: true }),
+            /* name           */ aliasName,
+            /* typeParameters */ undefined,
+            /* type           */ ref,
+          );
+        }
+
+        return property;
+      }),
+    );
+
+    yield* debug(`Transformed components → ${key}`, "ts", performance.now() - componentT);
 
     return ts.factory.createPropertySignature(
       /* modifiers     */ undefined,

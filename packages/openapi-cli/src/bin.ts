@@ -7,8 +7,8 @@ import { FetchHttpClient } from "effect/http";
 import { openapi } from "./cli.ts";
 import { version } from "./version.ts";
 
-openapi.pipe(
-  Command.run({ version }),
+version.pipe(
+  Effect.flatMap((version) => openapi.pipe(Command.run({ version }))),
   Effect.provideService(ModuleLoader, { load: (specifier) => import(specifier) }),
   Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
   NodeRuntime.runMain,

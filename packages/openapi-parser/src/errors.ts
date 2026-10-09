@@ -96,9 +96,7 @@ const taggedFailures = [
   GroupFailure,
 ] as const;
 
-export function isTaggedFailure(cause: unknown): cause is TaggedFailure {
-  return taggedFailures.some((Failure) => cause instanceof Failure);
-}
+export const isTaggedFailure = Schema.is(Schema.Union(taggedFailures));
 
 export function isLeafFailure(cause: TaggedFailure): cause is LeafFailure {
   return cause._tag !== "GroupFailure";

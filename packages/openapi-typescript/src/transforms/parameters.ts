@@ -71,43 +71,43 @@ export const transformParameters = Effect.fnUntraced(function* (
     );
   }
 
-  const byLocation: ts.TypeElement[] = [];
+  const byLocation = yield* Effect.forEach(
+    locations,
+    Effect.fnUntraced(function* (location) {
+      let allOptional = true;
 
-  for (const location of locations) {
-    const members: ts.PropertySignature[] = [];
-    let allOptional = true;
+      const members = yield* Effect.forEach(
+        working.filter((parameter) => parameter.in === location),
+        Effect.fnUntraced(function* (parameter) {
+          const optional = location !== "path" && !parameter.required;
+          allOptional &&= optional;
 
-    for (const parameter of working) {
-      if (parameter.in !== location) continue;
-      const optional = location !== "path" && !parameter.required;
-      allOptional &&= optional;
+          const property = ts.factory.createPropertySignature(
+            /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+            /* name          */ tsPropertyIndex(parameter.name),
+            /* questionToken */ optional ? QUESTION_TOKEN : undefined,
+            /* type          */ parameter.reference
+              ? yield* refType(parameter.reference.$ref, parameter)
+              : yield* transformParameter(
+                  parameter,
+                  createRef([path, "parameters", location, parameter.name]),
+                ),
+          );
 
-      const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
-        /* name          */ tsPropertyIndex(parameter.name),
-        /* questionToken */ optional ? QUESTION_TOKEN : undefined,
-        /* type          */ parameter.reference
-          ? yield* refType(parameter.reference.$ref, parameter)
-          : yield* transformParameter(
-              parameter,
-              createRef([path, "parameters", location, parameter.name]),
-            ),
+          // a referenced parameter still documents the property it becomes
+          addJSDocComment(annotationsOf(parameter, { inherit: true }), property);
+          return property;
+        }),
       );
 
-      // a referenced parameter still documents the property it becomes
-      addJSDocComment(annotationsOf(parameter, { inherit: true }), property);
-      members.push(property);
-    }
-
-    byLocation.push(
-      ts.factory.createPropertySignature(
+      return ts.factory.createPropertySignature(
         /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
         /* name          */ tsPropertyIndex(location),
         /* questionToken */ allOptional ? QUESTION_TOKEN : undefined,
         /* type          */ members.length ? ts.factory.createTypeLiteralNode(members) : NEVER,
-      ),
-    );
-  }
+      );
+    }),
+  );
 
   return ts.factory.createPropertySignature(
     /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),

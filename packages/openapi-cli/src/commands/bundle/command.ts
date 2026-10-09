@@ -1,5 +1,5 @@
 import { bundleDocument } from "@shipworthy/openapi-parser";
-import { Console, Effect, FileSystem, Path } from "effect";
+import { Console, Effect, FileSystem, Path, Schema } from "effect";
 import { Argument, Command } from "effect/cli";
 import { asCliError, schemaSource } from "../input.ts";
 
@@ -16,7 +16,12 @@ const run = Effect.fn("bundle")(function* ({
   const outputPath = path.resolve(output);
 
   yield* fs.makeDirectory(path.dirname(outputPath), { recursive: true });
-  yield* fs.writeFileString(outputPath, `${JSON.stringify(document, null, 2)}\n`);
+
+  const serialized = yield* Schema.encodeEffect(
+    Schema.fromJsonString(Schema.Unknown, { space: 2 }),
+  )(document);
+
+  yield* fs.writeFileString(outputPath, `${serialized}\n`);
   yield* Console.log(`${input.href} → ${output}`);
 }, Effect.mapError(asCliError));
 

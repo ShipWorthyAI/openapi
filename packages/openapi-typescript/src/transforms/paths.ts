@@ -64,32 +64,28 @@ export const transformPaths = Effect.fnUntraced(function* (
   paths: Readonly<Record<string, ParsedPathItem>>,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
-  const type: ts.TypeElement[] = [];
 
-  for (const [url, item] of getEntries(paths, ctx)) {
-    const pathT = performance.now();
+  const type = yield* Effect.forEach(
+    getEntries(paths, ctx),
+    Effect.fnUntraced(function* ([url, item]) {
+      const pathT = performance.now();
 
-    if (item.reference) {
-      type.push(
-        ts.factory.createPropertySignature(
+      if (item.reference) {
+        return ts.factory.createPropertySignature(
           /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
           /* name          */ tsPropertyIndex(url),
           /* questionToken */ undefined,
           /* type          */ yield* refType(item.reference.$ref),
-        ),
-      );
+        );
+      }
 
-      continue;
-    }
+      const pathItemType = yield* transformPathItem(item, createRef(["paths", url]), url);
 
-    const pathItemType = yield* transformPathItem(item, createRef(["paths", url]), url);
+      const pathType =
+        ctx.pathParamsAsTypes && url.includes("{") ? templateType(url, item) : undefined;
 
-    const pathType =
-      ctx.pathParamsAsTypes && url.includes("{") ? templateType(url, item) : undefined;
-
-    if (pathType) {
-      type.push(
-        ts.factory.createIndexSignature(
+      if (pathType) {
+        return ts.factory.createIndexSignature(
           /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
           /* parameters    */ [
             ts.factory.createParameterDeclaration(
@@ -102,23 +98,20 @@ export const transformPaths = Effect.fnUntraced(function* (
             ),
           ],
           /* type          */ pathItemType,
-        ),
-      );
+        );
+      }
 
-      continue;
-    }
-
-    type.push(
-      ts.factory.createPropertySignature(
+      const property = ts.factory.createPropertySignature(
         /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
         /* name          */ tsPropertyIndex(url),
         /* questionToken */ undefined,
         /* type          */ pathItemType,
-      ),
-    );
+      );
 
-    debug(`Transformed path "${url}"`, "ts", performance.now() - pathT);
-  }
+      yield* debug(`Transformed path "${url}"`, "ts", performance.now() - pathT);
+      return property;
+    }),
+  );
 
   return ts.factory.createTypeLiteralNode(type);
 });

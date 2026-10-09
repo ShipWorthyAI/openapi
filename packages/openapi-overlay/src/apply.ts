@@ -7,16 +7,15 @@ import { Overlay, type OverlayAction } from "./schemas.ts";
 const parseInput = Effect.fnUntraced(function* (input: unknown, label: string) {
   if (typeof input !== "string") return input;
 
-  return yield* Effect.try({
-    try: (): unknown => {
-      try {
-        return JSON.parse(input) as unknown;
-      } catch {
-        return Yaml.parse(input);
-      }
-    },
-    catch: (cause) => new OverlayError({ message: `Invalid ${label}: ${String(cause)}`, cause }),
-  });
+  return yield* Schema.decodeEffect(Schema.fromJsonString(Schema.Unknown))(input).pipe(
+    Effect.catch(() =>
+      Effect.try({
+        try: () => Yaml.parse(input),
+        catch: (cause) =>
+          new OverlayError({ message: `Invalid ${label}: ${String(cause)}`, cause }),
+      }),
+    ),
+  );
 });
 
 function cloneObject(value: Schema.JsonObject): Schema.MutableJsonObject {
@@ -219,18 +218,21 @@ export const applyOverlay = Effect.fn("applyOverlay")(function* (
   const result = cloneObject(source);
   const version = parsed.overlay.split(".").slice(0, 2).join(".");
 
-  for (const [index, action] of parsed.actions.entries()) {
-    yield* Effect.try({
-      try: () => applyAction(result, action, version),
-      catch: (cause) =>
-        new OverlayError({
-          message: `Overlay action ${index + 1} (${action.target}): ${String(cause)}`,
-          action: index + 1,
-          target: action.target,
-          cause,
-        }),
-    });
-  }
+  yield* Effect.forEach(
+    parsed.actions,
+    (action, index) =>
+      Effect.try({
+        try: () => applyAction(result, action, version),
+        catch: (cause) =>
+          new OverlayError({
+            message: `Overlay action ${index + 1} (${action.target}): ${String(cause)}`,
+            action: index + 1,
+            target: action.target,
+            cause,
+          }),
+      }),
+    { discard: true },
+  );
 
   return result;
 });

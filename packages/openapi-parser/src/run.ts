@@ -44,7 +44,7 @@ export const runEffect = Effect.fn("openapi-parser.run")(function* (
     ),
   );
 
-  const rootUrl = normalizeRef(args.path);
+  const rootUrl = yield* normalizeRef(args.path);
   const context = makeContext(rootUrl, options);
   const failures = yield* Ref.make<Array<LeafFailure>>([]);
   const recorded = new Set<string>();

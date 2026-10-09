@@ -23,16 +23,19 @@ export const operationRoutes = Effect.fnUntraced(function* (
 ): Effect.fn.Return<Record<string, OperationRoute>, TanstackGenerationError> {
   const routes: Record<string, OperationRoute> = Object.create(null);
 
-  for (const operation of model.operations) {
-    const label = `${operation.method} ${operation.path}`;
-    const id = operation.operationId;
-    if (!id) return yield* reject(`${label}: Missing operationId`);
-    if (blockedOperationIds.has(id)) return yield* reject(`Unsupported operationId: ${id}`);
-    if (Object.hasOwn(routes, id)) return yield* reject(`Duplicate operationId: ${id}`);
-    routes[id] = [operation.method as OperationRoute[0], operation.path];
-  }
-
-  return routes;
+  return yield* Effect.reduce(
+    model.operations,
+    () => routes,
+    Effect.fnUntraced(function* (routes, operation) {
+      const label = `${operation.method} ${operation.path}`;
+      const id = operation.operationId;
+      if (!id) return yield* reject(`${label}: Missing operationId`);
+      if (blockedOperationIds.has(id)) return yield* reject(`Unsupported operationId: ${id}`);
+      if (Object.hasOwn(routes, id)) return yield* reject(`Duplicate operationId: ${id}`);
+      routes[id] = [operation.method as OperationRoute[0], operation.path];
+      return routes;
+    }),
+  );
 });
 
 export const tanstackQuery: Generator<string, TanstackGenerationError> = {

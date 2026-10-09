@@ -15,20 +15,20 @@ export const transformWebhooks = Effect.fnUntraced(function* (
   webhooks: Readonly<Record<string, ParsedPathItem>>,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
-  const type: ts.TypeElement[] = [];
 
-  for (const [name, item] of getEntries(webhooks, ctx)) {
-    type.push(
-      ts.factory.createPropertySignature(
+  const type = yield* Effect.forEach(
+    getEntries(webhooks, ctx),
+    Effect.fnUntraced(function* ([name, item]) {
+      return ts.factory.createPropertySignature(
         /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
         /* name          */ tsPropertyIndex(name),
         /* questionToken */ undefined,
         /* type          */ item.reference
           ? yield* refType(item.reference.$ref)
           : yield* transformPathItem(item, createRef(["webhooks", name])),
-      ),
-    );
-  }
+      );
+    }),
+  );
 
   return ts.factory.createTypeLiteralNode(type);
 });

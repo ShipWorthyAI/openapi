@@ -457,13 +457,17 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
         Array.flatMap(({ manifest }) => runtimeSpecifiers(manifest)),
       );
 
+      const encodedSpecifiers = yield* Schema.encodeEffect(
+        Schema.fromJsonString(Schema.Array(Schema.String)),
+      )(specifiers);
+
       yield* run(
         ChildProcess.make(
           "node",
           [
             "--input-type=module",
             "-e",
-            `await Promise.all(${JSON.stringify(specifiers)}.map(specifier => import(specifier)));`,
+            `await Promise.all(${encodedSpecifiers}.map(specifier => import(specifier)));`,
           ],
           { cwd: consumer },
         ),

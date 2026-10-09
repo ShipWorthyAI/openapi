@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
 import type { ParsedService } from "@shipworthy/openapi-transformer";
 import type { Generator } from "@shipworthy/openapi-generator";
-import { Effect, Predicate } from "effect";
+import { Effect, Predicate, Schema } from "effect";
 import ts from "#compiler";
 import { makeTypegenContext, TypegenContext } from "./context.ts";
 import { TypegenError } from "./errors.ts";
@@ -29,7 +29,7 @@ export const typescript: Generator<ts.Node[], TypegenError> = {
       // user hooks run inside the transforms; their exceptions become TypegenError
       Effect.catchDefect((cause) =>
         Effect.fail(
-          cause instanceof TypegenError
+          Schema.is(TypegenError)(cause)
             ? cause
             : new TypegenError({
                 message: Predicate.isError(cause) ? cause.message : String(cause),
@@ -38,7 +38,11 @@ export const typescript: Generator<ts.Node[], TypegenError> = {
       ),
     );
 
-    debug("Completed AST transformation for entire document", "ts", performance.now() - transformT);
+    yield* debug(
+      "Completed AST transformation for entire document",
+      "ts",
+      performance.now() - transformT,
+    );
 
     return result;
   }),

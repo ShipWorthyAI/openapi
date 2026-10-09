@@ -1,5 +1,5 @@
 import type { ParsedDiscriminator, ParsedService } from "@shipworthy/openapi-transformer";
-import { type JsonSchema, Predicate } from "effect";
+import { Config, Console, Effect, type JsonSchema, Predicate } from "effect";
 import ts from "#compiler";
 import { escapePointer, parseRef } from "./ref.ts";
 import { discriminatorOf, stringList } from "./schema.ts";
@@ -15,6 +15,7 @@ function colorsEnabled(): boolean {
 
   if (typeof stdout !== "object" || stdout === null) return false;
 
+  // oxlint-disable-next-line effecttsgo/process-env -- The exported synchronous resolveRef API must format warnings before returning.
   return stdout.isTTY === true && !current.env?.NO_COLOR;
 }
 
@@ -24,7 +25,6 @@ function paint(code: string) {
 
 const colors = {
   bold: paint("1"),
-  red: paint("31"),
   green: paint("32"),
   yellow: paint("33"),
   blue: paint("34"),
@@ -96,13 +96,15 @@ export function createRef(parts: (number | string | undefined | null)[]): string
 }
 
 /** Print debug message (cribbed from the `debug` package, but without all the bells & whistles */
-export function debug(msg: string, group?: string, time?: number) {
+export const debug = Effect.fnUntraced(function* (msg: string, group?: string, time?: number) {
+  const setting = yield* Config.String("DEBUG").pipe(Config.withDefault(""), Effect.orDie);
+
   if (
-    process.env.DEBUG &&
+    setting &&
     (!group ||
-      process.env.DEBUG === "*" ||
-      process.env.DEBUG === "openapi-ts:*" ||
-      process.env.DEBUG.toLocaleLowerCase() === `openapi-ts:${group.toLocaleLowerCase()}`)
+      setting === "*" ||
+      setting === "openapi-ts:*" ||
+      setting.toLocaleLowerCase() === `openapi-ts:${group.toLocaleLowerCase()}`)
   ) {
     const groupColor = (group && DEBUG_GROUPS[group]) || colors.white;
     const groupName = groupColor(`openapi-ts:${group ?? "info"}`);
@@ -112,14 +114,9 @@ export function debug(msg: string, group?: string, time?: number) {
       timeFormatted = colors.green(` ${formatTime(time)} `);
     }
 
-    console.debug(`  ${colors.bold(groupName)}${timeFormatted}${msg}`);
+    yield* Console.debug(`  ${colors.bold(groupName)}${timeFormatted}${msg}`);
   }
-}
-
-/** Print error message */
-export function error(msg: string) {
-  console.error(colors.red(` ✘  ${msg}`));
-}
+});
 
 /** Format a performance log in a friendly format */
 export function formatTime(t: number) {
@@ -429,8 +426,9 @@ export function walk(
 }
 
 /** Print warning message */
-export function warn(msg: string, silent = false) {
+function warn(msg: string, silent = false) {
   if (!silent) {
+    // oxlint-disable-next-line effecttsgo/global-console -- Preserve warnings from the synchronous public resolveRef API and compiler callbacks.
     console.warn(colors.yellow(` ⚠  ${msg}`));
   }
 }

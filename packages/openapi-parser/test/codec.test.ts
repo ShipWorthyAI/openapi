@@ -31,15 +31,17 @@ describe("ParsedOpenApiFromString", () => {
   });
 
   it.effect("accepts flow-style YAML, indented YAML, and JSON with a BOM", () =>
-    Effect.gen(function* () {
-      for (const source of [
+    Effect.forEach(
+      [
         "{ openapi: 3.1.0, info: { title: Pets, version: '1.0' }, paths: {} }",
         "  openapi: 3.1.0\n  info: { title: Pets, version: '1.0' }\n  paths: {}\n",
         `\uFEFF  ${JSON.stringify({ openapi: "3.1.0", info, paths: {} })}`,
-      ]) {
+      ],
+      Effect.fnUntraced(function* (source) {
         assert.equal((yield* parse(source)).info.title, "Pets");
-      }
-    }),
+      }),
+      { discard: true },
+    ),
   );
 
   it.effect("resolves relative references against cwd for inline source input", () =>
@@ -217,16 +219,20 @@ describe("ParsedOpenApiFromString", () => {
 
   it.effect("reports parsing, version, and resolution failures as SchemaError", () =>
     Effect.gen(function* () {
-      for (const source of [
-        "{ broken",
-        "[]",
-        "",
-        JSON.stringify({ openapi: "3.2.0", info, paths: {} }),
-        JSON.stringify({ openapi: "3.1.0", info, components: { schemas: { Invalid: 5 } } }),
-      ]) {
-        const error = yield* Effect.flip(parse(source));
-        assert.equal(error._tag, "SchemaError");
-      }
+      yield* Effect.forEach(
+        [
+          "{ broken",
+          "[]",
+          "",
+          JSON.stringify({ openapi: "3.2.0", info, paths: {} }),
+          JSON.stringify({ openapi: "3.1.0", info, components: { schemas: { Invalid: 5 } } }),
+        ],
+        Effect.fnUntraced(function* (source) {
+          const error = yield* Effect.flip(parse(source));
+          assert.equal(error._tag, "SchemaError");
+        }),
+        { discard: true },
+      );
 
       const missing = yield* Effect.flip(
         parse(

@@ -18,6 +18,7 @@ const sourceDocument = Schema.StructWithRest(
 );
 
 function prepareDocumentTransformation(options: ParseOptions) {
+  // oxlint-disable-next-line effecttsgo/schema-sync -- The public synchronous codec factory validates options before returning a Schema.
   const { sourceUrl } = Schema.decodeSync(parseOptions)(options);
   const source = sourceUrl instanceof URL ? sourceUrl.href : sourceUrl;
 
@@ -71,15 +72,10 @@ const documentTransformation = SchemaTransformation.transformEffect({
       ),
     ),
   encode: (document: unknown, options) =>
-    Effect.try({
-      try: () => {
-        const text = JSON.stringify(document, null, 2);
-        if (text === undefined)
-          throw new TypeError("The OpenAPI document cannot be serialized as JSON");
-        return text;
-      },
-      catch: (cause) => new SchemaIssue.InvalidValue({ message: String(cause) }, document, options),
-    }),
+    Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown, { space: 2 }))(
+      document,
+      options,
+    ).pipe(Effect.mapError((error) => error.issue)),
 });
 
 /** Parse JSON/YAML, bundle external references, upgrade 3.0 to 3.1, and validate the document. */

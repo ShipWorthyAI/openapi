@@ -15,11 +15,12 @@ const generator = {
 
 describe("plugins", () => {
   it.effect("rejects invalid generator fields", () =>
-    Effect.gen(function* () {
-      for (const plugin of [
+    Effect.forEach(
+      [
         { id: 42, generate: () => "ok" },
         { id: "fixture", generate: "invalid" },
-      ]) {
+      ],
+      Effect.fnUntraced(function* (plugin) {
         const result = yield* Effect.result(
           generate(generator).pipe(
             Effect.provideService(ModuleLoader, {
@@ -31,8 +32,9 @@ describe("plugins", () => {
         if (Result.isSuccess(result))
           return yield* Effect.die("expected invalid generator to fail");
         assert.strictEqual(result.failure._tag, "InvalidPlugin");
-      }
-    }).pipe(Effect.provide(layer)),
+      }),
+      { discard: true },
+    ).pipe(Effect.provide(layer)),
   );
 
   it.effect("preserves generator identity and prototype methods during validation", () =>

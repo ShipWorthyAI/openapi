@@ -358,14 +358,10 @@ const collectUnion = Effect.fnUntraced(function* (
   unionKey: "anyOf" | "oneOf",
   path: string,
 ): Effect.fn.Return<ts.TypeNode[], TypegenError, TypegenContext> {
-  const output: ts.TypeNode[] = [];
-
-  for (const [index, item] of items.entries()) {
-    // the index keeps generated names of nested enums unique
-    output.push(yield* transformSchema(item, createRef([path, unionKey, String(index)])));
-  }
-
-  return output;
+  // The index keeps generated names of nested enums unique.
+  return yield* Effect.forEach(items, (item, index) =>
+    transformSchema(item, createRef([path, unionKey, String(index)])),
+  );
 });
 
 /** Collect allOf members, with WithRequired<> for the parent's required keys and Omit<> for discriminators. */
@@ -375,44 +371,45 @@ const collectAllOf = Effect.fnUntraced(function* (
   path: string,
 ): Effect.fn.Return<ts.TypeNode[], TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
-  const output: ts.TypeNode[] = [];
 
-  for (const item of items) {
-    let itemType: ts.TypeNode;
+  return yield* Effect.forEach(
+    items,
+    Effect.fnUntraced(function* (item) {
+      let itemType: ts.TypeNode;
 
-    const $ref = Predicate.isObject(item) && Predicate.isString(item.$ref) ? item.$ref : undefined;
+      const $ref =
+        Predicate.isObject(item) && Predicate.isString(item.$ref) ? item.$ref : undefined;
 
-    if ($ref !== undefined) {
-      itemType = yield* transformSchema(item, path);
-      const properties = subschemaMap(resolveSchema(ctx, $ref)?.properties);
+      if ($ref !== undefined) {
+        itemType = yield* transformSchema(item, path);
+        const properties = subschemaMap(resolveSchema(ctx, $ref)?.properties);
 
-      // make keys required, unless the discriminator scan already did
-      if (properties && !ctx.discriminators.refsHandled.includes($ref)) {
-        const validRequired = required.filter((key) => properties[key] !== undefined);
+        // make keys required, unless the discriminator scan already did
+        if (properties && !ctx.discriminators.refsHandled.includes($ref)) {
+          const validRequired = required.filter((key) => properties[key] !== undefined);
 
-        if (validRequired.length) {
-          itemType = tsWithRequired(itemType, validRequired, ctx.injectFooter);
+          if (validRequired.length) {
+            itemType = tsWithRequired(itemType, validRequired, ctx.injectFooter);
+          }
         }
+      } else if (Predicate.isObject(item)) {
+        // combine the parent's `required` with the item's own
+        itemType = yield* transformSchema(
+          { ...item, required: [...required, ...(stringList(item.required) ?? [])] },
+          path,
+        );
+      } else {
+        itemType = yield* transformSchema(item, path);
       }
-    } else if (Predicate.isObject(item)) {
-      // combine the parent's `required` with the item's own
-      itemType = yield* transformSchema(
-        { ...item, required: [...required, ...(stringList(item.required) ?? [])] },
-        path,
-      );
-    } else {
-      itemType = yield* transformSchema(item, path);
-    }
 
-    const discriminator = Predicate.isObject(item)
-      ? (($ref !== undefined ? ctx.discriminators.objects[$ref] : undefined) ??
-        discriminatorOf(item.discriminator))
-      : undefined;
+      const discriminator = Predicate.isObject(item)
+        ? (($ref !== undefined ? ctx.discriminators.objects[$ref] : undefined) ??
+          discriminatorOf(item.discriminator))
+        : undefined;
 
-    output.push(discriminator ? tsOmit(itemType, [discriminator.propertyName]) : itemType);
-  }
-
-  return output;
+      return discriminator ? tsOmit(itemType, [discriminator.propertyName]) : itemType;
+    }),
+  );
 });
 
 /** `type: array`, with tuples and `arrayLength`. */
@@ -428,8 +425,7 @@ const transformArray = Effect.fnUntraced(function* (
   const items = subschema(schema.items);
 
   if (prefixItems) {
-    const elements: ts.TypeNode[] = [];
-    for (const item of prefixItems) elements.push(yield* transformSchema(item, path));
+    const elements = yield* Effect.forEach(prefixItems, (item) => transformSchema(item, path));
     itemType = ts.factory.createTupleTypeNode(elements);
   } else if (items !== undefined) {
     const itemsType = yield* transformSchema(items, path);
@@ -514,31 +510,31 @@ const transformCore = Effect.fnUntraced(function* (
     const types = stringList(schema.type);
 
     if (types) {
-      const members: ts.TypeNode[] = [];
       const oneOf = subschemaList(schema.oneOf);
 
-      for (const type of types) {
-        // skip primitive types that oneOf also lists, and don't stack oneOf transforms
-        if (
-          oneOf &&
-          type !== "object" &&
-          type !== "array" &&
-          oneOf.some((item) => Predicate.isObject(item) && item.type === type)
-        ) {
-          continue;
-        }
+      const members = yield* Effect.forEach(
+        types,
+        Effect.fnUntraced(function* (type) {
+          // skip primitive types that oneOf also lists, and don't stack oneOf transforms
+          if (
+            oneOf &&
+            type !== "object" &&
+            type !== "array" &&
+            oneOf.some((item) => Predicate.isObject(item) && item.type === type)
+          ) {
+            return undefined;
+          }
 
-        members.push(
-          type === "null"
+          return type === "null"
             ? NULL
             : yield* transformSchema(
                 oneOf ? { ...schema, type, oneOf: undefined } : { ...schema, type },
                 path,
-              ),
-        );
-      }
+              );
+        }),
+      );
 
-      return tsUnion(members);
+      return tsUnion(members.filter(Predicate.isNotUndefined));
     }
   }
 
@@ -571,42 +567,44 @@ const transformCore = Effect.fnUntraced(function* (
     return coreObjectType.length ? ts.factory.createTypeLiteralNode(coreObjectType) : undefined;
   }
 
-  for (const [key, value] of getEntries(properties, ctx)) {
-    const property = yield* transformProperty(schema, key, value, path);
-    if (property) coreObjectType.push(property);
-  }
+  const propertyTypes = yield* Effect.forEach(getEntries(properties, ctx), ([key, value]) =>
+    transformProperty(schema, key, value, path),
+  );
+
+  coreObjectType.push(...propertyTypes.filter(Predicate.isNotUndefined));
 
   if (Object.keys($defs).length) {
-    const defKeys: ts.TypeElement[] = [];
+    const defKeys = yield* Effect.forEach(
+      Object.entries($defs),
+      Effect.fnUntraced(function* ([key, value]) {
+        const defPath = createRef([path, "$defs", key]);
+        const readOnly = Predicate.isObject(value) && value.readOnly === true;
+        const writeOnly = Predicate.isObject(value) && value.writeOnly === true;
 
-    for (const [key, value] of Object.entries($defs)) {
-      const defPath = createRef([path, "$defs", key]);
-      const readOnly = Predicate.isObject(value) && value.readOnly === true;
-      const writeOnly = Predicate.isObject(value) && value.writeOnly === true;
+        const defType = wrapWithReadWriteMarker(
+          yield* transformSchema(value, defPath),
+          readOnly,
+          writeOnly,
+          ctx,
+        );
 
-      const defType = wrapWithReadWriteMarker(
-        yield* transformSchema(value, defPath),
-        readOnly,
-        writeOnly,
-        ctx,
-      );
+        let property = ts.factory.createPropertySignature(
+          /* modifiers     */ tsModifiers({
+            readonly: ctx.immutable || (!ctx.readWriteMarkers && readOnly),
+          }),
+          /* name          */ tsPropertyIndex(key),
+          /* questionToken */ undefined,
+          /* type          */ defType,
+        );
 
-      let property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({
-          readonly: ctx.immutable || (!ctx.readWriteMarkers && readOnly),
-        }),
-        /* name          */ tsPropertyIndex(key),
-        /* questionToken */ undefined,
-        /* type          */ defType,
-      );
+        if (Predicate.isObject(value)) {
+          property = ctx.transformProperty?.(property, value, { path: defPath, ctx }) ?? property;
+        }
 
-      if (Predicate.isObject(value)) {
-        property = ctx.transformProperty?.(property, value, { path: defPath, ctx }) ?? property;
-      }
-
-      addJSDocComment(value, property);
-      defKeys.push(property);
-    }
+        addJSDocComment(value, property);
+        return property;
+      }),
+    );
 
     coreObjectType.push(
       ts.factory.createPropertySignature(
@@ -639,9 +637,12 @@ const transformCore = Effect.fnUntraced(function* (
     stringIndexTypes.push(UNKNOWN);
   }
 
-  for (const [, value] of getEntries(subschemaMap(schema.patternProperties) ?? {}, ctx)) {
-    stringIndexTypes.push(yield* transformSchema(value, path));
-  }
+  const patternTypes = yield* Effect.forEach(
+    getEntries(subschemaMap(schema.patternProperties) ?? {}, ctx),
+    ([, value]) => transformSchema(value, path),
+  );
+
+  stringIndexTypes.push(...patternTypes);
 
   if (stringIndexTypes.length === 0) {
     return coreObjectType.length ? ts.factory.createTypeLiteralNode(coreObjectType) : undefined;

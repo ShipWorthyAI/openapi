@@ -1,0 +1,21 @@
+{
+  "name": "@shipworthy/oxlint-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@oxlint/plugins": "1.87.0",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

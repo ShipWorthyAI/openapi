@@ -23,22 +23,24 @@ export const transformResponses = Effect.fnUntraced(function* (
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
-  const type: ts.TypeElement[] = [];
   const byCode = Object.fromEntries(responses.map((response) => [response.code, response]));
 
-  for (const [code, response] of getEntries(byCode, ctx)) {
-    const property = ts.factory.createPropertySignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
-      /* name          */ tsPropertyIndex(code),
-      /* questionToken */ undefined,
-      /* type          */ response.reference
-        ? yield* refType(response.reference.$ref)
-        : yield* transformResponse(response, createRef([path, "responses", code])),
-    );
+  const type = yield* Effect.forEach(
+    getEntries(byCode, ctx),
+    Effect.fnUntraced(function* ([code, response]) {
+      const property = ts.factory.createPropertySignature(
+        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* name          */ tsPropertyIndex(code),
+        /* questionToken */ undefined,
+        /* type          */ response.reference
+          ? yield* refType(response.reference.$ref)
+          : yield* transformResponse(response, createRef([path, "responses", code])),
+      );
 
-    addJSDocComment(annotationsOf(response), property);
-    type.push(property);
-  }
+      addJSDocComment(annotationsOf(response), property);
+      return property;
+    }),
+  );
 
   return type.length ? ts.factory.createTypeLiteralNode(type) : NEVER;
 });
