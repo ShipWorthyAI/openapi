@@ -76,7 +76,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
     bodySerializer: globalBodySerializer,
     pathSerializer: globalPathSerializer,
     headers: baseHeaders,
-    requestInitExt = undefined,
+    requestInitExt,
     ...baseOptions
   } = { ...clientOptions };
 
@@ -138,7 +138,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
             // bodySerializer() needs all headers so we aren’t dropping ones set by the user, however,
             // the result of this ALSO sets the lowest-priority content-type header. So we re-merge below,
             // setting the content-type at the very beginning to be overwritten.
-            // Lastly, based on the way headers work, it’s not a simple “present-or-not” check becauase null intentionally un-sets headers.
+            // Lastly, based on the way headers work, it's not a simple "present-or-not" check because null intentionally un-sets headers.
             mergeHeaders(baseHeaders, headers, params.header),
           );
 

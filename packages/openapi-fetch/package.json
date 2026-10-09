@@ -41,16 +41,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "generate-types": "openapi generate typescript test/common/schemas/common.yaml -o test/common/schemas/common.d.ts && openapi generate typescript test/http-methods/schemas/get.yaml -o test/http-methods/schemas/get.d.ts && openapi generate typescript test/http-methods/schemas/put.yaml -o test/http-methods/schemas/put.d.ts && openapi generate typescript test/http-methods/schemas/post.yaml -o test/http-methods/schemas/post.d.ts && openapi generate typescript test/http-methods/schemas/delete.yaml -o test/http-methods/schemas/delete.d.ts && openapi generate typescript test/http-methods/schemas/options.yaml -o test/http-methods/schemas/options.d.ts && openapi generate typescript test/http-methods/schemas/head.yaml -o test/http-methods/schemas/head.d.ts && openapi generate typescript test/http-methods/schemas/patch.yaml -o test/http-methods/schemas/patch.d.ts && openapi generate typescript test/http-methods/schemas/trace.yaml -o test/http-methods/schemas/trace.d.ts && openapi generate typescript test/middleware/schemas/middleware.yaml -o test/middleware/schemas/middleware.d.ts && openapi generate typescript test/path-based-client/schemas/path-based-client.yaml -o test/path-based-client/schemas/path-based-client.d.ts && openapi generate typescript ../openapi-typescript/examples/github-api.yaml -o test/examples/schemas/github.d.ts && openapi generate typescript ../openapi-typescript/examples/stripe-api.yaml -o test/examples/schemas/stripe.d.ts && openapi generate typescript test/read-write-visibility/schemas/read-write.yaml -o test/read-write-visibility/schemas/read-write.d.ts --read-write-markers",
     "prepack": "bun run build",
-    "pretest": "bun run generate-types",
-    "test": "bun run test:js && bun run test:exports",
-    "test:js": "vitest run",
-    "test:exports": "bun run build && attw --pack .",
-    "test-e2e": "playwright test",
-    "bench:js": "vitest bench",
-    "e2e-vite-build": "vite build test/e2e/app",
-    "e2e-vite-start": "vite preview test/e2e/app",
     "version": "bun run build"
   },
   "devDependencies": {

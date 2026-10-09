@@ -97,7 +97,7 @@ function useInfiniteQuery(path: any, ...args: any[]) {
         const fn = (client as any)[mth];
 
         const mergedInit = {
-          ...((init as any) ?? {}),
+          ...(init as any),
           signal,
           params: {
             ...((init as any)?.params ?? undefined),

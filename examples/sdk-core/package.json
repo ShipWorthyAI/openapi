@@ -8,8 +8,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "openapi generate tanstack-query openapi.yaml -o src/generated --name core",
-    "test": "vitest run"
+    "generate": "openapi generate tanstack-query openapi.yaml -o src/generated --name core"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query-utils": "workspace:*"

@@ -115,13 +115,8 @@ export function isAllowedOrigin(
 export const resolveUrlSafety = Effect.fnUntraced(function* (href: string) {
   if (isUnsafeUrl(href)) return { unsafe: true };
   if (typeof process === "undefined" || !process.versions?.node) return { unsafe: false };
-  let parsed: URL;
-
-  try {
-    parsed = new URL(href.startsWith("//") ? `http:${href}` : href);
-  } catch {
-    return { unsafe: true };
-  }
+  const parsed = URL.parse(href.startsWith("//") ? `http:${href}` : href);
+  if (parsed === null) return { unsafe: true };
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return { unsafe: false };
 

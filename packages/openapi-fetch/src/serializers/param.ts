@@ -37,7 +37,7 @@ export function serializeObjectParam(
     return "";
   }
 
-  const values: Array<string | unknown> = [];
+  const values: unknown[] = [];
 
   const joiner =
     {

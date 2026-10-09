@@ -62,8 +62,8 @@ export function defaultPathSerializer(
     nextURL = nextURL.replace(
       match,
       style === "label"
-        ? `.${encodeURIComponent(String(value))}`
-        : encodeURIComponent(String(value)),
+        ? `.${encodeURIComponent(value as string | number | boolean)}`
+        : encodeURIComponent(value as string | number | boolean),
     );
   }
 

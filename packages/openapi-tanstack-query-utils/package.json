@@ -8,9 +8,6 @@
     ".": "./src/index.ts",
     "./generator": "./src/generator.ts"
   },
-  "scripts": {
-    "test": "bun test tests/*.test.ts"
-  },
   "dependencies": {
     "@shipworthy/openapi-fetch": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
