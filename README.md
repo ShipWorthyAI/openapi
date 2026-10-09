@@ -42,3 +42,13 @@ The parser preserves the distinction between omitted fields and explicit empty a
 
 - **`ParsedOpenApiFromString`:** Encoding produces the prepared document as JSON. It does not restore the original file layout or YAML formatting.
 - **`ParsedServiceFromParsedOpenApi`:** Encoding is forbidden; conversion to the HTTP meta model is one-way.
+
+## Releasing
+
+Versions and changelogs are managed with [Changesets](https://changesets.dev).
+
+1. Run `bun run changeset` in your PR to describe the change and choose a bump for each affected package.
+2. On merge to `main`, the release workflow opens a "chore: version packages" PR that applies pending changesets (`bun run version-packages`).
+3. Merging that PR runs `bun run release`, which publishes every public package whose version is not yet on npm with `bun publish` (so `workspace:` and `catalog:` dependencies are resolved) and creates git tags.
+
+The workflow requires an `NPM_TOKEN` repository secret with publish access to the `@shipworthy` scope.

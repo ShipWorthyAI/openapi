@@ -1,7 +1,6 @@
 {
   "name": "@shipworthy/openapi-validator",
   "version": "0.0.1",
-  "private": true,
   "description": "Lint an OpenAPI document.",
   "type": "module",
   "exports": {

@@ -1,7 +1,6 @@
 {
   "name": "@shipworthy/openapi-standard-schema",
   "version": "0.0.1",
-  "private": true,
   "description": "Generate Standard Schema validators from an OpenAPI document.",
   "type": "module",
   "exports": {

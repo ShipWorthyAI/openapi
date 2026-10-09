@@ -1,7 +1,6 @@
 {
   "name": "@shipworthy/openapi-react-query",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
   "react-native": "./src/index.ts",
   "exports": {

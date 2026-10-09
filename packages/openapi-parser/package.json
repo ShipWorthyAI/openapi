@@ -1,7 +1,6 @@
 {
   "name": "@shipworthy/openapi-parser",
   "version": "0.0.1",
-  "private": true,
   "description": "Parse, bundle, and upgrade OpenAPI documents with Effect schemas.",
   "type": "module",
   "exports": {

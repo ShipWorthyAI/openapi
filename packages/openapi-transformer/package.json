@@ -1,7 +1,6 @@
 {
   "name": "@shipworthy/openapi-transformer",
   "version": "0.0.1",
-  "private": true,
   "description": "Decode a bundled OpenAPI object into the ParsedService HTTP meta model.",
   "type": "module",
   "exports": {

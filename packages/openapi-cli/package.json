@@ -1,7 +1,6 @@
 {
   "name": "@shipworthy/openapi-cli",
   "version": "0.0.1",
-  "private": true,
   "bin": {
     "openapi": "./src/bin.ts"
   },

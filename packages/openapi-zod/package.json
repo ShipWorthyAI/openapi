@@ -1,7 +1,6 @@
 {
   "name": "@shipworthy/openapi-zod",
   "version": "0.0.1",
-  "private": true,
   "description": "Generate Zod validators from OpenAPI 3.1 schemas.",
   "type": "module",
   "exports": {
