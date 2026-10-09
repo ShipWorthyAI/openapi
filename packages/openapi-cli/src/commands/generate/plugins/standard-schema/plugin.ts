@@ -3,9 +3,12 @@ import { Clock, Effect, Option, Path, Result, Schema } from "effect";
 import { Argument, CliError, Command, Flag } from "effect/cli";
 import { asCliError, schemaSource } from "../../../input";
 import { publish } from "../../publish";
+import { fileHeader, generatorStamp } from "../../stamp";
 import { writeStdout } from "../typescript/plugin";
 
 export const dependencies = [] as const;
+
+const specifier = "@shipworthy/openapi-standard-schema";
 
 const run = Effect.fn("run")(function* (flags: {
   readonly input: URL;
@@ -16,7 +19,7 @@ const run = Effect.fn("run")(function* (flags: {
 
   const decoded = Schema.decodeUnknownResult(Schema.String)(
     yield* transform({
-      specifier: "@shipworthy/openapi-standard-schema",
+      specifier,
       exportName: "standardSchema",
       source: flags.input,
     }),
@@ -26,7 +29,7 @@ const run = Effect.fn("run")(function* (flags: {
     return yield* new CliError.UserError({ cause: decoded.failure });
   }
 
-  const text = decoded.success;
+  const text = `${fileHeader(yield* generatorStamp(specifier, flags.input))}${decoded.success}`;
 
   if (!output) {
     yield* writeStdout(text);

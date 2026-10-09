@@ -1,18 +1,19 @@
-import { fileURLToPath } from "node:url";
-import { Crypto, Effect, FileSystem, Option, Path, Schema } from "effect";
+import { Effect, FileSystem, Option, Path } from "effect";
 import { CliError } from "effect/cli";
-import { HttpClient } from "effect/http";
 import { defaultTypeFlags } from "./plugins/typescript/flags";
-import { renderTypescript } from "./plugins/typescript/plugin";
+import { renderTypescript, typescriptSpecifier } from "./plugins/typescript/plugin";
+import { generatorStamp, readStamp } from "./stamp";
 
-const Stamp = Schema.Struct({
-  input: Schema.String,
-  hash: Schema.String,
-});
+export interface EnsureTarget {
+  readonly source: URL;
+  readonly directory: string;
+  readonly started: number;
+  readonly force: boolean;
+}
 
 export const ensureDependencies = Effect.fn("ensureDependencies")(function* (
   dependencies: readonly string[],
-  target: { readonly source: URL; readonly directory: string; readonly started: number },
+  target: EnsureTarget,
 ) {
   for (const dependency of dependencies) {
     if (dependency === "typescript") {
@@ -26,24 +27,20 @@ export const ensureDependencies = Effect.fn("ensureDependencies")(function* (
   }
 });
 
-const ensureTypescript = Effect.fn("ensureTypescript")(function* (target: {
-  readonly source: URL;
-  readonly directory: string;
-  readonly started: number;
-}) {
+const ensureTypescript = Effect.fn("ensureTypescript")(function* (target: EnsureTarget) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const typesPath = path.join(target.directory, "types.ts");
-  const stampPath = path.join(target.directory, "types.stamp.json");
-  const text = yield* readInputText(target.source);
-  const hash = yield* sha256(text);
-  const stamp = yield* readStamp(stampPath);
-  const types = yield* fs.readFileString(typesPath).pipe(Effect.option);
+  const generator = yield* generatorStamp(typescriptSpecifier, target.source);
 
-  if (Option.isSome(types) && stamp?.input === target.source.href && stamp.hash === hash) return;
+  if (!target.force) {
+    const types = yield* fs.readFileString(typesPath).pipe(Effect.option);
+    if (Option.isSome(types) && readStamp(types.value) === generator.stamp) return;
+  }
 
   yield* renderTypescript({
     source: target.source,
+    generator,
     outputPath: typesPath,
     flags: defaultTypeFlags,
     check: false,
@@ -51,44 +48,4 @@ const ensureTypescript = Effect.fn("ensureTypescript")(function* (target: {
     outputLabel: typesPath,
     started: target.started,
   });
-
-  yield* fs.makeDirectory(target.directory, { recursive: true });
-
-  yield* fs.writeFileString(
-    stampPath,
-    `${JSON.stringify({ input: target.source.href, hash }, null, 2)}\n`,
-  );
-});
-
-const readStamp = Effect.fn("readStamp")(function* (stampPath: string) {
-  const fs = yield* FileSystem.FileSystem;
-  const text = yield* fs.readFileString(stampPath).pipe(Effect.option);
-  if (Option.isNone(text)) return undefined;
-
-  const parsed = yield* Schema.decodeEffect(Schema.fromJsonString(Stamp))(text.value).pipe(
-    Effect.option,
-  );
-
-  if (Option.isNone(parsed)) return undefined;
-
-  return parsed.value;
-});
-
-const readInputText = Effect.fn("readInputText")(function* (source: URL) {
-  if (source.protocol === "file:") {
-    const fs = yield* FileSystem.FileSystem;
-    return yield* fs.readFileString(fileURLToPath(source));
-  }
-
-  const http = yield* HttpClient.HttpClient;
-  const client = HttpClient.filterStatusOk(http);
-  const response = yield* client.get(source.href);
-
-  return yield* response.text;
-});
-
-const sha256 = Effect.fn("sha256")(function* (text: string) {
-  const crypto = yield* Crypto.Crypto;
-  const digest = yield* crypto.digest("SHA-256", new TextEncoder().encode(text));
-  return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 });

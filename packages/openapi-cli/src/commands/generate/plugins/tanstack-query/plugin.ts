@@ -3,14 +3,19 @@ import { Clock, Effect, Path, Result, Schema } from "effect";
 import { Argument, CliError, Command, Flag } from "effect/cli";
 import { asCliError, schemaSource } from "../../../input";
 import { ensureDependencies } from "../../ensure";
+import { force } from "../../force";
 import { ClientName, pascalCase, writeGenerated } from "../../files";
+import { fileHeader, generatorStamp } from "../../stamp";
 
 export const dependencies = ["typescript"] as const;
+
+const specifier = "@shipworthy/openapi-tanstack-query-utils/generator";
 
 const run = Effect.fn("run")(function* (flags: {
   readonly input: URL;
   readonly output: string;
   readonly name: string;
+  readonly force: boolean;
 }) {
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
@@ -19,11 +24,12 @@ const run = Effect.fn("run")(function* (flags: {
     source: flags.input,
     directory: path.resolve(flags.output, flags.name),
     started,
+    force: flags.force,
   });
 
   const decoded = Schema.decodeUnknownResult(Schema.String)(
     yield* transform({
-      specifier: "@shipworthy/openapi-tanstack-query-utils/generator",
+      specifier,
       exportName: "tanstackQuery",
       source: flags.input,
       pluginOptions: { prefix: pascalCase(flags.name), name: flags.name },
@@ -34,9 +40,9 @@ const run = Effect.fn("run")(function* (flags: {
     return yield* new CliError.UserError({ cause: decoded.failure });
   }
 
-  const client = decoded.success;
+  const header = fileHeader(yield* generatorStamp(specifier, flags.input));
 
-  yield* writeGenerated(flags.output, flags.name, { "client.ts": client });
+  yield* writeGenerated(flags.output, flags.name, { "client.ts": `${header}${decoded.success}` });
 }, Effect.mapError(asCliError));
 
 export const tanstackQuery = Command.make(
@@ -56,6 +62,7 @@ export const tanstackQuery = Command.make(
       ),
       Flag.withSchema(ClientName),
     ),
+    force,
   },
   run,
 ).pipe(

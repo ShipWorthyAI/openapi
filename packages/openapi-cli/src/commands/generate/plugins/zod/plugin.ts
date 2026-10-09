@@ -3,9 +3,13 @@ import { Clock, Effect, Path, Result, Schema } from "effect";
 import { Argument, CliError, Command, Flag } from "effect/cli";
 import { asCliError, schemaSource } from "../../../input";
 import { ensureDependencies } from "../../ensure";
+import { force } from "../../force";
 import { ClientName, writeGenerated } from "../../files";
+import { fileHeader, generatorStamp } from "../../stamp";
 
 export const dependencies = ["typescript"] as const;
+
+const specifier = "@shipworthy/openapi-zod";
 
 const ZodSources = Schema.Struct({
   definitions: Schema.String,
@@ -17,6 +21,7 @@ const run = Effect.fn("run")(function* (flags: {
   readonly input: URL;
   readonly output: string;
   readonly name: string;
+  readonly force: boolean;
 }) {
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
@@ -25,11 +30,12 @@ const run = Effect.fn("run")(function* (flags: {
     source: flags.input,
     directory: path.resolve(flags.output, flags.name),
     started,
+    force: flags.force,
   });
 
   const decoded = Schema.decodeUnknownResult(ZodSources)(
     yield* transform({
-      specifier: "@shipworthy/openapi-zod",
+      specifier,
       exportName: "zod",
       source: flags.input,
     }),
@@ -40,11 +46,12 @@ const run = Effect.fn("run")(function* (flags: {
   }
 
   const generated = decoded.success;
+  const header = fileHeader(yield* generatorStamp(specifier, flags.input));
 
   yield* writeGenerated(flags.output, flags.name, {
-    "definitions.ts": generated.definitions,
-    "schemas.ts": generated.schemas,
-    "operations.ts": generated.operations,
+    "definitions.ts": `${header}${generated.definitions}`,
+    "schemas.ts": `${header}${generated.schemas}`,
+    "operations.ts": `${header}${generated.operations}`,
   });
 }, Effect.mapError(asCliError));
 
@@ -63,6 +70,7 @@ export const zod = Command.make(
       Flag.withDescription("Client name. Used as the output directory."),
       Flag.withSchema(ClientName),
     ),
+    force,
   },
   run,
 ).pipe(

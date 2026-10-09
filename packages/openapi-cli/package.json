@@ -9,6 +9,9 @@
   "exports": {
     ".": "./src/cli.ts"
   },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@effect/platform-bun": "catalog:",
     "@shipworthy/openapi-generator": "workspace:*",
@@ -21,7 +24,8 @@
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@shipworthy/openapi-standard-schema": "workspace:*",

@@ -9,21 +9,26 @@ openapi generate tanstack-query http://hotels.shipworthy.localhost/docs/openapi.
 
 The CLI accepts local JSON/YAML or remote schemas, including references. It writes
 `hotels/client.ts`. It also runs `openapi generate typescript` for the same schema when
-`hotels/types.ts` is missing or was generated from a different input. Operations must
-have unique IDs. Re-running the command overwrites `client.ts` after successful generation.
+`hotels/types.ts` is missing or the `@shipworthy/openapi-typescript@<version>:<sha256>` stamp in its
+header no longer matches. The hash covers the schema contents, not the schema's location.
+Pass `--force` to regenerate `types.ts` anyway. Operations must have unique IDs. Re-running
+the command overwrites `client.ts` after successful generation.
 
 ## Configure once in the application
 
 ```ts
 import { createHotelsApiClient, createHotelsApiQueryUtils } from "./generated/hotels/client";
-import type { operations, paths } from "./generated/hotels/types";
 
-const client = createHotelsApiClient<paths>({
+const client = createHotelsApiClient({
   baseUrl: "https://hotels.example.com",
   authToken: () => getHotelsAccessToken(),
 });
-export const hotelsApiQueryUtils = createHotelsApiQueryUtils<operations>(client);
+export const hotelsApiQueryUtils = createHotelsApiQueryUtils(client);
 ```
+
+`client.ts` is typed against `./types`: the client and query utils need no type arguments.
+It also re-exports `HotelsApiPaths`, `HotelsApiComponents`, `HotelsApiOperations`, and the
+`HotelsApiClient` type.
 
 `authToken` accepts a string or a sync/async getter, evaluated for each request.
 The application owns token exchange, refresh, and clearing account-specific caches.

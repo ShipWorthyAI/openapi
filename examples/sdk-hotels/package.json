@@ -1,0 +1,28 @@
+{
+  "name": "@shipworthy/example-sdk-hotels",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "react-native": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi generate tanstack-query openapi.json -o src/generated --name hotels"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-tanstack-query-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@shipworthy/openapi-cli": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@types/node": "catalog:",
+    "react": "catalog:"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "catalog:",
+    "react": "^18.0.0 || ^19.0.0"
+  }
+}

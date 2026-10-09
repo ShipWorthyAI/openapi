@@ -4,12 +4,14 @@ import { Argument, CliError, Command, Flag } from "effect/cli";
 import { asCliError, schemaSource } from "../../../input";
 import { version } from "../../../../version";
 import { publish } from "../../publish";
+import { fileHeader, generatorStamp } from "../../stamp";
 import { pluginOptions, typeFlags, type TypeFlags } from "./flags";
 
 export const dependencies = [] as const;
 
+export const typescriptSpecifier = "@shipworthy/openapi-typescript";
+
 interface TypescriptModule {
-  COMMENT_HEADER: string;
   astToString(nodes: readonly unknown[]): string;
   formatTypeScript(source: string): Promise<string>;
 }
@@ -33,6 +35,7 @@ export const writeStdout = Effect.fn("writeStdout")(function* (text: string) {
 
 export const renderTypescript = Effect.fn("renderTypescript")(function* (options: {
   readonly source: URL | string;
+  readonly generator: { readonly name: string; readonly stamp: string };
   readonly outputPath?: string;
   readonly flags: TypeFlags;
   readonly check: boolean;
@@ -43,7 +46,7 @@ export const renderTypescript = Effect.fn("renderTypescript")(function* (options
   if (options.outputPath) yield* Console.info(`openapi generate typescript ${version}`);
 
   const nodes = yield* transform({
-    specifier: "@shipworthy/openapi-typescript",
+    specifier: typescriptSpecifier,
     exportName: "typescript",
     source: options.source,
     pluginOptions: pluginOptions({ ...options.flags, silent: options.outputPath === undefined }),
@@ -51,11 +54,11 @@ export const renderTypescript = Effect.fn("renderTypescript")(function* (options
 
   const types = yield* typescriptModule();
 
+  // Print each top-level declaration on its own so a blank line separates them.
+  const body = (nodes as readonly unknown[]).map((node) => types.astToString([node])).join("\n");
+
   const printed = yield* Effect.tryPromise({
-    try: () =>
-      types.formatTypeScript(
-        `${types.COMMENT_HEADER}${types.astToString(nodes as readonly unknown[])}`,
-      ),
+    try: () => types.formatTypeScript(`${fileHeader(options.generator)}${body}`),
     catch: (cause) => new CliError.UserError({ cause }),
   });
 
@@ -94,9 +97,11 @@ const run = Effect.fn("run")(function* (
   const input = Option.getOrUndefined(flags.input);
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
+  const source = input ?? (yield* readStdin());
 
   yield* renderTypescript({
-    source: input ?? (yield* readStdin()),
+    source,
+    generator: yield* generatorStamp(typescriptSpecifier, source),
     outputPath: output === undefined ? undefined : path.resolve(output),
     flags,
     check: flags.check,

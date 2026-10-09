@@ -19,7 +19,7 @@ export default defineConfig({
     typeCheck: true,
   },
   plugins: ["eslint", "typescript", "unicorn", "oxc", "import", "react", "effecttsgo"],
-  ignorePatterns: ["**/dist/**", "**/.turbo/**"],
+  ignorePatterns: ["**/dist/**", "**/.turbo/**", "examples/*/src/generated/**"],
   categories: {
     correctness: "error",
   },

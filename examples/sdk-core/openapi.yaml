@@ -1,0 +1,86 @@
+# Subset of Core's V6 contract (`/api-docs/v6/swagger.yaml`). The real SDK selects
+# only `createReservationToken` from the full document.
+openapi: 3.0.1
+info:
+  title: inKind API V6
+  version: v6
+  description: Clean, performance-optimized API with standardized patterns
+components:
+  schemas:
+    ReservationIdentityToken:
+      type: object
+      required:
+        - id_token
+        - token_type
+        - expires_in
+      properties:
+        id_token:
+          type: string
+          minLength: 1
+          description: Identity token accepted by the Reservations API.
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+          minimum: 1
+          description: Token lifetime in seconds.
+          example: 900
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from AuthToken.for_user
+security:
+  - bearerAuth: []
+paths:
+  "/api/v6/app/reservations/token":
+    post:
+      summary: Create a Reservations identity token
+      operationId: createReservationToken
+      tags:
+        - Authentication
+      description: Exchanges the signed-in customer’s Core bearer token for a short-lived
+        Reservations identity token. Send the returned token as a Bearer credential
+        to the Reservations API. Cookies, browser sessions, query parameters, and
+        raw Authorization tokens are not accepted.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Reservations identity token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Includes no-store; tokens must not be cached by intermediaries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationIdentityToken"
+        "401":
+          description: Missing or invalid Core bearer credential
+        "503":
+          description: Identity token service unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - id_token_unavailable
+servers:
+  - url: https://{defaultHost}
+    variables:
+      defaultHost:
+        default: app.staging.inkind-staging.com
+  - url: http://{defaultHost}
+    variables:
+      defaultHost:
+        default: localhost:3000

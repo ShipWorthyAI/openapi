@@ -1,0 +1,1373 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "inKind Reservations API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Make Reservations",
+      "description": "Find availability, hold a slot, and create a reservation."
+    },
+    {
+      "name": "Manage Reservations",
+      "description": "List, retrieve, modify, and cancel reservations."
+    },
+    {
+      "name": "Webhooks",
+      "description": "Authenticated provider event receipts."
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/availability": {
+      "get": {
+        "operationId": "getAvailability",
+        "summary": "Find availability",
+        "description": "Returns available reservation slots around the requested timestamp, excluding past slots. Slots with a \"payment\" object require a credit card on file before booking. Results may include adjacent dates and may be partial when availability cannot be retrieved for every requested venue. Results are grouped by project location, and locations without available slots are omitted.",
+        "tags": ["Make Reservations"],
+        "parameters": [
+          {
+            "name": "project_location_ids",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "description": "Find availability at these Core project locations",
+              "example": ["10967"],
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$"
+              },
+              "x-inkind": {
+                "opentable": "rid",
+                "sevenrooms": "venue_id"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Center of the availability interval. Defaults to the request time.",
+              "format": "date-time",
+              "example": "2026-09-27T18:00:00-05:00",
+              "x-inkind": {
+                "opentable": ["start_date_time", "backward_minutes"],
+                "sevenrooms": ["date", "start_time"]
+              }
+            }
+          },
+          {
+            "name": "guests",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "description": "Number of guests in the party",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 1,
+              "x-inkind": {
+                "opentable": "party_size",
+                "sevenrooms": "party_size"
+              }
+            }
+          },
+          {
+            "name": "accept",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "default": "application/json",
+              "description": "Include text/event-stream to receive server-sent events. Other values, including browser media-type lists and wildcards, receive application/json."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available reservation slots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReservationSlotGroup"
+                      }
+                    }
+                  }
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "Server-sent events. Each data field is a JSON object with project_location_id and slots (an array of ReservationSlot values). At most one event is emitted per unique requested location. Locations without available slots are omitted. The stream closes after all requested locations have been processed, including when no events are emitted."
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/holds": {
+      "post": {
+        "operationId": "createHold",
+        "summary": "Hold a reservation slot",
+        "description": "The slot must have been returned by availability for the venue. Slots with payment requirements can be held.",
+        "tags": ["Make Reservations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["slot_id", "project_location_id", "seating", "timestamp", "guests"],
+                "properties": {
+                  "slot_id": {
+                    "type": "string",
+                    "description": "Opaque inKind reservation slot identifier with the slot_ prefix"
+                  },
+                  "project_location_id": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]*$",
+                    "description": "Core project location ID",
+                    "x-inkind": {
+                      "opentable": "rid",
+                      "sevenrooms": "venue_id"
+                    }
+                  },
+                  "seating": {
+                    "$ref": "#/components/schemas/ReservationSeating"
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp of the reservation slot",
+                    "x-inkind": {
+                      "opentable": "date_time",
+                      "sevenrooms": ["date", "time"]
+                    }
+                  },
+                  "guests": {
+                    "type": "integer",
+                    "description": "Number of guests in the party",
+                    "minimum": 1,
+                    "maximum": 20,
+                    "default": 1,
+                    "x-inkind": {
+                      "opentable": "party_size",
+                      "sevenrooms": "party_size"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hold created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationHold"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/holds/{hold_id}": {
+      "delete": {
+        "operationId": "removeHold",
+        "summary": "Remove a hold on a reservation slot",
+        "description": "Removes a hold owned by the authenticated caller. Removing an already released or expired hold succeeds. A hold already used to book a reservation cannot be removed. Unknown holds and holds belonging to another caller return 404. Once removal starts, the hold cannot be used to book a reservation. If removal fails, retry it with a new idempotency key.",
+        "tags": ["Make Reservations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HoldId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Hold removed"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/reservations": {
+      "post": {
+        "operationId": "createReservation",
+        "summary": "Create a reservation",
+        "tags": ["Make Reservations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["hold_id", "slot_id", "project_location_id"],
+                "properties": {
+                  "hold_id": {
+                    "type": "string",
+                    "description": "Opaque hold identifier with the hold_ prefix"
+                  },
+                  "slot_id": {
+                    "type": "string",
+                    "description": "Opaque inKind reservation slot identifier with the slot_ prefix"
+                  },
+                  "project_location_id": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]*$",
+                    "description": "Core project location ID",
+                    "x-inkind": {
+                      "opentable": "rid",
+                      "sevenrooms": "venue_id"
+                    }
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "User written notes for the reservation",
+                    "x-inkind": {
+                      "opentable": "special_request",
+                      "sevenrooms": "notes"
+                    }
+                  },
+                  "payment_source_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Stripe source ID for the user's chosen payment method."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reservation created. The request succeeded; status and state describe the reservation's lifecycle independently of the HTTP response status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      },
+      "get": {
+        "operationId": "getReservations",
+        "summary": "List reservations",
+        "tags": ["Manage Reservations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reservation list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReservationSummary"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": ["string", "null"],
+                      "description": "Opaque cursor for the next page, or null at the end."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/reservations/{reservation_id}": {
+      "get": {
+        "operationId": "getReservation",
+        "summary": "Get a reservation",
+        "tags": ["Manage Reservations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reservation details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateReservation",
+        "summary": "Modify a reservation",
+        "description": "Supply a new hold_id to change the reservation to the held slot. The hold must belong to the caller and the same venue as the reservation. Its party size is used unless guests is supplied, in which case it must match. Without a hold, omitted fields remain unchanged. An expired or already used hold cannot be used again. payment_source_id may only be supplied with hold_id and is required when the held slot requires payment. Some changes create a replacement reservation. In that case the response has a new id and original_id identifies the previous reservation. The replacement is confirmed before the previous reservation is cancelled. Cancellation of the previous reservation may finish after the response; retrieve that reservation to check its current status.",
+        "tags": ["Manage Reservations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "dependentRequired": {
+                  "payment_source_id": ["hold_id"]
+                },
+                "properties": {
+                  "hold_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Identifier of the new reservation hold returned by createHold."
+                  },
+                  "payment_source_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Saved payment source selected for the held slot. Only accepted with hold_id and required when the held slot requires payment."
+                  },
+                  "guests": {
+                    "type": "integer",
+                    "description": "Number of guests in the party",
+                    "minimum": 1,
+                    "maximum": 20,
+                    "x-inkind": {
+                      "opentable": "party_size",
+                      "sevenrooms": "party_size"
+                    }
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "User written notes for the reservation",
+                    "x-inkind": {
+                      "opentable": "special_request",
+                      "sevenrooms": "notes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Modified reservation or newly confirmed replacement reservation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelReservation",
+        "summary": "Cancel a reservation",
+        "tags": ["Manage Reservations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancellation accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/webhooks/providers/{provider}": {
+      "post": {
+        "operationId": "ingestProviderWebhook",
+        "summary": "Reservation Webhooks",
+        "description": "Submit a signed reservation event with a unique event ID. Repeated event IDs are accepted idempotently.",
+        "tags": ["Webhooks"],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProviderPath"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventId"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookSignature"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean"
+                    },
+                    "event_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authenticate customer requests with an OIDC JWT in the Authorization header using the Bearer scheme."
+      }
+    },
+    "parameters": {
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "description": "Opaque cursor returned by the previous reservations page for this user.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "HoldId": {
+        "name": "hold_id",
+        "in": "path",
+        "required": true,
+        "description": "Opaque hold identifier with the hold_ prefix",
+        "x-inkind": {
+          "opentable": "reservation_token",
+          "sevenrooms": "reservation_hold_id"
+        },
+        "schema": {
+          "type": "string"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        }
+      },
+      "ProviderPath": {
+        "name": "provider",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/ReservationProvider"
+        }
+      },
+      "ReservationId": {
+        "name": "reservation_id",
+        "in": "path",
+        "required": true,
+        "description": "Opaque reservation identifier with the resv_ prefix",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "WebhookEventId": {
+        "name": "x-provider-event-id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "WebhookSignature": {
+        "name": "x-webhook-signature",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed request syntax or invalid parameters.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The request conflicts with the current resource state or an idempotency key.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The authenticated actor is not permitted to perform this action.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An unexpected error occurred.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested resource was not found.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "The service is temporarily unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "The request limit was exceeded.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "A valid access token is required.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "UnprocessableContent": {
+        "description": "The request is well-formed but semantically invalid.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Money": {
+        "x-inkind": {
+          "opentable": [
+            "times_available[].availability_types[].cancellation_policy.amount",
+            "times_available[].availability_types[].cancellation_policy.currency",
+            "times_available[].availability_types[].cancellation_policy.denominator"
+          ],
+          "sevenrooms": "data.availability[].times[].cost"
+        },
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Amount in the currency\u2019s minor units."
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "The currency code (ISO 4217)"
+          }
+        },
+        "required": ["amount", "currency"]
+      },
+      "Problem": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri-reference",
+            "default": "about:blank",
+            "description": "A URI reference that identifies the problem type."
+          },
+          "title": {
+            "type": "string",
+            "description": "A short, human-readable summary of the problem type."
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599,
+            "description": "The HTTP status code generated by the origin server for this occurrence of the problem."
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "A URI reference that identifies the specific occurrence of the problem."
+          }
+        }
+      },
+      "Reservation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReservationSummary"
+          },
+          {
+            "type": "object",
+            "required": ["slot_id", "external_url", "notes", "payment"],
+            "properties": {
+              "payment": {
+                "description": "Payment requirements captured from the reserved slot. Null when the slot has no payment requirements.",
+                "x-inkind": {
+                  "opentable": "times_available[].availability_types[].cancellation_policy",
+                  "sevenrooms": [
+                    "data.availability[].times[].require_credit_card",
+                    "data.availability[].times[].cost"
+                  ]
+                },
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReservationPaymentConfirmation"
+                  }
+                ]
+              },
+              "slot_id": {
+                "type": "string",
+                "description": "Opaque inKind reservation slot identifier with the slot_ prefix"
+              },
+              "external_url": {
+                "type": "string",
+                "description": "URL to the reservation on the provider's website",
+                "x-inkind": {
+                  "opentable": "manage_reservation_url",
+                  "sevenrooms": "data.manage_reservation_link"
+                }
+              },
+              "notes": {
+                "type": "string",
+                "description": "User written notes for the reservation",
+                "x-inkind": {
+                  "opentable": "notes",
+                  "sevenrooms": ["data.client_requests", "data.notes"]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ReservationHold": {
+        "type": "object",
+        "required": ["id", "project_location_id", "provider", "slot", "status", "expires_at"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opaque identifier with the hold_ prefix"
+          },
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID",
+            "x-inkind": {
+              "opentable": "rid",
+              "sevenrooms": "venue_id"
+            }
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ReservationProvider"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "expired", "released", "consumed"]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The instant at which the hold expires.",
+            "x-inkind": {
+              "opentable": "expires_at",
+              "sevenrooms": "data.hold_duration_sec"
+            }
+          },
+          "slot": {
+            "$ref": "#/components/schemas/ReservationSlot"
+          },
+          "cash_back_percent": {
+            "readOnly": true,
+            "description": "Cashback percentage captured for this reservation in increments of 5, such as 30 for 30%. Null when no cashback was captured.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "multipleOf": 5,
+                "minimum": 0,
+                "maximum": 100
+              }
+            ]
+          }
+        }
+      },
+      "ReservationPayment": {
+        "type": "object",
+        "description": "Credit card or payment requirement. The total amount is zero when no deposit is required.",
+        "required": ["description", "type", "per", "total"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "The description of the payment",
+            "x-inkind": {
+              "opentable": "times_available[].availability_types[].cancellation_policy.type",
+              "sevenrooms": "data.availability[].times[].cancellation_policy"
+            }
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of payment",
+            "default": "deposit",
+            "enum": ["deposit", "hold"],
+            "x-inkind": {
+              "opentable": "times_available[].availability_types[].cancellation_policy.type",
+              "sevenrooms": "data.availability[].times[].is_held"
+            }
+          },
+          "per": {
+            "type": "string",
+            "description": "Charged per guest or reservation",
+            "default": "reservation",
+            "enum": ["guest", "reservation"],
+            "x-inkind": {
+              "opentable": "times_available[].availability_types[].cancellation_policy.deposit_type",
+              "sevenrooms": "data.availability[].times[].charge_type"
+            }
+          },
+          "total": {
+            "$ref": "#/components/schemas/Money",
+            "x-inkind": {
+              "opentable": [
+                "times_available[].availability_types[].cancellation_policy.amount",
+                "times_available[].availability_types[].cancellation_policy.currency",
+                "times_available[].availability_types[].cancellation_policy.denominator"
+              ],
+              "sevenrooms": "data.availability[].times[].cost"
+            }
+          }
+        }
+      },
+      "ReservationPaymentConfirmation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReservationPayment"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "payment_source_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Stripe source ID for the user's chosen payment method, when supplied."
+              }
+            }
+          }
+        ]
+      },
+      "ReservationProvider": {
+        "type": "string",
+        "enum": ["opentable", "sevenrooms"]
+      },
+      "ReservationSeating": {
+        "type": "object",
+        "required": ["id", "name", "environment", "attributes"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque inKind seating option identifier with the seat_ prefix",
+            "x-inkind": {
+              "opentable": [
+                "times_available[].availability_types[].dining_area[].id",
+                "dining_area_id"
+              ],
+              "sevenrooms": [
+                "data.availability[].times[].access_seating_area_id",
+                "data.venue_seating_area_id",
+                "access_seating_area_id"
+              ]
+            }
+          },
+          "name": {
+            "type": ["string", "null"],
+            "description": "The name of the seating",
+            "x-inkind": {
+              "opentable": "data.dining_areas[].name",
+              "sevenrooms": "data.venue_seating_area_name"
+            }
+          },
+          "environment": {
+            "type": ["string", "null"],
+            "description": "The environment of the seating",
+            "x-inkind": {
+              "opentable": [
+                "times_available[].availability_types[].dining_area[].environment",
+                "environment"
+              ]
+            }
+          },
+          "attributes": {
+            "type": "array",
+            "maxItems": 1,
+            "items": {
+              "type": "string"
+            },
+            "description": "Attributes of the selected seating option.",
+            "x-inkind": {
+              "opentable": [
+                "times_available[].availability_types[].dining_area[].attributes[]",
+                "reservation_attribute"
+              ]
+            }
+          }
+        }
+      },
+      "ReservationSlot": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_location_id",
+          "provider",
+          "guests",
+          "timestamp",
+          "seating",
+          "payment"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opaque inKind reservation slot identifier with the slot_ prefix"
+          },
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID",
+            "x-inkind": {
+              "opentable": "rid",
+              "sevenrooms": "venue_id"
+            }
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ReservationProvider"
+          },
+          "guests": {
+            "type": "integer",
+            "description": "Number of guests in the party",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 1,
+            "x-inkind": {
+              "opentable": "party_size",
+              "sevenrooms": "party_size"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the reservation slot",
+            "x-inkind": {
+              "opentable": "times_available[].time",
+              "sevenrooms": [
+                "data.availability[].times[].time_iso",
+                "data.availability[].times[].real_datetime_of_slot"
+              ]
+            }
+          },
+          "seating": {
+            "$ref": "#/components/schemas/ReservationSeating"
+          },
+          "payment": {
+            "description": "Payment requirements for the slot. Null when the total amount is zero and no credit card is required.",
+            "x-inkind": {
+              "opentable": "times_available[].availability_types[].cancellation_policy",
+              "sevenrooms": [
+                "data.availability[].times[].require_credit_card",
+                "data.availability[].times[].cost"
+              ]
+            },
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReservationPayment"
+              }
+            ]
+          }
+        }
+      },
+      "ReservationSlotGroup": {
+        "type": "object",
+        "required": ["project_location_id", "slots"],
+        "properties": {
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID",
+            "x-inkind": {
+              "opentable": "rid",
+              "sevenrooms": "venue_id"
+            }
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationSlot"
+            }
+          }
+        }
+      },
+      "ReservationState": {
+        "x-inkind": {
+          "opentable": "status",
+          "sevenrooms": ["data.status", "data.status_display", "data.status_simple"]
+        },
+        "type": "string",
+        "description": "Specific reservation lifecycle stage or outcome. PENDING is held or unreconciled; BOOKED is an established booking awaiting guest confirmation; CONTACTED and NO_ANSWER describe attempts to contact the guest; CONFIRMED means the guest has confirmed. ARRIVED includes partial arrival or seating. ORDER_PLACED includes meal courses. CHECK_DROPPED and CHECK_PAID describe the check. COMPLETE means service has finished. GUEST_CANCELLED and VENUE_CANCELLED identify cancellation attribution. NO_SHOW and NO_ENTRY describe unsuccessful attendance. An unrecognized lifecycle observation is classified as PENDING, BOOKED, or CONFIRMED from the available evidence.",
+        "enum": [
+          "PENDING",
+          "BOOKED",
+          "CONTACTED",
+          "NO_ANSWER",
+          "CONFIRMED",
+          "ARRIVED",
+          "GUEST_CANCELLED",
+          "VENUE_CANCELLED",
+          "NO_SHOW",
+          "NO_ENTRY",
+          "ORDER_PLACED",
+          "CHECK_DROPPED",
+          "CHECK_PAID",
+          "COMPLETE"
+        ]
+      },
+      "ReservationStatus": {
+        "x-inkind": {
+          "opentable": "status",
+          "sevenrooms": ["data.status", "data.status_display", "data.status_simple"]
+        },
+        "type": "string",
+        "description": "Broad reservation lifecycle category. Confirmed means an established booking, including one awaiting guest confirmation or currently in service. Completed means service has finished. Failed includes no-show and refused-entry outcomes. This value does not indicate whether an API request succeeded; inspect state for the specific lifecycle stage or outcome.",
+        "enum": ["pending", "confirmed", "cancelled", "completed", "failed"]
+      },
+      "ReservationSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_location_id",
+          "provider",
+          "status",
+          "state",
+          "timestamp",
+          "guests",
+          "seating"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opaque identifier with the resv_ prefix"
+          },
+          "original_id": {
+            "type": "string",
+            "minLength": 1,
+            "readOnly": true,
+            "description": "Identifier of the reservation this reservation replaces. Omitted for reservations that are not replacements."
+          },
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID",
+            "x-inkind": {
+              "opentable": "rid",
+              "sevenrooms": "venue_id"
+            }
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ReservationProvider"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReservationStatus",
+            "x-inkind": {
+              "opentable": "status",
+              "sevenrooms": ["data.status", "data.status_display", "data.status_simple"]
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/ReservationState",
+            "x-inkind": {
+              "opentable": "status",
+              "sevenrooms": ["data.status", "data.status_display", "data.status_simple"]
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the reservation slot",
+            "x-inkind": {
+              "opentable": "date_time",
+              "sevenrooms": [
+                "data.real_datetime_of_slot",
+                "data.date",
+                "data.arrival_time",
+                "data.time_slot_iso"
+              ]
+            }
+          },
+          "guests": {
+            "type": "integer",
+            "description": "Number of guests in the party",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 1,
+            "x-inkind": {
+              "opentable": "party_size",
+              "sevenrooms": "data.max_guests"
+            }
+          },
+          "seating": {
+            "$ref": "#/components/schemas/ReservationSeating"
+          },
+          "cash_back_percent": {
+            "readOnly": true,
+            "description": "Cashback percentage captured for this reservation in increments of 5, such as 30 for 30%. Null when no cashback was captured.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "multipleOf": 5,
+                "minimum": 0,
+                "maximum": 100
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

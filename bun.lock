@@ -16,6 +16,64 @@
         "typescript": "catalog:",
       },
     },
+    "examples/sdk-core": {
+      "name": "@shipworthy/example-sdk-core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+      },
+      "devDependencies": {
+        "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-typescript": "workspace:*",
+        "@shipworthy/typescript-config": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/node": "catalog:",
+        "react": "catalog:",
+        "vitest": "catalog:",
+      },
+      "peerDependencies": {
+        "@tanstack/react-query": "catalog:",
+        "react": "^18.0.0 || ^19.0.0",
+      },
+    },
+    "examples/sdk-hotels": {
+      "name": "@shipworthy/example-sdk-hotels",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+      },
+      "devDependencies": {
+        "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-typescript": "workspace:*",
+        "@shipworthy/typescript-config": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/node": "catalog:",
+        "react": "catalog:",
+      },
+      "peerDependencies": {
+        "@tanstack/react-query": "catalog:",
+        "react": "^18.0.0 || ^19.0.0",
+      },
+    },
+    "examples/sdk-reservations": {
+      "name": "@shipworthy/example-sdk-reservations",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+      },
+      "devDependencies": {
+        "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-typescript": "workspace:*",
+        "@shipworthy/typescript-config": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/node": "catalog:",
+        "react": "catalog:",
+      },
+      "peerDependencies": {
+        "@tanstack/react-query": "catalog:",
+        "react": "^18.0.0 || ^19.0.0",
+      },
+    },
     "packages/openapi-cli": {
       "name": "@shipworthy/openapi-cli",
       "version": "0.0.1",
@@ -35,6 +93,7 @@
         "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
+        "vitest": "catalog:",
       },
       "peerDependencies": {
         "@shipworthy/openapi-standard-schema": "workspace:*",
@@ -537,6 +596,12 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.64.0", "", { "os": "win32", "cpu": "x64" }, "sha512-nl+CTWIgOGszQmUz/kanfgrfFZ4qiwxKIfT/ryl3N3Ewk5tqizmYtNXiqb7Bu/fDtNgu1kyxdFiAUJNur3iysg=="],
 
     "@scarf/scarf": ["@scarf/scarf@1.4.0", "", {}, "sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ=="],
+
+    "@shipworthy/example-sdk-core": ["@shipworthy/example-sdk-core@workspace:examples/sdk-core"],
+
+    "@shipworthy/example-sdk-hotels": ["@shipworthy/example-sdk-hotels@workspace:examples/sdk-hotels"],
+
+    "@shipworthy/example-sdk-reservations": ["@shipworthy/example-sdk-reservations@workspace:examples/sdk-reservations"],
 
     "@shipworthy/openapi-cli": ["@shipworthy/openapi-cli@workspace:packages/openapi-cli"],
 
