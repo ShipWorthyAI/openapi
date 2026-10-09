@@ -1,14 +1,14 @@
 import type { OpenApiPathItem } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Array, Effect, Option } from "effect";
-import type { TransformContext } from "./context.js";
-import { transformCallbackList } from "./callbacks.js";
-import { transformParameterList } from "./parameters.js";
-import { transformRequestBody } from "./request.js";
-import { transformOperationResponses } from "./responses.js";
-import { transformSecurityRequirements } from "./securities.js";
-import { transformExternalDocs, transformServerList } from "./servers.js";
-import { child } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
+import type { TransformContext } from "./context.ts";
+import { transformCallbackList } from "./callbacks.ts";
+import { transformParameterList } from "./parameters.ts";
+import { transformRequestBody } from "./request.ts";
+import { transformOperationResponses } from "./responses.ts";
+import { transformSecurityRequirements } from "./securities.ts";
+import { transformExternalDocs, transformServerList } from "./servers.ts";
+import { child } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
 import type {
   HttpMethodName,
   ParameterLocation,
@@ -18,7 +18,7 @@ import type {
   ParsedServer,
   ParsedTag,
   SecurityDeclaration,
-} from "../../model/index.js";
+} from "../../model/index.ts";
 
 const methods = {
   get: "GET",

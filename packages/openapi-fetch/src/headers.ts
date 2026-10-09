@@ -1,4 +1,4 @@
-import type { HeadersOptions } from "./types.js";
+import type { HeadersOptions } from "./types.ts";
 
 type HeaderValue = string | number | boolean | (string | number | boolean)[] | null | undefined;
 

@@ -1,4 +1,4 @@
-import type { PathSerializer, QuerySerializer } from "../types.js";
+import type { PathSerializer, QuerySerializer } from "../types.ts";
 
 /** Construct URL string from baseUrl and handle path and query params */
 export function createFinalURL<O>(

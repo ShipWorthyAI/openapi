@@ -1,14 +1,14 @@
 import { Schema } from "effect";
-import { OpenApiComponents } from "./components.js";
-import { OpenApiExternalDocs } from "./external-docs.js";
-import { OpenApiInfo } from "./info.js";
-import { openApiObject } from "./object.js";
-import { OpenApiPathItem } from "./path-item.js";
-import { OpenApiPaths } from "./paths.js";
-import { OpenApiSchema } from "./schema.js";
-import { OpenApiSecurityRequirement } from "./security-requirement.js";
-import { OpenApiServer } from "./server.js";
-import { OpenApiTag } from "./tag.js";
+import { OpenApiComponents } from "./components.ts";
+import { OpenApiExternalDocs } from "./external-docs.ts";
+import { OpenApiInfo } from "./info.ts";
+import { openApiObject } from "./object.ts";
+import { OpenApiPathItem } from "./path-item.ts";
+import { OpenApiPaths } from "./paths.ts";
+import { OpenApiSchema } from "./schema.ts";
+import { OpenApiSecurityRequirement } from "./security-requirement.ts";
+import { OpenApiServer } from "./server.ts";
+import { OpenApiTag } from "./tag.ts";
 
 /** The OpenAPI 3.1 document produced after bundling and upgrading. */
 export const ParsedOpenApi = openApiObject({

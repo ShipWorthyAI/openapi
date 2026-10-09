@@ -1,12 +1,12 @@
 import { OpenApiPathItem } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Array, Effect, Predicate } from "effect";
-import type { TransformContext } from "./context.js";
-import { transformOperation } from "./operation.js";
-import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
-import { httpMethods, type ParsedPathItem } from "../../model/index.js";
-import { transformParameterList } from "./parameters.js";
-import { transformServerList } from "./servers.js";
+import type { TransformContext } from "./context.ts";
+import { transformOperation } from "./operation.ts";
+import { child, resolve } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
+import { httpMethods, type ParsedPathItem } from "../../model/index.ts";
+import { transformParameterList } from "./parameters.ts";
+import { transformServerList } from "./servers.ts";
 
 export const transformPathItem = Effect.fnUntraced(function* (
   ctx: TransformContext,

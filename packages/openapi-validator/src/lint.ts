@@ -4,7 +4,7 @@ import { oas3 } from "@stoplight/spectral-formats";
 import spectralParsers from "@stoplight/spectral-parsers";
 import { oas } from "@stoplight/spectral-rulesets";
 import { Console, Context, Effect, Layer, Predicate } from "effect";
-import { LintError } from "./errors.js";
+import { LintError } from "./errors.ts";
 
 /** Same TTY and `NO_COLOR` check as `CliOutput.defaultFormatter`. */
 function colorsEnabled(): boolean {

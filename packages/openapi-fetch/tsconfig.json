@@ -6,6 +6,7 @@
     "lib": ["ESNext", "DOM"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "rewriteRelativeImportExtensions": true,
     "noEmit": true,
     "noUncheckedIndexedAccess": true,
     "outDir": "dist",

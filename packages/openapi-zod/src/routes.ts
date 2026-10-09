@@ -1,6 +1,6 @@
 import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
-import { ZodGenerationError } from "./errors.js";
+import { ZodGenerationError } from "./errors.ts";
 
 const methods = ["get", "put", "post", "delete", "options", "head", "patch", "trace"] as const;
 

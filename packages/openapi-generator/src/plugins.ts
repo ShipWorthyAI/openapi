@@ -1,6 +1,6 @@
-import type { Generator } from "./generator.js";
+import type { Generator } from "./generator.ts";
 import { Context, Effect, Predicate, Schema } from "effect";
-import { InvalidPlugin, MissingPlugin } from "./errors.js";
+import { InvalidPlugin, MissingPlugin } from "./errors.ts";
 
 export const ModuleLoader = Context.Reference<{
   readonly load: (specifier: string) => Promise<unknown>;

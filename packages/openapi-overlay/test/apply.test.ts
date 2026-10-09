@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect";
 import { describe, expect, test } from "vitest";
-import { applyOverlay, Overlay, OverlayError, type OverlayAction } from "../src/index.js";
+import { applyOverlay, Overlay, OverlayError, type OverlayAction } from "../src/index.ts";
 
 function overlay(...actions: OverlayAction[]) {
   return { overlay: "1.1.0", info: { title: "Test", version: "1" }, actions };

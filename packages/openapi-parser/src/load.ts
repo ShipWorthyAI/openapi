@@ -2,10 +2,10 @@ import { Readable } from "node:stream";
 import { NodeStream } from "@effect/platform-node";
 import { Effect, type FileSystem, Path, Predicate, Schema, Stream } from "effect";
 import type { HttpClient } from "effect/http";
-import { decodeDocument, type OpenAPIDocument } from "./document.js";
-import { EmptySource, InvalidSource, ParseError, type LoadError } from "./errors.js";
-import { loadDocument as loadResolvedDocument, makeContext } from "./loader.js";
-import { parseText } from "./parsers.js";
+import { decodeDocument, type OpenAPIDocument } from "./document.ts";
+import { EmptySource, InvalidSource, ParseError, type LoadError } from "./errors.ts";
+import { loadDocument as loadResolvedDocument, makeContext } from "./loader.ts";
+import { parseText } from "./parsers.ts";
 
 const loadOptions = Schema.Struct({
   cwd: Schema.optional(Schema.Union([Schema.String, Schema.URL])),

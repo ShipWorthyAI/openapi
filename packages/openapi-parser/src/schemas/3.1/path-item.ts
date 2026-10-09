@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { openApiObject } from "./object.js";
-import { OpenApiOperation } from "./operation.js";
-import { OpenApiParameter } from "./parameter.js";
-import { withReference } from "./reference.js";
-import { OpenApiServer } from "./server.js";
+import { openApiObject } from "./object.ts";
+import { OpenApiOperation } from "./operation.ts";
+import { OpenApiParameter } from "./parameter.ts";
+import { withReference } from "./reference.ts";
+import { OpenApiServer } from "./server.ts";
 
 const operation = Schema.optionalKey(
   Schema.suspend((): Schema.Codec<OpenApiOperation> => OpenApiOperation),

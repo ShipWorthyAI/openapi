@@ -1,13 +1,13 @@
 import { Schema } from "effect";
-import { OpenApiCallback } from "./callback.js";
-import { OpenApiExternalDocs } from "./external-docs.js";
-import { openApiObject } from "./object.js";
-import { OpenApiParameter } from "./parameter.js";
-import { withReference } from "./reference.js";
-import { OpenApiRequestBody } from "./request-body.js";
-import { OpenApiResponses } from "./responses.js";
-import { OpenApiSecurityRequirement } from "./security-requirement.js";
-import { OpenApiServer } from "./server.js";
+import { OpenApiCallback } from "./callback.ts";
+import { OpenApiExternalDocs } from "./external-docs.ts";
+import { openApiObject } from "./object.ts";
+import { OpenApiParameter } from "./parameter.ts";
+import { withReference } from "./reference.ts";
+import { OpenApiRequestBody } from "./request-body.ts";
+import { OpenApiResponses } from "./responses.ts";
+import { OpenApiSecurityRequirement } from "./security-requirement.ts";
+import { OpenApiServer } from "./server.ts";
 
 const fields = {
   tags: Schema.optionalKey(Schema.Array(Schema.String)),

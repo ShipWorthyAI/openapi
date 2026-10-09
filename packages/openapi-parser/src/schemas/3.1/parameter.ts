@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { OpenApiHeader } from "./header.js";
-import { openApiObject } from "./object.js";
+import { OpenApiHeader } from "./header.ts";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiParameter = openApiObject({
   ...OpenApiHeader.schema.fields,

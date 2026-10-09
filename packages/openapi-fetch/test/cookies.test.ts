@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import createClient from "../src/index.js";
-import { createRecordingFetch, type paths } from "./fixtures.js";
+import createClient from "../src/index.ts";
+import { createRecordingFetch, type paths } from "./fixtures.ts";
 
 describe("cookie params", () => {
   it("serializes params.cookie into a Cookie header", async () => {

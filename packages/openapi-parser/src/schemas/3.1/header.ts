@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { OpenApiExample } from "./example.js";
-import { OpenApiMediaType } from "./media-type.js";
-import { openApiObject } from "./object.js";
-import { withReference } from "./reference.js";
-import { OpenApiSchema } from "./schema.js";
+import { OpenApiExample } from "./example.ts";
+import { OpenApiMediaType } from "./media-type.ts";
+import { openApiObject } from "./object.ts";
+import { withReference } from "./reference.ts";
+import { OpenApiSchema } from "./schema.ts";
 
 const fields = {
   description: Schema.optionalKey(Schema.String),

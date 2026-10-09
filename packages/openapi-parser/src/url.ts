@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Effect } from "effect";
-import { ResolverFailure, nodeErrorCode } from "./errors.js";
+import { ResolverFailure, nodeErrorCode } from "./errors.ts";
 
 const unsafeDomainSuffixes = [
   ".localhost",

@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { OpenApiContact } from "./contact.js";
-import { OpenApiLicense } from "./license.js";
-import { openApiObject } from "./object.js";
+import { OpenApiContact } from "./contact.ts";
+import { OpenApiLicense } from "./license.ts";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiInfo = openApiObject({
   title: Schema.String,

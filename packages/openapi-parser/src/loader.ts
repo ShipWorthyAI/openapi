@@ -7,12 +7,12 @@ import {
   UnmatchedResolverFailure,
   nodeErrorCode,
   type TaggedFailure,
-} from "./errors.js";
-import { httpResolver } from "./http.js";
-import { parserPlugins, parseText } from "./parsers.js";
-import type { EffectPlugin, FileInfo, Options, ResolverPlugin } from "./plugins.js";
-import { promisePlugin } from "./plugins.js";
-import { extensionOf, isFileSystemPath, stripHash, toFileSystemPath } from "./url.js";
+} from "./errors.ts";
+import { httpResolver } from "./http.ts";
+import { parserPlugins, parseText } from "./parsers.ts";
+import type { EffectPlugin, FileInfo, Options, ResolverPlugin } from "./plugins.ts";
+import { promisePlugin } from "./plugins.ts";
+import { extensionOf, isFileSystemPath, stripHash, toFileSystemPath } from "./url.ts";
 
 export interface LoadContext {
   policy: "root" | "reference";

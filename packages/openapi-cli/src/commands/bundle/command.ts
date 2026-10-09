@@ -1,7 +1,7 @@
 import { bundleDocument } from "@shipworthy/openapi-parser";
 import { Console, Effect, FileSystem, Path } from "effect";
 import { Argument, Command } from "effect/cli";
-import { asCliError, schemaSource } from "../input.js";
+import { asCliError, schemaSource } from "../input.ts";
 
 const run = Effect.fn("bundle")(function* ({
   input,

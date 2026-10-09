@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import createClient, { mergeHeaders } from "../src/index.js";
-import { createRecordingFetch, type paths } from "./fixtures.js";
+import createClient, { mergeHeaders } from "../src/index.ts";
+import { createRecordingFetch, type paths } from "./fixtures.ts";
 
 describe("mergeHeaders", () => {
   it("accepts plain objects, Headers, and tuple arrays", () => {

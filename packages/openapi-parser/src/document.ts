@@ -1,5 +1,5 @@
 import { Predicate, Result, Schema } from "effect";
-import { UnsupportedVersion } from "./errors.js";
+import { UnsupportedVersion } from "./errors.ts";
 
 /** An OpenAPI document: its `openapi` version, with every other field unchecked. */
 export const OpenAPIDocument = Schema.StructWithRest(Schema.Struct({ openapi: Schema.String }), [

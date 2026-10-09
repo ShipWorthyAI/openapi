@@ -1,13 +1,13 @@
 import { Schema } from "effect";
-import { ParsedExternalDocs } from "./external-docs.js";
-import { node } from "./fields.js";
-import { HttpMethodName } from "./http-method.js";
-import { optionalField, optionalString } from "./optional.js";
-import { ParsedRequest } from "./request.js";
-import { ParsedOperationResponse } from "./response.js";
-import { ParsedSecurityRequirement, SecurityDeclaration } from "./security.js";
-import { ParsedServer } from "./server.js";
-import { ParsedTag } from "./tag.js";
+import { ParsedExternalDocs } from "./external-docs.ts";
+import { node } from "./fields.ts";
+import { HttpMethodName } from "./http-method.ts";
+import { optionalField, optionalString } from "./optional.ts";
+import { ParsedRequest } from "./request.ts";
+import { ParsedOperationResponse } from "./response.ts";
+import { ParsedSecurityRequirement, SecurityDeclaration } from "./security.ts";
+import { ParsedServer } from "./server.ts";
+import { ParsedTag } from "./tag.ts";
 
 const operationFields = {
   ...node,

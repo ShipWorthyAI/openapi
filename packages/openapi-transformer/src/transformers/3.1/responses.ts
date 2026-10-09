@@ -7,11 +7,11 @@ import {
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
-import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
-import type { ParsedLink, ParsedOperationResponse, ParsedResponse } from "../../model/index.js";
-import { transformBodyContent } from "./content.js";
-import { transformHeaderList } from "./headers.js";
+import { child, resolve } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
+import type { ParsedLink, ParsedOperationResponse, ParsedResponse } from "../../model/index.ts";
+import { transformBodyContent } from "./content.ts";
+import { transformHeaderList } from "./headers.ts";
 
 export const transformLink = Effect.fnUntraced(function* (
   document: ParsedOpenApi,

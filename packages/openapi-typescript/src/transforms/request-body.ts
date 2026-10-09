@@ -1,8 +1,8 @@
 import type { ParsedRequestBody } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
 import {
   addJSDocComment,
   annotationsOf,
@@ -10,9 +10,9 @@ import {
   QUESTION_TOKEN,
   tsModifiers,
   tsPropertyIndex,
-} from "../lib/ts.js";
-import { createRef, getEntries } from "../lib/utils.js";
-import { transformMediaType } from "./media-type.js";
+} from "../lib/ts.ts";
+import { createRef, getEntries } from "../lib/utils.ts";
+import { transformMediaType } from "./media-type.ts";
 
 /**
  * Transform a Request Body Object (4.8.13) into `{ content: { [mediaType]: T } }`.

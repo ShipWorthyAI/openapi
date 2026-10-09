@@ -1,16 +1,16 @@
 import { Schema } from "effect";
-import { OpenApiCallback } from "./callback.js";
-import { OpenApiExample } from "./example.js";
-import { OpenApiHeader } from "./header.js";
-import { OpenApiLink } from "./link.js";
-import { openApiObject } from "./object.js";
-import { OpenApiParameter } from "./parameter.js";
-import { OpenApiPathItem } from "./path-item.js";
-import { withReference } from "./reference.js";
-import { OpenApiRequestBody } from "./request-body.js";
-import { OpenApiResponse } from "./response.js";
-import { OpenApiSchema } from "./schema.js";
-import { OpenApiSecurityScheme } from "./security-scheme.js";
+import { OpenApiCallback } from "./callback.ts";
+import { OpenApiExample } from "./example.ts";
+import { OpenApiHeader } from "./header.ts";
+import { OpenApiLink } from "./link.ts";
+import { openApiObject } from "./object.ts";
+import { OpenApiParameter } from "./parameter.ts";
+import { OpenApiPathItem } from "./path-item.ts";
+import { withReference } from "./reference.ts";
+import { OpenApiRequestBody } from "./request-body.ts";
+import { OpenApiResponse } from "./response.ts";
+import { OpenApiSchema } from "./schema.ts";
+import { OpenApiSecurityScheme } from "./security-scheme.ts";
 
 export const OpenApiComponents = openApiObject({
   schemas: Schema.optionalKey(Schema.Record(Schema.String, OpenApiSchema)),

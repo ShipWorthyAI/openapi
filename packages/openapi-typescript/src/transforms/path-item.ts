@@ -2,8 +2,8 @@ import { httpMethods } from "@shipworthy/openapi-transformer";
 import type { ParsedOperation, ParsedPathItem } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
 import {
   addJSDocComment,
   annotationsOf,
@@ -12,11 +12,11 @@ import {
   QUESTION_TOKEN,
   tsModifiers,
   tsPropertyIndex,
-} from "../lib/ts.js";
-import { createRef } from "../lib/utils.js";
-import type { GlobalContext } from "../types.js";
-import { transformOperation } from "./operation.js";
-import { transformParameters } from "./parameters.js";
+} from "../lib/ts.ts";
+import { createRef } from "../lib/utils.ts";
+import type { GlobalContext } from "../types.ts";
+import { transformOperation } from "./operation.ts";
+import { transformParameters } from "./parameters.ts";
 
 const HASH_RE = /#/g;
 

@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { FileSystem, Path, Schema } from "effect";
 import { ChildProcess } from "effect/process";
 import { afterAll, afterEach, beforeEach, expect, test } from "vitest";
-import { execute, runtime } from "./runtime.js";
+import { execute, runtime } from "./runtime.ts";
 
 const fs = await runtime.runPromise(FileSystem.FileSystem);
 const path = await runtime.runPromise(Path.Path);

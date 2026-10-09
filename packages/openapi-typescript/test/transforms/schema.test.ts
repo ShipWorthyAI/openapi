@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { transformSchema } from "../../src/transforms/schema.js";
-import { document, print } from "../helpers.js";
+import { transformSchema } from "../../src/transforms/schema.ts";
+import { document, print } from "../helpers.ts";
 
 /** Print the type of `schema`, declared as component `S`. */
 function schemaType(schema: unknown, options?: Record<string, unknown>) {

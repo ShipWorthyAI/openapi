@@ -5,10 +5,10 @@ import {
   type OpenApiReference,
 } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect, type SchemaIssue } from "effect";
-import type { TransformContext } from "./context.js";
-import { child, resolve } from "./pointer.js";
-import type { ParsedCallbackOperation } from "../../model/index.js";
-import { transformPathItemMap } from "./paths.js";
+import type { TransformContext } from "./context.ts";
+import { child, resolve } from "./pointer.ts";
+import type { ParsedCallbackOperation } from "../../model/index.ts";
+import { transformPathItemMap } from "./paths.ts";
 
 /** The meta model flattens callbacks into operations without nested callback collections. */
 const transformCallback = Effect.fnUntraced(function* (

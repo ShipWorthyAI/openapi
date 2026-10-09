@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { ParsedExtensions } from "./extensions.js";
-import { ParsedHeader } from "./header.js";
-import { ParsedMediaType } from "./media-type.js";
-import { optionalBoolean, optionalString } from "./optional.js";
-import { ParamStyle } from "./param-style.js";
+import { ParsedExtensions } from "./extensions.ts";
+import { ParsedHeader } from "./header.ts";
+import { ParsedMediaType } from "./media-type.ts";
+import { optionalBoolean, optionalString } from "./optional.ts";
+import { ParamStyle } from "./param-style.ts";
 
 const parsedEncodingFields = {
   property: Schema.String,

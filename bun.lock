@@ -249,6 +249,7 @@
         "effect": "catalog:",
         "react": "catalog:",
         "typescript": "catalog:",
+        "vitest": "catalog:",
       },
       "peerDependencies": {
         "@shipworthy/openapi-generator": "workspace:*",

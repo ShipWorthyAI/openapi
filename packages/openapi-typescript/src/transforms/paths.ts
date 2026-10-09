@@ -2,11 +2,11 @@ import type { ParsedParameter, ParsedPathItem } from "@shipworthy/openapi-transf
 import { Effect, Predicate } from "effect";
 import { performance } from "node:perf_hooks";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
-import { refType, stringToAST, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
-import { createRef, debug, getEntries } from "../lib/utils.js";
-import { transformPathItem } from "./path-item.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
+import { refType, stringToAST, tsModifiers, tsPropertyIndex } from "../lib/ts.ts";
+import { createRef, debug, getEntries } from "../lib/utils.ts";
+import { transformPathItem } from "./path-item.ts";
 
 const PATH_PARAM_RE = /\{[^}]+\}/g;
 

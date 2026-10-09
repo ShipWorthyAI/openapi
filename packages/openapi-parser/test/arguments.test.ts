@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bundle, parse } from "./reference-engine.js";
+import { bundle, parse } from "./reference-engine.ts";
 
 const document = { openapi: "3.1.0", info: { title: "Arguments", version: "1" }, paths: {} };
 

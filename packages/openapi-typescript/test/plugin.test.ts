@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import ts from "#compiler";
-import { astToString, typescript } from "../src/index.js";
-import { document, generateTypes } from "./helpers.js";
+import { astToString, typescript } from "../src/index.ts";
+import { document, generateTypes } from "./helpers.ts";
 
 /** Run the plugin on a parsed model, the way the generator does. */
 function run(model: ReturnType<typeof document>, options: Record<string, unknown> = {}) {

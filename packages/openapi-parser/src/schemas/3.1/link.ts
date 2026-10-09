@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { openApiObject } from "./object.js";
-import { OpenApiServer } from "./server.js";
+import { openApiObject } from "./object.ts";
+import { OpenApiServer } from "./server.ts";
 
 export const OpenApiLink = openApiObject({
   operationRef: Schema.optionalKey(Schema.String),

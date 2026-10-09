@@ -1,13 +1,13 @@
 import { Schema } from "effect";
-import { ParsedExample } from "./example.js";
-import { ParsedHeader } from "./header.js";
-import { ParsedLink } from "./link.js";
-import { ParsedCallbackOperation } from "./operation.js";
-import { ParsedParameter } from "./parameter.js";
-import { ParsedPathItem } from "./path-item.js";
-import { ParsedRequestBody } from "./request.js";
-import { ParsedResponse } from "./response.js";
-import { ParsedSchema } from "./schema.js";
+import { ParsedExample } from "./example.ts";
+import { ParsedHeader } from "./header.ts";
+import { ParsedLink } from "./link.ts";
+import { ParsedCallbackOperation } from "./operation.ts";
+import { ParsedParameter } from "./parameter.ts";
+import { ParsedPathItem } from "./path-item.ts";
+import { ParsedRequestBody } from "./request.ts";
+import { ParsedResponse } from "./response.ts";
+import { ParsedSchema } from "./schema.ts";
 
 const parsedComponentsFields = {
   schemas: Schema.Record(Schema.String, ParsedSchema),

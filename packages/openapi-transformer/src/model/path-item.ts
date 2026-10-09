@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { node, shareable } from "./fields.js";
-import { optionalString } from "./optional.js";
-import { ParsedOperation } from "./operation.js";
-import { ParsedParameter } from "./parameter.js";
-import { ParsedServer } from "./server.js";
+import { node, shareable } from "./fields.ts";
+import { optionalString } from "./optional.ts";
+import { ParsedOperation } from "./operation.ts";
+import { ParsedParameter } from "./parameter.ts";
+import { ParsedServer } from "./server.ts";
 
 const parsedPathItemFields = {
   ...node,

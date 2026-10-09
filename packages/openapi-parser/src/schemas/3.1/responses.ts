@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { openApiMap } from "./object.js";
-import { withReference } from "./reference.js";
-import { OpenApiResponse } from "./response.js";
+import { openApiMap } from "./object.ts";
+import { withReference } from "./reference.ts";
+import { OpenApiResponse } from "./response.ts";
 
 export const OpenApiResponses = openApiMap(
   Schema.String.check(Schema.isPattern(/^(?:default|[1-5](?:\d{2}|XX))$/)),

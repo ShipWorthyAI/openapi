@@ -11,8 +11,8 @@ import type {
   MediaType,
   PathsWithMethod,
 } from "@shipworthy/openapi-fetch";
-import { useApiClient } from "../provider.js";
-import { parseArgs } from "../utils.js";
+import { useApiClient } from "../provider.tsx";
+import { parseArgs } from "../utils.ts";
 
 interface ApiClientMutation<Paths extends Record<string, any>> {
   <

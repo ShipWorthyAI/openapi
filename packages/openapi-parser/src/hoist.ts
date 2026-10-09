@@ -1,8 +1,8 @@
 import { Predicate } from "effect";
-import { MissingPointerFailure, bundleFailure } from "./errors.js";
-import type { BundleHooks } from "./plugins.js";
-import { cloneData, getAt, joinPointer, parsePointer, setAt } from "./pointer.js";
-import { getHash, isFileSystemPath, isHttp, stripHash } from "./url.js";
+import { MissingPointerFailure, bundleFailure } from "./errors.ts";
+import type { BundleHooks } from "./plugins.ts";
+import { cloneData, getAt, joinPointer, parsePointer, setAt } from "./pointer.ts";
+import { getHash, isFileSystemPath, isHttp, stripHash } from "./url.ts";
 
 const MAX_ATTEMPTS = 1000;
 

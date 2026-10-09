@@ -1,8 +1,8 @@
 import { ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
 import { type Effect, Schema, type SchemaAST, SchemaGetter, SchemaTransformation } from "effect";
-import { ParsedService } from "./model/index.js";
-import type { ParsedServiceSchema } from "./model/service.js";
-import { transformService } from "./transformers/3.1/index.js";
+import { ParsedService } from "./model/index.ts";
+import type { ParsedServiceSchema } from "./model/service.ts";
+import { transformService } from "./transformers/3.1/index.ts";
 
 const serviceTransformation = SchemaTransformation.makeTransformation<
   typeof ParsedService.Encoded,

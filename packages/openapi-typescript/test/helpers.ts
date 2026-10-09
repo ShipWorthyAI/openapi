@@ -4,9 +4,9 @@ import { decode, type ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 import type ts from "#compiler";
-import { makeTypegenContext, TypegenContext } from "../src/context.js";
-import type { TypegenError } from "../src/errors.js";
-import { astToString } from "../src/lib/ts.js";
+import { makeTypegenContext, TypegenContext } from "../src/context.ts";
+import type { TypegenError } from "../src/errors.ts";
+import { astToString } from "../src/lib/ts.ts";
 
 const info = { title: "Test", version: "1.0.0" };
 
@@ -37,7 +37,7 @@ export function generateTypes(source: unknown, options: Record<string, unknown> 
     source,
     pluginOptions: options,
   }).pipe(
-    Effect.provideService(ModuleLoader, { load: () => import("../src/index.js") }),
+    Effect.provideService(ModuleLoader, { load: () => import("../src/index.ts") }),
     Effect.map((nodes) => astToString(nodes as ts.Node[]).trim()),
     Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
   );

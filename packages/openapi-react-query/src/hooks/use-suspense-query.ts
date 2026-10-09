@@ -12,7 +12,7 @@ import type {
   PathsWithMethod,
   RequiredKeysOf,
 } from "@shipworthy/openapi-fetch";
-import { useApiClient } from "../provider.js";
+import { useApiClient } from "../provider.tsx";
 import {
   type InferSelectReturnType,
   type InitWithUnknowns,
@@ -20,7 +20,7 @@ import {
   buildQueryFn,
   buildQueryKey,
   parseArgs,
-} from "../utils.js";
+} from "../utils.ts";
 
 interface ApiClientSuspenseQuery<Paths extends Record<string, any>> {
   <

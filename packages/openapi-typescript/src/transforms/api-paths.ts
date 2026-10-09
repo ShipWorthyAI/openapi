@@ -1,7 +1,7 @@
 import type { ParsedPathItem } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import type ts from "#compiler";
-import { tsEnum } from "../lib/ts.js";
+import { tsEnum } from "../lib/ts.ts";
 
 /** An enum key for an operation without an `operationId`: the method and path, without parameters. */
 function enumName(method: string, url: string): string {

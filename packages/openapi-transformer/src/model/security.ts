@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { ParsedExtensions } from "./extensions.js";
-import { node, shareable } from "./fields.js";
-import { optionalField, optionalString } from "./optional.js";
+import { ParsedExtensions } from "./extensions.ts";
+import { node, shareable } from "./fields.ts";
+import { optionalField, optionalString } from "./optional.ts";
 
 const parsedOAuthFlowFields = {
   authorizationUrl: optionalString,

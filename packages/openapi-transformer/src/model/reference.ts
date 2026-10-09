@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { optionalString } from "./optional.js";
+import { optionalString } from "./optional.ts";
 
 const parsedRefFields = {
   $ref: Schema.String,

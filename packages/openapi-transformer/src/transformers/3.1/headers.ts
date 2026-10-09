@@ -5,11 +5,11 @@ import {
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect, type SchemaIssue } from "effect";
-import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
-import type { ParsedHeader } from "../../model/index.js";
-import { transformContent } from "./content.js";
-import { transformExampleList } from "./examples.js";
+import { child, resolve } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
+import type { ParsedHeader } from "../../model/index.ts";
+import { transformContent } from "./content.ts";
+import { transformExampleList } from "./examples.ts";
 
 export const transformHeader = Effect.fnUntraced(function* (
   document: ParsedOpenApi,

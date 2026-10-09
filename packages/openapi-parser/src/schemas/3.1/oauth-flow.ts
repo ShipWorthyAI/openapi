@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { openApiObject } from "./object.js";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiOAuthFlow = openApiObject({
   authorizationUrl: Schema.optionalKey(Schema.String),

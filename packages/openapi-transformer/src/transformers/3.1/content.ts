@@ -5,11 +5,11 @@ import type {
   ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
-import { child } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
-import type { ParsedBodyMediaType, ParsedEncoding, ParsedMediaType } from "../../model/index.js";
-import { transformExampleList } from "./examples.js";
-import { transformHeaderList } from "./headers.js";
+import { child } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
+import type { ParsedBodyMediaType, ParsedEncoding, ParsedMediaType } from "../../model/index.ts";
+import { transformExampleList } from "./examples.ts";
+import { transformHeaderList } from "./headers.ts";
 
 const transformEncoding = Effect.fnUntraced(function* (
   document: ParsedOpenApi,

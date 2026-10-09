@@ -2,15 +2,15 @@ import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import { performance } from "node:perf_hooks";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
-import { NEVER, STRING, stringToAST, tsModifiers, tsPropertyIndex, tsRecord } from "../lib/ts.js";
-import { createRef, debug, getEntries } from "../lib/utils.js";
-import { transformApiPaths } from "./api-paths.js";
-import { transformComponents } from "./components.js";
-import { transformPaths } from "./paths.js";
-import { transformSchema } from "./schema.js";
-import { transformWebhooks } from "./webhooks.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
+import { NEVER, STRING, stringToAST, tsModifiers, tsPropertyIndex, tsRecord } from "../lib/ts.ts";
+import { createRef, debug, getEntries } from "../lib/utils.ts";
+import { transformApiPaths } from "./api-paths.ts";
+import { transformComponents } from "./components.ts";
+import { transformPaths } from "./paths.ts";
+import { transformSchema } from "./schema.ts";
+import { transformWebhooks } from "./webhooks.ts";
 
 // Inline helper types for readOnly/writeOnly markers (when readWriteMarkers is enabled)
 const READ_WRITE_HELPER_TYPES = `

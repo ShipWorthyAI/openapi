@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import * as V10 from "./schemas/1.0.js";
-import * as V11 from "./schemas/1.1.js";
+import * as V10 from "./schemas/1.0.ts";
+import * as V11 from "./schemas/1.1.ts";
 
 export const OverlayInfo = Schema.Union([V10.OverlayInfo, V11.OverlayInfo]);
 export type OverlayInfo = typeof OverlayInfo.Type;

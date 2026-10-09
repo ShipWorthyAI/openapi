@@ -1,5 +1,5 @@
-import type { QuerySerializerOptions } from "../types.js";
-import { serializeArrayParam, serializeObjectParam, serializePrimitiveParam } from "./param.js";
+import type { QuerySerializerOptions } from "../types.ts";
+import { serializeArrayParam, serializeObjectParam, serializePrimitiveParam } from "./param.ts";
 
 /** Serialize query params to string */
 export function createQuerySerializer<T = unknown>(

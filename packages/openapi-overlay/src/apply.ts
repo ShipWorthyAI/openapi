@@ -1,8 +1,8 @@
 import { Effect, Predicate, Schema } from "effect";
 import * as Yaml from "effect/encoding/Yaml";
 import { exec, type Path } from "jsonpath-rfc9535";
-import { OverlayError } from "./errors.js";
-import { Overlay, type OverlayAction } from "./schemas.js";
+import { OverlayError } from "./errors.ts";
+import { Overlay, type OverlayAction } from "./schemas.ts";
 
 const parseInput = Effect.fnUntraced(function* (input: unknown, label: string) {
   if (typeof input !== "string") return input;

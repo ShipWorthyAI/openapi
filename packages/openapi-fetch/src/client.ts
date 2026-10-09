@@ -1,10 +1,10 @@
-import type { MediaType } from "./helpers.js";
-import { mergeHeaders } from "./headers.js";
-import { defaultBodySerializer } from "./serializers/body.js";
-import { serializeCookieParams } from "./serializers/cookie.js";
-import { defaultPathSerializer } from "./serializers/path.js";
-import { createQuerySerializer } from "./serializers/query.js";
-import { createFinalURL, removeTrailingSlash } from "./serializers/url.js";
+import type { MediaType } from "./helpers.ts";
+import { mergeHeaders } from "./headers.ts";
+import { defaultBodySerializer } from "./serializers/body.ts";
+import { serializeCookieParams } from "./serializers/cookie.ts";
+import { defaultPathSerializer } from "./serializers/path.ts";
+import { createQuerySerializer } from "./serializers/query.ts";
+import { createFinalURL, removeTrailingSlash } from "./serializers/url.ts";
 import type {
   Client,
   ClientOptions,
@@ -16,7 +16,7 @@ import type {
   PathSerializer,
   QuerySerializer,
   QuerySerializerOptions,
-} from "./types.js";
+} from "./types.ts";
 
 interface RequestParams {
   query?: Record<string, unknown>;

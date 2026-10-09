@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { OpenApiHeader } from "./header.js";
-import { OpenApiLink } from "./link.js";
-import { OpenApiMediaType } from "./media-type.js";
-import { openApiObject } from "./object.js";
-import { withReference } from "./reference.js";
+import { OpenApiHeader } from "./header.ts";
+import { OpenApiLink } from "./link.ts";
+import { OpenApiMediaType } from "./media-type.ts";
+import { openApiObject } from "./object.ts";
+import { withReference } from "./reference.ts";
 
 export const OpenApiResponse = openApiObject({
   description: Schema.String,

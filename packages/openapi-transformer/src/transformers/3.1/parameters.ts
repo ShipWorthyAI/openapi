@@ -6,11 +6,11 @@ import {
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
-import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
-import type { ParameterLocation, ParamStyle, ParsedParameter } from "../../model/index.js";
-import { transformContent } from "./content.js";
-import { transformExampleList } from "./examples.js";
+import { child, resolve } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
+import type { ParameterLocation, ParamStyle, ParsedParameter } from "../../model/index.ts";
+import { transformContent } from "./content.ts";
+import { transformExampleList } from "./examples.ts";
 
 const defaultStyles: Record<ParameterLocation, ParamStyle> = {
   path: "simple",

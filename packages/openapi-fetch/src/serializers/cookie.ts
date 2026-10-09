@@ -1,4 +1,4 @@
-import { serializePrimitiveParam } from "./param.js";
+import { serializePrimitiveParam } from "./param.ts";
 
 type Primitive = string | number | boolean;
 

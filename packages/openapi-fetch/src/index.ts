@@ -1,15 +1,15 @@
-export { default } from "./client.js";
-export { wrapAsPathBasedClient, createPathBasedClient } from "./path-client.js";
-export { mergeHeaders } from "./headers.js";
+export { default } from "./client.ts";
+export { wrapAsPathBasedClient, createPathBasedClient } from "./path-client.ts";
+export { mergeHeaders } from "./headers.ts";
 export {
   serializePrimitiveParam,
   serializeObjectParam,
   serializeArrayParam,
-} from "./serializers/param.js";
-export { createQuerySerializer } from "./serializers/query.js";
-export { defaultPathSerializer } from "./serializers/path.js";
-export { defaultBodySerializer } from "./serializers/body.js";
-export { createFinalURL, removeTrailingSlash } from "./serializers/url.js";
+} from "./serializers/param.ts";
+export { createQuerySerializer } from "./serializers/query.ts";
+export { defaultPathSerializer } from "./serializers/path.ts";
+export { defaultBodySerializer } from "./serializers/body.ts";
+export { createFinalURL, removeTrailingSlash } from "./serializers/url.ts";
 export type {
   BodySerializer,
   Client,
@@ -37,7 +37,7 @@ export type {
   QuerySerializerOptions,
   RequestBodyOption,
   RequestOptions,
-} from "./types.js";
+} from "./types.ts";
 export type {
   $Read,
   $Write,
@@ -70,4 +70,4 @@ export type {
   SuccessResponse,
   SuccessResponseJSON,
   Writable,
-} from "./helpers.js";
+} from "./helpers.ts";

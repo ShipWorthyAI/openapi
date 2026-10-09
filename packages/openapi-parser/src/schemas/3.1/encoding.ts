@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { OpenApiHeader } from "./header.js";
-import { openApiObject } from "./object.js";
-import { withReference } from "./reference.js";
+import { OpenApiHeader } from "./header.ts";
+import { openApiObject } from "./object.ts";
+import { withReference } from "./reference.ts";
 
 export const OpenApiEncoding = openApiObject({
   contentType: Schema.optionalKey(Schema.String),

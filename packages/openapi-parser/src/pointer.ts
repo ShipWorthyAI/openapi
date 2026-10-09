@@ -1,5 +1,5 @@
 import { JsonPointer } from "effect";
-import { invalidPointerFailure, missingPointerFailure } from "./errors.js";
+import { invalidPointerFailure, missingPointerFailure } from "./errors.ts";
 
 const unsafeTokens = new Set(["__proto__", "constructor", "prototype"]);
 

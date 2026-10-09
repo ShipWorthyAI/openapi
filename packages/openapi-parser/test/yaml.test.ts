@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseYamlDocument } from "../src/yaml.js";
+import { parseYamlDocument } from "../src/yaml.ts";
 
 describe("YAML compatibility", () => {
   it("parses compact nested block sequences and negative numbers", () => {

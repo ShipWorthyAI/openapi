@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { ParsedExternalDocs } from "./external-docs.js";
-import { node } from "./fields.js";
-import { optionalField, optionalString } from "./optional.js";
+import { ParsedExternalDocs } from "./external-docs.ts";
+import { node } from "./fields.ts";
+import { optionalField, optionalString } from "./optional.ts";
 
 const parsedTagFields = {
   ...node,

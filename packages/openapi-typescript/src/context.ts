@@ -1,8 +1,8 @@
 import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Context, Effect, Predicate, Schema } from "effect";
-import { TypegenError } from "./errors.js";
-import { resolveRef, scanDiscriminators } from "./lib/utils.js";
-import type { GlobalContext, OpenAPITSOptions } from "./types.js";
+import { TypegenError } from "./errors.ts";
+import { resolveRef, scanDiscriminators } from "./lib/utils.ts";
+import type { GlobalContext, OpenAPITSOptions } from "./types.ts";
 
 /** Options and shared state for one run of the transforms. */
 export class TypegenContext extends Context.Service<TypegenContext, GlobalContext>()(

@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { OpenApiExternalDocs } from "./external-docs.js";
-import { openApiObject } from "./object.js";
+import { OpenApiExternalDocs } from "./external-docs.ts";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiTag = openApiObject({
   name: Schema.String,

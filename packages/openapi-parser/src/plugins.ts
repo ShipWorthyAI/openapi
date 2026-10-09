@@ -1,6 +1,6 @@
 import { Effect, type FileSystem, Predicate, Schema } from "effect";
 import type { HttpClient } from "effect/http";
-import type { TaggedFailure } from "./errors.js";
+import type { TaggedFailure } from "./errors.ts";
 
 export interface FileInfo {
   url: string;

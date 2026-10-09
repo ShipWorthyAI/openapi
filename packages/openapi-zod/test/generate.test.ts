@@ -81,7 +81,7 @@ function sourceFor(schema: Parameters<typeof decode>[0]) {
 async function generateZodSources(source: URL) {
   return Effect.runPromise(
     generate({ specifier: "@shipworthy/openapi-zod", exportName: "zod", source }).pipe(
-      Effect.provideService(ModuleLoader, { load: () => import("../src/index.js") }),
+      Effect.provideService(ModuleLoader, { load: () => import("../src/index.ts") }),
       Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
     ),
   ) as Promise<ZodSource>;

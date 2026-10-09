@@ -1,8 +1,8 @@
 import { Effect, FileSystem, Option, Path } from "effect";
 import { CliError } from "effect/cli";
-import { defaultTypeFlags } from "./plugins/typescript/flags.js";
-import { renderTypescript, typescriptSpecifier } from "./plugins/typescript/plugin.js";
-import { generatorStamp, readStamp } from "./stamp.js";
+import { defaultTypeFlags } from "./plugins/typescript/flags.ts";
+import { renderTypescript, typescriptSpecifier } from "./plugins/typescript/plugin.ts";
+import { generatorStamp, readStamp } from "./stamp.ts";
 
 export interface EnsureTarget {
   readonly source: URL;

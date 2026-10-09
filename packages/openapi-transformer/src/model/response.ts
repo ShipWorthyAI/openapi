@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { ParsedBodyMediaType } from "./body-media-type.js";
-import { node, shareable } from "./fields.js";
-import { ParsedHeader } from "./header.js";
-import { ParsedLink } from "./link.js";
-import { optionalString } from "./optional.js";
+import { ParsedBodyMediaType } from "./body-media-type.ts";
+import { node, shareable } from "./fields.ts";
+import { ParsedHeader } from "./header.ts";
+import { ParsedLink } from "./link.ts";
+import { optionalString } from "./optional.ts";
 
 const parsedResponseFields = {
   ...node,

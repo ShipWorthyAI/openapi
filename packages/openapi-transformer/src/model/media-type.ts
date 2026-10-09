@@ -1,8 +1,8 @@
 import { Schema } from "effect";
-import { ParsedExample } from "./example.js";
-import { node, shareable } from "./fields.js";
-import { optionalField } from "./optional.js";
-import { ParsedSchema } from "./schema.js";
+import { ParsedExample } from "./example.ts";
+import { node, shareable } from "./fields.ts";
+import { optionalField } from "./optional.ts";
+import { ParsedSchema } from "./schema.ts";
 
 const parsedMediaTypeFields = {
   ...node,

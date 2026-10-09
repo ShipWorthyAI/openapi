@@ -1,9 +1,9 @@
 import type { ParsedSchema } from "@shipworthy/openapi-transformer";
 import { Effect, type JsonSchema, Predicate } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
-import { parseRef } from "../lib/ref.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
+import { parseRef } from "../lib/ref.ts";
 import {
   addJSDocComment,
   BOOLEAN,
@@ -27,16 +27,16 @@ import {
   tsWithRequired,
   UNDEFINED,
   UNKNOWN,
-} from "../lib/ts.js";
+} from "../lib/ts.ts";
 import {
   discriminatorOf,
   stringList,
   subschema,
   subschemaList,
   subschemaMap,
-} from "../lib/schema.js";
-import { createDiscriminatorProperty, createRef, getEntries } from "../lib/utils.js";
-import type { GlobalContext, TransformObject } from "../types.js";
+} from "../lib/schema.ts";
+import { createDiscriminatorProperty, createRef, getEntries } from "../lib/utils.ts";
+import type { GlobalContext, TransformObject } from "../types.ts";
 
 type Transformed = Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext>;
 

@@ -1,10 +1,10 @@
 import type { ParsedMediaType } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import type ts from "#compiler";
-import type { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
-import { refType, UNKNOWN } from "../lib/ts.js";
-import { transformSchema } from "./schema.js";
+import type { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
+import { refType, UNKNOWN } from "../lib/ts.ts";
+import { transformSchema } from "./schema.ts";
 
 /**
  * Transform a Media Type Object (4.8.14) into the type of its schema.

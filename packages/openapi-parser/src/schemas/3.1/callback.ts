@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { openApiMap } from "./object.js";
-import { OpenApiPathItem } from "./path-item.js";
+import { openApiMap } from "./object.ts";
+import { OpenApiPathItem } from "./path-item.ts";
 
 export const OpenApiCallback = openApiMap(
   Schema.String.check(Schema.makeFilter((key) => !key.startsWith("x-"))),

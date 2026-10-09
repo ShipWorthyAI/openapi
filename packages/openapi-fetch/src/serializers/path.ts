@@ -1,4 +1,4 @@
-import { serializeArrayParam, serializeObjectParam, serializePrimitiveParam } from "./param.js";
+import { serializeArrayParam, serializeObjectParam, serializePrimitiveParam } from "./param.ts";
 
 const PATH_PARAM_RE = /\{[^{}]+\}/g;
 

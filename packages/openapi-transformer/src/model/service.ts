@@ -1,16 +1,16 @@
 import { Schema } from "effect";
-import { ParsedComponents } from "./components.js";
-import { ParsedExternalDocs } from "./external-docs.js";
-import { ParsedExtensions } from "./extensions.js";
-import { node } from "./fields.js";
-import { ParsedContact, ParsedLicense } from "./info.js";
-import { optionalField, optionalString } from "./optional.js";
-import { ParsedOperation } from "./operation.js";
-import { ParsedPathItem } from "./path-item.js";
-import { ParsedSchema } from "./schema.js";
-import { ParsedSecurityRequirement, ParsedSecurityScheme } from "./security.js";
-import { ParsedServer } from "./server.js";
-import { ParsedTag } from "./tag.js";
+import { ParsedComponents } from "./components.ts";
+import { ParsedExternalDocs } from "./external-docs.ts";
+import { ParsedExtensions } from "./extensions.ts";
+import { node } from "./fields.ts";
+import { ParsedContact, ParsedLicense } from "./info.ts";
+import { optionalField, optionalString } from "./optional.ts";
+import { ParsedOperation } from "./operation.ts";
+import { ParsedPathItem } from "./path-item.ts";
+import { ParsedSchema } from "./schema.ts";
+import { ParsedSecurityRequirement, ParsedSecurityScheme } from "./security.ts";
+import { ParsedServer } from "./server.ts";
+import { ParsedTag } from "./tag.ts";
 
 const parsedServiceFields = {
   ...node,

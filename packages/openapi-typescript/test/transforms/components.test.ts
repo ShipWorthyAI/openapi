@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { transformComponents } from "../../src/transforms/components.js";
-import { document, print } from "../helpers.js";
+import { transformComponents } from "../../src/transforms/components.ts";
+import { document, print } from "../helpers.ts";
 
 const components = {
   schemas: {

@@ -1,8 +1,8 @@
 import type { Generator } from "@shipworthy/openapi-generator";
 import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, Schema } from "effect";
-import { TanstackGenerationError } from "./errors.js";
-import type { OperationRoute } from "./query-utils.js";
+import { TanstackGenerationError } from "./errors.ts";
+import type { OperationRoute } from "./query-utils.ts";
 
 export { TanstackGenerationError };
 

@@ -1,7 +1,7 @@
 import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { resolveRef } from "@shipworthy/openapi-typescript";
 import { Predicate } from "effect";
-import { ZodGenerationError } from "./errors.js";
+import { ZodGenerationError } from "./errors.ts";
 
 /** Follow an internal `$ref` on a parsed document. Boolean `false` is a real schema. */
 export function resolveDocumentRef(model: ParsedService, ref: string): unknown {

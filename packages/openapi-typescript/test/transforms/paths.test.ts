@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { transformApiPaths } from "../../src/transforms/api-paths.js";
-import { transformPaths } from "../../src/transforms/paths.js";
-import { transformWebhooks } from "../../src/transforms/webhooks.js";
-import { document, print } from "../helpers.js";
+import { transformApiPaths } from "../../src/transforms/api-paths.ts";
+import { transformPaths } from "../../src/transforms/paths.ts";
+import { transformWebhooks } from "../../src/transforms/webhooks.ts";
+import { document, print } from "../helpers.ts";
 
 const ok = { "200": { description: "OK" } };
 

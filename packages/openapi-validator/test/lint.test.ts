@@ -1,7 +1,7 @@
 import { assert, layer } from "@effect/vitest";
 import { Console, Effect, Layer, MutableRef } from "effect";
 import { TestConsole } from "effect/testing";
-import { Linter } from "../src/index.js";
+import { Linter } from "../src/index.ts";
 
 const duplicateOperationIds = `openapi: 3.1.0
 info:

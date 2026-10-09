@@ -2,8 +2,8 @@ import { bundleDocument } from "@shipworthy/openapi-parser";
 import { decode, type ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, FileSystem, Path, Predicate } from "effect";
 import { HttpClient } from "effect/http";
-import { ResolveError, TransformError, type InvalidPlugin, type MissingPlugin } from "./errors.js";
-import { importPlugin } from "./plugins.js";
+import { ResolveError, TransformError, type InvalidPlugin, type MissingPlugin } from "./errors.ts";
+import { importPlugin } from "./plugins.ts";
 
 export interface GenerateOptions {
   readonly specifier: string;

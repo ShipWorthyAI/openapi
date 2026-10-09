@@ -1,9 +1,9 @@
 import { Effect, Predicate } from "effect";
-import { ParseError, ParserFailure } from "./errors.js";
-import type { EffectPlugin, FileInfo, Options, ParserPlugin } from "./plugins.js";
-import { promisePlugin } from "./plugins.js";
-import { extensionOf } from "./url.js";
-import { parseYamlDocument } from "./yaml.js";
+import { ParseError, ParserFailure } from "./errors.ts";
+import type { EffectPlugin, FileInfo, Options, ParserPlugin } from "./plugins.ts";
+import { promisePlugin } from "./plugins.ts";
+import { extensionOf } from "./url.ts";
+import { parseYamlDocument } from "./yaml.ts";
 
 function decodeData(data: Uint8Array | string | undefined): string {
   if (data === undefined) return "";

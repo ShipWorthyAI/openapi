@@ -1,6 +1,6 @@
 import { Effect, Schema, SchemaIssue } from "effect";
-import { ParsedOpenApiFromDocument } from "./codec.js";
-import { loadDocument, type LoadOptions } from "./load.js";
+import { ParsedOpenApiFromDocument } from "./codec.ts";
+import { loadDocument, type LoadOptions } from "./load.ts";
 
 export type BundleOptions = LoadOptions;
 

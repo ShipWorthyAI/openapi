@@ -1,9 +1,9 @@
 import type { ParsedDiscriminator, ParsedService } from "@shipworthy/openapi-transformer";
 import { type JsonSchema, Predicate } from "effect";
 import ts from "#compiler";
-import { escapePointer, parseRef } from "./ref.js";
-import { discriminatorOf, stringList } from "./schema.js";
-import { tsLiteral, tsModifiers, tsPropertyIndex } from "./ts.js";
+import { escapePointer, parseRef } from "./ref.ts";
+import { discriminatorOf, stringList } from "./schema.ts";
+import { tsLiteral, tsModifiers, tsPropertyIndex } from "./ts.ts";
 
 /** Same TTY and `NO_COLOR` check as `CliOutput.defaultFormatter`. */
 function colorsEnabled(): boolean {

@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { node, shareable } from "./fields.js";
-import { optionalField, optionalString } from "./optional.js";
+import { node, shareable } from "./fields.ts";
+import { optionalField, optionalString } from "./optional.ts";
 
 const parsedLinkFields = {
   ...node,

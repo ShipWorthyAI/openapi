@@ -3,8 +3,8 @@ import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
 import { Agent } from "@effect/platform-node/Undici";
 import { Cause, Effect, Schedule, type Scope } from "effect";
 import { HttpClient } from "effect/http";
-import { ResolverFailure, nodeErrorCode, timeoutFailure, type TimeoutFailure } from "./errors.js";
-import type { EffectPlugin, HttpResolverOptions, Options } from "./plugins.js";
+import { ResolverFailure, nodeErrorCode, timeoutFailure, type TimeoutFailure } from "./errors.ts";
+import type { EffectPlugin, HttpResolverOptions, Options } from "./plugins.ts";
 import {
   httpOrigin,
   isAllowedOrigin,
@@ -12,7 +12,7 @@ import {
   isUnsafeUrl,
   resolveUrlSafety,
   type ResolvedUrlAddress,
-} from "./url.js";
+} from "./url.ts";
 
 type Hop =
   | { readonly kind: "body"; readonly bytes: Uint8Array }

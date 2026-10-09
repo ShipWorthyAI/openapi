@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { ParsedHeader } from "./header.js";
-import { optionalBoolean } from "./optional.js";
+import { ParsedHeader } from "./header.ts";
+import { optionalBoolean } from "./optional.ts";
 
 export const parameterLocations = ["path", "query", "header", "cookie"] as const;
 

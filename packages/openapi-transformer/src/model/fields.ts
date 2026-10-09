@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { ParsedExtensions } from "./extensions.js";
-import { optionalField } from "./optional.js";
-import { ParsedRef } from "./reference.js";
+import { ParsedExtensions } from "./extensions.ts";
+import { optionalField } from "./optional.ts";
+import { ParsedRef } from "./reference.ts";
 
 /** Fields of a node with a location in the bundled document. */
 export const node = {

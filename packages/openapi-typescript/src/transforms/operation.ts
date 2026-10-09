@@ -1,8 +1,8 @@
 import type { ParsedOperation } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
 import {
   addJSDocComment,
   annotationsOf,
@@ -11,11 +11,11 @@ import {
   refType,
   tsModifiers,
   tsPropertyIndex,
-} from "../lib/ts.js";
-import { createRef } from "../lib/utils.js";
-import { transformParameters } from "./parameters.js";
-import { transformRequestBody } from "./request-body.js";
-import { transformResponses } from "./responses.js";
+} from "../lib/ts.ts";
+import { createRef } from "../lib/utils.ts";
+import { transformParameters } from "./parameters.ts";
+import { transformRequestBody } from "./request-body.ts";
+import { transformResponses } from "./responses.ts";
 
 /**
  * Transform an Operation Object (4.8.10) into its `parameters`, `requestBody`, and `responses`.

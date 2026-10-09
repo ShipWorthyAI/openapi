@@ -4,7 +4,7 @@ import { Effect, FileSystem, Layer, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { ParsedOpenApiFromString } from "@shipworthy/openapi-parser";
 import { ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
-import { decode, ParsedService, ParsedServiceFromParsedOpenApi } from "../src/index.js";
+import { decode, ParsedService, ParsedServiceFromParsedOpenApi } from "../src/index.ts";
 
 /** Decode a document that is expected to succeed. */
 const decodeModel = (document: unknown) =>

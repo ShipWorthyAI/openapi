@@ -1,8 +1,8 @@
 import { Command } from "effect/cli";
-import { bundle } from "./commands/bundle/command.js";
-import { generate } from "./commands/generate/command.js";
-import { lint } from "./commands/lint/command.js";
-import { overlay } from "./commands/overlay/command.js";
+import { bundle } from "./commands/bundle/command.ts";
+import { generate } from "./commands/generate/command.ts";
+import { lint } from "./commands/lint/command.ts";
+import { overlay } from "./commands/overlay/command.ts";
 
 export const openapi = Command.make("openapi").pipe(
   Command.withDescription(

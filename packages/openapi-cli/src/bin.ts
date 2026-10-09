@@ -4,8 +4,8 @@ import { ModuleLoader } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { Command } from "effect/cli";
 import { FetchHttpClient } from "effect/http";
-import { openapi } from "./cli.js";
-import { version } from "./version.js";
+import { openapi } from "./cli.ts";
+import { version } from "./version.ts";
 
 openapi.pipe(
   Command.run({ version }),

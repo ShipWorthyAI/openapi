@@ -3,16 +3,16 @@ import type { ParsedService } from "@shipworthy/openapi-transformer";
 import type { Generator } from "@shipworthy/openapi-generator";
 import { Effect, Predicate } from "effect";
 import ts from "#compiler";
-import { makeTypegenContext, TypegenContext } from "./context.js";
-import { TypegenError } from "./errors.js";
-import { debug } from "./lib/utils.js";
-import { transformDocument } from "./transforms/document.js";
+import { makeTypegenContext, TypegenContext } from "./context.ts";
+import { TypegenError } from "./errors.ts";
+import { debug } from "./lib/utils.ts";
+import { transformDocument } from "./transforms/document.ts";
 
-export { TypegenError } from "./errors.js";
-export { formatTypeScript } from "./format.js";
-export { astToString } from "./lib/ts.js";
-export { resolveRef } from "./lib/utils.js";
-export type { OpenAPITSOptions, TransformNodeOptions, TransformObject } from "./types.js";
+export { TypegenError } from "./errors.ts";
+export { formatTypeScript } from "./format.ts";
+export { astToString } from "./lib/ts.ts";
+export { resolveRef } from "./lib/utils.ts";
+export type { OpenAPITSOptions, TransformNodeOptions, TransformObject } from "./types.ts";
 
 /** TypeScript plugin. `generate` prints `paths`, `webhooks`, `components`, `$defs`, and `operations`. */
 export const typescript: Generator<ts.Node[], TypegenError> = {

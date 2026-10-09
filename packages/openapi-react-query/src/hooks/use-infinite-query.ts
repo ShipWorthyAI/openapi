@@ -12,14 +12,14 @@ import type {
   MediaType,
   PathsWithMethod,
 } from "@shipworthy/openapi-fetch";
-import { useApiClient } from "../provider.js";
+import { useApiClient } from "../provider.tsx";
 import {
   type InferSelectReturnType,
   type InitWithUnknowns,
   type QueryKey,
   buildQueryKey,
   parseArgs,
-} from "../utils.js";
+} from "../utils.ts";
 
 interface ApiClientInfiniteQuery<Paths extends Record<string, any>> {
   <

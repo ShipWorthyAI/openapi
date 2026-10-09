@@ -3,9 +3,9 @@ import { describe, it } from "@effect/vitest";
 import { strict as assert } from "node:assert";
 import { Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/http";
-import * as parser from "../src/index.js";
-import { bundleDocument, ParsedOpenApiFromString } from "../src/index.js";
-import { ParsedOpenApi } from "../src/schemas/3.1/index.js";
+import * as parser from "../src/index.ts";
+import { bundleDocument, ParsedOpenApiFromString } from "../src/index.ts";
+import { ParsedOpenApi } from "../src/schemas/3.1/index.ts";
 
 const sourceUrl = "https://api.example.com/spec/openapi.yaml";
 const codec = ParsedOpenApiFromString({ sourceUrl });

@@ -1,6 +1,6 @@
-import createClient from "./client.js";
-import type { MediaType } from "./helpers.js";
-import type { Client, ClientOptions, PathBasedClient } from "./types.js";
+import createClient from "./client.ts";
+import type { MediaType } from "./helpers.ts";
+import type { Client, ClientOptions, PathBasedClient } from "./types.ts";
 
 type CoreClient = {
   GET: (url: string, init?: unknown) => unknown;

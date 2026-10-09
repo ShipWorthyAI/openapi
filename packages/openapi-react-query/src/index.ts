@@ -1,8 +1,8 @@
-export { createApiClient } from "./client.js";
-export type { ApiClient } from "./client.js";
-export { ApiClientProvider, useApiClient } from "./provider.js";
-export { useApiClientQueryOptions, useApiClientQuery } from "./hooks/use-query.js";
-export { useApiClientSuspenseQuery } from "./hooks/use-suspense-query.js";
-export { useApiClientInfiniteQuery } from "./hooks/use-infinite-query.js";
-export { useApiClientMutation } from "./hooks/use-mutation.js";
-export type { QueryKey } from "./utils.js";
+export { createApiClient } from "./client.ts";
+export type { ApiClient } from "./client.ts";
+export { ApiClientProvider, useApiClient } from "./provider.tsx";
+export { useApiClientQueryOptions, useApiClientQuery } from "./hooks/use-query.ts";
+export { useApiClientSuspenseQuery } from "./hooks/use-suspense-query.ts";
+export { useApiClientInfiniteQuery } from "./hooks/use-infinite-query.ts";
+export { useApiClientMutation } from "./hooks/use-mutation.ts";
+export type { QueryKey } from "./utils.ts";

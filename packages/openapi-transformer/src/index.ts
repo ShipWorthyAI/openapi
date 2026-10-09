@@ -1,2 +1,2 @@
-export { decode, ParsedServiceFromParsedOpenApi } from "./decode.js";
-export * from "./model/index.js";
+export { decode, ParsedServiceFromParsedOpenApi } from "./decode.ts";
+export * from "./model/index.ts";

@@ -1,10 +1,10 @@
 import { Schema } from "effect";
-import { ParsedExample } from "./example.js";
-import { node, shareable } from "./fields.js";
-import { ParsedMediaType } from "./media-type.js";
-import { optionalBoolean, optionalField, optionalString } from "./optional.js";
-import { ParamStyle } from "./param-style.js";
-import { ParsedSchema } from "./schema.js";
+import { ParsedExample } from "./example.ts";
+import { node, shareable } from "./fields.ts";
+import { ParsedMediaType } from "./media-type.ts";
+import { optionalBoolean, optionalField, optionalString } from "./optional.ts";
+import { ParamStyle } from "./param-style.ts";
+import { ParsedSchema } from "./schema.ts";
 
 const parsedHeaderFields = {
   ...node,

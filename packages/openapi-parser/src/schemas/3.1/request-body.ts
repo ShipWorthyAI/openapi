@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { OpenApiMediaType } from "./media-type.js";
-import { openApiObject } from "./object.js";
+import { OpenApiMediaType } from "./media-type.ts";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiRequestBody = openApiObject({
   description: Schema.optionalKey(Schema.String),

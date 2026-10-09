@@ -1,7 +1,7 @@
 import { Schema } from "effect";
-import { ParsedExtensions } from "./extensions.js";
-import { node } from "./fields.js";
-import { optionalField, optionalString } from "./optional.js";
+import { ParsedExtensions } from "./extensions.ts";
+import { node } from "./fields.ts";
+import { optionalField, optionalString } from "./optional.ts";
 
 const parsedServerVariableFields = {
   default: Schema.String,

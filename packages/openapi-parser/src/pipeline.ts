@@ -1,13 +1,13 @@
 import { JsonPointer, JsonSchema, Predicate } from "effect";
-import type { DereferenceHooks } from "./plugins.js";
-import { getAt, joinPointer } from "./pointer.js";
-import { componentSchemas, schemaSlots } from "./upgraders/3.0-to-3.1.js";
+import type { DereferenceHooks } from "./plugins.ts";
+import { getAt, joinPointer } from "./pointer.ts";
+import { componentSchemas, schemaSlots } from "./upgraders/3.0-to-3.1.ts";
 import {
   bundleFailure,
   circularAliasFailure,
   invalidPointerFailure,
   missingPointerFailure,
-} from "./errors.js";
+} from "./errors.ts";
 
 const ANNOTATIONS = ["example", "discriminator", "xml", "externalDocs", "nullable"] as const;
 

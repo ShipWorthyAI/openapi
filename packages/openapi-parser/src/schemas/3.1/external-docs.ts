@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { openApiObject } from "./object.js";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiExternalDocs = openApiObject({
   url: Schema.String,

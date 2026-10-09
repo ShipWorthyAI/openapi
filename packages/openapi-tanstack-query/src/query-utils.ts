@@ -1,4 +1,4 @@
-import type { OperationInput, OperationData, OperationError } from "./operation.js";
+import type { OperationInput, OperationData, OperationError } from "./operation.ts";
 import {
   skipToken,
   type DataTag,

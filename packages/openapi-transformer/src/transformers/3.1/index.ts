@@ -1,19 +1,19 @@
 import { Effect } from "effect";
 import type { OpenApiComponents, ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
-import type { ParsedService } from "../../model/index.js";
-import { transformCallbackMap } from "./callbacks.js";
-import type { TransformContext } from "./context.js";
-import { transformExampleMap } from "./examples.js";
-import { transformHeaderMap } from "./headers.js";
-import { transformParameterMap } from "./parameters.js";
-import { transformPathItemMap } from "./paths.js";
-import { readExtensions } from "./extensions.js";
-import { transformRequestBodyMap } from "./request.js";
-import { transformLinkMap, transformResponseMap } from "./responses.js";
-import { transformSchemaMap } from "./schemas.js";
-import { transformSecurityRequirements, transformSecuritySchemeMap } from "./securities.js";
-import { transformExternalDocs, transformServerList } from "./servers.js";
-import { transformContact, transformLicense, transformTagList } from "./service.js";
+import type { ParsedService } from "../../model/index.ts";
+import { transformCallbackMap } from "./callbacks.ts";
+import type { TransformContext } from "./context.ts";
+import { transformExampleMap } from "./examples.ts";
+import { transformHeaderMap } from "./headers.ts";
+import { transformParameterMap } from "./parameters.ts";
+import { transformPathItemMap } from "./paths.ts";
+import { readExtensions } from "./extensions.ts";
+import { transformRequestBodyMap } from "./request.ts";
+import { transformLinkMap, transformResponseMap } from "./responses.ts";
+import { transformSchemaMap } from "./schemas.ts";
+import { transformSecurityRequirements, transformSecuritySchemeMap } from "./securities.ts";
+import { transformExternalDocs, transformServerList } from "./servers.ts";
+import { transformContact, transformLicense, transformTagList } from "./service.ts";
 
 /** Build the encoded model; the enclosing codec performs model validation once. */
 export const transformService = Effect.fnUntraced(function* (doc: ParsedOpenApi) {

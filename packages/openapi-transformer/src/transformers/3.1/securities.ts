@@ -8,15 +8,15 @@ import {
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
-import { child, resolve } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
+import { child, resolve } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
 import type {
   ParsedOAuthFlow,
   ParsedOAuthFlows,
   ParsedSecurityRequirement,
   ParsedSecurityScheme,
   ParsedSecurityUse,
-} from "../../model/index.js";
+} from "../../model/index.ts";
 
 const transformOAuthFlow = (value: OpenApiOAuthFlow | undefined) =>
   Effect.sync(() => {

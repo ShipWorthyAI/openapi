@@ -4,7 +4,7 @@ import type {
   ParsedSecurityScheme,
   ParsedServer,
   ParsedTag,
-} from "../../model/index.js";
+} from "../../model/index.ts";
 
 /** Document-level values every operation inherits. */
 export interface TransformContext {

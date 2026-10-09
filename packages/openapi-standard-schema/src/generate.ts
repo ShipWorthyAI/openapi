@@ -15,7 +15,7 @@ import {
   Schema,
   SchemaRepresentation,
 } from "effect";
-import { SchemaGenerationError } from "./errors.js";
+import { SchemaGenerationError } from "./errors.ts";
 
 const sequential = { concurrency: 1, discard: true } as const;
 

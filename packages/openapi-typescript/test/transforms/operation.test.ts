@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import ts from "#compiler";
-import { transformOperation } from "../../src/transforms/operation.js";
-import { document, print } from "../helpers.js";
+import { transformOperation } from "../../src/transforms/operation.ts";
+import { document, print } from "../helpers.ts";
 
 const pet = { $ref: "#/components/schemas/Pet" };
 

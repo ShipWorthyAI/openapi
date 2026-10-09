@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path, Result } from "effect";
 import { FetchHttpClient } from "effect/http";
-import { generate, ModuleLoader } from "../src/index.js";
+import { generate, ModuleLoader } from "../src/index.ts";
 
 const layer = Layer.mergeAll(FileSystem.layerNoop({}), Path.layer, FetchHttpClient.layer);
 

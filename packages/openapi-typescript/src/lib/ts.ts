@@ -6,8 +6,8 @@ import type {
 } from "@shipworthy/openapi-transformer";
 import { Effect, type JsonSchema, Predicate } from "effect";
 import ts, { type LiteralTypeNode, type TypeLiteralNode } from "#compiler";
-import { TypegenError } from "../errors.js";
-import { parseRef } from "./ref.js";
+import { TypegenError } from "../errors.ts";
+import { parseRef } from "./ref.ts";
 
 export const JS_PROPERTY_INDEX_RE = /^[A-Za-z_$][A-Za-z_$0-9]*$/;
 export const JS_ENUM_INVALID_CHARS_RE = /[^A-Za-z_$0-9]+(.)?/g;

@@ -4,16 +4,16 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { JsonPointer } from "effect";
 import { describe, expect, it } from "vitest";
-import { bundle, dereference, parse } from "./reference-engine.js";
+import { bundle, dereference, parse } from "./reference-engine.ts";
 import {
   InvalidPointerFailure,
   GroupFailure,
   MissingPointerFailure,
   ResolverFailure,
   TimeoutFailure,
-} from "../src/errors.js";
-import type { FileInfo } from "../src/plugins.js";
-import { joinPointer, parsePointer } from "../src/pointer.js";
+} from "../src/errors.ts";
+import type { FileInfo } from "../src/plugins.ts";
+import { joinPointer, parsePointer } from "../src/pointer.ts";
 
 const openapiRoot = path.resolve(import.meta.dirname, "fixtures/bundle-openapi/root.yaml");
 

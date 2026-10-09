@@ -1,7 +1,7 @@
 import { NodeFileSystem, NodeHttpClient } from "@effect/platform-node";
 import { Array, Effect, Layer, Schema, SchemaGetter } from "effect";
-import { runEffect } from "../src/run.js";
-import { Options } from "../src/plugins.js";
+import { runEffect } from "../src/run.ts";
+import { Options } from "../src/plugins.ts";
 
 const layer = Layer.mergeAll(NodeFileSystem.layer, NodeHttpClient.layerUndici);
 

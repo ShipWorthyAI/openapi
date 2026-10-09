@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { ParsedExtensions } from "./extensions.js";
-import { optionalString } from "./optional.js";
+import { ParsedExtensions } from "./extensions.ts";
+import { optionalString } from "./optional.ts";
 
 const parsedContactFields = {
   name: optionalString,

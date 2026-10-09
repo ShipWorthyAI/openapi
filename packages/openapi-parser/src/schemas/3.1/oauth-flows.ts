@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { OpenApiOAuthFlow } from "./oauth-flow.js";
-import { openApiObject } from "./object.js";
+import { OpenApiOAuthFlow } from "./oauth-flow.ts";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiOAuthFlows = openApiObject({
   implicit: Schema.optionalKey(

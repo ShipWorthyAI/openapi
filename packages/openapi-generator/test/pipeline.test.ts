@@ -3,7 +3,7 @@ import { ParsedService } from "@shipworthy/openapi-transformer";
 import { Effect, FileSystem, Layer, Path, PlatformError, Result, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { strict as assert } from "node:assert";
-import { generate, ModuleLoader, type Generator } from "../src/index.js";
+import { generate, ModuleLoader, type Generator } from "../src/index.ts";
 
 const plugin: Generator<ParsedService> = { id: "fixture", generate: (model) => model };
 const layer = Layer.mergeAll(FileSystem.layerNoop({}), Path.layer, FetchHttpClient.layer);

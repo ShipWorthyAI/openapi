@@ -14,25 +14,25 @@
  *   `components`, `paths`, `webhooks`, and `$defs` keep the document's keys.
  */
 
-export { ParsedBodyMediaType, ParsedEncoding } from "./body-media-type.js";
-export { ParsedComponents } from "./components.js";
-export { ParsedExample } from "./example.js";
-export { ParsedExtensions } from "./extensions.js";
-export { ParsedExternalDocs } from "./external-docs.js";
-export { ParsedHeader } from "./header.js";
-export { HttpMethodName, httpMethods } from "./http-method.js";
-export { ParsedContact, ParsedLicense } from "./info.js";
-export { ParsedLink } from "./link.js";
-export { ParsedMediaType } from "./media-type.js";
-export { ParsedService } from "./service.js";
-export { ParsedCallbackOperation, ParsedOperation } from "./operation.js";
-export { ParamStyle } from "./param-style.js";
-export { ParameterLocation, parameterLocations, ParsedParameter } from "./parameter.js";
-export { ParsedPathItem } from "./path-item.js";
-export { ParsedRef } from "./reference.js";
-export { ParsedParameters, ParsedRequest, ParsedRequestBody } from "./request.js";
-export { ParsedOperationResponse, ParsedResponse } from "./response.js";
-export { ParsedDiscriminator, ParsedSchema } from "./schema.js";
+export { ParsedBodyMediaType, ParsedEncoding } from "./body-media-type.ts";
+export { ParsedComponents } from "./components.ts";
+export { ParsedExample } from "./example.ts";
+export { ParsedExtensions } from "./extensions.ts";
+export { ParsedExternalDocs } from "./external-docs.ts";
+export { ParsedHeader } from "./header.ts";
+export { HttpMethodName, httpMethods } from "./http-method.ts";
+export { ParsedContact, ParsedLicense } from "./info.ts";
+export { ParsedLink } from "./link.ts";
+export { ParsedMediaType } from "./media-type.ts";
+export { ParsedService } from "./service.ts";
+export { ParsedCallbackOperation, ParsedOperation } from "./operation.ts";
+export { ParamStyle } from "./param-style.ts";
+export { ParameterLocation, parameterLocations, ParsedParameter } from "./parameter.ts";
+export { ParsedPathItem } from "./path-item.ts";
+export { ParsedRef } from "./reference.ts";
+export { ParsedParameters, ParsedRequest, ParsedRequestBody } from "./request.ts";
+export { ParsedOperationResponse, ParsedResponse } from "./response.ts";
+export { ParsedDiscriminator, ParsedSchema } from "./schema.ts";
 export {
   ParsedOAuthFlow,
   ParsedOAuthFlows,
@@ -40,6 +40,6 @@ export {
   ParsedSecurityScheme,
   ParsedSecurityUse,
   SecurityDeclaration,
-} from "./security.js";
-export { ParsedServer, ParsedServerVariable } from "./server.js";
-export { ParsedTag } from "./tag.js";
+} from "./security.ts";
+export { ParsedServer, ParsedServerVariable } from "./server.ts";
+export { ParsedTag } from "./tag.ts";

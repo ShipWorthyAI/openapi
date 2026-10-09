@@ -11,7 +11,7 @@ import type {
   ResponseObjectMap,
   SuccessResponse,
   Writable,
-} from "./helpers.js";
+} from "./helpers.ts";
 
 /** Options for each client instance */
 export interface ClientOptions extends Omit<RequestInit, "headers"> {

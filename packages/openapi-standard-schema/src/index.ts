@@ -1,2 +1,2 @@
-export { SchemaGenerationError } from "./errors.js";
-export { standardSchema } from "./generate.js";
+export { SchemaGenerationError } from "./errors.ts";
+export { standardSchema } from "./generate.ts";

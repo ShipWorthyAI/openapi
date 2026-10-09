@@ -4,10 +4,10 @@ import type {
   OpenApiTag,
 } from "@shipworthy/openapi-parser/schemas/3.1";
 import { Effect } from "effect";
-import { transformExternalDocs } from "./servers.js";
-import { child } from "./pointer.js";
-import { readExtensions } from "./extensions.js";
-import type { ParsedContact, ParsedLicense, ParsedTag } from "../../model/index.js";
+import { transformExternalDocs } from "./servers.ts";
+import { child } from "./pointer.ts";
+import { readExtensions } from "./extensions.ts";
+import type { ParsedContact, ParsedLicense, ParsedTag } from "../../model/index.ts";
 
 export const transformContact = (value: OpenApiContact | undefined) =>
   Effect.sync(() => {

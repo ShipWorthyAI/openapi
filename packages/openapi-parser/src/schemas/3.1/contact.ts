@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { openApiObject } from "./object.js";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiContact = openApiObject({
   name: Schema.optionalKey(Schema.String),

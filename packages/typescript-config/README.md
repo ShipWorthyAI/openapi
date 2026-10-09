@@ -98,7 +98,9 @@ Both presets set `noEmit: true`, so `tsc` only type-checks. To have `tsc` write 
 }
 ```
 
-This example emits modules for direct use in Node.js. Add `"type": "module"` to your package's `package.json` for ESM output, and use `.js` extensions in relative source imports. If a bundler consumes the output instead, keep the preset's `module` and `moduleResolution` values.
+This example emits modules for direct use in Node.js. Add `"type": "module"` to your package's `package.json` for ESM output. Relative source imports can use `.ts` extensions: the presets enable `rewriteRelativeImportExtensions`, so `tsc` emits `import "./module.ts"` as `import "./module.js"`. Existing `.js` imports also work. If a bundler consumes the output instead, keep the preset's `module` and `moduleResolution` values.
+
+Rewriting applies to relative paths starting with `./` or `../`. TypeScript extensions `.ts`, `.tsx`, `.mts`, and `.cts` become their JavaScript equivalents (`.js`, `.jsx` when JSX is preserved, `.mjs`, and `.cjs`). Package names and path aliases are not rewritten. Enabling this option also allows TypeScript extensions in imports; no separate `allowImportingTsExtensions` setting is needed.
 
 ## Presets
 
@@ -112,6 +114,7 @@ This example emits modules for direct use in Node.js. Add `"type": "module"` to 
     "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "rewriteRelativeImportExtensions": true,
     "moduleDetection": "force",
     "isolatedModules": true,
     "esModuleInterop": true,
@@ -137,6 +140,7 @@ What these options mean for your code:
 **Modules and resolution**
 
 - `module: "ESNext"` with `moduleResolution: "bundler"`: ES module syntax, resolved the way bundlers and Bun resolve it. `package.json` `exports` are honored, and relative imports don't need file extensions.
+- `rewriteRelativeImportExtensions: true`: relative source imports can use TypeScript file extensions, which `tsc` rewrites to their JavaScript equivalents when emitting JavaScript.
 - `moduleDetection: "force"`: every non-declaration file is treated as a module, even without `import`/`export`, so top-level names don't leak into a global scope.
 - `isolatedModules: true`: every file must be transpilable on its own (by esbuild, Bun, SWC, and similar tools). For example, re-exporting a type requires `export type`.
 - `esModuleInterop: true`: default imports from CommonJS modules work (`import x from "cjs-package"`).
@@ -182,7 +186,7 @@ Choose `library.json` for code that runs in both browsers and Node.js/Bun, or co
 - Use the presets only through `"extends": "@shipworthy/typescript-config/<preset>.json"` in a `tsconfig.json`.
 - Target TypeScript `^7.0.2`. `libReplacement` and `noUncheckedSideEffectImports` need a recent compiler.
 - Both presets set `noEmit: true`. To emit, override `noEmit: false` and set `outDir`/`declaration` in a separate config.
-- `moduleResolution` is `"bundler"`, with `module: "ESNext"`. Relative import extensions are optional for bundler consumers. For direct Node.js output, use a build config with `NodeNext` resolution and `.js` relative imports.
+- `moduleResolution` is `"bundler"`, with `module: "ESNext"`. Relative import extensions are optional for bundler consumers. For direct Node.js output, use a build config with `NodeNext` resolution and explicit `.ts` or `.js` relative imports. `rewriteRelativeImportExtensions` rewrites relative `.ts` imports to `.js` in emitted JavaScript.
 - `noUncheckedIndexedAccess` is on: `arr[i]` and `record[key]` are `T | undefined`. Narrow them before use.
 - `isolatedModules` is on: use `export type` / `import type` for type-only re-exports.
 - `base.json` has `types: []` and no DOM lib. Node.js globals and `fetch` types are missing unless you add them.

@@ -2,8 +2,8 @@ import type { ParsedComponents, ParsedSchema } from "@shipworthy/openapi-transfo
 import { Effect, Predicate, String } from "effect";
 import { performance } from "node:perf_hooks";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
 import {
   addJSDocComment,
   annotationsOf,
@@ -12,14 +12,14 @@ import {
   refType,
   tsModifiers,
   tsPropertyIndex,
-} from "../lib/ts.js";
-import { createRef, debug, getEntries } from "../lib/utils.js";
-import { transformHeader } from "./header.js";
-import { transformParameter } from "./parameter.js";
-import { transformPathItem } from "./path-item.js";
-import { transformRequestBody } from "./request-body.js";
-import { transformResponse } from "./response.js";
-import { transformSchema } from "./schema.js";
+} from "../lib/ts.ts";
+import { createRef, debug, getEntries } from "../lib/utils.ts";
+import { transformHeader } from "./header.ts";
+import { transformParameter } from "./parameter.ts";
+import { transformPathItem } from "./path-item.ts";
+import { transformRequestBody } from "./request-body.ts";
+import { transformResponse } from "./response.ts";
+import { transformSchema } from "./schema.ts";
 
 type ComponentKey =
   | "schemas"

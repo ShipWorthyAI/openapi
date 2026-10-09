@@ -8,14 +8,14 @@ import {
   syncFailure,
   type LeafFailure,
   type TaggedFailure,
-} from "./errors.js";
-import { hoistExternalRefs } from "./hoist.js";
-import { loadDocument, makeContext } from "./loader.js";
-import { Options } from "./plugins.js";
-import { cloneData, joinPointer, parsePointer } from "./pointer.js";
-import { inlineRemaining, runSchemaPipeline } from "./pipeline.js";
-import { isOpenApi3, upgradeOpenApi3_0 } from "./upgraders/3.0-to-3.1.js";
-import { getHash, isHttp, normalizeRef, resolveAgainst, stripHash } from "./url.js";
+} from "./errors.ts";
+import { hoistExternalRefs } from "./hoist.ts";
+import { loadDocument, makeContext } from "./loader.ts";
+import { Options } from "./plugins.ts";
+import { cloneData, joinPointer, parsePointer } from "./pointer.ts";
+import { inlineRemaining, runSchemaPipeline } from "./pipeline.ts";
+import { isOpenApi3, upgradeOpenApi3_0 } from "./upgraders/3.0-to-3.1.ts";
+import { getHash, isHttp, normalizeRef, resolveAgainst, stripHash } from "./url.ts";
 
 interface RunResult {
   schema: unknown;

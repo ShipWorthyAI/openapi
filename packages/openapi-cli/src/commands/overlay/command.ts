@@ -4,7 +4,7 @@ import { Console, Effect, FileSystem, Path } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { fileURLToPath } from "node:url";
-import { asCliError, schemaSource } from "../input.js";
+import { asCliError, schemaSource } from "../input.ts";
 
 const run = Effect.fn("overlay")(function* ({
   input,

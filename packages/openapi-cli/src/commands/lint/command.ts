@@ -2,7 +2,7 @@ import { Linter } from "@shipworthy/openapi-validator";
 import { Effect, FileSystem, Path } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
 import { HttpClient } from "effect/http";
-import { asCliError, schemaSource } from "../input.js";
+import { asCliError, schemaSource } from "../input.ts";
 
 const readSource = Effect.fnUntraced(function* (input: URL) {
   if (input.protocol === "file:") {

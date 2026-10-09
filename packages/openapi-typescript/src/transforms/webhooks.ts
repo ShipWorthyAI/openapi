@@ -1,11 +1,11 @@
 import type { ParsedPathItem } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.js";
-import type { TypegenError } from "../errors.js";
-import { refType, tsModifiers, tsPropertyIndex } from "../lib/ts.js";
-import { createRef, getEntries } from "../lib/utils.js";
-import { transformPathItem } from "./path-item.js";
+import { TypegenContext } from "../context.ts";
+import type { TypegenError } from "../errors.ts";
+import { refType, tsModifiers, tsPropertyIndex } from "../lib/ts.ts";
+import { createRef, getEntries } from "../lib/utils.ts";
+import { transformPathItem } from "./path-item.ts";
 
 /**
  * Transform the `webhooks` map into a type keyed by webhook name.

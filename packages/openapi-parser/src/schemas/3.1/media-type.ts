@@ -1,9 +1,9 @@
 import { Schema } from "effect";
-import { OpenApiEncoding } from "./encoding.js";
-import { OpenApiExample } from "./example.js";
-import { openApiObject } from "./object.js";
-import { withReference } from "./reference.js";
-import { OpenApiSchema } from "./schema.js";
+import { OpenApiEncoding } from "./encoding.ts";
+import { OpenApiExample } from "./example.ts";
+import { openApiObject } from "./object.ts";
+import { withReference } from "./reference.ts";
+import { OpenApiSchema } from "./schema.ts";
 
 export const OpenApiMediaType = openApiObject({
   schema: Schema.optionalKey(OpenApiSchema),

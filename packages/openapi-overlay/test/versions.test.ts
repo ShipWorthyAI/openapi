@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect";
 import { expect, test } from "vitest";
-import { applyOverlay, Overlay, type OverlayAction } from "../src/index.js";
+import { applyOverlay, Overlay, type OverlayAction } from "../src/index.ts";
 import * as V10 from "@shipworthy/overlay/schemas/1.0";
 import * as V11 from "@shipworthy/overlay/schemas/1.1";
 

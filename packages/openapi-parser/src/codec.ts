@@ -1,8 +1,8 @@
 import { Effect, Schema, SchemaGetter, SchemaIssue, SchemaTransformation } from "effect";
-import { decodeDocument } from "./document.js";
-import { parseText } from "./parsers.js";
-import { runEffect } from "./run.js";
-import { ParsedOpenApi } from "./schemas/3.1/document.js";
+import { decodeDocument } from "./document.ts";
+import { parseText } from "./parsers.ts";
+import { runEffect } from "./run.ts";
+import { ParsedOpenApi } from "./schemas/3.1/document.ts";
 
 const parseOptions = Schema.Struct({
   sourceUrl: Schema.Union([Schema.String, Schema.URL]),

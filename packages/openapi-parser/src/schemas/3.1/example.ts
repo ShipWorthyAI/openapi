@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { openApiObject } from "./object.js";
+import { openApiObject } from "./object.ts";
 
 export const OpenApiExample = openApiObject({
   summary: Schema.optionalKey(Schema.String),
