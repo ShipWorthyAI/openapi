@@ -90,6 +90,6 @@ Versions and changelogs are managed with Changesets.
 
 1. Run `bun run changeset` in your PR to describe the change and choose a bump for each affected package.
 2. On merge to `main`, the [release workflow](./.github/workflows/release.yml) opens a "chore: version packages" PR that applies pending changesets (`bun run version-packages`).
-3. Merging that PR runs `bun run release`, which publishes every public package whose version is not yet on npm with `bun publish` (so `workspace:` and `catalog:` dependencies are resolved) and creates git tags.
+3. Merging that PR runs `bun run release`, which packs every public package whose version is not yet on npm with `bun pm pack` (so `workspace:` and `catalog:` dependencies are resolved), publishes each tarball with `npm publish`, and creates git tags.
 
-The workflow requires an `NPM_TOKEN` repository secret with publish access to the `@shipworthy` scope.
+The workflow uses npm trusted publishing and does not require an `NPM_TOKEN` repository secret. For the initial local release, run `npm login` followed by `bun run --cwd packages/publisher release` so npm can use the terminal for two-factor authentication. Then configure a GitHub Actions trusted publisher for every public package with owner `ShipWorthyAI`, repository `openapi`, workflow `release.yml`, no environment, and direct `npm publish` allowed. See the [publisher setup instructions](./packages/publisher/README.md) for requirements and configuration expiry.

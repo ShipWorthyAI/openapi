@@ -32,9 +32,10 @@
       "cache": false,
       "passThroughEnv": [
         "CI",
-        "GITHUB_TOKEN",
+        "GITHUB_*",
+        "ACTIONS_ID_TOKEN_REQUEST_URL",
+        "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
         "NODE_AUTH_TOKEN",
-        "NPM_TOKEN",
         "NPM_CONFIG_*",
         "npm_config_*"
       ]

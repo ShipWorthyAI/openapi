@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Publishes every public workspace package whose current version is not on npm.
-# `bun publish` replaces `workspace:` and `catalog:` specifiers with real versions,
-# which `changeset publish` (npm) does not.
+# Bun packs and resolves `workspace:` and `catalog:` specifiers; npm publishes
+# the tarballs using local login credentials or GitHub Actions trusted publishing.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../../.."
+
+pack_dir="$(mktemp -d)"
+trap 'rm -rf "$pack_dir"' EXIT
 
 for manifest in packages/*/package.json; do
   if [ "$(jq -r '.private // false' "$manifest")" = "true" ]; then
@@ -20,7 +23,11 @@ for manifest in packages/*/package.json; do
   fi
 
   echo "Publishing $name@$version"
-  (cd "$(dirname "$manifest")" && bun publish --access public)
+  (
+    cd "$(dirname "$manifest")"
+    bun pm pack --filename "$pack_dir/package.tgz"
+    npm publish "$pack_dir/package.tgz" --access public
+  )
 done
 
 bun x changeset git-tag
