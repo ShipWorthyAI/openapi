@@ -1,0 +1,5 @@
+description: A valid access token is required.
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

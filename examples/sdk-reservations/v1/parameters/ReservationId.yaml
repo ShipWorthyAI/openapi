@@ -1,0 +1,6 @@
+name: reservation_id
+in: path
+required: true
+description: Opaque reservation identifier with the resv_ prefix
+schema:
+  type: string

@@ -1,0 +1,34 @@
+operationId: removeHold
+summary: Remove a hold on a reservation slot
+description: >-
+  Removes a hold owned by the authenticated caller. Removing an already released
+  or expired hold succeeds. A hold already used to book a reservation cannot be
+  removed. Unknown holds and holds belonging to another caller return 404.
+  Once removal starts, the hold cannot be used to book a reservation. If removal
+  fails, retry it with a new idempotency key.
+tags:
+  - Make Reservations
+parameters:
+  - $ref: ../parameters/HoldId.yaml
+  - $ref: ../parameters/IdempotencyKey.yaml
+responses:
+  "204":
+    description: Hold removed
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "404":
+    $ref: ../responses/NotFound.yaml
+  "409":
+    $ref: ../responses/Conflict.yaml
+  "422":
+    $ref: ../responses/UnprocessableContent.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "500":
+    $ref: ../responses/InternalServerError.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml

@@ -1,0 +1,5 @@
+description: The request is well-formed but semantically invalid.
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

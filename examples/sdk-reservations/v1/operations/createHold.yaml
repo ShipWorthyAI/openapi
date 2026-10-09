@@ -1,0 +1,71 @@
+operationId: createHold
+summary: Hold a reservation slot
+description: The slot must have been returned by availability for the venue. Slots with payment requirements can be held.
+tags:
+  - Make Reservations
+parameters:
+  - $ref: ../parameters/IdempotencyKey.yaml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - slot_id
+          - project_location_id
+          - seating
+          - timestamp
+          - guests
+        properties:
+          slot_id:
+            type: string
+            description: Opaque inKind reservation slot identifier with the slot_ prefix
+          project_location_id:
+            type: string
+            pattern: ^[1-9][0-9]*$
+            description: Core project location ID
+            x-inkind:
+              opentable: "rid"
+              sevenrooms: "venue_id"
+          seating:
+            $ref: ../schemas/ReservationSeating.yaml
+          timestamp:
+            type: string
+            format: date-time
+            description: Timestamp of the reservation slot
+            x-inkind:
+              opentable: "date_time"
+              sevenrooms: ["date", "time"]
+          guests:
+            type: integer
+            description: Number of guests in the party
+            minimum: 1
+            maximum: 20
+            default: 1
+            x-inkind:
+              opentable: "party_size"
+              sevenrooms: "party_size"
+responses:
+  "201":
+    description: Hold created
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/ReservationHold.yaml
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "409":
+    $ref: ../responses/Conflict.yaml
+  "422":
+    $ref: ../responses/UnprocessableContent.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "500":
+    $ref: ../responses/InternalServerError.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml

@@ -1,0 +1,5 @@
+description: The request conflicts with the current resource state or an idempotency key.
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

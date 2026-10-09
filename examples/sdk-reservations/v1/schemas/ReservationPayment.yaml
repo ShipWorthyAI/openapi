@@ -1,0 +1,42 @@
+type: object
+description: Credit card or payment requirement. The total amount is zero when no deposit is required.
+required:
+  - description
+  - type
+  - per
+  - total
+properties:
+  description:
+    type: string
+    description: The description of the payment
+    x-inkind:
+      opentable: "times_available[].availability_types[].cancellation_policy.type"
+      sevenrooms: "data.availability[].times[].cancellation_policy"
+  type:
+    type: string
+    description: The type of payment
+    default: "deposit"
+    enum:
+      - "deposit"
+      - "hold"
+    x-inkind:
+      opentable: "times_available[].availability_types[].cancellation_policy.type"
+      sevenrooms: "data.availability[].times[].is_held"
+  per:
+    type: string
+    description: Charged per guest or reservation
+    default: "reservation"
+    enum:
+      - "guest"
+      - "reservation"
+    x-inkind:
+      opentable: "times_available[].availability_types[].cancellation_policy.deposit_type"
+      sevenrooms: "data.availability[].times[].charge_type"
+  total:
+    $ref: ./Money.yaml
+    x-inkind:
+      opentable:
+        - "times_available[].availability_types[].cancellation_policy.amount"
+        - "times_available[].availability_types[].cancellation_policy.currency"
+        - "times_available[].availability_types[].cancellation_policy.denominator"
+      sevenrooms: "data.availability[].times[].cost"

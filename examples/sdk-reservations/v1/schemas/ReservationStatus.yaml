@@ -1,0 +1,13 @@
+type: string
+description: >-
+  Broad reservation lifecycle category. Confirmed means an established booking,
+  including one awaiting guest confirmation or currently in service. Completed
+  means service has finished. Failed includes no-show and refused-entry outcomes.
+  This value does not indicate whether an API request succeeded; inspect state
+  for the specific lifecycle stage or outcome.
+enum:
+  - pending
+  - confirmed
+  - cancelled
+  - completed
+  - failed

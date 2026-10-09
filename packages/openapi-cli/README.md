@@ -1,16 +1,16 @@
 # @shipworthy/openapi-cli
 
-`@shipworthy/openapi-cli` installs the `openapi` command. It lints OpenAPI 3.x documents and generates code from them: TypeScript types, Zod validators, Standard Schema validators, and typed TanStack Query clients. Use it in a build step or `generate` script that keeps generated API code in sync with a local or remote OpenAPI document. Each generator is a separate optional package (`@shipworthy/openapi-typescript`, `@shipworthy/openapi-zod`, `@shipworthy/openapi-standard-schema`, `@shipworthy/openapi-tanstack-query`). The CLI loads a generator only when you run its command, so install just the ones you use.
+`@shipworthy/openapi-cli` installs the `openapi` command. It bundles and lints OpenAPI 3.x documents and generates code from them: TypeScript types, Zod validators, Standard Schema validators, and typed TanStack Query clients. Use it in a build step or `generate` script that keeps generated API code in sync with a local or remote OpenAPI document. Each generator is a separate optional package (`@shipworthy/openapi-typescript`, `@shipworthy/openapi-zod`, `@shipworthy/openapi-standard-schema`, `@shipworthy/openapi-tanstack-query`). The CLI loads a generator only when you run its command, so install just the ones you use.
 
 ## Requirements
 
 - **Node.js `>=22.19.0` or Bun.** The `openapi` binary is compiled JavaScript (`dist/bin.js`) with a `#!/usr/bin/env node` shebang, and it runs on `@effect/platform-node`. Run it with `npx @shipworthy/openapi-cli …` on Node.js or `bunx --bun @shipworthy/openapi-cli …` on Bun.
 - **ESM only.** The package sets `"type": "module"` and ships compiled ESM JavaScript with `.d.ts` declarations. There is no CommonJS build.
-- **Input:** OpenAPI 3.x documents in JSON or YAML. `generate` upgrades OpenAPI 3.0 documents to 3.1 before generating. Swagger 2.0 is rejected.
+- **Input:** OpenAPI 3.x documents in JSON or YAML. `bundle` and `generate` upgrade OpenAPI 3.0 documents to 3.1 before writing their output. Swagger 2.0 is rejected.
 
 ## Installation
 
-Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, and `@shipworthy/openapi-validator`):
+Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-validator`):
 
 ```sh
 # npm
@@ -132,20 +132,21 @@ That script produces `src/generated/hotels/{types.ts,client.ts,zod-schema.ts,sta
 openapi <subcommand> [flags]
 
 SUBCOMMANDS
+  bundle      Bundle an OpenAPI document
   generate    Run a generator plugin
   lint        Lint an OpenAPI schema
 ```
 
 ### Input argument (all commands)
 
-Every command takes one positional `<input>`:
+Every command takes a positional `<input>`:
 
 - A local path, relative to the current directory, e.g. `./openapi.yaml`.
 - An `http:`, `https:`, or `file:` URL. Remote documents are fetched over HTTP, and the response must have a 2xx status.
 - JSON or YAML.
 - **No globs.** An input that contains `*` fails with `Globbing is unsupported.`
 
-`generate` resolves `$ref`s, including references to other files or URLs, before generating. `lint` lints the original document text as is, without bundling it.
+`bundle` and `generate` resolve `$ref`s, including references to other files or URLs, before writing their output. `lint` lints the original document text as is, without bundling it.
 
 ### Global flags
 
@@ -158,6 +159,17 @@ These flags come from the Effect CLI framework and work on every command:
 | `--wizard`                            | Start wizard mode for a command.                                                                 |
 | `--completions <bash\|zsh\|fish\|sh>` | Print a shell completion script.                                                                 |
 | `--log-level <level>`                 | Minimum log level: `all`, `trace`, `debug`, `info`, `warn`, `warning`, `error`, `fatal`, `none`. |
+
+### `openapi bundle <input> <output>`
+
+Bundles an OpenAPI document and writes formatted JSON to the required positional output path. Resolves references to other files or URLs, upgrades OpenAPI 3.0 to 3.1, and validates the result. Requires no generator packages.
+
+```sh
+openapi bundle ./v1/openapi.yaml ./v1/bundled.openapi.json
+openapi bundle https://example.com/openapi.yaml ./bundled.openapi.json
+```
+
+Parent directories are created automatically. An existing output file is overwritten. Loading, reference resolution, validation, or write errors exit with code `1`.
 
 ### `openapi lint [--strict] <input>`
 

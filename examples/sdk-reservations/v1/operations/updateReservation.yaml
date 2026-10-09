@@ -1,0 +1,75 @@
+operationId: updateReservation
+summary: Modify a reservation
+description: >-
+  Supply a new hold_id to change the reservation to the held slot. The hold must
+  belong to the caller and the same venue as the reservation.
+  Its party size is used unless guests is supplied, in which case it must match.
+  Without a hold, omitted fields remain unchanged. An expired or already used
+  hold cannot be used again. payment_source_id may only be supplied with hold_id
+  and is required when the held slot requires payment.
+  Some changes create a replacement reservation. In that case the response has a
+  new id and original_id identifies the previous reservation. The replacement is
+  confirmed before the previous reservation is cancelled. Cancellation of the
+  previous reservation may finish after the response; retrieve that reservation
+  to check its current status.
+tags:
+  - Manage Reservations
+parameters:
+  - $ref: ../parameters/ReservationId.yaml
+  - $ref: ../parameters/IdempotencyKey.yaml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        dependentRequired:
+          payment_source_id: [hold_id]
+        properties:
+          hold_id:
+            type: string
+            minLength: 1
+            description: Identifier of the new reservation hold returned by createHold.
+          payment_source_id:
+            type: string
+            minLength: 1
+            description: Saved payment source selected for the held slot. Only accepted with hold_id and required when the held slot requires payment.
+          guests:
+            type: integer
+            description: Number of guests in the party
+            minimum: 1
+            maximum: 20
+            x-inkind:
+              opentable: "party_size"
+              sevenrooms: "party_size"
+          notes:
+            type: string
+            description: User written notes for the reservation
+            x-inkind:
+              opentable: "special_request"
+              sevenrooms: "notes"
+responses:
+  "200":
+    description: Modified reservation or newly confirmed replacement reservation
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/Reservation.yaml
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "404":
+    $ref: ../responses/NotFound.yaml
+  "409":
+    $ref: ../responses/Conflict.yaml
+  "422":
+    $ref: ../responses/UnprocessableContent.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "500":
+    $ref: ../responses/InternalServerError.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml

@@ -1,0 +1,5 @@
+name: x-provider-event-id
+in: header
+required: true
+schema:
+  type: string

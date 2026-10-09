@@ -10,7 +10,8 @@
     "./standard-schema": "./src/generated/reservations/standard-schema.ts"
   },
   "scripts": {
-    "generate": "openapi generate tanstack-query openapi.json -o src/generated --name reservations && openapi generate zod openapi.json -o src/generated/reservations/zod-schema.ts && openapi generate standard-schema openapi.json -o src/generated/reservations/standard-schema.ts"
+    "bundle": "openapi bundle ./v1/openapi.yaml ./v1/bundled.openapi.json",
+    "generate": "openapi generate tanstack-query ./v1/openapi.yaml -o src/generated --name reservations && openapi generate zod ./v1/openapi.yaml -o src/generated/reservations/zod-schema.ts && openapi generate standard-schema ./v1/openapi.yaml -o src/generated/reservations/standard-schema.ts"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query": "workspace:*",

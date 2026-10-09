@@ -1,0 +1,69 @@
+type: object
+required:
+  - id
+  - project_location_id
+  - provider
+  - status
+  - state
+  - timestamp
+  - guests
+  - seating
+properties:
+  id:
+    type: string
+    description: Opaque identifier with the resv_ prefix
+  original_id:
+    type: string
+    minLength: 1
+    readOnly: true
+    description: Identifier of the reservation this reservation replaces. Omitted for reservations that are not replacements.
+  project_location_id:
+    type: string
+    pattern: ^[1-9][0-9]*$
+    description: Core project location ID
+    x-inkind:
+      opentable: "rid"
+      sevenrooms: "venue_id"
+  provider:
+    $ref: ./ReservationProvider.yaml
+  status:
+    $ref: ./ReservationStatus.yaml
+    x-inkind:
+      opentable: "status"
+      sevenrooms: ["data.status", "data.status_display", "data.status_simple"]
+  state:
+    $ref: ./ReservationState.yaml
+    x-inkind:
+      opentable: "status"
+      sevenrooms: ["data.status", "data.status_display", "data.status_simple"]
+  timestamp:
+    type: string
+    format: date-time
+    description: Timestamp of the reservation slot
+    x-inkind:
+      opentable: "date_time"
+      sevenrooms:
+        - "data.real_datetime_of_slot"
+        - "data.date"
+        - "data.arrival_time"
+        - "data.time_slot_iso"
+  guests:
+    type: integer
+    description: Number of guests in the party
+    minimum: 1
+    maximum: 20
+    default: 1
+    x-inkind:
+      opentable: "party_size"
+      sevenrooms: "data.max_guests"
+  seating:
+    $ref: ./ReservationSeating.yaml
+  cash_back_percent:
+    readOnly: true
+    description: Cashback percentage captured for this reservation in increments of 5, such as 30 for 30%. Null when no cashback was captured.
+    oneOf:
+      - type: "null"
+      - type: integer
+        multipleOf: 5
+        minimum: 0
+        maximum: 100

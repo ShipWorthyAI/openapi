@@ -1,0 +1,26 @@
+type: string
+description: >-
+  Specific reservation lifecycle stage or outcome. PENDING is held or unreconciled;
+  BOOKED is an established booking awaiting guest confirmation; CONTACTED and
+  NO_ANSWER describe attempts to contact the guest; CONFIRMED means the guest has
+  confirmed. ARRIVED includes partial arrival or seating. ORDER_PLACED includes
+  meal courses. CHECK_DROPPED and CHECK_PAID describe the check. COMPLETE means
+  service has finished. GUEST_CANCELLED and VENUE_CANCELLED identify cancellation
+  attribution. NO_SHOW and NO_ENTRY describe unsuccessful attendance. An
+  unrecognized lifecycle observation is classified as PENDING, BOOKED, or
+  CONFIRMED from the available evidence.
+enum:
+  - PENDING
+  - BOOKED
+  - CONTACTED
+  - NO_ANSWER
+  - CONFIRMED
+  - ARRIVED
+  - GUEST_CANCELLED
+  - VENUE_CANCELLED
+  - NO_SHOW
+  - NO_ENTRY
+  - ORDER_PLACED
+  - CHECK_DROPPED
+  - CHECK_PAID
+  - COMPLETE

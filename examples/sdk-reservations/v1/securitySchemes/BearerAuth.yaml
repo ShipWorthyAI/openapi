@@ -1,0 +1,6 @@
+type: http
+scheme: bearer
+bearerFormat: JWT
+description: >-
+  Authenticate customer requests with an OIDC JWT in the Authorization header
+  using the Bearer scheme.

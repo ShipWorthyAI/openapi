@@ -3,12 +3,11 @@
 Example modeled on inKind's `@inkind/sdk-reservations`: Reservations types and operation-based TanStack Query utilities.
 
 ```sh
+bun run bundle
 bun run generate
 ```
 
-That writes `src/generated/reservations/client.ts`, `types.ts`, and `schema.ts`. `schema.ts` holds Zod validators for each component schema and JSON request body, exported from `@shipworthy/example-sdk-reservations/schema`.
-
-`openapi.json` is a snapshot of `http://reservations.inkind.localhost/docs/openapi.json`.
+`v1/openapi.yaml` is the source document, with relative references to the YAML files in `v1`. `bundle` writes `v1/bundled.openapi.json`. The generation commands read `v1/openapi.yaml` directly and write `src/generated/reservations/client.ts`, `types.ts`, `zod-schema.ts`, and `standard-schema.ts`. Zod validators are exported from `@shipworthy/example-sdk-reservations/zod-schema`, and Standard Schema validators from `@shipworthy/example-sdk-reservations/standard-schema`.
 
 ```ts
 import {

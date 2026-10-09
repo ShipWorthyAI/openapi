@@ -1,0 +1,8 @@
+allOf:
+  - $ref: ./ReservationPayment.yaml
+  - type: object
+    properties:
+      payment_source_id:
+        type: string
+        minLength: 1
+        description: Stripe source ID for the user's chosen payment method, when supplied.

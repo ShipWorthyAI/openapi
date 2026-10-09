@@ -1,0 +1,88 @@
+operationId: getAvailability
+summary: Find availability
+description: >-
+  Returns available reservation slots around the requested timestamp, excluding
+  past slots. Slots with a "payment" object require a credit card on file before
+  booking. Results may include adjacent dates and may be partial when availability
+  cannot be retrieved for every requested venue. Results are grouped by project
+  location, and locations without available slots are omitted.
+tags:
+  - Make Reservations
+parameters:
+  - name: project_location_ids
+    in: query
+    required: true
+    schema:
+      type: array
+      description: Find availability at these Core project locations
+      example: ["10967"]
+      minItems: 1
+      items:
+        type: string
+        pattern: ^[1-9][0-9]*$
+      x-inkind:
+        opentable: "rid"
+        sevenrooms: "venue_id"
+  - name: timestamp
+    in: query
+    schema:
+      type: string
+      description: Center of the availability interval. Defaults to the request time.
+      format: date-time
+      example: "2026-09-27T18:00:00-05:00"
+      x-inkind:
+        opentable: ["start_date_time", "backward_minutes"]
+        sevenrooms: ["date", "start_time"]
+  - name: guests
+    in: query
+    schema:
+      type: integer
+      description: Number of guests in the party
+      minimum: 1
+      maximum: 20
+      default: 1
+      x-inkind:
+        opentable: "party_size"
+        sevenrooms: "party_size"
+  - name: accept
+    in: header
+    schema:
+      type: string
+      default: application/json
+      description: >-
+        Include text/event-stream to receive server-sent events. Other values,
+        including browser media-type lists and wildcards, receive application/json.
+responses:
+  "200":
+    description: Available reservation slots
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: ../schemas/ReservationSlotGroup.yaml
+      text/event-stream:
+        schema:
+          type: string
+          format: binary
+          description: >-
+            Server-sent events. Each data field is a JSON object with project_location_id and
+            slots (an array of ReservationSlot values). At most one event is emitted
+            per unique requested location. Locations without available slots are
+            omitted. The stream closes after all requested locations have been
+            processed, including when no events are emitted.
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "500":
+    $ref: ../responses/InternalServerError.yaml

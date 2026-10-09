@@ -1,0 +1,43 @@
+operationId: ingestProviderWebhook
+summary: Reservation Webhooks
+description: >-
+  Submit a signed reservation event with a unique event ID.
+  Repeated event IDs are accepted idempotently.
+tags:
+  - Webhooks
+security: []
+parameters:
+  - $ref: ../parameters/ProviderPath.yaml
+  - $ref: ../parameters/WebhookEventId.yaml
+  - $ref: ../parameters/WebhookSignature.yaml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: true
+responses:
+  "202":
+    description: Webhook accepted
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            accepted:
+              type: boolean
+            event_id:
+              type: string
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "422":
+    $ref: ../responses/UnprocessableContent.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "500":
+    $ref: ../responses/InternalServerError.yaml

@@ -96,6 +96,7 @@
       "dependencies": {
         "@effect/platform-node": "catalog:",
         "@shipworthy/openapi-generator": "workspace:*",
+        "@shipworthy/openapi-parser": "workspace:*",
         "@shipworthy/openapi-validator": "workspace:*",
         "effect": "catalog:",
       },

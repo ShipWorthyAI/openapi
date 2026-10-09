@@ -1,0 +1,25 @@
+operationId: getReservation
+summary: Get a reservation
+tags:
+  - Manage Reservations
+parameters:
+  - $ref: ../parameters/ReservationId.yaml
+responses:
+  "200":
+    description: Reservation details
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/Reservation.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "404":
+    $ref: ../responses/NotFound.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "500":
+    $ref: ../responses/InternalServerError.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml

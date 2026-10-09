@@ -1,0 +1,44 @@
+openapi: 3.1.0
+info:
+  title: inKind Reservations API
+  version: 1.0.0
+servers:
+  - url: /api
+tags:
+  - name: Make Reservations
+    description: Find availability, hold a slot, and create a reservation.
+  - name: Manage Reservations
+    description: List, retrieve, modify, and cancel reservations.
+  - name: Webhooks
+    description: Authenticated provider event receipts.
+security:
+  - BearerAuth: []
+paths:
+  /v1/availability:
+    get:
+      $ref: ./operations/getAvailability.yaml
+  /v1/holds:
+    post:
+      $ref: ./operations/createHold.yaml
+  /v1/holds/{hold_id}:
+    delete:
+      $ref: ./operations/removeHold.yaml
+  /v1/reservations:
+    post:
+      $ref: ./operations/createReservation.yaml
+    get:
+      $ref: ./operations/getReservations.yaml
+  /v1/reservations/{reservation_id}:
+    get:
+      $ref: ./operations/getReservation.yaml
+    patch:
+      $ref: ./operations/updateReservation.yaml
+    delete:
+      $ref: ./operations/cancelReservation.yaml
+  /v1/webhooks/providers/{provider}:
+    post:
+      $ref: ./operations/ingestProviderWebhook.yaml
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: ./securitySchemes/BearerAuth.yaml

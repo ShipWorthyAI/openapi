@@ -1,0 +1,5 @@
+description: Malformed request syntax or invalid parameters.
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

@@ -1,0 +1,65 @@
+operationId: createReservation
+summary: Create a reservation
+tags:
+  - Make Reservations
+parameters:
+  - $ref: ../parameters/IdempotencyKey.yaml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - hold_id
+          - slot_id
+          - project_location_id
+        properties:
+          hold_id:
+            type: string
+            description: Opaque hold identifier with the hold_ prefix
+          slot_id:
+            type: string
+            description: Opaque inKind reservation slot identifier with the slot_ prefix
+          project_location_id:
+            type: string
+            pattern: ^[1-9][0-9]*$
+            description: Core project location ID
+            x-inkind:
+              opentable: "rid"
+              sevenrooms: "venue_id"
+          notes:
+            type: string
+            description: User written notes for the reservation
+            x-inkind:
+              opentable: "special_request"
+              sevenrooms: "notes"
+          payment_source_id:
+            type: string
+            minLength: 1
+            description: Stripe source ID for the user's chosen payment method.
+responses:
+  "201":
+    description: >-
+      Reservation created. The request succeeded; status and state describe the
+      reservation's lifecycle independently of the HTTP response status.
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/Reservation.yaml
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "409":
+    $ref: ../responses/Conflict.yaml
+  "422":
+    $ref: ../responses/UnprocessableContent.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "500":
+    $ref: ../responses/InternalServerError.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml

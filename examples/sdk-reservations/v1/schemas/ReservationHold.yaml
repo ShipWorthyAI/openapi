@@ -1,0 +1,46 @@
+type: object
+required:
+  - id
+  - project_location_id
+  - provider
+  - slot
+  - status
+  - expires_at
+properties:
+  id:
+    type: string
+    description: Opaque identifier with the hold_ prefix
+  project_location_id:
+    type: string
+    pattern: ^[1-9][0-9]*$
+    description: Core project location ID
+    x-inkind:
+      opentable: "rid"
+      sevenrooms: "venue_id"
+  provider:
+    $ref: ./ReservationProvider.yaml
+  status:
+    type: string
+    enum:
+      - active
+      - expired
+      - released
+      - consumed
+  expires_at:
+    type: string
+    format: date-time
+    description: The instant at which the hold expires.
+    x-inkind:
+      opentable: "expires_at"
+      sevenrooms: "data.hold_duration_sec"
+  slot:
+    $ref: ./ReservationSlot.yaml
+  cash_back_percent:
+    readOnly: true
+    description: Cashback percentage captured for this reservation in increments of 5, such as 30 for 30%. Null when no cashback was captured.
+    oneOf:
+      - type: "null"
+      - type: integer
+        multipleOf: 5
+        minimum: 0
+        maximum: 100

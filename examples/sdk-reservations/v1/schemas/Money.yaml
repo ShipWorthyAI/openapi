@@ -1,0 +1,14 @@
+type: object
+properties:
+  amount:
+    type: integer
+    format: int64
+    minimum: 0
+    description: Amount in the currency’s minor units.
+  currency:
+    type: string
+    pattern: ^[A-Z]{3}$
+    description: The currency code (ISO 4217)
+required:
+  - amount
+  - currency

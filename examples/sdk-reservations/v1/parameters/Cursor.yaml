@@ -1,0 +1,6 @@
+name: cursor
+in: query
+description: Opaque cursor returned by the previous reservations page for this user.
+schema:
+  type: string
+  pattern: ^[0-9a-f]{64}$
