@@ -208,24 +208,32 @@ test("supports RFC 9535 wildcards, descendant selectors, slices, filters, and fu
   });
 });
 
-test.each(["yaml", "json"])("accepts %s documents and overlays", async (format) => {
-  const document = format === "json" ? '{"info":{"title":"Pets"}}' : "info: { title: Pets }";
+test.each(["yaml", "json", "formatted json"])(
+  "accepts %s documents and overlays",
+  async (format) => {
+    const indent = format === "formatted json" ? 2 : undefined;
+
+    const document =
+      format === "yaml"
+        ? "info: { title: Pets }"
+        : JSON.stringify({ info: { title: "Pets" } }, null, indent);
+
+    const input =
+      format === "yaml"
+        ? "overlay: 1.1.0\ninfo: { title: Test, version: '1' }\nactions:\n  - target: $.info.title\n    update: Public\n"
+        : JSON.stringify(overlay({ target: "$.info.title", update: "Public" }), null, indent);
+
+    expect(await Effect.runPromise(applyOverlay(document, input))).toEqual({
+      info: { title: "Public" },
+    });
+  },
+);
+
+test("parses nested YAML sequences and keeps aliases independent", async () => {
+  const document = "items:\n  - &item { tags: [] }\n  - *item\n";
 
   const input =
-    format === "json"
-      ? JSON.stringify(overlay({ target: "$.info.title", update: "Public" }))
-      : "overlay: 1.1.0\ninfo: { title: Test, version: '1' }\nactions:\n  - target: $.info.title\n    update: Public\n";
-
-  expect(await Effect.runPromise(applyOverlay(document, input))).toEqual({
-    info: { title: "Public" },
-  });
-});
-
-test("parses compact nested YAML sequences and keeps aliases independent", async () => {
-  const document = "items: [&item { tags: [] }, *item]";
-
-  const input =
-    "overlay: 1.1.0\ninfo: { title: Test, version: '1' }\nactions:\n  - target: $.items[0].tags\n    update:\n      - - nested\n";
+    "overlay: 1.1.0\ninfo: { title: Test, version: '1' }\nactions:\n  - target: $.items[0].tags\n    update:\n      -\n        - nested\n";
 
   expect(await Effect.runPromise(applyOverlay(document, input))).toEqual({
     items: [{ tags: [["nested"]] }, { tags: [] }],
@@ -321,14 +329,18 @@ describe("typed failures", () => {
     expect((await failure({}, input)).message).toContain("Invalid overlay");
   });
 
-  test.each([[], null, { number: Number.POSITIVE_INFINITY }, "value: .nan"])(
-    "rejects non-object or non-JSON document %j",
-    async (document) => {
-      expect((await failure(document, overlay({ target: "$", update: {} }))).message).toContain(
-        "Invalid document",
-      );
-    },
-  );
+  test.each([
+    [],
+    null,
+    { number: Number.POSITIVE_INFINITY },
+    "value: .nan",
+    "items:\n  - - nested",
+    "items: [\n  value\n]",
+  ])("rejects non-object or non-JSON document %j", async (document) => {
+    expect((await failure(document, overlay({ target: "$", update: {} }))).message).toContain(
+      "Invalid document",
+    );
+  });
 
   test("does not mutate the caller's document when a later merge fails", async () => {
     const document = { info: { title: "Original", tags: [] } };

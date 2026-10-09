@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { Schema } from "effect";
-import { parse, stringify } from "yaml";
+import * as Yaml from "effect/encoding/Yaml";
 
 const packageDirectory = fileURLToPath(new URL("../", import.meta.url));
 let directory: string;
@@ -41,7 +41,7 @@ function generate(...args: string[]) {
 }
 
 function source() {
-  const value: unknown = parse(readFileSync(join(directory, "schemas/v1.1/schema.yaml"), "utf8"));
+  const value = Yaml.parse(readFileSync(join(directory, "schemas/v1.1/schema.yaml"), "utf8"));
 
   return Schema.decodeUnknownSync(Schema.JsonObject)(value);
 }
@@ -77,7 +77,7 @@ test("schema changes alter generated validation without handwritten models", () 
     },
   };
 
-  writeFileSync(join(directory, "schemas/v1.1/schema.yaml"), stringify(updated));
+  writeFileSync(join(directory, "schemas/v1.1/schema.yaml"), JSON.stringify(updated));
   expect(() => generate("--check")).toThrow(/out of date/);
   generate();
   generate("--check");
@@ -108,7 +108,7 @@ test("discovers a newly vendored version and generates its schema", () => {
 
   writeFileSync(
     join(directory, "schemas/v1.2/schema.yaml"),
-    stringify({
+    JSON.stringify({
       ...input,
       $id: "https://example.com/overlay/1.2/schema",
       properties: { ...properties, overlay: { ...version, pattern: "^1\\.2\\.\\d+$" } },
@@ -130,7 +130,7 @@ test("generation fails instead of discarding unsupported constraints", () => {
 
   writeFileSync(
     join(directory, "schemas/v1.1/schema.yaml"),
-    stringify({
+    JSON.stringify({
       ...input,
       $defs: {
         ...definitions,

@@ -42,12 +42,13 @@
     "check:schemas": "bun scripts/generate-schemas.ts --check",
     "test": "vitest run",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run turbo run build --filter=@shipworthy/overlay && bun run publish-manifest prepack",
-    "postpack": "bun run publish-manifest postpack"
+    "prepack": "bunx turbo run prepare:pack",
+    "postpack": "bun run publish-manifest postpack",
+    "prepare:pack": "bun run publish-manifest prepack",
+    "release": "bun run publish-package"
   },
   "dependencies": {
-    "jsonpath-rfc9535": "1.3.0",
-    "yaml": "2.9.1"
+    "jsonpath-rfc9535": "1.3.0"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
@@ -56,7 +57,6 @@
     "@types/node": "catalog:",
     "effect": "catalog:",
     "oxfmt": "catalog:",
-    "turbo": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

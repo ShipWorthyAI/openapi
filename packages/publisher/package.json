@@ -3,15 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "bin": {
-    "publish-manifest": "./src/publish-manifest.ts"
+    "publish-manifest": "./src/publish-manifest.ts",
+    "publish-package": "./src/publish-package.sh"
   },
   "type": "module",
   "scripts": {
-    "release": "bash src/publish.sh"
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "effect": "catalog:"
   },
   "devDependencies": {
-    "@changesets/cli": "3.0.3",
-    "@shipworthy/typescript-config": "workspace:*",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
   }
 }

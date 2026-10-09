@@ -34,15 +34,16 @@
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt --check",
     "format:fix": "oxfmt .",
-    "fix": "bun run lint:fix && bun run format:fix",
-    "check": "turbo run lint format test",
+    "fix": "turbo run quality:fix",
+    "check": "turbo run quality test",
     "typecheck": "oxlint --type-aware --type-check .",
     "prepare": "lefthook install && effect-tsgo patch --oxlint",
     "changeset": "changeset",
     "version-packages": "changeset version && bun install",
-    "release": "turbo run release --filter=@shipworthy/publisher",
+    "release": "turbo run release:tags",
     "examples:bundle": "turbo run bundle --filter='./examples/*'",
-    "examples:generate": "turbo run generate --filter='./examples/*'"
+    "examples:generate": "turbo run generate --filter='./examples/*'",
+    "release:tags": "changeset git-tag"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

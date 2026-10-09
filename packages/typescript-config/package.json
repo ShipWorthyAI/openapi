@@ -17,5 +17,11 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "release": "bun run publish-package"
+  },
+  "devDependencies": {
+    "@shipworthy/publisher": "workspace:*"
   }
 }

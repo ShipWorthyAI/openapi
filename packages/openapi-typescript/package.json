@@ -54,10 +54,12 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run build && bun run publish-manifest prepack",
+    "prepack": "bunx turbo run prepare:pack",
     "test": "vitest run",
-    "version": "bun run build",
-    "postpack": "bun run publish-manifest postpack"
+    "version": "bunx turbo run build",
+    "postpack": "bun run publish-manifest postpack",
+    "prepare:pack": "bun run publish-manifest prepack",
+    "release": "bun run publish-package"
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",

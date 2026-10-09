@@ -73,8 +73,13 @@ metadata; callers choose the document explicitly. To bundle and upgrade first, u
 Versions `1.0.x` and `1.1.x` use their respective schemas and action behavior. Patch versions
 do not change the feature set. `copy` and `info.description` are accepted only in 1.1. Both
 versions require at least one action and reject structurally duplicate actions, as specified
-by the upstream schemas. Unknown feature versions fail. YAML is parsed with YAML 1.2 defaults; JSON-incompatible
-values and duplicate mapping keys are rejected. Comments and source formatting are not retained.
+by the upstream schemas. Unknown feature versions fail. YAML is parsed with
+[Effect's YAML 1.2 parser](https://effect.website/docs/v4/api/effect/encoding/Yaml).
+JSON-incompatible values and duplicate YAML mapping keys are rejected. The parser does not
+support compact nested block sequences (`- - value`), multiline flow collections, explicit
+complex keys, tag/directive processing, recursive aliases, or document streams. Use expanded
+block collections for nested YAML; formatted JSON is accepted. Comments and source formatting
+are not retained.
 
 ## Schemas and errors
 
@@ -104,53 +109,6 @@ const checked = Schema.decodeUnknownEffect(Overlay)({
 one-based `action` index and the `target` expression. Catch it with
 `Effect.catchTag("OverlayError", handler)`.
 
-## Updating and adding versions
-
-The unmodified upstream schemas live in `schemas/v1.0/schema.yaml` and
-`schemas/v1.1/schema.yaml`. Generated Effect schemas and their inferred types live in
-`src/schemas/1.0.ts` and `src/schemas/1.1.ts`. Update the YAML source and regenerate; do not edit
-these TypeScript files by hand.
-
-From the repository root:
-
-```sh
-bunx turbo run generate:schemas --filter=@shipworthy/overlay
-bun run --cwd packages/openapi-overlay check:schemas
-```
-
-Generation uses `JsonSchema.fromSchemaDraft2020_12`,
-`SchemaRepresentation.fromJsonSchemaDocument`, and `SchemaRepresentation.toCodeDocument`.
-Each generated file includes the source's SHA-256 digest. The package's `turbo.json` runs
-`generate:schemas`, then `check:schemas`, before build and test. Generation caches
-`src/schemas/**` using the YAML sources, generator script, and package manifest as inputs.
-Build and test exclude those generated files from their own inputs and inherit the generator's
-hash through their task dependencies. The transit task also generates schemas before dependent
-packages use this package's source. `bun run check` includes the schema check.
-
-Use Turbo when running build or test so these prerequisites run:
-
-```sh
-bunx turbo run build test --filter=@shipworthy/overlay
-```
-
-Run `check:schemas` directly, as shown above, to check committed artifacts without regenerating.
-
-Effect currently cannot import these schemas' `unevaluatedProperties` and mixed named/patterned
-property constraints directly. The generator normalizes their closed object plus unconstrained
-extension patterns into equivalent `propertyNames` checks. It derives the allowed keys and
-patterns from the document. Other unsupported constraints fail generation instead of being
-removed. URI `format` keywords remain annotations, as in Effect's JSON Schema importer.
-
-To support a new feature version:
-
-1. Pull its schema from the [upstream schema directory](https://github.com/OAI/Overlay-Specification/tree/main/schemas)
-   into `schemas/v<major>.<minor>/schema.yaml`, preserving the original document.
-2. Run `generate:schemas`. The generator discovers version directories automatically.
-3. Register the generated schemas in `src/schemas.ts` and implement the version's behavior in
-   `src/apply.ts`. Add the schema subpath to `package.json` if callers need direct version access.
-   Generating a file alone does not enable the version; unimplemented action versions fail.
-4. Add version-specific validation/action tests, update this README, and run `bun run check`.
-
 ## CLI
 
 Install `@shipworthy/openapi-cli` to bundle a local or remote OpenAPI document before overlaying:
@@ -161,11 +119,6 @@ openapi overlay openapi.yaml --overlay overlay.yaml -o bundled.openapi.json
 
 The CLI resolves external references and upgrades OpenAPI 3.0 to 3.1, then applies the overlay
 and writes formatted JSON. See the [CLI documentation](../openapi-cli/README.md).
-
-## Workspace publishing
-
-`bun pm pack` builds the package through Turbo and uses `publish-manifest prepack|postpack` to switch between
-development and compiled manifests.
 
 ## License
 

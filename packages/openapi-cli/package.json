@@ -35,8 +35,10 @@
   "scripts": {
     "test": "vitest run",
     "build": "rm -rf dist && tsc -p tsconfig.build.json && sed -i.bak '1s|^#!.*|#!/usr/bin/env node|' dist/bin.js && rm dist/bin.js.bak",
-    "prepack": "bun run build && bun run publish-manifest prepack",
-    "postpack": "bun run publish-manifest postpack"
+    "prepare:pack": "bun run publish-manifest prepack",
+    "prepack": "bunx turbo run prepare:pack",
+    "postpack": "bun run publish-manifest postpack",
+    "release": "bun run publish-package"
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",

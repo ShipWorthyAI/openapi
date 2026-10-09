@@ -7,29 +7,41 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "inputs": ["$TURBO_DEFAULT$", "!test/**", "!README.md"]
     },
     "test": {
       "dependsOn": ["transit"]
     },
     "generate:schemas": {},
     "check:schemas": {},
+    "prepare:pack": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
     "//#quality": {
       "dependsOn": ["//#lint", "//#format"]
     },
     "//#quality:fix": {
       "dependsOn": ["//#lint:fix", "//#format:fix"]
     },
-    "//#lint": {},
-    "//#lint:fix": {
-      "cache": false
+    "//#lint": {
+      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
     },
-    "//#format": {},
+    "//#lint:fix": {
+      "cache": false,
+      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
+    },
+    "//#format": {
+      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
+    },
     "//#format:fix": {
       "dependsOn": ["//#lint:fix"],
       "cache": false
     },
-    "//#typecheck": {},
+    "//#typecheck": {
+      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
+    },
     "release": {
       "cache": false,
       "passThroughEnv": [
@@ -40,12 +52,27 @@
         "NODE_AUTH_TOKEN",
         "NPM_CONFIG_*",
         "npm_config_*"
-      ]
+      ],
+      "dependsOn": ["build", "^release"]
     },
-    "bundle": {
-      "cache": false
-    },
-    "generate": {
+    "bundle": {},
+    "generate": {},
+    "//#release:tags": {
+      "dependsOn": [
+        "@shipworthy/openapi-cli#release",
+        "@shipworthy/openapi-fetch#release",
+        "@shipworthy/openapi-generator#release",
+        "@shipworthy/overlay#release",
+        "@shipworthy/openapi-parser#release",
+        "@shipworthy/openapi-react-query#release",
+        "@shipworthy/openapi-standard-schema#release",
+        "@shipworthy/openapi-tanstack-query#release",
+        "@shipworthy/openapi-transformer#release",
+        "@shipworthy/openapi-typescript#release",
+        "@shipworthy/openapi-validator#release",
+        "@shipworthy/openapi-zod#release",
+        "@shipworthy/typescript-config#release"
+      ],
       "cache": false
     }
   }

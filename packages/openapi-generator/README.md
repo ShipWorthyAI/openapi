@@ -292,10 +292,6 @@ Defects, such as an `Effect.die` inside a plugin's effect, aren't converted to `
 - Override `ModuleLoader` with `Effect.provideService(ModuleLoader, { load })` to control plugin resolution or inject test plugins.
 - The return value is `unknown`. Validate or cast it to the plugin's output type.
 
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
-
 ## License
 
 MIT. See [LICENSE](./LICENSE).

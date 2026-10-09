@@ -585,10 +585,6 @@ Generated files use extensionless `./types` imports and expect TypeScript `modul
 - **Not provided:** hooks, provider, payload validation, token refresh,
   idempotency-key generation, and per-schema serializers.
 
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
-
 ## License
 
 MIT. See [LICENSE](./LICENSE).

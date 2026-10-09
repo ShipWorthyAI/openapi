@@ -1,62 +1,97 @@
 #!/usr/bin/env bun
-// Swaps a package's development manifest for its publish manifest while Bun packs it.
-//
-// In the workspace, `exports`, `bin`, and `imports` point at TypeScript source so tests and
-// tools run without a build. `publishConfig` holds the compiled `dist` equivalents. Bun only
-// reads `access`, `registry`, and `tag` from `publishConfig`, but it re-reads package.json after
-// `prepack` and runs `postpack` afterwards, so `prepack` promotes the other `publishConfig`
-// fields to the top level and `postpack` restores the development manifest.
-//
-// Usage (from a package directory): publish-manifest prepack|postpack
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { Array, Cause, Console, Effect, FileSystem, pipe, Schema } from "effect";
 
 const manifestPath = "package.json";
 const backupPath = "node_modules/.package.dev.json";
 const registryFields = new Set(["access", "registry", "tag", "provenance"]);
 
-const prepack = () => {
-  if (existsSync(backupPath)) {
-    throw new Error(
-      `${backupPath} exists. Run postpack to restore the development manifest first.`,
-    );
+const Manifest = Schema.StructWithRest(
+  Schema.Struct({ publishConfig: Schema.optionalKey(Schema.NullOr(Schema.JsonObject)) }),
+  [Schema.Record(Schema.String, Schema.Json)],
+);
+
+const ManifestFromJson = Schema.fromJsonString(Manifest);
+const JsonObjectFromString = Schema.fromJsonString(Schema.JsonObject, { space: 2 });
+
+class ManifestError extends Schema.TaggedError<ManifestError>()("ManifestError", {
+  message: Schema.String,
+}) {}
+
+const prepack = Effect.fn("publishManifest.prepack")(function* () {
+  const fs = yield* FileSystem.FileSystem;
+
+  if (yield* fs.exists(backupPath)) {
+    return yield* new ManifestError({
+      message: `${backupPath} exists. Run postpack to restore the development manifest first.`,
+    });
   }
 
-  const source = readFileSync(manifestPath, "utf8");
-  const manifest = JSON.parse(source);
-  const publishConfig: Record<string, unknown> = manifest.publishConfig ?? {};
-  const remaining: Record<string, unknown> = {};
+  const source = yield* fs.readFileString(manifestPath);
+  const manifest = yield* Schema.decodeEffect(ManifestFromJson)(source);
 
-  for (const [key, value] of Object.entries(publishConfig)) {
-    if (registryFields.has(key)) {
-      remaining[key] = value;
-    } else {
-      manifest[key] = value;
-    }
+  const entries = pipe(
+    manifest,
+    Object.entries,
+    Array.filter(([key]) => key !== "publishConfig"),
+  );
+
+  const config = Object.entries(manifest.publishConfig ?? {});
+
+  const registry = pipe(
+    config,
+    Array.filter(([key]) => registryFields.has(key)),
+    Object.fromEntries,
+  );
+
+  const published = pipe(
+    [
+      ...entries,
+      ...pipe(
+        config,
+        Array.filter(([key]) => !registryFields.has(key)),
+      ),
+      ...(Object.keys(registry).length > 0 ? [["publishConfig", registry] as const] : []),
+    ],
+    Object.fromEntries,
+  );
+
+  const text = yield* Schema.encodeEffect(JsonObjectFromString)(published);
+
+  yield* fs.makeDirectory("node_modules", { recursive: true });
+  yield* fs.writeFileString(backupPath, source, { flag: "wx" });
+
+  yield* fs
+    .writeFileString(manifestPath, `${text}\n`)
+    .pipe(Effect.tapError(() => fs.rename(backupPath, manifestPath)));
+});
+
+const postpack = Effect.fn("publishManifest.postpack")(function* () {
+  const fs = yield* FileSystem.FileSystem;
+
+  if (yield* fs.exists(backupPath)) {
+    yield* fs.rename(backupPath, manifestPath);
   }
+});
 
-  if (Object.keys(remaining).length > 0) {
-    manifest.publishConfig = remaining;
-  } else {
-    delete manifest.publishConfig;
-  }
+Effect.gen(function* () {
+  const input = process.argv[2];
 
-  mkdirSync("node_modules", { recursive: true });
-  writeFileSync(backupPath, source);
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-};
+  const command = yield* Schema.decodeUnknownEffect(Schema.Literals(["prepack", "postpack"]))(
+    input,
+  ).pipe(
+    Effect.mapError(
+      () =>
+        new ManifestError({
+          message: `Unknown command ${String(input)}. Use prepack or postpack.`,
+        }),
+    ),
+  );
 
-const postpack = () => {
-  if (existsSync(backupPath)) {
-    renameSync(backupPath, manifestPath);
-  }
-};
-
-const command = process.argv[2];
-
-if (command === "prepack") {
-  prepack();
-} else if (command === "postpack") {
-  postpack();
-} else {
-  throw new Error(`Unknown command ${String(command)}. Use prepack or postpack.`);
-}
+  if (command === "prepack") yield* prepack();
+  else yield* postpack();
+}).pipe(
+  Effect.tapCause((cause) => Console.error(Cause.pretty(cause))),
+  Effect.provide(NodeServices.layer),
+  NodeRuntime.runMain({ disableErrorReporting: true }),
+);

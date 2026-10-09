@@ -425,10 +425,6 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 - Do not edit generated files by hand. Re-run the command instead.
 - The only programmatic export is `openapi`, an `effect/cli` `Command`.
 
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
-
 ## License
 
 MIT. See [LICENSE](./LICENSE).

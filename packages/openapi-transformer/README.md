@@ -405,10 +405,6 @@ function requiresAuth(operation: ParsedOperation) {
 - Servers and security are already inherited. `securityDeclaration` says whether security was `"declared"`, `"inheritedFromService"`, or `"none"`.
 - Every model schema can be converted to a Standard Schema with `Schema.toStandardSchemaV1`.
 
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
-
 ## License
 
 MIT. See [LICENSE](./LICENSE).

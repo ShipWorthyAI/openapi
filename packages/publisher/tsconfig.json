@@ -1,5 +1,8 @@
 {
-  "extends": "@shipworthy/typescript-config/library.json",
-  "include": ["src"],
-  "exclude": ["node_modules"]
+  "extends": "../../tsconfig.json",
+  "include": ["src", "test"],
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "types": ["node"]
+  }
 }

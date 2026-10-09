@@ -454,10 +454,6 @@ query, whatever its `init`.
 - `createApiClient(baseUrl, authToken?)` is for non-React use. The hooks don't use it.
 - Peers: `react` `^18 || ^19`, `@tanstack/react-query` `^5.104.1`. ESM-only compiled JavaScript with `.d.ts` declarations.
 
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
-
 ## License
 
 MIT. See [LICENSE](./LICENSE).

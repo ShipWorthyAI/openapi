@@ -7,14 +7,16 @@
       "outputs": ["src/schemas/**"]
     },
     "check:schemas": {
-      "dependsOn": ["$TURBO_EXTENDS$", "generate:schemas"]
+      "dependsOn": ["$TURBO_EXTENDS$", "generate:schemas"],
+      "inputs": ["src/schemas/**"]
     },
     "transit": {
-      "dependsOn": ["$TURBO_EXTENDS$", "generate:schemas"]
+      "dependsOn": ["$TURBO_EXTENDS$", "generate:schemas"],
+      "inputs": ["$TURBO_DEFAULT$", "!src/schemas/**"]
     },
     "build": {
       "dependsOn": ["$TURBO_EXTENDS$", "check:schemas"],
-      "inputs": ["$TURBO_DEFAULT$", "!src/schemas/**"]
+      "inputs": ["$TURBO_EXTENDS$", "!src/schemas/**"]
     },
     "test": {
       "dependsOn": ["$TURBO_EXTENDS$", "check:schemas"],

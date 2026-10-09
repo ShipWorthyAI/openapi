@@ -310,7 +310,7 @@ The parser applies these transformations, each confirmed by the package's tests.
 
 When a document refers to an `http(s)` URL, the parser follows these rules:
 
-- References to loopback, private, link-local, and similar addresses are blocked. This includes `localhost`, `*.local`, `*.internal`, `*.lan`, and private IPv4 and IPv6 ranges. Hosts are checked after DNS resolution, and the connection is pinned to the validated address. The parser makes one exception: refs on the same origin as the root document's URL are allowed. This is how a spec served from `http://localhost:3000/...` can load its siblings.
+- References to loopback, private, link-local, and similar addresses are blocked. This includes `localhost`, `*.local`, `*.internal`, `*.lan`, and private IPv4 and IPv6 ranges. Hosts that resolve to blocked addresses are also rejected. The parser makes one exception: refs on the same origin as the root document's URL are allowed. This is how a spec served from `http://localhost:3000/...` can load its siblings.
 - A blocked reference fails with `<url>: Could not find resolver for "<url>"`.
 - Each request has a 60-second timeout, retries transient failures up to 3 times, and follows up to 5 redirects. `Authorization`, `Proxy-Authorization`, and `Cookie` headers are dropped on cross-origin redirects.
 - Public-host references are downloaded with the parser's own undici-based client, not the `HttpClient` you provide. Your `HttpClient` fetches the root URL and same-origin private refs.
@@ -353,10 +353,6 @@ None of these settings can be configured through the public API.
 - Every error is a `Schema.SchemaError`. Read `error.message`.
 - Requires `effect` `^4.0.0` (peer dependency), ESM, and Node.js `>=22.19.0` or Bun. Ships compiled JavaScript. It does not run in browsers.
 - Next step in the toolchain: pass the result to `decode` from `@shipworthy/openapi-transformer` to get a `ParsedService` for code generators.
-
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
 
 ## License
 

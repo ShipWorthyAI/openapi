@@ -1,6 +1,6 @@
 # @shipworthy/openapi-standard-schema
 
-Generate [Standard Schema](https://standardschema.dev) validators from an OpenAPI document. Each schema in `components.schemas` becomes a pair of named exports: a TypeScript type and a `StandardSchemaV1` validator built with [Effect Schema](https://effect.website) (`Schema.toStandardSchemaV1`). Any library that accepts Standard Schema can use the validators, including form libraries, tRPC, and TanStack tooling. Use this package when you want runtime validation of OpenAPI component shapes without depending on Zod. It is a generator plugin. Most users run it through the `openapi` CLI (`@shipworthy/openapi-cli`). You can also call it from code on a model produced by `@shipworthy/openapi-transformer`. The sibling `@shipworthy/openapi-zod` generates Zod validators instead.
+Generate [Standard Schema](https://standardschema.dev) validators from an OpenAPI document. Each schema in `components.schemas` becomes a pair of named exports: a TypeScript type and a `StandardSchemaV1` validator backed by [Effect](https://effect.website). Any library that accepts Standard Schema can use the validators, including form libraries, tRPC, and TanStack tooling. Use this package when you want runtime validation of OpenAPI component shapes without depending on Zod. It is a generator plugin. Most users run it through the `openapi` CLI (`@shipworthy/openapi-cli`). You can also call it from code on a model produced by `@shipworthy/openapi-transformer`. The sibling `@shipworthy/openapi-zod` generates Zod validators instead.
 
 ## Installation
 
@@ -16,7 +16,7 @@ bun add effect@^4.0.0
 
 Requirements:
 
-- **Effect 4.** `effect` `^4.0.0` is a peer dependency, so every package shares one Effect instance. The generated code uses Effect 4 Schema APIs (`Schema.toStandardSchemaV1`, `Schema.StructWithRest`, `Schema.isPattern`, and others). Effect 3 will not run it.
+- **Effect 4.** `effect` `^4.0.0` is a peer dependency, so every package shares one Effect instance. Effect 3 is not supported.
 - **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
 - **Installed dependencies.** The package installs `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`.
@@ -195,41 +195,19 @@ class SchemaGenerationError extends Schema.TaggedError<SchemaGenerationError>()(
 
 ## Generated output
 
-For each component `Name`, in document order, the generated file exports:
+For each component `Name`, the generated module exports a TypeScript type named `Name` and a
+Standard Schema validator with the same name. Import the validator to check values and the
+type to annotate application data.
 
-```ts
-export type Name = NameSchema; // TypeScript type of the decoded value
-export const Name = Schema.toStandardSchemaV1(NameSchema); // StandardSchemaV1 validator
-```
+Validation is synchronous: `~standard.validate` returns a result rather than a Promise.
+Success returns `{ value }`; failure returns `{ issues }`, with a path and message for each
+issue.
 
-The file also contains these parts:
-
-- `import { Schema } from "effect";`, plus any other imports that Effect's code generator emits.
-- A module-private `type XSchema` and `const XSchema` (an Effect `Schema`) for each component and each shared `$defs` entry. Each component's internal binding is `<Name>Schema`. If that name is taken, the generator appends more `Schema` suffixes.
-- `Schema.suspend((): Schema.Codec<XSchema> => …)` declarations for recursive and mutually recursive schemas. The private bodies of these schemas are named `__recursive_<Name>`.
-
-Validation is synchronous: `~standard.validate` returns a result, not a Promise. A successful result is `{ value }`. A failed result is `{ issues }`, and each issue has a `path` and a `message`.
-
-Observed conversions (from tests and sample output):
-
-| OpenAPI / JSON Schema                             | Effect Schema                                                                                           |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `type: [string, "null"]`, or 3.0 `nullable: true` | `Schema.Union([Schema.String, Schema.Null])`                                                            |
-| `enum: [a, b]`                                    | `Schema.Literals(["a", "b"])`                                                                           |
-| `pattern: "^a+$"`                                 | `.check(Schema.isPattern(new RegExp("^a+$", "u")))` (enforced)                                          |
-| `minLength`, `type: integer`, `minimum`           | `.check(Schema.isMinLength(…))`, `Schema.isInt()`, `Schema.isGreaterThanOrEqualTo(…)`                   |
-| Property not listed in `required`                 | `Schema.optionalKey(…)` (`readonly "x"?: T`)                                                            |
-| `object` without `additionalProperties: false`    | `Schema.StructWithRest(…, [Schema.Record(Schema.String, Schema.Json)])`, so extra JSON keys are allowed |
-| `object` with `additionalProperties: false`       | `Schema.Struct(…)`                                                                                      |
-| `$ref: "#/components/schemas/X"`                  | A reference to `XSchema`                                                                                |
-| Schema `false`                                    | `Schema.Never` (rejects every value)                                                                    |
-| `description`, `examples`                         | Kept as `.annotate({ … })`                                                                              |
-
-Name collisions are handled:
-
-- A property whose name matches the component it references (for example, `Account.properties.User → User`) keeps its key: `"User": Schema.optionalKey(UserSchema)`.
-- A schema-local `$defs` entry that shares a name with a component does not replace that component.
-- A document-level `$defs` entry that shares a name with a component is renamed internally (`Name_2`, …), and both schemas are kept.
+Generated validators enforce supported source constraints, including enum values, patterns,
+string lengths, integer requirements, numeric bounds, required properties, nullable values,
+and additional-property rules. Recursive component references are supported. Schema `false`
+rejects every value. Component and property names are preserved, including when local
+`$defs` entries reuse a component name.
 
 ## Supported OpenAPI versions
 
@@ -260,10 +238,6 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 - Input: OpenAPI 3.0/3.1 through the CLI or `@shipworthy/openapi-generator`. 3.0 is upgraded to 3.1.
 - Not generated: request bodies, responses, parameters. Validators are standalone and are not called by a fetch client.
 - Do not edit generated files. Re-run the CLI instead.
-
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
 
 ## License
 

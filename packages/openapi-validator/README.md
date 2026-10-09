@@ -305,10 +305,6 @@ custom rulesets, or per-rule overrides.
 - The CLI equivalent is `openapi lint [--strict] <file-or-url>` from
   `@shipworthy/openapi-cli`.
 
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
-
 ## License
 
 MIT. See [LICENSE](./LICENSE).

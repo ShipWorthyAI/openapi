@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "bundle": {
+      "dependsOn": ["^transit"],
+      "inputs": ["openapi/**", "!openapi/v1/bundled.openapi.json", "package.json"],
+      "outputs": ["openapi/v1/bundled.openapi.json"]
+    },
+    "generate": {
+      "dependsOn": ["bundle"],
+      "inputs": ["package.json"],
+      "outputs": ["src/generated/reservations/**"]
+    }
+  }
+}

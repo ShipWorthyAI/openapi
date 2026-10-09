@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { JsonSchema, Predicate, Schema, SchemaRepresentation } from "effect";
+import * as Yaml from "effect/encoding/Yaml";
 import { format } from "oxfmt";
-import { parse } from "yaml";
 
 const schemaDirectory = new URL("../schemas/", import.meta.url);
 const outputDirectory = new URL("../src/schemas/", import.meta.url);
@@ -57,7 +57,7 @@ function normalize(
 }
 
 async function generate(source: string, version: string): Promise<string> {
-  const input: unknown = parse(source, { version: "1.2", logLevel: "error" });
+  const input = Yaml.parse(source);
 
   const document = JsonSchema.fromSchemaDraft2020_12(
     Schema.decodeUnknownSync(Schema.JsonObject)(input),

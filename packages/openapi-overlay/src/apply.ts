@@ -1,6 +1,6 @@
 import { Effect, Predicate, Schema } from "effect";
+import * as Yaml from "effect/encoding/Yaml";
 import { exec, type Path } from "jsonpath-rfc9535";
-import { parse } from "yaml";
 import { OverlayError } from "./errors.js";
 import { Overlay, type OverlayAction } from "./schemas.js";
 
@@ -8,7 +8,13 @@ const parseInput = Effect.fnUntraced(function* (input: unknown, label: string) {
   if (typeof input !== "string") return input;
 
   return yield* Effect.try({
-    try: (): unknown => parse(input, { version: "1.2", logLevel: "error" }),
+    try: (): unknown => {
+      try {
+        return JSON.parse(input) as unknown;
+      } catch {
+        return Yaml.parse(input);
+      }
+    },
     catch: (cause) => new OverlayError({ message: `Invalid ${label}: ${String(cause)}`, cause }),
   });
 });

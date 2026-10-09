@@ -20,14 +20,14 @@ install `@shipworthy/openapi-transformer`.
 
 Requirements:
 
-| Requirement       | Detail                                                                                                                                                                                                   |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peer dependencies | `typescript` `^7.0.0`: the generator builds its AST with the `typescript/unstable` API that ships with TypeScript 7. `effect` `^4.0.0`: install it yourself so every package shares one Effect instance. |
-| Runtime           | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed.                                                    |
-| Module format     | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                                                                               |
-| Entry points      | `.` and `./compiler`.                                                                                                                                                                                    |
-| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).                                                                                   |
-| Dependencies      | `oxfmt` ^0.72.0 (used by `formatTypeScript`).                                                                                                                                                            |
+| Requirement       | Detail                                                                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Peer dependencies | `typescript` `^7.0.0`. `effect` `^4.0.0`: install it yourself so every package shares one Effect instance.                                            |
+| Runtime           | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. |
+| Module format     | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                            |
+| Entry points      | `.` and `./compiler`.                                                                                                                                 |
+| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).                                |
+| Dependencies      | `oxfmt` ^0.72.0 (used by `formatTypeScript`).                                                                                                         |
 
 ## Quick start
 
@@ -337,10 +337,8 @@ const result = await Effect.runPromise(
 
 ### Entry point `@shipworthy/openapi-typescript/compiler`
 
-The default export, `ts`, provides the part of the classic TypeScript compiler API that this
-generator and its CLIs use. TypeScript 7 does not ship that API, so `ts` is built on
-`typescript/unstable`. Use it to build nodes in `transform`, `postTransform`, and
-`transformProperty` hooks.
+The default export, `ts`, provides compiler factory functions, node guards, and visitor
+utilities. Use it to build nodes in `transform`, `postTransform`, and `transformProperty` hooks.
 
 ```ts
 import ts from "@shipworthy/openapi-typescript/compiler";
@@ -563,10 +561,6 @@ in place of `NodeServices` on Bun) and
 - Raw 3.1 objects: `decode` and then `typescript.generate`. Files, URLs, 3.0 documents, or
   external `$ref`s: `generate` from `@shipworthy/openapi-generator` or the CLI.
 - Do not pass a raw OpenAPI document to `typescript.generate`.
-
-## Workspace publishing
-
-In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
 
 ## License
 
