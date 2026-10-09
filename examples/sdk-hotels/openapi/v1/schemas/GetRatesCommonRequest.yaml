@@ -1,0 +1,49 @@
+type: object
+description: All supplied hotel quality filters must be satisfied by the returned hotel fields.
+properties:
+  query:
+    type: string
+    description: Free-text destination or hotel-name search.
+  min_stars:
+    description: Minimum hotel star classification.
+    type: number
+    format: double
+    minimum: 0
+    maximum: 5
+  min_reviews:
+    description: Minimum number of hotel reviews. Hotels without a known review count are excluded when this filter is supplied.
+    type: integer
+    minimum: 0
+  min_rating:
+    type: number
+    format: double
+    minimum: 0
+    maximum: 10
+    description: Minimum hotel review score on a scale of 0 to 10.
+  stay:
+    $ref: ./Stay.yaml
+  timeout:
+    type: integer
+    minimum: 1
+    default: 10
+    description: Maximum collection time in seconds before returning available rates. Values above 60 are treated as 60. Response delivery may take slightly longer.
+  limit_per_hotel:
+    type: integer
+    minimum: 1
+    description: Maximum number of rates returned per hotel.
+  sort:
+    type: array
+    description: "Sorts offers within each hotel and hotels by their first offer. Criteria are applied in order, with later criteria breaking ties. Sorting applies to the returned page, not all matching hotels. recommended requests recommended results; other criteria order those results by price, Cash Back, or hotel guest review score. Rating ties for offers within a hotel. Omitted or empty uses recommendation order."
+    items:
+      $ref: ./Sort.yaml
+  cursor:
+    description: "Opaque cursor bound to the original search criteria, ordering, and page size. Invalid cursors return 400 invalid_cursor."
+    type: string
+    maxLength: 1024
+  limit:
+    description: "Requested page size. Defaults to 200, with a maximum of 5000."
+    type: integer
+    minimum: 1
+    default: 200
+required:
+  - stay

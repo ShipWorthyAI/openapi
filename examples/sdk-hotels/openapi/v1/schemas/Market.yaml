@@ -1,0 +1,12 @@
+type: object
+properties:
+  country:
+    type: string
+    pattern: "^[A-Z]{2}$"
+    description: Uppercase ISO alpha-2 country code.
+  city:
+    type: string
+    description: City within the selected country.
+required:
+  - country
+additionalProperties: false

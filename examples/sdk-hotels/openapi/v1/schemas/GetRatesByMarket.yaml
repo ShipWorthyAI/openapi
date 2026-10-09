@@ -1,0 +1,9 @@
+title: GetRatesByMarket
+allOf:
+  - $ref: ./GetRatesCommonRequest.yaml
+  - type: object
+    properties:
+      market:
+        $ref: ./Market.yaml
+    required:
+      - market

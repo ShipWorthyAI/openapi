@@ -1,0 +1,12 @@
+type: object
+properties:
+  deadline:
+    type: string
+    format: date-time
+    description: Cancellation cutoff expressed as a timezone-qualified date-time.
+  price:
+    $ref: ./Money.yaml
+    description: Monetary cancellation penalty in currency minor units.
+required:
+  - deadline
+  - price

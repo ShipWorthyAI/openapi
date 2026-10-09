@@ -1,0 +1,17 @@
+allOf:
+  - $ref: ./Policy.yaml
+  - type: object
+    properties:
+      type:
+        type: string
+        const: POLICY_CHECK_IN
+      from:
+        type: string
+        description: "Earliest check-in time in the property's local time, preserving supplied display text."
+      until:
+        type: string
+        description: "Latest check-in time in the property's local time, preserving supplied display text."
+      instructions:
+        type: array
+        items:
+          type: string

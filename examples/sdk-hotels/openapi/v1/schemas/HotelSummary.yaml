@@ -1,0 +1,31 @@
+type: object
+properties:
+  id:
+    $ref: ./Id.yaml
+  name:
+    type: string
+    minLength: 1
+    pattern: "[^\\s\\v\\p{Z}\\u0085]"
+  chain:
+    $ref: ./HotelChain.yaml
+  address:
+    $ref: ./Address.yaml
+  coordinates:
+    $ref: ./Coordinates.yaml
+  image:
+    $ref: ./Image.yaml
+  stars:
+    type: number
+    minimum: 0
+    maximum: 5
+    example: 5
+  reviews:
+    $ref: ./GuestRating.yaml
+required:
+  - id
+  - name
+  - address
+  - coordinates
+  - image
+  - stars
+  - reviews

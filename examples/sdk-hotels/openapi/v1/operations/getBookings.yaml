@@ -1,0 +1,49 @@
+operationId: getBookings
+summary: List bookings
+description: "Return a page of the authenticated customer's bookings, including pending and unsuccessful booking attempts."
+tags:
+  - Bookings
+parameters:
+  - $ref: ../parameters/Cursor.yaml
+  - $ref: ../parameters/Limit.yaml
+  - name: status
+    in: query
+    required: false
+    schema:
+      $ref: ../schemas/BookingStatus.yaml
+responses:
+  "200":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: ../schemas/Booking.yaml
+            pagination:
+              $ref: ../schemas/Pagination.yaml
+          required:
+            - data
+            - pagination
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

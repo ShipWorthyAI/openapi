@@ -1,0 +1,39 @@
+allOf:
+  - $ref: ./Policy.yaml
+  - type: object
+    properties:
+      type:
+        type: string
+        const: HOTEL_BOOKING_CANCELLATION
+      name:
+        type: string
+        default: Cancellation Policy
+      description:
+        type: string
+        default: ""
+      refundable:
+        type: boolean
+        description: "Whether cancellation permits a refund, subject to the listed penalties. The final card refund may differ from the refundable room amount."
+      penalties:
+        type: array
+        items:
+          $ref: ./CancellationPenalty.yaml
+    required:
+      - name
+      - description
+      - refundable
+      - penalties
+example:
+  type: HOTEL_BOOKING_CANCELLATION
+  name: Cancellation Policy
+  description: ""
+  refundable: true
+  penalties:
+    - deadline: 2026-09-09T22:01:51.256Z
+      price:
+        amount: 7500
+        currency: USD
+    - deadline: 2026-09-08T22:01:51.256Z
+      price:
+        amount: 0
+        currency: USD

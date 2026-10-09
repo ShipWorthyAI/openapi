@@ -1,0 +1,12 @@
+title: GetRatesByPlaceId
+allOf:
+  - $ref: ./GetRatesCommonRequest.yaml
+  - type: object
+    properties:
+      place_id:
+        type: string
+        description: Destination place identifier.
+        minLength: 1
+        pattern: \S
+    required:
+      - place_id

@@ -1,0 +1,31 @@
+allOf:
+  - $ref: ./HotelSummary.yaml
+  - type: object
+    properties:
+      description:
+        type: string
+        description: Description of the property.
+      images:
+        type: array
+        items:
+          $ref: ./Image.yaml
+      amenities:
+        type: array
+        items:
+          type: string
+      timezone:
+        type: string
+      rooms:
+        type: array
+        description: Descriptive room types at this hotel.
+        items:
+          $ref: ./HotelRoom.yaml
+      policies:
+        $ref: ./HotelPolicies.yaml
+    required:
+      - description
+      - images
+      - amenities
+      - timezone
+      - policies
+      - rooms

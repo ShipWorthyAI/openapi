@@ -1,0 +1,13 @@
+description: "Cash Back earned on the subtotal excluding included taxes and fees, in the same currency as total."
+type: object
+properties:
+  total:
+    $ref: ./Money.yaml
+  percent:
+    type: integer
+    minimum: 0
+    multipleOf: 5
+    description: Cash Back percentage expressed in whole percentage points.
+required:
+  - total
+  - percent

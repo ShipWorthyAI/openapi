@@ -1,0 +1,50 @@
+operationId: createQuote
+summary: Create a booking quote
+description: "Create a quote for a selected hotel offer with current pricing, Cash Back, room details, and cancellation policies. Review the returned terms before booking, as they may differ from the original offer. Creating a quote does not reserve rooms or guarantee availability. Each request revalidates the offer and may return a different quote ID or updated terms. If the offer is no longer available, a 409 offer_unavailable response indicates that a new offer must be selected."
+tags:
+  - Bookings
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          offer_id:
+            $ref: ../schemas/Id.yaml
+        required:
+          - offer_id
+        additionalProperties: false
+responses:
+  "201":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: ../schemas/Quote.yaml
+          required:
+            - data
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "409":
+    $ref: ../responses/Conflict.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

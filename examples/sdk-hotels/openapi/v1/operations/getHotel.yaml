@@ -1,0 +1,40 @@
+operationId: getHotel
+summary: Retrieve a hotel
+description: Return descriptive property content. Optional unavailable fields are omitted; this response does not establish availability or a booking price.
+tags:
+  - Hotels
+parameters:
+  - $ref: ../parameters/HotelId.yaml
+responses:
+  "200":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: ../schemas/Hotel.yaml
+          required:
+            - data
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "404":
+    $ref: ../responses/NotFound.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

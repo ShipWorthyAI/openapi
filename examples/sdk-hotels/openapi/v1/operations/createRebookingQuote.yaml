@@ -1,0 +1,55 @@
+operationId: createRebookingQuote
+summary: Create a rebooking quote
+description: Prepare replacement quotes at the same hotel for changed dates or guest counts. Each quote is tied to the original booking and includes current prices and cancellation terms. Review those terms before accepting the replacement.
+tags:
+  - Bookings
+parameters:
+  - $ref: ../parameters/BookingId.yaml
+  - $ref: ../parameters/IdempotencyKey.yaml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          stay:
+            $ref: ../schemas/Stay.yaml
+        additionalProperties: false
+responses:
+  "201":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: ../schemas/Quote.yaml
+          required:
+            - data
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "404":
+    $ref: ../responses/NotFound.yaml
+  "409":
+    $ref: ../responses/Conflict.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

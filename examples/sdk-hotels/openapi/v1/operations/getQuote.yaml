@@ -1,0 +1,42 @@
+operationId: getQuote
+summary: Retrieve a booking quote
+description: "Retrieve a quote by its ID, including pricing, Cash Back, room details, and cancellation policies. Review the returned terms before booking. Retrieving a quote does not change its terms, reserve rooms, or guarantee availability. Missing quotes and quotes belonging to another customer return 404."
+tags:
+  - Bookings
+parameters:
+  - $ref: ../parameters/QuoteId.yaml
+responses:
+  "200":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: ../schemas/Quote.yaml
+          required:
+            - data
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "404":
+    $ref: ../responses/NotFound.yaml
+  "409":
+    $ref: ../responses/Conflict.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

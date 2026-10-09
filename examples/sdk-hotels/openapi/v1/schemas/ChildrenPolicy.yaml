@@ -1,0 +1,10 @@
+allOf:
+  - $ref: ./Policy.yaml
+  - type: object
+    properties:
+      type:
+        type: string
+        const: POLICY_CHILDREN
+      allowed:
+        type: boolean
+        description: Whether children are allowed. Omitted when reliable information is unavailable.

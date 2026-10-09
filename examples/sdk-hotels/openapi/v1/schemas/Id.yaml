@@ -1,0 +1,4 @@
+type: string
+minLength: 1
+pattern: "^[^,]*[^,\\s\\v\\p{Z}\\u0085][^,]*$"
+description: Opaque identifier. Must contain a non-whitespace character and must not contain commas. Clients must not interpret its encoding.

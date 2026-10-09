@@ -1,0 +1,27 @@
+type: object
+properties:
+  occupancy_index:
+    type: integer
+    minimum: 1
+    description: One-based room occupancy index. Use the corresponding index from the offer or quote.
+  first_name:
+    type: string
+    minLength: 1
+    pattern: \S
+  last_name:
+    type: string
+    minLength: 1
+    pattern: \S
+  email:
+    type: string
+    format: email
+  phone:
+    type: string
+  remarks:
+    type: string
+required:
+  - occupancy_index
+  - first_name
+  - last_name
+  - email
+additionalProperties: false

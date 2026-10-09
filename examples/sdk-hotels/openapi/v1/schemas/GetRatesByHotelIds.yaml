@@ -1,0 +1,13 @@
+title: GetRatesByHotelIds
+allOf:
+  - $ref: ./GetRatesCommonRequest.yaml
+  - type: object
+    properties:
+      hotel_ids:
+        description: Look up a batch of hotel identifiers.
+        type: array
+        items:
+          $ref: ./Id.yaml
+        minItems: 1
+    required:
+      - hotel_ids

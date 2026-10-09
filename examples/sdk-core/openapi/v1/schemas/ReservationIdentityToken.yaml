@@ -1,0 +1,19 @@
+type: object
+required:
+  - id_token
+  - token_type
+  - expires_in
+properties:
+  id_token:
+    type: string
+    minLength: 1
+    description: Identity token accepted by the Reservations API.
+  token_type:
+    type: string
+    enum:
+      - Bearer
+  expires_in:
+    type: integer
+    minimum: 1
+    description: Token lifetime in seconds.
+    example: 900

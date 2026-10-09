@@ -1,0 +1,34 @@
+summary: Create a Reservations identity token
+operationId: createReservationToken
+tags:
+  - Authentication
+description: "Exchanges the signed-in customer’s Core bearer token for a short-lived Reservations identity token. Send the returned token as a Bearer credential to the Reservations API. Cookies, browser sessions, query parameters, and raw Authorization tokens are not accepted."
+security:
+  - bearerAuth: []
+responses:
+  "200":
+    description: Reservations identity token
+    headers:
+      Cache-Control:
+        schema:
+          type: string
+        description: Includes no-store; tokens must not be cached by intermediaries.
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/ReservationIdentityToken.yaml
+  "401":
+    description: Missing or invalid Core bearer credential
+  "503":
+    description: Identity token service unavailable
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - error
+          properties:
+            error:
+              type: string
+              enum:
+                - id_token_unavailable

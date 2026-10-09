@@ -1,0 +1,10 @@
+allOf:
+  - $ref: ./Policy.yaml
+  - type: object
+    properties:
+      type:
+        type: string
+        const: POLICY_PARKING
+      available:
+        type: boolean
+        description: Whether parking is available. Omitted when reliable information is unavailable.

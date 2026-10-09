@@ -1,0 +1,6 @@
+type: object
+properties:
+  cancellation:
+    $ref: ./CancellationPolicy.yaml
+required:
+  - cancellation

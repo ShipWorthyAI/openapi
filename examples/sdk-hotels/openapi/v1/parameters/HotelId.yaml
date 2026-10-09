@@ -1,0 +1,5 @@
+name: hotel_id
+in: path
+required: true
+schema:
+  $ref: ../schemas/Id.yaml

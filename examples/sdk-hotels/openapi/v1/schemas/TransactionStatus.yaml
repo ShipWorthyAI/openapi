@@ -1,0 +1,10 @@
+type: string
+enum:
+  - pending
+  - validating_quote
+  - authorizing_payment
+  - confirming_booking
+  - finalizing_payment
+  - releasing_authorization
+  - reconciling
+  - completed

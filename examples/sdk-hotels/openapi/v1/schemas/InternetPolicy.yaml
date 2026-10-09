@@ -1,0 +1,7 @@
+allOf:
+  - $ref: ./Policy.yaml
+  - type: object
+    properties:
+      type:
+        type: string
+        const: POLICY_INTERNET

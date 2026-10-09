@@ -1,0 +1,17 @@
+type: object
+properties:
+  score:
+    type: number
+    format: double
+  scale:
+    type: number
+    description: Rating scale; normalization is still a draft decision.
+  count:
+    type: integer
+    minimum: 0
+required:
+  - score
+example:
+  score: 6
+  scale: 10
+  count: 100

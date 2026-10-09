@@ -1,0 +1,12 @@
+type: object
+description: Common hotel policy information. Optional text is omitted when unavailable.
+properties:
+  type:
+    type: string
+    description: Stable policy category.
+  name:
+    type: string
+  description:
+    type: string
+required:
+  - type

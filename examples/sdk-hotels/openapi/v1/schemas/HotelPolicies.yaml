@@ -1,0 +1,18 @@
+type: object
+description: Known hotel policies keyed by category. Unavailable policies and unknown structured facts are omitted.
+properties:
+  check_in:
+    $ref: ./CheckInPolicy.yaml
+  check_out:
+    $ref: ./CheckOutPolicy.yaml
+  parking:
+    $ref: ./ParkingPolicy.yaml
+  internet:
+    $ref: ./InternetPolicy.yaml
+  pets:
+    $ref: ./PetsPolicy.yaml
+  children:
+    $ref: ./ChildrenPolicy.yaml
+  groups:
+    $ref: ./GroupsPolicy.yaml
+additionalProperties: false

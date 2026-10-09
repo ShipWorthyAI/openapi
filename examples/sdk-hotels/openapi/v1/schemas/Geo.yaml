@@ -1,0 +1,12 @@
+type: object
+properties:
+  coordinates:
+    $ref: ./Coordinates.yaml
+  radius:
+    type: integer
+    minimum: 1000
+    description: Search radius in meters.
+required:
+  - coordinates
+  - radius
+additionalProperties: false

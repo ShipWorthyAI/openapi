@@ -1,0 +1,122 @@
+operationId: getHotels
+summary: List hotels
+description: "Search hotels by country, latitude and longitude, hotel IDs, or free text. A city filter must be combined with one of these search options."
+security: []
+tags:
+  - Hotels
+parameters:
+  - name: hotel_ids
+    in: query
+    required: false
+    schema:
+      type: array
+      items:
+        $ref: ../schemas/Id.yaml
+    description: Look up a batch of hotel identifiers.
+    style: form
+    explode: true
+  - name: latitude
+    in: query
+    required: false
+    schema:
+      type: number
+      format: double
+      minimum: -90
+      maximum: 90
+  - name: longitude
+    in: query
+    required: false
+    schema:
+      type: number
+      format: double
+      minimum: -180
+      maximum: 180
+  - name: radius
+    description: Search radius in meters. Requires latitude and longitude.
+    in: query
+    required: false
+    schema:
+      type: integer
+      minimum: 1000
+  - name: city
+    description: City filter. Requires a search selector such as country or query.
+    in: query
+    required: false
+    schema:
+      type: string
+  - name: country
+    description: Uppercase ISO alpha-2 country code.
+    in: query
+    required: false
+    schema:
+      type: string
+      pattern: "^[A-Z]{2}$"
+  - name: min_stars
+    in: query
+    required: false
+    description: Minimum hotel star classification.
+    schema:
+      type: number
+      format: double
+      minimum: 0
+      maximum: 5
+  - name: min_reviews
+    in: query
+    required: false
+    description: Minimum number of hotel reviews.
+    schema:
+      type: integer
+      minimum: 0
+  - name: min_rating
+    in: query
+    required: false
+    description: Minimum hotel review score on a scale of 0 to 10.
+    schema:
+      type: number
+      format: double
+      minimum: 0
+      maximum: 10
+  - name: query
+    in: query
+    required: false
+    schema:
+      type: string
+    description: Free-text destination or hotel-name search.
+  - $ref: ../parameters/Cursor.yaml
+  - $ref: ../parameters/Limit.yaml
+responses:
+  "200":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: ../schemas/HotelSummary.yaml
+            pagination:
+              $ref: ../schemas/Pagination.yaml
+          required:
+            - data
+            - pagination
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

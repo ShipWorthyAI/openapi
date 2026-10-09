@@ -1,0 +1,65 @@
+operationId: getRates
+summary: List hotel rates
+description: "Search hotel offers for the requested stay and guests. Results include room details, prices, Cash Back, and cancellation policies."
+tags:
+  - Bookings
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        x-go-type-name: GetRatesRequest
+        oneOf:
+          - $ref: ../schemas/GetRatesByHotelIds.yaml
+          - $ref: ../schemas/GetRatesByGeo.yaml
+          - $ref: ../schemas/GetRatesByMarket.yaml
+          - $ref: ../schemas/GetRatesByPlaceId.yaml
+          - allOf:
+              - $ref: ../schemas/GetRatesByQuery.yaml
+              - not:
+                  anyOf:
+                    - required:
+                        - hotel_ids
+                    - required:
+                        - geo
+                    - required:
+                        - market
+                    - required:
+                        - place_id
+            x-ogen-name: GetRatesByQuery
+responses:
+  "200":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: ../schemas/HotelRates.yaml
+            pagination:
+              $ref: ../schemas/Pagination.yaml
+          required:
+            - data
+            - pagination
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

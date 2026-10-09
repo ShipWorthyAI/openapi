@@ -1,0 +1,20 @@
+type: object
+properties:
+  field:
+    type: string
+    description: "Ordering criterion: recommended for recommended results, price for the total stay price, cash_back_total for the Cash Back amount, cash_back_percent for the Cash Back percentage, or rating for the hotel guest review score."
+    enum:
+      - recommended
+      - price
+      - cash_back_total
+      - cash_back_percent
+      - rating
+  direction:
+    type: string
+    enum:
+      - ascending
+      - descending
+required:
+  - field
+  - direction
+additionalProperties: false

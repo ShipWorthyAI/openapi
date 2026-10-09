@@ -1,0 +1,7 @@
+title: GetRatesByQuery
+allOf:
+  - $ref: ./GetRatesCommonRequest.yaml
+  - required:
+      - query
+required:
+  - query

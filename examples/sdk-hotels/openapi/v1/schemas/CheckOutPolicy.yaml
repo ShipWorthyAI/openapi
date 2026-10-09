@@ -1,0 +1,10 @@
+allOf:
+  - $ref: ./Policy.yaml
+  - type: object
+    properties:
+      type:
+        type: string
+        const: POLICY_CHECK_OUT
+      time:
+        type: string
+        description: "Standard check-out time in the property's local time, preserving supplied display text."

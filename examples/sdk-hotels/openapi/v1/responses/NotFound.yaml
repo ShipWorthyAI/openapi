@@ -1,0 +1,10 @@
+description: The requested resource was not found or is not visible to this actor.
+headers:
+  X-Request-ID:
+    description: Correlation identifier for this HTTP attempt.
+    schema:
+      type: string
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

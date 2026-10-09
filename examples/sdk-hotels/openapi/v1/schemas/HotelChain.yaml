@@ -1,0 +1,12 @@
+type: object
+properties:
+  id:
+    $ref: ./Id.yaml
+  name:
+    type: string
+    example: Marriott Hotels & Resorts
+    minLength: 1
+    pattern: "[^\\s\\v\\p{Z}\\u0085]"
+required:
+  - id
+  - name

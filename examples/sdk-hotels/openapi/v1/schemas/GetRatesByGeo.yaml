@@ -1,0 +1,9 @@
+title: GetRatesByGeo
+allOf:
+  - $ref: ./GetRatesCommonRequest.yaml
+  - type: object
+    properties:
+      geo:
+        $ref: ./Geo.yaml
+    required:
+      - geo

@@ -1,0 +1,84 @@
+type: object
+description: Descriptive content for a hotel room type.
+required:
+  - id
+  - name
+  - beds
+  - amenities
+  - images
+properties:
+  id:
+    $ref: ./Id.yaml
+  name:
+    type: string
+    minLength: 1
+    example: Queen Room with Two Queen Beds - Hearing Accessible
+  description:
+    type: string
+    description: Description of the room and its features.
+  size:
+    type: object
+    required:
+      - total
+      - unit
+    properties:
+      total:
+        type: number
+        minimum: 0
+        example: 23
+      unit:
+        type: string
+        minLength: 1
+        description: Area unit; square meters are represented as sqm.
+        example: sqm
+  occupancy:
+    type: object
+    description: Maximum guest capacities. Only known limits are included. Adult and child limits must not be added to infer total capacity. These limits do not establish availability for a requested stay.
+    properties:
+      adults:
+        type: integer
+        minimum: 0
+        example: 4
+      children:
+        type: integer
+        minimum: 0
+        example: 3
+      total:
+        type: integer
+        minimum: 0
+        example: 4
+  beds:
+    type: array
+    items:
+      type: object
+      required:
+        - id
+        - type
+        - quantity
+      properties:
+        id:
+          $ref: ./Id.yaml
+        type:
+          type: string
+          minLength: 1
+          example: Queen bed
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+  bed_relation:
+    type: string
+    enum:
+      - NONE
+      - AND
+      - OR
+      - COMPLEX
+    description: NONE means no relation applies. AND means all listed beds are present together. OR means the listed beds are alternatives. COMPLEX means the configuration combines relationships that cannot be expressed by a single AND or OR.
+  amenities:
+    type: array
+    items:
+      type: string
+  images:
+    type: array
+    items:
+      $ref: ./Image.yaml

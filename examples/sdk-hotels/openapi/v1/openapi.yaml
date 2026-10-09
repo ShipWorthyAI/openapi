@@ -1,0 +1,187 @@
+openapi: 3.1.0
+info:
+  title: Hotels API
+  version: 1.0.0
+  description: Unified API for Hotels and Bookings.
+servers:
+  - url: /v1
+security:
+  - BearerAuth: []
+tags:
+  - name: Hotels
+    description: "Hotel catalogue, content, and reviews."
+  - name: Bookings
+    description: "Rates, quotes, and booking lifecycle."
+paths:
+  /hotels:
+    get:
+      $ref: ./operations/getHotels.yaml
+  "/hotels/{hotel_id}":
+    get:
+      $ref: ./operations/getHotel.yaml
+  "/hotels/{hotel_id}/reviews":
+    get:
+      $ref: ./operations/getHotelReviews.yaml
+  /rates:
+    post:
+      $ref: ./operations/getRates.yaml
+  /quotes:
+    post:
+      $ref: ./operations/createQuote.yaml
+  "/quotes/{quote_id}":
+    get:
+      $ref: ./operations/getQuote.yaml
+  /bookings:
+    post:
+      $ref: ./operations/createBooking.yaml
+    get:
+      $ref: ./operations/getBookings.yaml
+  "/bookings/{booking_id}":
+    get:
+      $ref: ./operations/getBooking.yaml
+    patch:
+      $ref: ./operations/updateBooking.yaml
+    delete:
+      $ref: ./operations/cancelBooking.yaml
+  "/bookings/{booking_id}/quotes":
+    post:
+      $ref: ./operations/createRebookingQuote.yaml
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: ./securitySchemes/BearerAuth.yaml
+  parameters:
+    BookingId:
+      $ref: ./parameters/BookingId.yaml
+    Cursor:
+      $ref: ./parameters/Cursor.yaml
+    HotelId:
+      $ref: ./parameters/HotelId.yaml
+    IdempotencyKey:
+      $ref: ./parameters/IdempotencyKey.yaml
+    Limit:
+      $ref: ./parameters/Limit.yaml
+    QuoteId:
+      $ref: ./parameters/QuoteId.yaml
+  responses:
+    BadRequest:
+      $ref: ./responses/BadRequest.yaml
+    Conflict:
+      $ref: ./responses/Conflict.yaml
+    Forbidden:
+      $ref: ./responses/Forbidden.yaml
+    NotFound:
+      $ref: ./responses/NotFound.yaml
+    ServiceUnavailable:
+      $ref: ./responses/ServiceUnavailable.yaml
+    TooManyRequests:
+      $ref: ./responses/TooManyRequests.yaml
+    Unauthorized:
+      $ref: ./responses/Unauthorized.yaml
+    UnexpectedProblem:
+      $ref: ./responses/UnexpectedProblem.yaml
+    ValidationProblem:
+      $ref: ./responses/ValidationProblem.yaml
+  schemas:
+    Address:
+      $ref: ./schemas/Address.yaml
+    Booking:
+      $ref: ./schemas/Booking.yaml
+    BookingGuest:
+      $ref: ./schemas/BookingGuest.yaml
+    BookingPolicies:
+      $ref: ./schemas/BookingPolicies.yaml
+    BookingRoom:
+      $ref: ./schemas/BookingRoom.yaml
+    BookingStatus:
+      $ref: ./schemas/BookingStatus.yaml
+    BookingTransaction:
+      $ref: ./schemas/BookingTransaction.yaml
+    CancellationPenalty:
+      $ref: ./schemas/CancellationPenalty.yaml
+    CancellationPolicy:
+      $ref: ./schemas/CancellationPolicy.yaml
+    CashBack:
+      $ref: ./schemas/CashBack.yaml
+    CheckInPolicy:
+      $ref: ./schemas/CheckInPolicy.yaml
+    CheckOutPolicy:
+      $ref: ./schemas/CheckOutPolicy.yaml
+    ChildrenPolicy:
+      $ref: ./schemas/ChildrenPolicy.yaml
+    Coordinates:
+      $ref: ./schemas/Coordinates.yaml
+    Fee:
+      $ref: ./schemas/Fee.yaml
+    FieldError:
+      $ref: ./schemas/FieldError.yaml
+    Geo:
+      $ref: ./schemas/Geo.yaml
+    GetRatesByGeo:
+      $ref: ./schemas/GetRatesByGeo.yaml
+    GetRatesByHotelIds:
+      $ref: ./schemas/GetRatesByHotelIds.yaml
+    GetRatesByMarket:
+      $ref: ./schemas/GetRatesByMarket.yaml
+    GetRatesByPlaceId:
+      $ref: ./schemas/GetRatesByPlaceId.yaml
+    GetRatesByQuery:
+      $ref: ./schemas/GetRatesByQuery.yaml
+    GetRatesCommonRequest:
+      $ref: ./schemas/GetRatesCommonRequest.yaml
+    GroupsPolicy:
+      $ref: ./schemas/GroupsPolicy.yaml
+    Guest:
+      $ref: ./schemas/Guest.yaml
+    GuestRating:
+      $ref: ./schemas/GuestRating.yaml
+    Hotel:
+      $ref: ./schemas/Hotel.yaml
+    HotelChain:
+      $ref: ./schemas/HotelChain.yaml
+    HotelOffer:
+      $ref: ./schemas/HotelOffer.yaml
+    HotelOfferRoom:
+      $ref: ./schemas/HotelOfferRoom.yaml
+    HotelPolicies:
+      $ref: ./schemas/HotelPolicies.yaml
+    HotelRates:
+      $ref: ./schemas/HotelRates.yaml
+    HotelRoom:
+      $ref: ./schemas/HotelRoom.yaml
+    HotelRoomSummary:
+      $ref: ./schemas/HotelRoomSummary.yaml
+    HotelSummary:
+      $ref: ./schemas/HotelSummary.yaml
+    Id:
+      $ref: ./schemas/Id.yaml
+    Image:
+      $ref: ./schemas/Image.yaml
+    InternetPolicy:
+      $ref: ./schemas/InternetPolicy.yaml
+    Market:
+      $ref: ./schemas/Market.yaml
+    Money:
+      $ref: ./schemas/Money.yaml
+    Pagination:
+      $ref: ./schemas/Pagination.yaml
+    ParkingPolicy:
+      $ref: ./schemas/ParkingPolicy.yaml
+    PetsPolicy:
+      $ref: ./schemas/PetsPolicy.yaml
+    Policy:
+      $ref: ./schemas/Policy.yaml
+    Price:
+      $ref: ./schemas/Price.yaml
+    Problem:
+      $ref: ./schemas/Problem.yaml
+    Quote:
+      $ref: ./schemas/Quote.yaml
+    Review:
+      $ref: ./schemas/Review.yaml
+    Sort:
+      $ref: ./schemas/Sort.yaml
+    Stay:
+      $ref: ./schemas/Stay.yaml
+    TransactionStatus:
+      $ref: ./schemas/TransactionStatus.yaml

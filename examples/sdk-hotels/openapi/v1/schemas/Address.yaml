@@ -1,0 +1,15 @@
+type: object
+properties:
+  line_1:
+    type: string
+  line_2:
+    type: string
+  city:
+    type: string
+  region:
+    type: string
+  postal_code:
+    type: string
+  country_code:
+    type: string
+    pattern: "^[A-Z]{2}$"

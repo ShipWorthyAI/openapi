@@ -1,0 +1,40 @@
+type: object
+description: "Customer-facing price for a room or for all rooms and nights in an offer, quote, or booking."
+properties:
+  total:
+    $ref: ./Money.yaml
+    description: Rate plus all fees marked included. Excludes fees payable at check-in and does not subtract Cash Back.
+  cash_back:
+    $ref: ./CashBack.yaml
+    description: "Cash Back earned on the subtotal excluding included taxes and fees, in the same currency as total."
+  fees:
+    type: array
+    description: Breakdown of included taxes and fees and additional charges payable at check-in. Empty when there are no fees.
+    items:
+      $ref: ./Fee.yaml
+required:
+  - total
+  - cash_back
+  - fees
+example:
+  total:
+    amount: 36685
+    currency: USD
+  cash_back:
+    total:
+      amount: 7337
+      currency: USD
+    percent: 20
+  fees:
+    - included: false
+      description: City tax
+      amount: 350
+      currency: USD
+    - included: false
+      description: TAX
+      amount: 2750
+      currency: USD
+    - included: false
+      description: Resort fee
+      amount: 4000
+      currency: USD

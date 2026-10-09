@@ -1,0 +1,10 @@
+description: The request contains invalid or unsupported fields.
+headers:
+  X-Request-ID:
+    description: Correlation identifier for this HTTP attempt.
+    schema:
+      type: string
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

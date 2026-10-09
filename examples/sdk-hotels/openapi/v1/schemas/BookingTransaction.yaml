@@ -1,0 +1,9 @@
+type: object
+properties:
+  status:
+    $ref: ./TransactionStatus.yaml
+  id:
+    type: string
+    description: Owned Core payment transaction identifier when available.
+required:
+  - status

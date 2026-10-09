@@ -1,0 +1,33 @@
+type: object
+description: "Dates and total guest and pet counts for a stay. Check-out must be after check-in, and the number of adults must be at least the number of rooms."
+properties:
+  check_in:
+    type: string
+    format: date
+  check_out:
+    type: string
+    format: date
+  rooms:
+    type: integer
+    minimum: 1
+    description: "Number of rooms. Guests are distributed evenly, with at least one adult per room."
+  adults:
+    type: integer
+    minimum: 1
+    description: Total number of adults across all rooms.
+  children:
+    type: integer
+    minimum: 0
+    default: 0
+    description: Total number of children across all rooms.
+  pets:
+    type: integer
+    minimum: 0
+    default: 0
+    description: Total number of pets across all rooms. Positive counts restrict rate searches to supplier-classified pet-friendly hotels.
+required:
+  - check_in
+  - check_out
+  - rooms
+  - adults
+additionalProperties: false

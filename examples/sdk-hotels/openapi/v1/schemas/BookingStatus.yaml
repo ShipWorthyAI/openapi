@@ -1,0 +1,7 @@
+type: string
+enum:
+  - pending
+  - confirmed
+  - failed
+  - needs_attention
+description: Owned booking outcome. Confirmation requires both supplier confirmation and completed customer payment. needs_attention indicates an unresolved outcome requiring reconciliation.

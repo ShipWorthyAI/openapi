@@ -1,0 +1,10 @@
+allOf:
+  - $ref: ./Policy.yaml
+  - type: object
+    properties:
+      type:
+        type: string
+        const: POLICY_GROUPS
+      minimum_rooms:
+        type: number
+        description: Minimum number of rooms for a group booking. Omitted when unknown.

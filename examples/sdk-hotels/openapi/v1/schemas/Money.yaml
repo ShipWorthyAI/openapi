@@ -1,0 +1,14 @@
+type: object
+properties:
+  amount:
+    type: integer
+    format: int64
+    minimum: -9007199254740991
+    maximum: 9007199254740991
+    description: Amount in the currency’s minor units.
+  currency:
+    type: string
+    pattern: "^[A-Z]{3}$"
+required:
+  - amount
+  - currency

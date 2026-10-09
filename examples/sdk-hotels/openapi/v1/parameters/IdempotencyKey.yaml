@@ -1,0 +1,7 @@
+name: Idempotency-Key
+in: header
+required: true
+description: Opaque key associated with this actor and operation for the related resource’s lifetime. Matching retries return the same operation; conflicting contents return 409.
+schema:
+  type: string
+  minLength: 1

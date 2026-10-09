@@ -10,8 +10,8 @@
     "./standard-schema": "./src/generated/core/standard-schema.ts"
   },
   "scripts": {
-    "bundle": "openapi bundle ./openapi.yaml ./bundled.openapi.json",
-    "generate": "openapi generate tanstack-query openapi.yaml -o src/generated --name core && openapi generate zod openapi.yaml -o src/generated/core/zod-schema.ts && openapi generate standard-schema openapi.yaml -o src/generated/core/standard-schema.ts"
+    "bundle": "openapi bundle ./openapi/v1/openapi.yaml ./openapi/v1/bundled.openapi.json",
+    "generate": "openapi generate tanstack-query ./openapi/v1/openapi.yaml -o src/generated --name core && openapi generate zod ./openapi/v1/openapi.yaml -o src/generated/core/zod-schema.ts && openapi generate standard-schema ./openapi/v1/openapi.yaml -o src/generated/core/standard-schema.ts"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query": "workspace:*",

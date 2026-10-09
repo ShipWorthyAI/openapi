@@ -1,0 +1,40 @@
+operationId: getBooking
+summary: Retrieve a booking
+description: "Retrieve booking details, processing stage, reservation and transaction status, and the last update time. Details reflect the last known status. Available to the booking owner; missing bookings and bookings belonging to another customer return 404."
+tags:
+  - Bookings
+parameters:
+  - $ref: ../parameters/BookingId.yaml
+responses:
+  "200":
+    description: Successful response.
+    headers:
+      X-Request-ID:
+        description: Correlation identifier for this HTTP attempt.
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: ../schemas/Booking.yaml
+          required:
+            - data
+  "400":
+    $ref: ../responses/BadRequest.yaml
+  "401":
+    $ref: ../responses/Unauthorized.yaml
+  "403":
+    $ref: ../responses/Forbidden.yaml
+  "404":
+    $ref: ../responses/NotFound.yaml
+  "422":
+    $ref: ../responses/ValidationProblem.yaml
+  "429":
+    $ref: ../responses/TooManyRequests.yaml
+  "503":
+    $ref: ../responses/ServiceUnavailable.yaml
+  default:
+    $ref: ../responses/UnexpectedProblem.yaml

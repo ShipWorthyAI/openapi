@@ -52,7 +52,7 @@ bun run examples:bundle
 bun run examples:generate
 ```
 
-Bundling writes each example's `bundled.openapi.json`. Generation updates its SDK files in `src/generated`. Both tasks run without caching so they use the current contracts and generator code.
+Each example's source document is `openapi/v1/openapi.yaml`, with relative references to individual operation and component YAML files. Bundling writes `openapi/v1/bundled.openapi.json`. Generation updates its SDK files in `src/generated`. Both tasks run without caching so they use the current contracts and generator code.
 
 ## Releasing
 

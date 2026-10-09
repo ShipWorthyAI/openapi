@@ -1,0 +1,24 @@
+type: object
+properties:
+  reviewer_name:
+    type: string
+  reviewer_country:
+    type: string
+  traveler_type:
+    type: string
+  reviewed_on:
+    type: string
+    format: date
+    description: Review calendar date; no timezone is inferred.
+  rating:
+    $ref: ./GuestRating.yaml
+  title:
+    type: string
+  pros:
+    type: string
+  cons:
+    type: string
+  source:
+    type: string
+  language:
+    type: string

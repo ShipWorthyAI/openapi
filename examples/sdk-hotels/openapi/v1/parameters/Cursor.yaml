@@ -1,0 +1,7 @@
+name: cursor
+in: query
+required: false
+description: "Opaque cursor bound to the original search criteria, ordering, and page size. Invalid cursors return 400 invalid_cursor."
+schema:
+  type: string
+  maxLength: 1024

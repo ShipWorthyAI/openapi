@@ -1,0 +1,21 @@
+type: object
+properties:
+  location:
+    type: string
+    enum:
+      - body
+      - query
+      - path
+      - header
+  pointer:
+    type: string
+  name:
+    type: string
+  code:
+    type: string
+  detail:
+    type: string
+required:
+  - location
+  - code
+  - detail

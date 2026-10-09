@@ -1,0 +1,11 @@
+type: object
+properties:
+  hotel:
+    $ref: ./HotelSummary.yaml
+  offers:
+    type: array
+    items:
+      $ref: ./HotelOffer.yaml
+required:
+  - hotel
+  - offers

@@ -1,0 +1,14 @@
+allOf:
+  - $ref: ./Money.yaml
+  - type: object
+    description: A tax or fee with a flat amount and currency in minor units.
+    properties:
+      included:
+        type: boolean
+        description: True when already included in Price.total; false when excluded from total and payable at check-in.
+      description:
+        type: string
+        description: Customer-facing name or description of the tax or fee.
+    required:
+      - included
+      - description

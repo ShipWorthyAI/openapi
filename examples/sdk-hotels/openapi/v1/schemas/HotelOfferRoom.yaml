@@ -1,0 +1,14 @@
+type: object
+properties:
+  occupancy_index:
+    type: integer
+    minimum: 1
+    description: One-based room occupancy index. Use the corresponding index from the offer or quote.
+  room:
+    $ref: ./HotelRoomSummary.yaml
+  price:
+    $ref: ./Price.yaml
+required:
+  - occupancy_index
+  - room
+  - price

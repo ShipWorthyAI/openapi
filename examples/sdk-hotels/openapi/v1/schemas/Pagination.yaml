@@ -1,0 +1,5 @@
+type: object
+properties:
+  next_cursor:
+    type: string
+    description: Opaque continuation cursor. Omitted when there are no further results.

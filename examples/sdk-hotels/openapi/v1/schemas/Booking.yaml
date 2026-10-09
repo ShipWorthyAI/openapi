@@ -1,0 +1,50 @@
+type: object
+properties:
+  id:
+    $ref: ./Id.yaml
+  quote_id:
+    $ref: ./Id.yaml
+  tracking_id:
+    type: string
+  confirmation_code:
+    type: string
+  transaction_id:
+    type: string
+  original_id:
+    $ref: ./Id.yaml
+    description: Original booking ID if this booking was rebooked.
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  status:
+    $ref: ./BookingStatus.yaml
+  transaction:
+    $ref: ./BookingTransaction.yaml
+  hotel:
+    $ref: ./HotelSummary.yaml
+    description: Fulfilled hotel details when supplied; otherwise the accepted hotel snapshot.
+  stay:
+    $ref: ./Stay.yaml
+    description: Fulfilled stay when supplied; omitted details retain accepted terms.
+  holder:
+    $ref: ./Guest.yaml
+    description: Fulfilled booking holder when supplied; omitted contact fields retain accepted customer contact.
+  rooms:
+    type: array
+    description: Fulfilled room content and guests matched to the accepted occupancy index. Omitted details retain accepted terms; customer room prices stay immutable.
+    items:
+      $ref: ./BookingRoom.yaml
+  price:
+    $ref: ./Price.yaml
+    description: Immutable accepted customer price and Cash Back; supplier fulfillment does not reprice the booking.
+  policies:
+    $ref: ./BookingPolicies.yaml
+    description: Supplier fulfillment cancellation policies when available; otherwise the accepted policies.
+required:
+  - id
+  - status
+  - created_at
+  - updated_at
