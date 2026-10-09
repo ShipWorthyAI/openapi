@@ -21,10 +21,12 @@
       "version": "0.0.0",
       "dependencies": {
         "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "zod": "4.6.5",
       },
       "devDependencies": {
         "@shipworthy/openapi-cli": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
+        "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
@@ -41,10 +43,12 @@
       "version": "0.0.0",
       "dependencies": {
         "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "zod": "4.6.5",
       },
       "devDependencies": {
         "@shipworthy/openapi-cli": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
+        "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
@@ -60,10 +64,12 @@
       "version": "0.0.0",
       "dependencies": {
         "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "zod": "4.6.5",
       },
       "devDependencies": {
         "@shipworthy/openapi-cli": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
+        "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",

@@ -11,12 +11,6 @@ export const dependencies = ["typescript"] as const;
 
 const specifier = "@shipworthy/openapi-zod";
 
-const ZodSources = Schema.Struct({
-  definitions: Schema.String,
-  schemas: Schema.String,
-  operations: Schema.String,
-});
-
 const run = Effect.fn("run")(function* (flags: {
   readonly input: URL;
   readonly output: string;
@@ -33,7 +27,7 @@ const run = Effect.fn("run")(function* (flags: {
     force: flags.force,
   });
 
-  const decoded = Schema.decodeUnknownResult(ZodSources)(
+  const decoded = Schema.decodeUnknownResult(Schema.String)(
     yield* transform({
       specifier,
       exportName: "zod",
@@ -45,13 +39,10 @@ const run = Effect.fn("run")(function* (flags: {
     return yield* new CliError.UserError({ cause: decoded.failure });
   }
 
-  const generated = decoded.success;
   const header = fileHeader(yield* generatorStamp(specifier, flags.input));
 
   yield* writeGenerated(flags.output, flags.name, {
-    "definitions.ts": `${header}${generated.definitions}`,
-    "schemas.ts": `${header}${generated.schemas}`,
-    "operations.ts": `${header}${generated.operations}`,
+    "schema.ts": `${header}${decoded.success}`,
   });
 }, Effect.mapError(asCliError));
 
@@ -79,7 +70,7 @@ export const zod = Command.make(
   Command.withExamples([
     {
       command: "openapi generate zod ./openapi.yaml -o ./src/generated --name hotels",
-      description: "Write hotels/definitions.ts, schemas.ts, and operations.ts",
+      description: "Write hotels/schema.ts",
     },
   ]),
 );

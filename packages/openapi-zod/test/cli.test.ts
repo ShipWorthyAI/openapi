@@ -49,7 +49,7 @@ void test("CLI writes types and Zod validators", async () => {
 
   try {
     await exec("bun", ["run", cli, "generate", "zod", input, "-o", directory, "--name", "fixture"]);
-    const schemas = await readFile(resolve(directory, "fixture/schemas.ts"), "utf8");
+    const schemas = await readFile(resolve(directory, "fixture/schema.ts"), "utf8");
     const types = await readFile(resolve(directory, "fixture/types.ts"), "utf8");
 
     assert.match(
@@ -59,22 +59,19 @@ void test("CLI writes types and Zod validators", async () => {
 
     assert.match(schemas, /^ \* @shipworthy\/openapi-zod@[^:]+:[0-9a-f]{64}$/m);
     assert.match(schemas, /export const Item/);
-    assert.doesNotMatch(schemas, /from "\.\/types"/);
+    assert.match(schemas, /import type \{ components, operations \} from "\.\/types";/);
+    assert.match(schemas, /export const createItemRequestBody/);
     assert.match(types, /export interface components/);
-
-    assert.match(
-      await readFile(resolve(directory, "fixture/operations.ts"), "utf8"),
-      /createItemRequestBody/,
-    );
 
     await writeFile(
       resolve(directory, "consumer.ts"),
       `
-      import { Item } from "./fixture/schemas";
-      import { createItemRequestBody } from "./fixture/operations";
+      import { Item, createItemRequestBody } from "./fixture/schema";
       import type { components } from "./fixture/types";
-      Item.parse({ name: "Hotel" });
-      createItemRequestBody.parse({ name: "Hotel" });
+      const item: components["schemas"]["Item"] = Item.parse({ name: "Hotel" });
+      const body: { name: string } = createItemRequestBody.parse({ name: "Hotel" });
+      void item;
+      void body;
       const name: components["schemas"]["Item"]["name"] = "Hotel";
       void name;
     `,

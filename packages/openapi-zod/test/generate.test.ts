@@ -3,7 +3,7 @@ import { NodeServices } from "@effect/platform-node";
 import { generate, ModuleLoader } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
-import { zod, type ZodSources } from "../src/index";
+import { zod, type ZodSource } from "../src/index";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -72,7 +72,7 @@ const document = {
   },
 };
 
-function sourcesFor(schema: Parameters<typeof decode>[0]) {
+function sourceFor(schema: Parameters<typeof decode>[0]) {
   const generated = zod.generate(Effect.runSync(decode(schema)), {});
   if (!Effect.isEffect(generated)) return generated;
   return Effect.runSync(generated);
@@ -84,20 +84,16 @@ async function generateZodSources(source: URL) {
       Effect.provideService(ModuleLoader, { load: () => import("../src/index.js") }),
       Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
     ),
-  ) as Promise<ZodSources>;
+  ) as Promise<ZodSource>;
 }
 
-async function loadGenerated(sources: ZodSources) {
+async function loadGenerated(source: ZodSource) {
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
-  await writeFile(resolve(directory, "definitions.ts"), sources.definitions);
-  await writeFile(resolve(directory, "schemas.ts"), sources.schemas);
-  await writeFile(resolve(directory, "operations.ts"), sources.operations);
-  const schemas = await import(pathToFileURL(resolve(directory, "schemas.ts")).href);
-  const operations = await import(pathToFileURL(resolve(directory, "operations.ts")).href);
+  await writeFile(resolve(directory, "schema.ts"), source);
+  const schemas = await import(pathToFileURL(resolve(directory, "schema.ts")).href);
 
   return {
     schemas,
-    operations,
     async dispose() {
       await rm(directory, { recursive: true, force: true });
     },
@@ -105,18 +101,22 @@ async function loadGenerated(sources: ZodSources) {
 }
 
 void test("component schemas and JSON request bodies parse with Zod", async () => {
-  const sources = sourcesFor(document);
-  assert.doesNotMatch(sources.definitions, /"default"/);
+  const source = sourceFor(document);
+  assert.doesNotMatch(source, /"default"/);
+
+  assert.match(source, /export const Item = z\.compile\(z\.fromJSONSchema\(definitions\.Item\)\)/);
+
+  assert.match(source, /export const updateItemRequestBody/);
+  assert.match(source, /#\/\$defs\/Item/);
+  assert.match(source, /import type \{ components, operations \} from "\.\/types";/);
+  assert.match(source, /as z\.ZodType<components\["schemas"\]\["Item"\]>;/);
 
   assert.match(
-    sources.schemas,
-    /export const Item = z\.compile\(z\.fromJSONSchema\(definitions\.Item\)\)/,
+    source,
+    /as z\.ZodType<NonNullable<operations\["updateItem"\]\["requestBody"\]>\["content"\]\["application\/json"\]>;/,
   );
 
-  assert.match(sources.operations, /export const updateItemRequestBody/);
-  assert.match(sources.operations, /#\/\$defs\/Item/);
-  assert.doesNotMatch(sources.schemas, /from "\.\/types"/);
-  const generated = await loadGenerated(sources);
+  const generated = await loadGenerated(source);
 
   try {
     assert.deepEqual(generated.schemas.Item.parse({ name: "Hotel" }), { name: "Hotel" });
@@ -135,16 +135,16 @@ void test("component schemas and JSON request bodies parse with Zod", async () =
     assert.throws(() => generated.schemas.Item.parse({ name: "Hotel", count: 1.5 }));
 
     assert.deepEqual(
-      generated.operations.updateItemRequestBody.parse({ name: "Hotel", note: "late" }),
+      generated.schemas.updateItemRequestBody.parse({ name: "Hotel", note: "late" }),
       {
         name: "Hotel",
         note: "late",
       },
     );
 
-    assert.throws(() => generated.operations.updateItemRequestBody.parse({ note: "late" }));
+    assert.throws(() => generated.schemas.updateItemRequestBody.parse({ note: "late" }));
 
-    assert.deepEqual(generated.operations.createItemRequestBody.parse({ name: "Hotel" }), {
+    assert.deepEqual(generated.schemas.createItemRequestBody.parse({ name: "Hotel" }), {
       name: "Hotel",
     });
   } finally {
@@ -169,7 +169,7 @@ void test("required-only allOf branches keep the inherited property", async () =
     },
   };
 
-  const generated = await loadGenerated(sourcesFor(schema));
+  const generated = await loadGenerated(sourceFor(schema));
 
   try {
     assert.deepEqual(generated.schemas.Named.parse({ name: "Hotel" }), { name: "Hotel" });
@@ -202,7 +202,7 @@ void test("not anyOf required forbids those keys", async () => {
     },
   };
 
-  const generated = await loadGenerated(sourcesFor(schema));
+  const generated = await loadGenerated(sourceFor(schema));
 
   try {
     assert.deepEqual(generated.schemas.Public.parse({ name: "Hotel" }), { name: "Hotel" });
@@ -233,11 +233,44 @@ void test("referenced path items still produce request body validators", async (
     },
   };
 
-  const generated = await loadGenerated(sourcesFor(schema));
+  const generated = await loadGenerated(sourceFor(schema));
 
   try {
-    assert.equal(generated.operations.readyRequestBody.parse("ok"), "ok");
-    assert.throws(() => generated.operations.readyRequestBody.parse(""));
+    assert.equal(generated.schemas.readyRequestBody.parse("ok"), "ok");
+    assert.throws(() => generated.schemas.readyRequestBody.parse(""));
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("dependentRequired requires the dependencies only when the trigger is present", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        Payment: {
+          type: "object",
+          dependentRequired: { payment_source_id: ["hold_id"] },
+          properties: { hold_id: { type: "string" }, payment_source_id: { type: "string" } },
+        },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.Payment.parse({}), {});
+    assert.deepEqual(generated.schemas.Payment.parse({ hold_id: "h" }), { hold_id: "h" });
+
+    assert.deepEqual(generated.schemas.Payment.parse({ hold_id: "h", payment_source_id: "p" }), {
+      hold_id: "h",
+      payment_source_id: "p",
+    });
+
+    assert.throws(() => generated.schemas.Payment.parse({ payment_source_id: "p" }));
   } finally {
     await generated.dispose();
   }
@@ -286,7 +319,7 @@ void test("external schema refs are bundled before conversion", async () => {
 
     try {
       assert.deepEqual(generated.schemas.Item.parse({ name: "Hotel" }), { name: "Hotel" });
-      assert.match(remote.schemas, /export const Item/);
+      assert.match(remote, /export const Item/);
     } finally {
       await generated.dispose();
     }
@@ -303,20 +336,19 @@ void test("unsupported documents and schemas fail before files are written", () 
   const base = structuredClone(document);
 
   assert.throws(
-    () =>
-      sourcesFor({ ...base, jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema" }),
+    () => sourceFor({ ...base, jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema" }),
     /custom dialects or top-level \$defs/,
   );
 
-  assert.throws(() => sourcesFor({ ...base, $defs: { Extra: { type: "string" } } }), /\$defs/);
+  assert.throws(() => sourceFor({ ...base, $defs: { Extra: { type: "string" } } }), /\$defs/);
 
   const keyword = structuredClone(document) as any;
   keyword.components.schemas.Item.discriminator = { propertyName: "name" };
-  assert.throws(() => sourcesFor(keyword), /Unsupported keyword discriminator/);
+  assert.throws(() => sourceFor(keyword), /Unsupported keyword discriminator/);
 
   const sibling = structuredClone(document) as any;
   sibling.components.schemas.Wrapper = { $ref: "#/components/schemas/Item", type: "object" };
-  assert.throws(() => sourcesFor(sibling), /alongside \$ref/);
+  assert.throws(() => sourceFor(sibling), /alongside \$ref/);
 
   const externalRef = structuredClone(document) as any;
 
@@ -325,33 +357,37 @@ void test("unsupported documents and schemas fail before files are written", () 
   };
 
   externalRef.components.schemas.Item = { $ref: "#/components/parameters/Id" };
-  assert.throws(() => sourcesFor(externalRef), /Unsupported schema reference/);
+  assert.throws(() => sourceFor(externalRef), /Unsupported schema reference/);
 
   const media = structuredClone(document) as any;
   media.paths["/items"].post.requestBody.content["text/plain"] = { schema: { type: "string" } };
-  assert.throws(() => sourcesFor(media), /single application\/json media type/);
+  assert.throws(() => sourceFor(media), /single application\/json media type/);
 
   const missingSchema = structuredClone(document) as any;
   delete missingSchema.paths["/items"].post.requestBody.content["application/json"].schema;
-  assert.throws(() => sourcesFor(missingSchema), /Request body has no schema/);
+  assert.throws(() => sourceFor(missingSchema), /Request body has no schema/);
 
   const missingId = structuredClone(document) as any;
   delete missingId.paths["/items"].post.operationId;
-  assert.throws(() => sourcesFor(missingId), /POST \/items: Missing operationId/);
+  assert.throws(() => sourceFor(missingId), /POST \/items: Missing operationId/);
 
   const duplicate = structuredClone(document) as any;
   duplicate.paths["/items"].post.operationId = "updateItem";
-  assert.throws(() => sourcesFor(duplicate), /Duplicate operationId: updateItem/);
+  assert.throws(() => sourceFor(duplicate), /Duplicate operationId: updateItem/);
 
   const badName = structuredClone(document) as any;
   badName.components.schemas["not-a-name"] = { type: "string" };
-  assert.throws(() => sourcesFor(badName), /Cannot emit this name as a schema export/);
+  assert.throws(() => sourceFor(badName), /Cannot emit this name as a schema export/);
+
+  const collision = structuredClone(document) as any;
+  collision.components.schemas.createItemRequestBody = { type: "string" };
+  assert.throws(() => sourceFor(collision), /createItemRequestBody: Duplicate schema export/);
 
   const untyped = structuredClone(document) as any;
   untyped.components.schemas.Item = { minLength: 1 };
-  assert.throws(() => sourcesFor(untyped), /Constraints without a type/);
+  assert.throws(() => sourceFor(untyped), /Constraints without a type/);
 
   const tuple = structuredClone(document) as any;
   tuple.components.schemas.Item = { type: "array", items: [{ type: "string" }] };
-  assert.throws(() => sourcesFor(tuple), /Tuple items require prefixItems/);
+  assert.throws(() => sourceFor(tuple), /Tuple items require prefixItems/);
 });

@@ -39,6 +39,7 @@ const keywords = new Set<string>([
   ...schemaFields,
   "not",
   "required",
+  "dependentRequired",
   "minProperties",
   "maxProperties",
   "prefixItems",
@@ -58,18 +59,19 @@ const keywords = new Set<string>([
   "multipleOf",
 ]);
 
-export interface ZodSources {
-  /** Shared JSON Schema values imported by the other files. */
-  definitions: string;
-  /** One compiled Zod schema per component schema. */
-  schemas: string;
-  /** One compiled Zod schema per JSON request body, named `<operationId>RequestBody`. */
-  operations: string;
-}
+/**
+ * One module: compiled Zod schemas for each component schema and each JSON
+ * request body (`<operationId>RequestBody`), plus the shared JSON Schema they use.
+ */
+export type ZodSource = string;
 
 interface SchemaExport {
   name: string;
   schema: SchemaNode;
+  /** The `./types` export that `type` reads from. */
+  types: "components" | "operations";
+  /** TypeScript type that the validator parses to. */
+  type: string;
   expression?: string;
 }
 
@@ -228,6 +230,29 @@ function normalize(
     return result;
   }
 
+  // Zod rejects dependentRequired. Each entry becomes an allOf branch that either
+  // forbids the trigger key or requires it with its dependencies.
+  if (schema.dependentRequired !== undefined) {
+    if (!Predicate.isObject(schema.dependentRequired)) {
+      reject(`${path}: Unsupported dependentRequired`);
+    }
+
+    const branches: JsonSchema[] = [];
+
+    for (const [name, dependencies] of Object.entries(schema.dependentRequired)) {
+      if (!Array.isArray(dependencies) || !dependencies.every(Predicate.isString)) {
+        reject(`${path}: Unsupported dependentRequired`);
+      }
+
+      branches.push({
+        anyOf: [{ not: { anyOf: [{ required: [name] }] } }, { required: [name, ...dependencies] }],
+      });
+    }
+
+    delete result.dependentRequired;
+    result.allOf = [...(result.allOf ?? []), ...branches];
+  }
+
   // Zod ignores required-only allOf branches. Copy the property schemas they inherit.
   if (schema.required && !schema.type) {
     if (!Array.isArray(schema.required)) reject(`${path}: Unsupported required constraint`);
@@ -370,17 +395,21 @@ function compileExport(name: string, root: SchemaNode) {
 function source(
   entries: readonly SchemaExport[],
   definitions: ReadonlyMap<string, JsonSchema>,
-): string {
-  for (const { name } of entries) assertExportName(name, ["z", "definitions"]);
+): ZodSource {
+  const seen = new Set<string>();
 
-  let usesDefinitions = false;
+  for (const { name } of entries) {
+    assertExportName(name, ["z", "definitions"]);
+    if (seen.has(name)) reject(`${name}: Duplicate schema export`);
+    seen.add(name);
+  }
+
   const exports: string[] = [];
 
-  for (const { name, schema, expression } of entries) {
+  for (const { name, schema, type, expression } of entries) {
     const needed = new Set<string>();
     visit(schema, needed, definitions);
     const names = [...needed].sort();
-    if (expression || names.length > 0) usesDefinitions = true;
     const defs: Record<string, JsonSchema> = {};
 
     for (const definition of names) {
@@ -397,16 +426,38 @@ function source(
     compileExport(name, root);
 
     const argument = schemaLiteral(schema, names, expression);
-    exports.push(`export const ${name} = z.compile(z.fromJSONSchema(${argument}));`);
+
+    exports.push(
+      `export const ${name} = z.compile(z.fromJSONSchema(${argument})) as z.ZodType<${type}>;`,
+    );
   }
 
   if (exports.length === 0) return "";
-  const imports = [`import * as z from "zod";`];
-  if (usesDefinitions) imports.push(`import * as definitions from "./definitions";`);
-  return `${imports.join("\n")}\n\n${exports.join("\n\n")}\n`;
+  const types = [...new Set(entries.map((entry) => entry.types))].sort();
+
+  const blocks = [
+    [
+      `import * as z from "zod";`,
+      ...(types.length > 0 ? [`import type { ${types.join(", ")} } from "./types";`] : []),
+    ].join("\n"),
+  ];
+
+  if (definitions.size > 0) {
+    const keys = [...definitions.keys()].map((name) => JSON.stringify(name)).join(" | ");
+
+    const values = [...definitions]
+      .map(([name, schema]) => `${JSON.stringify(name)}: ${JSON.stringify(schema, null, 2)}`)
+      .join(",\n");
+
+    blocks.push(
+      `const definitions: Record<${keys}, z.core.JSONSchema.JSONSchema> = {\n${indent(values, 2)},\n};`,
+    );
+  }
+
+  return `${[...blocks, ...exports].join("\n\n")}\n`;
 }
 
-function compile(model: ParsedService, routes: Record<string, OperationRoute>): ZodSources {
+function compile(model: ParsedService, routes: Record<string, OperationRoute>): ZodSource {
   if (!model.openapi.startsWith("3.1.")) reject("Zod generation requires OpenAPI 3.1");
 
   if (model.jsonSchemaDialect || Object.keys(model.$defs).length > 0) {
@@ -420,16 +471,13 @@ function compile(model: ParsedService, routes: Record<string, OperationRoute>): 
     definitions.set(name, normalize(model, asSchema(schema, path), path));
   }
 
-  const schemas = source(
-    [...definitions].map(([name, schema]) => ({
-      name,
-      schema,
-      expression: `definitions.${name}`,
-    })),
-    definitions,
-  );
-
-  const bodies: SchemaExport[] = [];
+  const entries: SchemaExport[] = [...definitions].map(([name, schema]) => ({
+    name,
+    schema,
+    types: "components",
+    type: `components["schemas"][${JSON.stringify(name)}]`,
+    expression: `definitions.${name}`,
+  }));
 
   for (const operation of model.operations) {
     const id = operation.operationId;
@@ -449,25 +497,15 @@ function compile(model: ParsedService, routes: Record<string, OperationRoute>): 
 
     const media = content.schema;
 
-    bodies.push({
+    entries.push({
       name: `${id}RequestBody`,
+      types: "operations",
+      type: `NonNullable<operations[${JSON.stringify(id)}]["requestBody"]>["content"]["application/json"]`,
       schema: normalize(model, asSchema(media, location), location),
     });
   }
 
-  const definitionExports = [...definitions].map(
-    ([name, schema]) =>
-      `export const ${name}: z.core.JSONSchema.JSONSchema = ${JSON.stringify(schema, null, 2)};`,
-  );
-
-  return {
-    definitions:
-      definitionExports.length === 0
-        ? ""
-        : `import type * as z from "zod";\n\n${definitionExports.join("\n\n")}\n`,
-    schemas,
-    operations: source(bodies, definitions),
-  };
+  return source(entries, definitions);
 }
 
 function failure(cause: unknown): ZodGenerationError {
@@ -483,8 +521,9 @@ function failure(cause: unknown): ZodGenerationError {
  * Turn an OpenAPI 3.1 document into Zod source.
  *
  * Component schemas become named exports. JSON request bodies become
- * `<operationId>RequestBody` exports. Shared schemas stay as JSON Schema in
- * `definitions`, and each validator includes only the `$defs` it references.
+ * `<operationId>RequestBody` exports. Shared schemas stay as JSON Schema in a
+ * module-local `definitions` object, and each validator includes only the
+ * `$defs` it references.
  * Defaults are removed so parsing does not fill them in.
  *
  * `routes` selects which operations can produce a request-body validator.
@@ -493,7 +532,7 @@ function failure(cause: unknown): ZodGenerationError {
 export const zodSources = Effect.fn("zodSources")(function* (
   document: ParsedService,
   routes: Record<string, OperationRoute>,
-): Effect.fn.Return<ZodSources, ZodGenerationError> {
+): Effect.fn.Return<ZodSource, ZodGenerationError> {
   return yield* Effect.try({
     try: () => compile(document, routes),
     catch: failure,
