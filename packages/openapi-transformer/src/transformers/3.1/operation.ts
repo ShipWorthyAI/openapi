@@ -1,8 +1,8 @@
 import type { OpenApiPathItem } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Array, Effect, Option } from "effect";
 import type { TransformContext } from "./context.js";
 import { transformCallbackList } from "./callbacks.js";
-import { transformParameters } from "./parameters.js";
+import { transformParameterList } from "./parameters.js";
 import { transformRequestBody } from "./request.js";
 import { transformOperationResponses } from "./responses.js";
 import { transformSecurityRequirements } from "./securities.js";
@@ -11,6 +11,9 @@ import { child } from "./pointer.js";
 import { readExtensions } from "./extensions.js";
 import type {
   HttpMethodName,
+  ParameterLocation,
+  ParsedParameter,
+  ParsedParameters,
   ParsedOperation,
   ParsedServer,
   ParsedTag,
@@ -47,6 +50,7 @@ export const transformOperation = Effect.fnUntraced(function* (
   pathItem: OpenApiPathItem,
   pathItemId: string,
   pathServers: readonly (typeof ParsedServer.Encoded)[] | undefined,
+  pathParameters: readonly (typeof ParsedParameter.Encoded)[],
   includeCallbacks: boolean,
 ) {
   const operation = pathItem[method];
@@ -67,6 +71,12 @@ export const transformOperation = Effect.fnUntraced(function* (
       ? "inheritedFromService"
       : "none";
 
+  const parameters = yield* transformParameterList(
+    document,
+    operation.parameters,
+    child(id, "parameters"),
+  );
+
   return {
     id,
     operationId: operation.operationId,
@@ -78,10 +88,7 @@ export const transformOperation = Effect.fnUntraced(function* (
     tags: transformOperationTags(ctx, operation.tags, child(id, "tags")),
     externalDocs: yield* transformExternalDocs(operation.externalDocs),
     request: {
-      ...(yield* transformParameters(document, [
-        [pathItem.parameters, child(pathItemId, "parameters")],
-        [operation.parameters, child(id, "parameters")],
-      ])),
+      ...mergeParameters(pathParameters, parameters),
       body: yield* transformRequestBody(document, operation.requestBody, child(id, "requestBody")),
     },
     responses: yield* transformOperationResponses(
@@ -101,3 +108,30 @@ export const transformOperation = Effect.fnUntraced(function* (
     extensions: readExtensions(operation),
   } satisfies typeof ParsedOperation.Encoded;
 });
+
+const groups = { path: "path", query: "query", header: "headers", cookie: "cookie" } as const;
+
+/** Operation parameters replace matching path parameters without reordering their group. */
+function mergeParameters(...sources: readonly (readonly (typeof ParsedParameter.Encoded)[])[]) {
+  const grouped: Record<(typeof groups)[ParameterLocation], (typeof ParsedParameter.Encoded)[]> = {
+    path: [],
+    query: [],
+    headers: [],
+    cookie: [],
+  };
+
+  const merged = Array.reduce(Array.flatten(sources), grouped, (result, parsed) => {
+    const group = groups[parsed.in];
+    const list = result[group];
+    const index = Array.findFirstIndex(list, (item) => item.name === parsed.name);
+
+    result[group] = Option.match(index, {
+      onNone: () => Array.append(list, parsed),
+      onSome: (index) => Array.map(list, (item, position) => (position === index ? parsed : item)),
+    });
+
+    return result;
+  });
+
+  return { ...merged, unknown: [] } satisfies typeof ParsedParameters.Encoded;
+}

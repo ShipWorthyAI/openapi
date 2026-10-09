@@ -11,8 +11,12 @@ const layer = Layer.mergeAll(FileSystem.layerNoop({}), Path.layer, FetchHttpClie
 
 const fileLayer = Layer.mergeAll(
   FileSystem.layerNoop({
-    readFileString: () =>
-      Effect.succeed('{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"paths":{}}'),
+    readFile: () =>
+      Effect.succeed(
+        new TextEncoder().encode(
+          '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"paths":{}}',
+        ),
+      ),
   }),
   Path.layer,
   FetchHttpClient.layer,
@@ -35,6 +39,19 @@ const httpLayer = Layer.mergeAll(
 );
 
 describe("bundleDocument", () => {
+  it.effect("reports invalid cwd options through SchemaError", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        bundleDocument({ openapi: "3.1.0", info: { title: "Options", version: "1" }, paths: {} }, {
+          cwd: 42,
+        } as never),
+      );
+
+      assert.equal(error._tag, "SchemaError");
+      assert.match(error.message, /cwd/);
+    }).pipe(Effect.provide(layer)),
+  );
+
   it.effect("rejects an empty source", () =>
     Effect.gen(function* () {
       const empty = yield* Effect.flip(bundleDocument(""));
@@ -116,6 +133,67 @@ describe("bundleDocument", () => {
       assert.equal(document.openapi, "3.1.0");
       assert.equal(document.info.title, "Pets");
     }).pipe(Effect.provide(layer)),
+  );
+
+  it.effect("preserves literal hashes in root file URLs and path strings", () =>
+    Effect.gen(function* () {
+      const files: string[] = [];
+
+      const contents = new TextEncoder().encode(
+        JSON.stringify({
+          openapi: "3.1.0",
+          info: { title: "Hash filename", version: "1" },
+          paths: {},
+        }),
+      );
+
+      const local = Layer.mergeAll(
+        FileSystem.layerNoop({
+          readFile: (file) => {
+            files.push(file);
+            assert.equal(file, "/specs/open#api.json");
+            return Effect.succeed(contents);
+          },
+        }),
+        Path.layer,
+        FetchHttpClient.layer,
+      );
+
+      for (const source of [new URL("file:///specs/open%23api.json"), "/specs/open#api.json"]) {
+        const document = yield* bundleDocument(source).pipe(Effect.provide(local));
+        assert.equal(document.info.title, "Hash filename");
+      }
+
+      assert.deepEqual(files, ["/specs/open#api.json", "/specs/open#api.json"]);
+    }),
+  );
+
+  it.effect("parses BOM-prefixed YAML in both root and referenced JSON files", () =>
+    Effect.gen(function* () {
+      const files: string[] = [];
+
+      const contents: Record<string, string> = {
+        "/specs/openapi.json":
+          "\uFEFFopenapi: 3.1.0\ninfo: { title: Pets, version: '1' }\ncomponents:\n  schemas:\n    Pet: { $ref: './pet.json' }\n",
+        "/specs/pet.json": "\uFEFFtype: string\n",
+      };
+
+      const local = Layer.mergeAll(
+        FileSystem.layerNoop({
+          readFile: (file) => {
+            files.push(file);
+            return Effect.succeed(new TextEncoder().encode(contents[file]));
+          },
+        }),
+        Path.layer,
+        FetchHttpClient.layer,
+      );
+
+      const document = yield* bundleDocument("/specs/openapi.json").pipe(Effect.provide(local));
+      assert.equal(document.info.title, "Pets");
+      assert.deepEqual(document.components?.schemas?.Pet, { type: "string" });
+      assert.deepEqual(files, ["/specs/openapi.json", "/specs/pet.json"]);
+    }),
   );
 
   it.effect("loads an HTTP root and resolves its relative references", () =>
@@ -217,9 +295,12 @@ describe("bundleDocument with a filesystem path string", () => {
 
       const local = Layer.mergeAll(
         FileSystem.layerNoop({
-          readFileString: (file) => {
+          readFile: (file) => {
             files.push(file);
-            return Effect.succeed('{"openapi":"3.1.0","info":{"title":"Pets","version":"1"}}');
+
+            return Effect.succeed(
+              new TextEncoder().encode('{"openapi":"3.1.0","info":{"title":"Pets","version":"1"}}'),
+            );
           },
         }),
         Path.layer,

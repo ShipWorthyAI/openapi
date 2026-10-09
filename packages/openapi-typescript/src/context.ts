@@ -2,7 +2,7 @@ import type { ParsedService } from "@shipworthy/openapi-transformer";
 import { Context, Effect, Predicate, Schema } from "effect";
 import { TypegenError } from "./errors.js";
 import { resolveRef, scanDiscriminators } from "./lib/utils.js";
-import type { GlobalContext } from "./types.js";
+import type { GlobalContext, OpenAPITSOptions } from "./types.js";
 
 /** Options and shared state for one run of the transforms. */
 export class TypegenContext extends Context.Service<TypegenContext, GlobalContext>()(
@@ -14,7 +14,9 @@ function flag(fallback: boolean) {
   return Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(fallback)));
 }
 
-const hook = Schema.optionalKey(Schema.Unknown);
+function hook<F extends (...args: never[]) => unknown>() {
+  return Schema.optional(Schema.declare<F>((value): value is F => Predicate.isFunction(value)));
+}
 
 /** The options the plugin accepts. See `OpenAPITSOptions` for what each one does. */
 const PluginOptions = Schema.Struct({
@@ -24,9 +26,9 @@ const PluginOptions = Schema.Struct({
   emptyObjectsUnknown: flag(false),
   defaultNonNullable: flag(true),
   excludeDeprecated: flag(false),
-  transform: hook,
-  postTransform: hook,
-  transformProperty: hook,
+  transform: hook<NonNullable<OpenAPITSOptions["transform"]>>(),
+  postTransform: hook<NonNullable<OpenAPITSOptions["postTransform"]>>(),
+  transformProperty: hook<NonNullable<OpenAPITSOptions["transformProperty"]>>(),
   immutable: flag(false),
   silent: flag(false),
   exportType: flag(false),
@@ -45,11 +47,6 @@ const PluginOptions = Schema.Struct({
   readWriteMarkers: flag(false),
 });
 
-/** A hook the caller passed, if it is a function. */
-function callback<A>(value: unknown): A | undefined {
-  return Predicate.isFunction(value) ? (value as A) : undefined;
-}
-
 /** Decode plugin options and build the context for transforming `model`. */
 export const makeTypegenContext = Effect.fnUntraced(function* (
   model: ParsedService,
@@ -63,9 +60,9 @@ export const makeTypegenContext = Effect.fnUntraced(function* (
     ...options,
     discriminators: scanDiscriminators(model, { silent: options.silent }),
     injectFooter: [],
-    transform: callback(transform),
-    postTransform: callback(postTransform),
-    transformProperty: callback(transformProperty),
+    transform,
+    postTransform,
+    transformProperty,
     resolve($ref) {
       return resolveRef(model, $ref, { silent: options.silent });
     },

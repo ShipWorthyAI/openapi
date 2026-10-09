@@ -1,6 +1,7 @@
-import { Cache, Effect, FileSystem, Predicate, Ref } from "effect";
+import { Array, Cache, Effect, FileSystem, Predicate, Ref, Schema } from "effect";
 import type { HttpClient } from "effect/http";
 import {
+  ParserFailure,
   groupFailure,
   isLeafFailure,
   missingPointerFailure,
@@ -10,7 +11,7 @@ import {
 } from "./errors.js";
 import { hoistExternalRefs } from "./hoist.js";
 import { loadDocument, makeContext } from "./loader.js";
-import { normalizeArguments, type Options } from "./plugins.js";
+import { Options } from "./plugins.js";
 import { cloneData, joinPointer, parsePointer } from "./pointer.js";
 import { inlineRemaining, runSchemaPipeline } from "./pipeline.js";
 import { isOpenApi3, upgradeOpenApi3_0 } from "./upgraders/3.0-to-3.1.js";
@@ -23,24 +24,26 @@ interface RunResult {
 
 const loadConcurrency = 8;
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return Predicate.isObject(value) ? value : undefined;
+type RunMode = "parse" | "bundle" | "dereference";
+
+interface RunRequest {
+  readonly path: string;
+  readonly schema?: unknown;
+  readonly options?: Options;
+  readonly mode?: RunMode;
 }
 
-type RunMode = "parse" | "resolve" | "bundle" | "dereference";
-
 export const runEffect = Effect.fn("openapi-parser.run")(function* (
-  mode: RunMode,
-  args: unknown[],
+  args: RunRequest,
 ): Effect.fn.Return<RunResult, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
-  return yield* execute(mode, normalizeArguments(args));
-});
+  const mode = args.mode ?? "bundle";
 
-const execute = Effect.fnUntraced(function* (
-  mode: RunMode,
-  args: { path: string; schema: unknown; options: Options },
-): Effect.fn.Return<RunResult, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
-  const options = args.options;
+  const options = yield* Schema.decodeEffect(Options)(args.options ?? {}).pipe(
+    Effect.mapError(
+      (cause) => new ParserFailure({ message: cause.message, source: args.path, cause }),
+    ),
+  );
+
   const rootUrl = normalizeRef(args.path);
   const context = makeContext(rootUrl, options);
   const failures = yield* Ref.make<Array<LeafFailure>>([]);
@@ -76,7 +79,6 @@ const execute = Effect.fnUntraced(function* (
   const collected = yield* Ref.get(failures);
   if (collected.length > 0 && options.continueOnError)
     return yield* failCollected(rootUrl, failures);
-  if (mode === "resolve") return { schema: root, documents };
   if (typeof root !== "object" || root === null || Array.isArray(root))
     return { schema: root, documents };
 
@@ -114,11 +116,14 @@ const execute = Effect.fnUntraced(function* (
   return { schema: root, documents };
 });
 
-function failCollected(source: string, failures: Ref.Ref<Array<LeafFailure>>) {
-  return Ref.get(failures).pipe(
+const failCollected = Effect.fnUntraced(function* (
+  source: string,
+  failures: Ref.Ref<Array<LeafFailure>>,
+) {
+  return yield* Ref.get(failures).pipe(
     Effect.flatMap((errors) => Effect.fail(groupFailure(source, errors))),
   );
-}
+});
 
 const loadCaught = Effect.fnUntraced(function* (
   cache: Cache.Cache<string, unknown, TaggedFailure>,
@@ -150,37 +155,43 @@ const loadClosure = Effect.fnUntraced(function* (
 ) {
   const pending = new Set<string>();
 
-  for (let pass = 0; pass < 1000; pass++) {
-    pending.clear();
+  let pass = 0;
+  let remaining = true;
 
-    for (const ref of externalRefs(root, kept)) {
-      const url = stripHash(ref);
-      if (ids.has(url) || documents.has(url) || kept.has(ref) || recorded.has(url)) continue;
-      pending.add(url);
-    }
+  yield* Effect.whileLoop({
+    while: () => pass < 1000 && remaining,
+    body: () =>
+      Effect.gen(function* () {
+        pending.clear();
 
-    for (const document of documents.values()) {
-      for (const ref of externalRefs(document, kept)) {
-        const url = stripHash(ref);
-        if (ids.has(url) || documents.has(url) || kept.has(ref) || recorded.has(url)) continue;
-        pending.add(url);
-      }
-    }
+        Array.forEach([root, ...documents.values()], (document) => {
+          Array.forEach(Array.fromIterable(externalRefs(document, kept)), (ref) => {
+            const url = stripHash(ref);
+            if (!ids.has(url) && !documents.has(url) && !kept.has(ref) && !recorded.has(url))
+              pending.add(url);
+          });
+        });
 
-    if (pending.size === 0) return;
+        if (pending.size === 0) return false;
 
-    yield* Effect.forEach(
-      pending,
-      (url) =>
-        Effect.gen(function* () {
-          const loaded = yield* loadCaught(cache, url, options, failures, recorded);
-          if (loaded === undefined) return;
-          absolutize(loaded, url, ids, keep, kept);
-          documents.set(url, loaded);
-        }),
-      { concurrency: loadConcurrency, discard: true },
-    );
-  }
+        yield* Effect.forEach(
+          pending,
+          Effect.fnUntraced(function* (url) {
+            const loaded = yield* loadCaught(cache, url, options, failures, recorded);
+            if (loaded === undefined) return;
+            absolutize(loaded, url, ids, keep, kept);
+            documents.set(url, loaded);
+          }),
+          { concurrency: loadConcurrency, discard: true },
+        );
+
+        return true;
+      }),
+    step: (more) => {
+      remaining = more;
+      pass++;
+    },
+  });
 });
 
 const referenceKeys = new Set(["$ref", "summary", "description"]);
@@ -252,7 +263,12 @@ function absolutize(
     else record.$ref = resolveAgainst(base, record.$ref);
   }
 
-  const mapping = asRecord(asRecord(record.discriminator)?.mapping);
+  const discriminator = record.discriminator;
+
+  const mapping =
+    Predicate.isObject(discriminator) && Predicate.isObject(discriminator.mapping)
+      ? discriminator.mapping
+      : undefined;
 
   if (mapping) {
     for (const [key, value] of Object.entries(mapping)) {
@@ -313,7 +329,13 @@ function rewriteMappings(
   }
 
   walkRecords(root, (record) => {
-    const mapping = asRecord(asRecord(record.discriminator)?.mapping);
+    const discriminator = record.discriminator;
+
+    const mapping =
+      Predicate.isObject(discriminator) && Predicate.isObject(discriminator.mapping)
+        ? discriminator.mapping
+        : undefined;
+
     if (!mapping) return;
 
     for (const [key, value] of Object.entries(mapping)) {

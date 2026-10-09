@@ -386,6 +386,8 @@ API. Do not assume that a `ts.*` member not listed here exists.
 You can pass these to `typescript.generate(model, options)`, through `pluginOptions` in
 `@shipworthy/openapi-generator`, or, for the boolean options, as CLI flags.
 
+Hook options (`transform`, `postTransform`, and `transformProperty`) must be functions when supplied. Invalid hook values fail with `TypegenError`; omitted or `undefined` hooks use the default behavior.
+
 | Option                        | Type     | Default | Effect                                                                                                                                                                                     |
 | ----------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `additionalProperties`        | boolean  | `false` | Treat every object as if it had `additionalProperties: true`. This adds `& { [key: string]: unknown }`.                                                                                    |

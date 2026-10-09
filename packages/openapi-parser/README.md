@@ -216,6 +216,8 @@ interface ParseOptions {
 
 This function returns an Effect `Schema` codec from a `string` to `ParsedOpenApi`.
 
+The codec factory validates `sourceUrl` and throws `SchemaError` for invalid options. `bundleDocument` validates its optional `cwd` and reports invalid options through its `SchemaError` channel.
+
 - **Decoding** parses JSON or YAML (flow-style YAML, indented YAML, and JSON with a BOM all work), checks that the version is `3.0.x` or `3.1.x`, bundles external refs relative to `sourceUrl`, upgrades 3.0 to 3.1, and validates the result. The decode effect requires `FileSystem` and `HttpClient`.
 - **Encoding** serializes a `ParsedOpenApi` as JSON with 2-space indentation. Values that can't be represented in JSON, such as a `bigint`, fail in the error channel. Encoded output decodes back to an equal document.
 

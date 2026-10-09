@@ -8,12 +8,7 @@ import {
 import { Effect } from "effect";
 import { child, resolve } from "./pointer.js";
 import { readExtensions } from "./extensions.js";
-import type {
-  ParameterLocation,
-  ParamStyle,
-  ParsedParameter,
-  ParsedParameters,
-} from "../../model/index.js";
+import type { ParameterLocation, ParamStyle, ParsedParameter } from "../../model/index.js";
 import { transformContent } from "./content.js";
 import { transformExampleList } from "./examples.js";
 
@@ -73,32 +68,4 @@ export const transformParameterMap = Effect.fnUntraced(function* (
       }),
     ),
   );
-});
-
-const groups = { path: "path", query: "query", header: "headers", cookie: "cookie" } as const;
-
-/** Operation parameters replace matching path-item parameters without reordering the group. */
-export const transformParameters = Effect.fnUntraced(function* (
-  document: ParsedOpenApi,
-  sources: readonly (readonly [value: OpenApiOperation["parameters"], at: string])[],
-) {
-  const grouped: Record<(typeof groups)[ParameterLocation], (typeof ParsedParameter.Encoded)[]> = {
-    path: [],
-    query: [],
-    headers: [],
-    cookie: [],
-  };
-
-  for (const [source, at] of sources) {
-    const parameters = yield* transformParameterList(document, source, at);
-
-    for (const parsed of parameters) {
-      const list = grouped[groups[parsed.in]];
-      const existing = list.findIndex((item) => item.name === parsed.name);
-      if (existing >= 0) list[existing] = parsed;
-      else list.push(parsed);
-    }
-  }
-
-  return { ...grouped, unknown: [] } satisfies typeof ParsedParameters.Encoded;
 });

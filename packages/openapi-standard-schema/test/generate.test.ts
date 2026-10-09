@@ -68,6 +68,48 @@ function validate(schema: StandardSchema, value: unknown): StandardResult {
   return result;
 }
 
+it.effect("preserves reference-shaped literal annotations while rewriting nested schemas", () =>
+  Effect.gen(function* () {
+    const literal = { $ref: "#/components/schemas/User" };
+
+    const source = yield* sourceFor("3.1.0", {
+      User: { type: "string" },
+      Account: {
+        type: "object",
+        examples: [literal],
+        default: literal,
+        properties: {
+          user: { $ref: "#/components/schemas/User" },
+          nested: {
+            type: "array",
+            items: { $ref: "#/components/schemas/User" },
+            examples: [[literal]],
+          },
+        },
+      },
+    });
+
+    assert.match(source, /"user": Schema\.optionalKey\(UserSchema\)/);
+    assert.match(source, /Schema\.Array\(UserSchema\)/);
+    assert.match(source, /"examples": \[\{ "\$ref": "#\/components\/schemas\/User" \}\]/);
+    assert.match(source, /"default": \{ "\$ref": "#\/components\/schemas\/User" \}/);
+    assert.doesNotMatch(source, /"\$ref": "#\/\$defs\/UserSchema"/);
+
+    const loaded = yield* Effect.tryPromise(() => load(source));
+
+    try {
+      assert.deepEqual(validate(loaded.module.Account!, { user: "Ada", nested: ["Grace"] }).value, {
+        user: "Ada",
+        nested: ["Grace"],
+      });
+
+      assert.ok(validate(loaded.module.Account!, { nested: [1] }).issues);
+    } finally {
+      yield* Effect.tryPromise(() => loaded.dispose());
+    }
+  }),
+);
+
 it.effect("keeps a property named like the component it references", () =>
   Effect.gen(function* () {
     const source = yield* sourceFor("3.1.0", {
@@ -230,5 +272,53 @@ it.effect("imports a false schema as never", () =>
 it.effect("returns an empty module when the document has no component schemas", () =>
   Effect.gen(function* () {
     assert.equal(yield* sourceFor("3.1.0", {}), "");
+  }),
+);
+
+it.effect("does not mutate the model while rewriting decoded schema children", () =>
+  Effect.gen(function* () {
+    const model = yield* Schema.decodeUnknownEffect(ParsedServiceFromParsedOpenApi)(
+      document("3.1.0", {
+        User: { type: "string" },
+        Account: { type: "object", properties: { user: { $ref: "#/components/schemas/User" } } },
+      }),
+    );
+
+    const before = structuredClone(model);
+    const generated = standardSchema.generate(model, {});
+    const source = Effect.isEffect(generated) ? yield* generated : generated;
+    assert.match(source, /"user": Schema\.optionalKey\(UserSchema\)/);
+    assert.deepEqual(model, before);
+  }),
+);
+
+it.effect("keeps synchronous schema evaluation failures in the generation error channel", () =>
+  Effect.gen(function* () {
+    const model = yield* Schema.decodeUnknownEffect(ParsedServiceFromParsedOpenApi)(
+      document("3.1.0", {}),
+    );
+
+    const schema = Object.defineProperty({}, "description", {
+      enumerable: true,
+      get: () => {
+        throw new Error("schema getter failed");
+      },
+    });
+
+    const generated = standardSchema.generate(
+      {
+        ...model,
+        components: { ...model.components, schemas: { Explosive: schema } },
+      },
+      {},
+    );
+
+    const error = yield* Effect.flip(
+      Effect.isEffect(generated) ? generated : Effect.succeed(generated),
+    );
+
+    assert.equal(error._tag, "SchemaGenerationError");
+    assert.ok(error.cause instanceof Error);
+    assert.equal(error.message, error.cause.message);
   }),
 );

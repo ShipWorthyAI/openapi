@@ -1,13 +1,13 @@
-import { Effect, Schema, SchemaGetter, SchemaIssue } from "effect";
+import { Effect, Schema, SchemaGetter, SchemaIssue, SchemaTransformation } from "effect";
 import { decodeDocument } from "./document.js";
-import { parseText } from "./load.js";
+import { parseText } from "./parsers.js";
 import { runEffect } from "./run.js";
 import { ParsedOpenApi } from "./schemas/3.1/document.js";
 
-export interface ParseOptions {
-  /** The root document's URL or absolute file path, used to resolve relative references. */
-  readonly sourceUrl: URL | string;
-}
+const parseOptions = Schema.Struct({
+  sourceUrl: Schema.Union([Schema.String, Schema.URL]),
+});
+export type ParseOptions = typeof parseOptions.Type;
 
 const sourceDocument = Schema.StructWithRest(
   Schema.Struct({
@@ -17,72 +17,80 @@ const sourceDocument = Schema.StructWithRest(
   ParsedOpenApi.records,
 );
 
-/** Object input shares the preparation path without a JSON stringify/parse round trip. */
-export function ParsedOpenApiFromDocument({ sourceUrl }: ParseOptions) {
+function prepareDocumentTransformation(options: ParseOptions) {
+  const { sourceUrl } = Schema.decodeSync(parseOptions)(options);
   const source = sourceUrl instanceof URL ? sourceUrl.href : sourceUrl;
 
-  const prepareDocument = SchemaGetter.transformEffect(
-    Effect.fnUntraced(function* (input: unknown, options) {
-      const document = yield* Effect.fromResult(decodeDocument(input)).pipe(
-        Effect.mapError(
-          (error) => new SchemaIssue.InvalidValue({ message: error.message }, input, options),
-        ),
-      );
+  return SchemaTransformation.makeTransformation({
+    decode: SchemaGetter.transformEffect(
+      Effect.fnUntraced(function* (input: unknown, options) {
+        const document = yield* Effect.fromResult(decodeDocument(input)).pipe(
+          Effect.mapError(
+            (error) => new SchemaIssue.InvalidValue({ message: error.message }, input, options),
+          ),
+        );
 
-      // Check the source before the bundler can normalize or remove malformed fields.
-      const checked = yield* Schema.decodeUnknownEffect(sourceDocument)(document, options).pipe(
-        Effect.mapError((error) => error.issue),
-      );
+        // Check the source before the bundler can normalize or remove malformed fields.
+        const checked = yield* Schema.decodeUnknownEffect(sourceDocument)(document, options).pipe(
+          Effect.mapError((error) => error.issue),
+        );
 
-      const result = yield* runEffect("bundle", [source, checked]).pipe(
-        Effect.mapError(
-          (error) =>
-            new SchemaIssue.InvalidValue(
-              { message: "source" in error ? `${error.source}: ${error.message}` : error.message },
-              input,
-              options,
-            ),
-        ),
-      );
+        const result = yield* runEffect({ path: source, schema: checked }).pipe(
+          Effect.mapError(
+            (error) =>
+              new SchemaIssue.InvalidValue(
+                {
+                  message: "source" in error ? `${error.source}: ${error.message}` : error.message,
+                },
+                input,
+                options,
+              ),
+          ),
+        );
 
-      return result.schema;
-    }),
-  );
+        return result.schema;
+      }),
+    ),
+    encode: SchemaGetter.passthrough<unknown>(),
+  });
+}
 
+/** Object input shares the preparation path without a JSON stringify/parse round trip. */
+export function ParsedOpenApiFromDocument(options: ParseOptions) {
   return Schema.Unknown.pipe(
-    Schema.decodeTo(Schema.Unknown, {
-      decode: prepareDocument,
-      encode: SchemaGetter.passthrough(),
-    }),
+    Schema.decodeTo(Schema.Unknown, prepareDocumentTransformation(options)),
     Schema.decodeTo(ParsedOpenApi),
   );
 }
 
-const documentFromString = Schema.String.pipe(
-  Schema.decodeTo(Schema.Unknown, {
-    decode: SchemaGetter.transformEffect((source, options) =>
-      parseText(source).pipe(
-        Effect.mapError(
-          (error) => new SchemaIssue.InvalidValue({ message: error.message }, source, options),
-        ),
+const documentTransformation = SchemaTransformation.transformEffect({
+  decode: (source: string, options) =>
+    parseText(source).pipe(
+      Effect.mapError(
+        (error) => new SchemaIssue.InvalidValue({ message: error.message }, source, options),
       ),
     ),
-    encode: SchemaGetter.transformEffect((document, options) =>
-      Effect.try({
-        try: () => {
-          const text = JSON.stringify(document, null, 2);
-          if (text === undefined)
-            throw new TypeError("The OpenAPI document cannot be serialized as JSON");
-          return text;
-        },
-        catch: (cause) =>
-          new SchemaIssue.InvalidValue({ message: String(cause) }, document, options),
-      }),
-    ),
-  }),
-);
+  encode: (document: unknown, options) =>
+    Effect.try({
+      try: () => {
+        const text = JSON.stringify(document, null, 2);
+        if (text === undefined)
+          throw new TypeError("The OpenAPI document cannot be serialized as JSON");
+        return text;
+      },
+      catch: (cause) => new SchemaIssue.InvalidValue({ message: String(cause) }, document, options),
+    }),
+});
 
 /** Parse JSON/YAML, bundle external references, upgrade 3.0 to 3.1, and validate the document. */
 export function ParsedOpenApiFromString(options: ParseOptions) {
-  return documentFromString.pipe(Schema.decodeTo(ParsedOpenApiFromDocument(options)));
+  const transformation = SchemaTransformation.composeTransformation(
+    documentTransformation,
+    prepareDocumentTransformation(options),
+  );
+
+  return Schema.String.pipe(
+    Schema.decodeTo(Schema.Unknown, transformation),
+    Schema.decodeTo(ParsedOpenApi),
+  );
 }

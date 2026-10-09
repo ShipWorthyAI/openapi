@@ -209,6 +209,8 @@ and additional-property rules. Recursive component references are supported. Sch
 rejects every value. Component and property names are preserved, including when local
 `$defs` entries reuse a component name.
 
+References inside literal `examples`, `default`, `const`, and `enum` values are preserved as data. Only references in schema positions are rewritten for generated validators.
+
 ## Supported OpenAPI versions
 
 The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 3.0 documents are upgraded to 3.1 (JSON Schema Draft 2020-12) before generation. Swagger 2.0 is rejected. `standardSchema.generate` itself expects a `ParsedService` in the 3.1 dialect.

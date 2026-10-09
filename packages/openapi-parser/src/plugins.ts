@@ -1,4 +1,4 @@
-import { Effect, type FileSystem } from "effect";
+import { Effect, type FileSystem, Predicate, Schema } from "effect";
 import type { HttpClient } from "effect/http";
 import type { TaggedFailure } from "./errors.js";
 
@@ -8,98 +8,76 @@ export interface FileInfo {
   data?: Uint8Array | string;
 }
 
-export interface ResolverPlugin {
-  order?: number;
-  canRead: (file: FileInfo) => boolean;
-  read: (file: FileInfo) => Uint8Array | string | Promise<Uint8Array | string>;
+function callback<F extends (...args: never[]) => unknown>() {
+  return Schema.declare<F>((value): value is F => Predicate.isFunction(value));
 }
 
-export interface ParserPlugin {
-  order?: number;
-  canParse: (file: FileInfo) => boolean;
-  parse: (file: FileInfo) => unknown;
-}
+const httpResolverOptions = Schema.Struct({
+  headers: Schema.optional(
+    Schema.Union([Schema.Record(Schema.String, Schema.String), Schema.Null]),
+  ),
+  timeout: Schema.optional(Schema.Finite),
+  redirects: Schema.optional(Schema.Finite),
+  withCredentials: Schema.optional(Schema.Boolean),
+  safeUrlResolver: Schema.optional(Schema.Boolean),
+  allowedOrigins: Schema.optional(Schema.Array(Schema.String)),
+});
+export type HttpResolverOptions = typeof httpResolverOptions.Type;
 
-export interface HttpResolverOptions {
-  headers?: Record<string, string> | null;
-  timeout?: number;
-  redirects?: number;
-  withCredentials?: boolean;
-  safeUrlResolver?: boolean;
-  allowedOrigins?: string[];
-}
+const resolverPluginShape = Schema.Struct({
+  order: Schema.optional(Schema.Finite),
+  canRead: callback<(file: FileInfo) => boolean>(),
+  read: callback<(file: FileInfo) => Uint8Array | string | Promise<Uint8Array | string>>(),
+});
+export type ResolverPlugin = typeof resolverPluginShape.Type;
+const resolverPlugin = Schema.declare<ResolverPlugin>(Schema.is(resolverPluginShape));
 
-export interface BundleHooks {
-  onBundle?: (ref: string, value: unknown, parent: object, key: string) => void;
-}
+const parserPluginShape = Schema.Struct({
+  order: Schema.optional(Schema.Finite),
+  canParse: callback<(file: FileInfo) => boolean>(),
+  parse: callback<(file: FileInfo) => unknown>(),
+});
+export type ParserPlugin = typeof parserPluginShape.Type;
+const parserPlugin = Schema.declare<ParserPlugin>(Schema.is(parserPluginShape));
 
-export interface DereferenceHooks {
-  onDereference?: (path: string, value: unknown, parent: object, key: string | number) => void;
-  onCircular?: (path: string) => void;
-}
+const bundleHooksShape = Schema.Struct({
+  onBundle:
+    Schema.optional(callback<(ref: string, value: unknown, parent: object, key: string) => void>()),
+});
+export type BundleHooks = typeof bundleHooksShape.Type;
+const bundleHooks = Schema.declare<BundleHooks>(Schema.is(bundleHooksShape));
 
-export interface Options {
-  continueOnError?: boolean;
-  keepUrlRefs?: boolean;
-  resolve?: {
-    file?: boolean;
-    http?: boolean | HttpResolverOptions;
-  };
-  parse?: {
-    json?: boolean;
-    yaml?: boolean;
-  };
-  resolvers?: ResolverPlugin[];
-  parsers?: ParserPlugin[];
-  bundle?: BundleHooks;
-  dereference?: DereferenceHooks;
-}
+const dereferenceHooksShape = Schema.Struct({
+  onDereference:
+    Schema.optional(
+      callback<(path: string, value: unknown, parent: object, key: string | number) => void>(),
+    ),
+  onCircular: Schema.optional(callback<(path: string) => void>()),
+});
+export type DereferenceHooks = typeof dereferenceHooksShape.Type;
+const dereferenceHooks = Schema.declare<DereferenceHooks>(Schema.is(dereferenceHooksShape));
 
-const optionKeys = new Set([
-  "continueOnError",
-  "keepUrlRefs",
-  "resolve",
-  "parse",
-  "resolvers",
-  "parsers",
-  "bundle",
-  "dereference",
-]);
-
-export function isOptions(value: unknown): value is Options {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-  return Object.keys(value).some((key) => optionKeys.has(key));
-}
-
-export interface NormalizedArguments {
-  path: string;
-  schema: unknown;
-  options: Options;
-}
-
-export function normalizeArguments(args: unknown[]): NormalizedArguments {
-  let path = "";
-  let schema: unknown;
-  let options: Options = {};
-
-  if (typeof args[0] === "string") {
-    path = args[0];
-
-    if (args.length >= 3) {
-      schema = args[1];
-      options = isOptions(args[2]) ? args[2] : {};
-    } else if (isOptions(args[1])) {
-      options = args[1];
-    } else {
-      schema = args[1];
-    }
-  } else {
-    schema = args[0];
-    options = isOptions(args[1]) ? args[1] : {};
-  }
-
-  return { path, schema, options };
-}
+export const Options = Schema.Struct({
+  continueOnError: Schema.optional(Schema.Boolean),
+  keepUrlRefs: Schema.optional(Schema.Boolean),
+  resolve: Schema.optional(
+    Schema.Struct({
+      file: Schema.optional(Schema.Boolean),
+      http: Schema.optional(Schema.Union([Schema.Boolean, httpResolverOptions])),
+    }),
+  ),
+  parse: Schema.optional(
+    Schema.Struct({
+      json: Schema.optional(Schema.Boolean),
+      yaml: Schema.optional(Schema.Boolean),
+    }),
+  ),
+  resolvers: Schema.optional(Schema.Array(resolverPlugin)),
+  parsers: Schema.optional(Schema.Array(parserPlugin)),
+  bundle: Schema.optional(bundleHooks),
+  dereference: Schema.optional(dereferenceHooks),
+});
+export type Options = typeof Options.Type;
 
 export interface EffectPlugin<A> {
   order: number;

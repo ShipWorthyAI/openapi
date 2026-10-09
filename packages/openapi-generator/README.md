@@ -208,7 +208,7 @@ function importPlugin(
 Loads `specifier` through `ModuleLoader` and returns `module[exportName]`. `generate` calls it for you. Call it directly to check that a plugin is installed and valid without running the pipeline.
 
 - If the module can't be loaded (the import rejects), it fails with `MissingPlugin`. The message is `Install <specifier> to load <exportName>.` and `cause` is the import error.
-- If the export is missing, doesn't have a function `generate`, or doesn't have an `id` property, it fails with `InvalidPlugin`. The message is `Module <specifier> does not export <exportName>.`
+- If the export is missing, doesn't have a function `generate`, or doesn't have a string `id`, it fails with `InvalidPlugin`. The message is `Module <specifier> does not export <exportName>.`
 
 ### `ModuleLoader`
 

@@ -1,14 +1,16 @@
 import { Readable } from "node:stream";
 import { NodeStream } from "@effect/platform-node";
-import { Effect, FileSystem, Path, Predicate, Stream } from "effect";
-import { HttpClient } from "effect/http";
+import { Effect, type FileSystem, Path, Predicate, Schema, Stream } from "effect";
+import type { HttpClient } from "effect/http";
 import { decodeDocument, type OpenAPIDocument } from "./document.js";
 import { EmptySource, InvalidSource, ParseError, type LoadError } from "./errors.js";
-import { parseYamlDocument } from "./yaml.js";
+import { loadDocument as loadResolvedDocument, makeContext } from "./loader.js";
+import { parseText } from "./parsers.js";
 
-export interface LoadOptions {
-  readonly cwd?: URL | string;
-}
+const loadOptions = Schema.Struct({
+  cwd: Schema.optional(Schema.Union([Schema.String, Schema.URL])),
+});
+export type LoadOptions = typeof loadOptions.Type;
 
 interface LoadedDocument {
   readonly document: OpenAPIDocument;
@@ -24,8 +26,12 @@ export const loadDocument = Effect.fn("loadDocument")(function* (
   source: unknown,
   options?: LoadOptions,
 ): Effect.fn.Return<LoadedDocument, LoadError, LoadServices> {
+  const decoded = yield* Schema.decodeEffect(loadOptions)(options ?? {}).pipe(
+    Effect.mapError(parseFailure),
+  );
+
   const path = yield* Path.Path;
-  const cwd = yield* resolveCwd(path, options?.cwd);
+  const cwd = yield* resolveCwd(path, decoded.cwd);
 
   if (source == null || source === "") return yield* new EmptySource({ message: emptyPath });
   const loaded = yield* parseSource(source, cwd);
@@ -48,10 +54,11 @@ const parseSource = Effect.fnUntraced(function* (
   if (source instanceof URL) {
     const ref = source.protocol === "file:" ? yield* filePath(source) : source.href;
 
-    const sourceText =
-      source.protocol === "file:" ? yield* readFile(ref) : yield* fetchText(source.href);
+    const parsed = yield* loadResolvedDocument(
+      source.href,
+      makeContext(source.href, {}, "root"),
+    ).pipe(Effect.mapError(parseFailure));
 
-    const parsed = yield* parseText(sourceText);
     const document = yield* requireDocument(parsed);
     return { document, absoluteRef: ref };
   }
@@ -88,11 +95,16 @@ const parseSource = Effect.fnUntraced(function* (
     return { document, absoluteRef };
   }
 
-  if (Predicate.isObject(source)) return { document: source, absoluteRef };
+  const document = yield* Schema.decodeUnknownEffect(documentObject)(source).pipe(
+    Effect.mapError(
+      () =>
+        new InvalidSource({
+          message: `Expected string, object, or Buffer. Got ${valueKind(source)}`,
+        }),
+    ),
+  );
 
-  return yield* new InvalidSource({
-    message: `Expected string, object, or Buffer. Got ${Array.isArray(source) ? "Array" : typeof source}`,
-  });
+  return { document, absoluteRef };
 });
 
 /**
@@ -137,18 +149,18 @@ const fileUrl = Effect.fnUntraced(function* (
   return yield* path.toFileUrl(path.resolve(directory, value)).pipe(Effect.mapError(parseFailure));
 });
 
-function resolveCwd(path: Path.Path, cwd: LoadOptions["cwd"]) {
+const resolveCwd = Effect.fnUntraced(function* (path: Path.Path, cwd: LoadOptions["cwd"]) {
   if (cwd instanceof URL) {
-    return Effect.succeed(cwd.href);
+    return cwd.href;
   }
 
   const directory = typeof cwd === "string" ? path.resolve(cwd) : path.resolve(".");
 
-  return path.toFileUrl(directory).pipe(
+  return yield* path.toFileUrl(directory).pipe(
     Effect.map((url) => (url.href.endsWith("/") ? url.href : `${url.href}/`)),
     Effect.mapError(parseFailure),
   );
-}
+});
 
 const filePath = Effect.fnUntraced(function* (
   url: URL,
@@ -157,26 +169,8 @@ const filePath = Effect.fnUntraced(function* (
   return yield* path.fromFileUrl(url).pipe(Effect.mapError(parseFailure));
 });
 
-const readFile = Effect.fnUntraced(function* (
-  file: string,
-): Effect.fn.Return<string, ParseError, FileSystem.FileSystem> {
-  const fs = yield* FileSystem.FileSystem;
-  return yield* fs.readFileString(file).pipe(Effect.mapError(parseFailure));
-});
-
-const fetchText = Effect.fnUntraced(function* (
-  url: string,
-): Effect.fn.Return<string, ParseError, HttpClient.HttpClient> {
-  const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
-
-  return yield* client.get(url).pipe(
-    Effect.flatMap((response) => response.text),
-    Effect.mapError(parseFailure),
-  );
-});
-
-function readReadable(source: Readable) {
-  return NodeStream.fromReadable({
+const readReadable = Effect.fnUntraced(function* (source: Readable) {
+  return yield* NodeStream.fromReadable({
     evaluate: () => source,
     onError: parseFailure,
   }).pipe(
@@ -184,31 +178,21 @@ function readReadable(source: Readable) {
     Stream.mkString,
     Effect.map((text) => text.trim()),
   );
-}
-
-export const parseText = Effect.fnUntraced(function* (source: string) {
-  const text = source.replace(/^\uFEFF/, "");
-  const first = text.trimStart()[0];
-  const yaml = () => Effect.try({ try: () => parseYamlDocument(text), catch: parseFailure });
-
-  if (first === "{" || first === "[") {
-    return yield* Effect.try({
-      try: () => JSON.parse(text) as unknown,
-      catch: parseFailure,
-    }).pipe(Effect.catch(yaml));
-  }
-
-  return yield* yaml();
 });
+
+const documentObject = Schema.Record(Schema.String, Schema.Unknown);
 
 const requireDocument = Effect.fnUntraced(function* (
   value: unknown,
 ): Effect.fn.Return<Record<string, unknown>, InvalidSource> {
-  if (Predicate.isObject(value)) return value;
-
-  return yield* new InvalidSource({
-    message: `Expected an OpenAPI document object. Got ${valueKind(value)}`,
-  });
+  return yield* Schema.decodeUnknownEffect(documentObject)(value).pipe(
+    Effect.mapError(
+      () =>
+        new InvalidSource({
+          message: `Expected an OpenAPI document object. Got ${valueKind(value)}`,
+        }),
+    ),
+  );
 });
 
 function parseFailure(cause: unknown): ParseError {

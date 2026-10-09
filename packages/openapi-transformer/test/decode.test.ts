@@ -114,6 +114,47 @@ describe("decode service", () => {
   });
 });
 
+it("keeps parameter overrides local to each operation and preserves ordering", () => {
+  const model = decodeModel({
+    openapi: "3.1.0",
+    info,
+    paths: {
+      "/pets": {
+        parameters: [
+          { name: "limit", in: "query", schema: { type: "number" } },
+          { name: "offset", in: "query", schema: { type: "integer" } },
+          { name: "limit", in: "header", schema: { type: "string" } },
+        ],
+        get: {
+          parameters: [
+            { name: "limit", in: "query", schema: { type: "integer" } },
+            { name: "after", in: "query", schema: { type: "string" } },
+          ],
+        },
+        put: {},
+      },
+    },
+  });
+
+  const [get, put] = model.operations;
+
+  assert.deepEqual(
+    get?.request.query.map((parameter) => parameter.name),
+    ["limit", "offset", "after"],
+  );
+
+  assert.deepEqual(get?.request.query[0]?.schema, { type: "integer" });
+
+  assert.deepEqual(
+    put?.request.query.map((parameter) => parameter.name),
+    ["limit", "offset"],
+  );
+
+  assert.deepEqual(put?.request.query[0]?.schema, { type: "number" });
+  assert.deepEqual(get?.request.headers[0]?.schema, { type: "string" });
+  assert.deepEqual(model.paths["/pets"]?.parameters[0]?.schema, { type: "number" });
+});
+
 describe("decode operations", () => {
   const model = decodeModel({
     openapi: "3.1.0",

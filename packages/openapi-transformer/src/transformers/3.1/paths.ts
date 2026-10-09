@@ -1,5 +1,5 @@
 import { OpenApiPathItem } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Array, Effect, Predicate } from "effect";
 import type { TransformContext } from "./context.js";
 import { transformOperation } from "./operation.js";
 import { child, resolve } from "./pointer.js";
@@ -27,8 +27,14 @@ export const transformPathItem = Effect.fnUntraced(function* (
 
   const servers = yield* transformServerList(item.servers, child(id, "servers"));
 
+  const parameters = yield* transformParameterList(
+    ctx.document,
+    item.parameters,
+    child(id, "parameters"),
+  );
+
   const operations = yield* Effect.forEach(httpMethods, (method) =>
-    transformOperation(ctx, key, method, item, id, servers, includeCallbacks),
+    transformOperation(ctx, key, method, item, id, servers, parameters, includeCallbacks),
   );
 
   return {
@@ -36,12 +42,8 @@ export const transformPathItem = Effect.fnUntraced(function* (
     reference,
     summary: item.summary,
     description: item.description,
-    parameters: yield* transformParameterList(
-      ctx.document,
-      item.parameters,
-      child(id, "parameters"),
-    ),
-    operations: operations.filter((operation) => operation !== undefined),
+    parameters,
+    operations: Array.filter(operations, Predicate.isNotUndefined),
     servers: servers ?? [],
     extensions: readExtensions(item),
   } satisfies typeof ParsedPathItem.Encoded;

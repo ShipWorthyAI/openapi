@@ -154,6 +154,22 @@ describe("typescript plugin", () => {
     }),
   );
 
+  it.effect("validates hook options instead of silently ignoring non-functions", () =>
+    Effect.gen(function* () {
+      for (const name of ["transform", "postTransform", "transformProperty"]) {
+        const error = yield* Effect.flip(run(document({}), { [name]: "invalid" }));
+        expect(error._tag).toBe("TypegenError");
+        expect(error.message).toContain(name);
+      }
+
+      yield* run(document({}), {
+        transform: undefined,
+        postTransform: undefined,
+        transformProperty: undefined,
+      });
+    }),
+  );
+
   it.effect("lets transform replace a schema's type", () =>
     Effect.gen(function* () {
       const printed = yield* run(

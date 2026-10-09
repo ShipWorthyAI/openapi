@@ -1,6 +1,7 @@
 import { Effect, FileSystem } from "effect";
 import type { HttpClient } from "effect/http";
 import {
+  ParserFailure,
   ResolverFailure,
   UnmatchedParserFailure,
   UnmatchedResolverFailure,
@@ -8,21 +9,25 @@ import {
   type TaggedFailure,
 } from "./errors.js";
 import { httpResolver } from "./http.js";
-import { parserPlugins } from "./parsers.js";
+import { parserPlugins, parseText } from "./parsers.js";
 import type { EffectPlugin, FileInfo, Options, ResolverPlugin } from "./plugins.js";
 import { promisePlugin } from "./plugins.js";
 import { extensionOf, isFileSystemPath, stripHash, toFileSystemPath } from "./url.js";
 
 export interface LoadContext {
-  options: Options;
+  policy: "root" | "reference";
   resolvers: EffectPlugin<Uint8Array>[];
   parsers: EffectPlugin<unknown>[];
 }
 
-export function makeContext(rootUrl: string, options: Options): LoadContext {
+export function makeContext(
+  rootUrl: string,
+  options: Options,
+  policy: LoadContext["policy"] = "reference",
+): LoadContext {
   return {
-    options,
-    resolvers: resolversFor(rootUrl, options),
+    policy,
+    resolvers: resolversFor(rootUrl, options, policy),
     parsers: parserPlugins(options),
   };
 }
@@ -42,6 +47,13 @@ export const loadDocument = Effect.fnUntraced(function* (
   }
 
   const bytes = yield* Effect.firstSuccessOf(resolvers.map((plugin) => plugin.run(file)));
+
+  if (context.policy === "root") {
+    return yield* parseText(bytes).pipe(
+      Effect.mapError((cause) => new ParserFailure({ message: cause.message, source: url, cause })),
+    );
+  }
+
   const parsedFile: FileInfo = { ...file, data: bytes };
   const parsers = context.parsers.filter((plugin) => plugin.can(parsedFile));
   const selected = parsers.length > 0 ? parsers : context.parsers;
@@ -57,10 +69,14 @@ export const loadDocument = Effect.fnUntraced(function* (
   return parsed;
 });
 
-function resolversFor(rootUrl: string, options: Options): EffectPlugin<Uint8Array>[] {
+function resolversFor(
+  rootUrl: string,
+  options: Options,
+  policy: LoadContext["policy"],
+): EffectPlugin<Uint8Array>[] {
   const plugins: EffectPlugin<Uint8Array>[] = [];
   if (options.resolve?.file !== false) plugins.push(fileResolver());
-  const http = httpResolver(rootUrl, options);
+  const http = httpResolver(rootUrl, options, policy);
   if (http) plugins.push(http);
   for (const [index, plugin] of (options.resolvers ?? []).entries())
     plugins.push(customResolver(plugin, index));

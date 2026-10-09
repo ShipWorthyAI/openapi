@@ -20,6 +20,12 @@ function parse(source: string) {
 const info = { title: "Pets", version: "1.0" };
 
 describe("ParsedOpenApiFromString", () => {
+  it("validates the codec's source URL options", () => {
+    for (const options of [{}, { sourceUrl: 42 }, { sourceUrl: null }]) {
+      assert.throws(() => ParsedOpenApiFromString(options as never), Schema.SchemaError);
+    }
+  });
+
   it("exports only the codec factory and bundler at runtime", () => {
     assert.deepEqual(Object.keys(parser).sort(), ["ParsedOpenApiFromString", "bundleDocument"]);
   });

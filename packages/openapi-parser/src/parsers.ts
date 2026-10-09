@@ -1,18 +1,40 @@
-import { Effect } from "effect";
-import { ParserFailure } from "./errors.js";
+import { Effect, Predicate } from "effect";
+import { ParseError, ParserFailure } from "./errors.js";
 import type { EffectPlugin, FileInfo, Options, ParserPlugin } from "./plugins.js";
 import { promisePlugin } from "./plugins.js";
 import { extensionOf } from "./url.js";
 import { parseYamlDocument } from "./yaml.js";
 
-export function decodeData(data: Uint8Array | string | undefined): string {
+function decodeData(data: Uint8Array | string | undefined): string {
   if (data === undefined) return "";
-  if (typeof data === "string") return data;
-  return new TextDecoder().decode(data);
+  const text = typeof data === "string" ? data : new TextDecoder().decode(data);
+  return text.replace(/^\uFEFF/, "");
 }
 
-function stripBom(text: string): string {
-  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+function parseJsonText(text: string): unknown {
+  if (text.trim().length === 0) return null;
+  return JSON.parse(text);
+}
+
+export const parseText = Effect.fnUntraced(function* (source: string | Uint8Array) {
+  const text = decodeData(source);
+  const first = text.trimStart()[0];
+  const yaml = () => Effect.try({ try: () => parseYamlDocument(text), catch: parseFailure });
+
+  if (first === "{" || first === "[") {
+    return yield* Effect.try({ try: () => parseJsonText(text), catch: parseFailure }).pipe(
+      Effect.catch(yaml),
+    );
+  }
+
+  return yield* yaml();
+});
+
+function parseFailure(cause: unknown): ParseError {
+  return new ParseError({
+    message: Predicate.isError(cause) ? cause.message : String(cause),
+    cause,
+  });
 }
 
 export function parserPlugins(options: Options): EffectPlugin<unknown>[] {
@@ -46,9 +68,7 @@ function jsonParser(): EffectPlugin<unknown> {
 }
 
 function parseJson(file: FileInfo): unknown {
-  const text = stripBom(decodeData(file.data));
-  if (text.trim().length === 0) return null;
-  return JSON.parse(text);
+  return parseJsonText(decodeData(file.data));
 }
 
 function yamlParser(): EffectPlugin<unknown> {
@@ -76,7 +96,7 @@ function yamlParser(): EffectPlugin<unknown> {
 }
 
 function parseYaml(file: FileInfo): unknown {
-  return parseYamlDocument(stripBom(decodeData(file.data)));
+  return parseYamlDocument(decodeData(file.data));
 }
 
 function customParser(plugin: ParserPlugin, index: number): EffectPlugin<unknown> {

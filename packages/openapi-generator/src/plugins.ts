@@ -1,5 +1,5 @@
 import type { Generator } from "./generator.js";
-import { Context, Effect, Predicate } from "effect";
+import { Context, Effect, Predicate, Schema } from "effect";
 import { InvalidPlugin, MissingPlugin } from "./errors.js";
 
 export const ModuleLoader = Context.Reference<{
@@ -7,6 +7,17 @@ export const ModuleLoader = Context.Reference<{
 }>("@shipworthy/openapi-generator/plugins/ModuleLoader", {
   defaultValue: () => ({ load: (specifier) => import(specifier) }),
 });
+
+const generatorShape = Schema.Struct({
+  id: Schema.String,
+  generate: Schema.declare<Generator<unknown>["generate"]>(
+    (value): value is Generator<unknown>["generate"] => Predicate.isFunction(value),
+  ),
+});
+
+// Keep plugin identity and prototype methods while validating its callable interface.
+const generatorSchema = Schema.declare<Generator<unknown>>(Schema.is(generatorShape));
+const moduleSchema = Schema.Record(Schema.String, Schema.Unknown);
 
 export const importPlugin = Effect.fn("importPlugin")(function* (
   specifier: string,
@@ -25,19 +36,18 @@ export const importPlugin = Effect.fn("importPlugin")(function* (
       }),
   });
 
-  const value = Predicate.isObject(loaded) ? loaded[exportName] : undefined;
-
-  if (
-    !Predicate.hasProperty(value, "generate") ||
-    !Predicate.isFunction(value.generate) ||
-    !Predicate.hasProperty(value, "id")
-  ) {
-    return yield* new InvalidPlugin({
+  const invalid = () =>
+    new InvalidPlugin({
       specifier,
       exportName,
       message: `Module ${specifier} does not export ${exportName}.`,
     });
-  }
 
-  return value as Generator<unknown>;
+  const module = yield* Schema.decodeUnknownEffect(moduleSchema)(loaded).pipe(
+    Effect.mapError(invalid),
+  );
+
+  return yield* Schema.decodeUnknownEffect(generatorSchema)(module[exportName]).pipe(
+    Effect.mapError(invalid),
+  );
 });

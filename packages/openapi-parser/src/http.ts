@@ -21,7 +21,26 @@ type Hop =
 export function httpResolver(
   rootUrl: string,
   options: Options,
+  policy: "root" | "reference" = "reference",
 ): EffectPlugin<Uint8Array> | undefined {
+  if (policy === "root") {
+    return {
+      order: 200,
+      can: (file) => isHttp(file.url),
+      run: (file) =>
+        Effect.flatMap(HttpClient.HttpClient, (client) =>
+          client
+            .pipe(HttpClient.filterStatusOk)
+            .get(file.url)
+            .pipe(
+              Effect.flatMap((response) => response.arrayBuffer),
+              Effect.map((buffer) => new Uint8Array(buffer)),
+              Effect.mapError((cause) => resolverFailure(file.url, cause)),
+            ),
+        ),
+    };
+  }
+
   if (options.resolve?.http === false) return undefined;
   const http = httpSettings(rootUrl, options);
 
