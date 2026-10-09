@@ -15,12 +15,12 @@ bun add @shipworthy/openapi-parser effect @effect/platform-node
 
 ### Requirements
 
-| Requirement   | Details                                                                                                                                                                                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `effect`      | `^4.0.0`, a peer dependency. Install it yourself so your application and the parser share one copy to run the returned effects and to use the schemas.                                                                                                              |
+| Requirement   | Details                                                                                                                                                                                                                                                                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `effect`      | `^4.0.0`, a peer dependency. Install it yourself so your application and the parser share one copy to run the returned effects and to use the schemas.                                                                                                                                                                                            |
 | Platform      | `@effect/platform-node` `^4.0.0` is a regular dependency. Install it yourself only if your code imports it, as the examples here do for `NodeServices`. The parser imports `node:stream`, `node:url`, `node:path`, `node:dns/promises`, `node:net`, and the `Buffer` global, so it needs Node.js `>=22.19.0` or Bun. It does not run in browsers. |
-| Module format | ESM only (`"type": "module"`). Ships compiled JavaScript with `.d.ts` declarations; no TypeScript loader or bundler is needed.                                                                                                                                       |
-| Peer deps     | `effect` `^4.0.0`.                                                                                                                                                                                                                                                  |
+| Module format | ESM only (`"type": "module"`). Ships compiled JavaScript with `.d.ts` declarations; no TypeScript loader or bundler is needed.                                                                                                                                                                                                                    |
+| Peer deps     | `effect` `^4.0.0`.                                                                                                                                                                                                                                                                                                                                |
 
 ## Quick start
 
@@ -149,7 +149,7 @@ This function loads a source, bundles it, upgrades it, and validates it as OpenA
 
 A string is a file path when, after trimming whitespace, it is a single line (no newline) and either:
 
-- starts with `/`, `./`, `../`, `\`, `.\`, `..\`, or a drive letter such as `C:\` or `C:/`, or
+- is absolute according to Effect's `Path` service on the current platform (for example `/srv/openapi.yaml` on Unix or `C:\specs\openapi.yaml` on Windows), or starts with `./`, `../`, `.\`, or `..\`, or
 - ends in `.json`, `.yaml`, or `.yml` (any case), contains no `: `, and doesn't start with `{` or `[`.
 
 No inline OpenAPI document matches this rule. A one-line YAML document needs `key: value` or a `{ ... }` flow mapping, and JSON starts with `{`. A path that doesn't exist fails with the `FileSystem` error, such as `NotFound: FileSystem.readFile (/abs/openapi.yaml)`.

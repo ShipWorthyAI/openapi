@@ -13,22 +13,22 @@ of calling this package.
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-validator effect@4.0.0
-pnpm add @shipworthy/openapi-validator effect@4.0.0
-yarn add @shipworthy/openapi-validator effect@4.0.0
-bun add @shipworthy/openapi-validator effect@4.0.0
+npm install @shipworthy/openapi-validator effect@^4.0.0
+pnpm add @shipworthy/openapi-validator effect@^4.0.0
+yarn add @shipworthy/openapi-validator effect@^4.0.0
+bun add @shipworthy/openapi-validator effect@^4.0.0
 ```
 
 ### Requirements
 
-- **Effect 4.** `effect` is a direct dependency, pinned to `4.0.0`. The public API is
-  an Effect `Context.Service` and an Effect `Schema` error, so your code needs `effect`
-  too. Install the same version so you get only one copy of `effect`.
+- **Effect 4.** `effect` `^4.0.0` is a peer dependency. The public API is an Effect
+  `Context.Service` and an Effect `Schema` error. Install a compatible version so
+  every package shares one Effect instance.
 - **ESM only.** The package is `"type": "module"` and has no CommonJS build.
-- **TypeScript source.** The single entry point (`"."`) resolves to `./src/index.ts`.
-  Use a runtime or toolchain that loads TypeScript directly. The repository develops
-  and tests the package with Bun (1.4.x) and Vitest.
-- These bundled dependencies come with the package (you do not install them):
+- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts`
+  declarations in `dist/`. No TypeScript loader or bundler is needed. Its public
+  API is exported from `@shipworthy/openapi-validator`.
+- These dependencies are installed with the package (you do not install them):
   `@stoplight/spectral-core@1.24.0`, `@stoplight/spectral-formats@1.9.0`,
   `@stoplight/spectral-parsers@1.0.5`, `@stoplight/spectral-rulesets@1.23.0`.
 
@@ -303,11 +303,11 @@ custom rulesets, or per-rule overrides.
   configurable.
 - Output goes through Effect `Console` (`error` for blocking diagnostics, `warn`
   otherwise). Color is used only on a TTY without `NO_COLOR`.
-- Requirements: ESM only, ships TypeScript source (`./src/index.ts`), and needs
-  `effect@4.0.0`.
+- Requirements: ESM only, compiled JavaScript and `.d.ts` declarations in `dist/`,
+  Node.js `>=22.19.0` or Bun, and peer dependency `effect@^4.0.0`.
 - The CLI equivalent is `openapi lint [--strict] <file-or-url>` from
   `@shipworthy/openapi-cli`.
 
 ## License
 
-The package does not declare a license yet.
+MIT. See [LICENSE](./LICENSE).

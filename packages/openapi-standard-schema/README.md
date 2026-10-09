@@ -14,19 +14,26 @@ bun add -d @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
 The generated file imports `effect`, and the package lists it as a peer dependency, so your app needs `effect` as a runtime dependency:
 
 ```sh
-npm install effect@^4
+npm install effect@^4.0.0
+pnpm add effect@^4.0.0
+yarn add effect@^4.0.0
+bun add effect@^4.0.0
 ```
 
 Requirements:
 
 - **Effect 4.** `effect` `^4.0.0` is a peer dependency, so every package shares one Effect instance. The generated code uses Effect 4 Schema APIs (`Schema.toStandardSchemaV1`, `Schema.StructWithRest`, `Schema.isPattern`, and others). Effect 3 will not run it.
-- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js (`npx openapi ...`) or Bun (`bunx openapi ...`).
+- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js (`npx @shipworthy/openapi-cli ...`) or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
-- **Bundled dependencies.** The package installs `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`.
+- **Installed dependencies.** The package installs `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`.
+
+Install `@shipworthy/openapi-cli` only if you use the CLI. For a direct call to `standardSchema.generate`, also install `@shipworthy/openapi-transformer`.
 
 `@shipworthy/openapi-cli` lists this package as an optional peer dependency. It loads the package by name with `import("@shipworthy/openapi-standard-schema")`, so install both.
 
 ## Quick start
+
+Run the `openapi` commands below in a package script, or use `npx @shipworthy/openapi-cli` (Node.js) or `bunx --bun @shipworthy/openapi-cli` (Bun) in place of `openapi`.
 
 `openapi.yaml`:
 
@@ -128,7 +135,7 @@ const standardSchema: Generator<string, SchemaGenerationError>;
 
 ```ts
 import { NodeServices } from "@effect/platform-node";
-import { generate } from "@shipworthy/openapi-generator";
+import { generate, ModuleLoader } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { writeFile } from "node:fs/promises";
@@ -139,13 +146,16 @@ const source = await Effect.runPromise(
     specifier: "@shipworthy/openapi-standard-schema",
     exportName: "standardSchema",
     source: pathToFileURL("./openapi.yaml"),
-  }).pipe(Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer))),
+  }).pipe(
+    Effect.provideService(ModuleLoader, { load: (specifier) => import(specifier) }),
+    Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
+  ),
 );
 
-await writeFile("./src/generated/standard-schema.ts", source as string);
+await writeFile("./standard-schema.ts", source as string);
 ```
 
-This example also needs `@effect/platform-node` and `@shipworthy/openapi-generator`. On Bun, `BunServices` from `@effect/platform-bun` works in place of `NodeServices`.
+This example also needs `@effect/platform-node` and `@shipworthy/openapi-generator`. The `ModuleLoader` override resolves the plugin from your script. On Bun, `BunServices` from `@effect/platform-bun` works in place of `NodeServices`.
 
 #### Directly on a model
 

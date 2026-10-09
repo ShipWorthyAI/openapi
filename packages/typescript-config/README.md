@@ -13,7 +13,7 @@ Use this package when you want a project to type-check with the same settings as
 
 ## Installation
 
-Install it as a dev dependency. Install `typescript` too.
+Install it as a dev dependency. Install `typescript` too; the package declares no dependencies or peers and supplies no runtime code or Node.js engine requirement.
 
 ```sh
 npm install -D @shipworthy/typescript-config typescript
@@ -93,11 +93,15 @@ Both presets set `noEmit: true`, so `tsc` only type-checks. To have `tsc` write 
     "noEmit": false,
     "rootDir": "src",
     "outDir": "dist",
-    "declaration": true
+    "declaration": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
   "include": ["src"]
 }
 ```
+
+This example emits modules for direct use in Node.js. Add `"type": "module"` to your package's `package.json` for ESM output, and use `.js` extensions in relative source imports. If a bundler consumes the output instead, keep the preset's `module` and `moduleResolution` values.
 
 ## Presets
 
@@ -181,7 +185,7 @@ Choose `library.json` for code that runs in both browsers and Node.js/Bun, or co
 - Use the presets only through `"extends": "@shipworthy/typescript-config/<preset>.json"` in a `tsconfig.json`.
 - Target TypeScript `^7.0.2`. `libReplacement` and `noUncheckedSideEffectImports` need a recent compiler.
 - Both presets set `noEmit: true`. To emit, override `noEmit: false` and set `outDir`/`declaration` in a separate config.
-- `moduleResolution` is `"bundler"`, with `module: "ESNext"`. Don't add `.js` extensions to relative imports just for TypeScript.
+- `moduleResolution` is `"bundler"`, with `module: "ESNext"`. Relative import extensions are optional for bundler consumers. For direct Node.js output, use a build config with `NodeNext` resolution and `.js` relative imports.
 - `noUncheckedIndexedAccess` is on: `arr[i]` and `record[key]` are `T | undefined`. Narrow them before use.
 - `isolatedModules` is on: use `export type` / `import type` for type-only re-exports.
 - `base.json` has `types: []` and no DOM lib. Node.js globals and `fetch` types are missing unless you add them.

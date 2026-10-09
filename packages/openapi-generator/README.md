@@ -163,7 +163,7 @@ const nodes = await Effect.runPromise(
 | Node `Readable` stream                                   | Read to the end as text.                                                                                                                                         |
 | Plain object                                             | Used directly as the document.                                                                                                                                   |
 
-A string is a file path when, after trimming, it is a single line and either starts with `/`, `./`, `../`, `\`, `.\`, `..\`, or a drive letter (`C:\`, `C:/`), or ends in `.json`, `.yaml`, or `.yml`, contains no `: `, and doesn't start with `{` or `[`. So `"./openapi.yaml"`, `"/srv/openapi.json"`, and `"specs/openapi.yml"` are read from disk, while inline JSON and YAML documents are still parsed as text. A missing file fails with a `ResolveError` that carries the `FileSystem` error, such as `NotFound: FileSystem.readFile (/abs/openapi.yaml)`.
+A string is a file path when, after trimming, it is a single line and either is absolute according to Effect's `Path` service on the current platform, starts with `./`, `../`, `.\`, or `..\`, or ends in `.json`, `.yaml`, or `.yml`, contains no `: `, and doesn't start with `{` or `[`. So `"./openapi.yaml"`, `"/srv/openapi.json"`, and `"specs/openapi.yml"` are read from disk, while inline JSON and YAML documents are still parsed as text. A missing file fails with a `ResolveError` that carries the `FileSystem` error, such as `NotFound: FileSystem.readFile (/abs/openapi.yaml)`.
 
 ### `Generator<A, E>`
 

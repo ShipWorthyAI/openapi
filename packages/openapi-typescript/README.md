@@ -12,10 +12,10 @@ based on. `@shipworthy/openapi-tanstack-query` uses these types for its generate
 ## Installation
 
 ```sh
-npm install -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
-pnpm add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
-yarn add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
-bun add -d @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect
+npm install -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
+pnpm add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
+yarn add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
+bun add -d @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
 ```
 
 Install `@shipworthy/openapi-cli` only if you use the CLI. If you call the plugin from code, also
@@ -29,10 +29,12 @@ Requirements:
 | Runtime           | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed.                                                    |
 | Module format     | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                                                                               |
 | Entry points      | `.` and `./compiler`.                                                                                                                                                                                    |
-| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js (`npx openapi ...`) or Bun (`bunx openapi ...`).                                                                                     |
-| Bundled deps      | `oxfmt` ^0.72.0 (used by `formatTypeScript`).                                                                                                                                                            |
+| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js (`npx @shipworthy/openapi-cli ...`) or Bun (`bunx --bun @shipworthy/openapi-cli ...`).                                               |
+| Dependencies      | `oxfmt` ^0.72.0 (used by `formatTypeScript`).                                                                                                                                                            |
 
 ## Quick start
+
+Run the `openapi` commands below in a package script, or use `npx @shipworthy/openapi-cli` (Node.js) or `bunx --bun @shipworthy/openapi-cli` (Bun) in place of `openapi`.
 
 ### CLI
 
@@ -52,8 +54,7 @@ type GetPetPath = paths["/pets/{id}"]["get"]["parameters"]["path"];
 
 ### Programmatic
 
-This script was run against the current code. `decode` expects an OpenAPI 3.1 object with no
-external `$ref`s. For files, URLs, or 3.0 documents, see
+`decode` expects an OpenAPI 3.1 object with no external `$ref`s. For files, URLs, or 3.0 documents, see
 [Generating from a file, URL, or 3.0 document](#generating-from-a-file-url-or-30-document).
 
 ```ts
@@ -464,7 +465,7 @@ upgrades, and decodes the document, then loads this plugin by name and runs it:
 
 ```ts
 import { NodeServices } from "@effect/platform-node";
-import { generate } from "@shipworthy/openapi-generator";
+import { generate, ModuleLoader } from "@shipworthy/openapi-generator";
 import { astToString, formatTypeScript } from "@shipworthy/openapi-typescript";
 import type ts from "@shipworthy/openapi-typescript/compiler";
 import { Effect, Layer } from "effect";
@@ -477,14 +478,17 @@ const program = generate({
   pluginOptions: { immutable: true },
 }).pipe(
   Effect.map((nodes) => (nodes as ts.Node[]).map((node) => astToString([node])).join("\n")),
+  Effect.provideService(ModuleLoader, { load: (specifier) => import(specifier) }),
   Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
 );
 
 const source = await formatTypeScript(await Effect.runPromise(program));
 ```
 
-This example also needs `@effect/platform-node` (or `@effect/platform-bun` on Bun) and
-`@shipworthy/openapi-generator`. `generate` needs `FileSystem`, `Path`, and `HttpClient` services. It fails with `ResolveError`
+This example also needs `@effect/platform-node` (use `BunServices` from `@effect/platform-bun`
+in place of `NodeServices` on Bun) and
+`@shipworthy/openapi-generator`. The `ModuleLoader` override resolves the plugin from your script.
+`generate` needs `FileSystem`, `Path`, and `HttpClient` services. It fails with `ResolveError`
 (load, bundle, or validation), `TransformError` (decoding, or any plugin failure including
 `TypegenError`), `MissingPlugin`, or `InvalidPlugin`.
 

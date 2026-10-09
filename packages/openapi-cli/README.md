@@ -4,7 +4,7 @@
 
 ## Requirements
 
-- **Node.js `>=22.19.0` or Bun.** The `openapi` binary is compiled JavaScript (`dist/bin.js`) with a `#!/usr/bin/env node` shebang, and it runs on `@effect/platform-node`. Run it with `npx openapi …` on Node.js or `bunx openapi …` on Bun.
+- **Node.js `>=22.19.0` or Bun.** The `openapi` binary is compiled JavaScript (`dist/bin.js`) with a `#!/usr/bin/env node` shebang, and it runs on `@effect/platform-node`. Run it with `npx @shipworthy/openapi-cli …` on Node.js or `bunx --bun @shipworthy/openapi-cli …` on Bun.
 - **ESM only.** The package sets `"type": "module"` and ships compiled ESM JavaScript with `.d.ts` declarations. There is no CommonJS build.
 - **Input:** OpenAPI 3.x documents in JSON or YAML. `generate` upgrades OpenAPI 3.0 documents to 3.1 before generating. Swagger 2.0 is rejected.
 
@@ -14,26 +14,26 @@ Install the CLI and the generator packages you need as dev dependencies. The CLI
 
 ```sh
 # npm
-npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript
+npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
 # pnpm
-pnpm add -D @shipworthy/openapi-cli @shipworthy/openapi-typescript
+pnpm add -D @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
 # yarn
-yarn add -D @shipworthy/openapi-cli @shipworthy/openapi-typescript
+yarn add -D @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
 # bun
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
 ```
 
 ### Optional peer dependencies (generators)
 
 Install the generator package for each `generate` subcommand you use, at the same version as the CLI:
 
-| Command                            | Requires                                                                  | Notes                                                       |
-| ---------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `openapi generate typescript`      | `@shipworthy/openapi-typescript`                                          | That package peers on `typescript@^7.0.0`.                  |
-| `openapi generate zod`             | `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`            | Also writes `types.ts`.                                     |
-| `openapi generate tanstack-query`  | `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript` | Also writes `types.ts`.                                     |
-| `openapi generate standard-schema` | `@shipworthy/openapi-standard-schema`                                     |                                                             |
-| `openapi lint`                     | nothing extra                                                             | Bundled through `@shipworthy/openapi-validator` (Spectral). |
+| Command                            | Requires                                                                  | Notes                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `openapi generate typescript`      | `@shipworthy/openapi-typescript`                                          | That package peers on `typescript@^7.0.0` and `effect@^4.0.0`. |
+| `openapi generate zod`             | `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`            | Also writes `types.ts`.                                        |
+| `openapi generate tanstack-query`  | `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript` | Also writes `types.ts`.                                        |
+| `openapi generate standard-schema` | `@shipworthy/openapi-standard-schema`                                     |                                                                |
+| `openapi lint`                     | nothing extra                                                             | Bundled through `@shipworthy/openapi-validator` (Spectral).    |
 
 The generated files import packages at runtime, so your application needs those packages too:
 
@@ -46,16 +46,18 @@ The generated files import packages at runtime, so your application needs those 
 
 ## Quick start
 
+Run the `openapi` commands below in a package script, or use `npx @shipworthy/openapi-cli` (Node.js) or `bunx --bun @shipworthy/openapi-cli` (Bun) in place of `openapi`.
+
 ```sh
 # npm
-npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript
-npx openapi lint ./openapi.yaml
-npx openapi generate typescript ./openapi.yaml -o ./src/generated/types.ts
+npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
+npx @shipworthy/openapi-cli lint ./openapi.yaml
+npx @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/types.ts
 
 # bun
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
-bunx openapi lint ./openapi.yaml
-bunx openapi generate typescript ./openapi.yaml -o ./src/generated/types.ts
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
+bunx --bun @shipworthy/openapi-cli lint ./openapi.yaml
+bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/types.ts
 ```
 
 Given this `openapi.yaml`:
@@ -381,7 +383,7 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 
 ## Key facts (for AI agents)
 
-- Binary: `openapi` (compiled `dist/bin.js`). Runs on **Node.js `>=22.19.0`** (`npx openapi`) or **Bun** (`bunx openapi`). ESM only. OpenAPI 3.0 and 3.1 input (3.0 is upgraded), JSON or YAML, as a local path or URL. Swagger 2.0 is rejected.
+- Binary: `openapi` (compiled `dist/bin.js`). Runs on **Node.js `>=22.19.0`** (`npx @shipworthy/openapi-cli`) or **Bun** (`bunx --bun @shipworthy/openapi-cli`). ESM only. OpenAPI 3.0 and 3.1 input (3.0 is upgraded), JSON or YAML, as a local path or URL. Swagger 2.0 is rejected.
 - Commands:
   - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
   - `openapi generate typescript [<input>] [-o file] [--check] [type flags]`: reads stdin when `<input>` is omitted and writes stdout when `-o` is omitted.

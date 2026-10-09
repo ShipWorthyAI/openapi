@@ -80,7 +80,7 @@ const parseSource = Effect.fnUntraced(function* (
       return yield* parseSource(url, absoluteRef);
     }
 
-    if (isFilePath(source))
+    if (isFilePath(source, yield* Path.Path))
       return yield* parseSource(yield* fileUrl(source, absoluteRef), absoluteRef);
 
     const parsed = yield* parseText(source);
@@ -96,16 +96,29 @@ const parseSource = Effect.fnUntraced(function* (
 });
 
 /**
- * A string is a filesystem path, not document text, when it is one line and either starts with
- * `/`, `./`, `../`, `\`, `.\`, `..\`, or a drive letter (`C:\`, `C:/`), or ends in `.json`,
- * `.yaml`, or `.yml`, has no `: `, and doesn't start with `{` or `[`. No inline OpenAPI document
+ * A single-line string is a filesystem path when it is platform-absolute or starts with
+ * `./`, `../`, `.\`, or `..\`. Otherwise, it needs a `.json`, `.yaml`, or `.yml` extension,
+ * no `: `, and no leading `{` or `[`. No inline OpenAPI document
  * matches: one-line YAML needs `key: value` or `{...}`, and JSON starts with `{`.
  */
-function isFilePath(source: string): boolean {
+function isFilePath(source: string, path: Path.Path): boolean {
   const value = source.trim();
   if (value === "" || /[\r\n]/.test(value)) return false;
-  if (/^(\.{0,2}[\\/]|[a-z]:[\\/])/i.test(value)) return true;
-  return /\.(json|ya?ml)$/i.test(value) && !value.includes(": ") && !/^[{[]/.test(value);
+  if (
+    path.isAbsolute(value) ||
+    value.startsWith("./") ||
+    value.startsWith("../") ||
+    value.startsWith(".\\") ||
+    value.startsWith("..\\")
+  )
+    return true;
+
+  return (
+    [".json", ".yaml", ".yml"].includes(path.extname(value).toLowerCase()) &&
+    !value.includes(": ") &&
+    !value.startsWith("{") &&
+    !value.startsWith("[")
+  );
 }
 
 /** Resolve a path string against the `cwd` directory URL. */
