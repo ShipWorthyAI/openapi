@@ -27,6 +27,17 @@
       "dependsOn": ["//#lint:fix"],
       "cache": false
     },
-    "//#typecheck": {}
+    "//#typecheck": {},
+    "release": {
+      "cache": false,
+      "passThroughEnv": [
+        "CI",
+        "GITHUB_TOKEN",
+        "NODE_AUTH_TOKEN",
+        "NPM_TOKEN",
+        "NPM_CONFIG_*",
+        "npm_config_*"
+      ]
+    }
   }
 }

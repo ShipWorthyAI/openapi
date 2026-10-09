@@ -35,8 +35,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
-    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
+    "prepack": "bun run build && bun run publish-manifest prepack",
+    "postpack": "bun run publish-manifest postpack"
   },
   "dependencies": {
     "@shipworthy/openapi-fetch": "workspace:*",
@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
+    "@shipworthy/publisher": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",

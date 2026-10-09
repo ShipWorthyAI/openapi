@@ -42,12 +42,13 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "prepack": "bun run build && bun run publish-manifest prepack",
     "version": "bun run build",
     "test": "vitest run",
-    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
+    "postpack": "bun run publish-manifest postpack"
   },
   "devDependencies": {
+    "@shipworthy/publisher": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

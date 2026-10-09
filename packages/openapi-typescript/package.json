@@ -54,10 +54,10 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
+    "prepack": "bun run build && bun run publish-manifest prepack",
     "test": "vitest run",
     "version": "bun run build",
-    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
+    "postpack": "bun run publish-manifest postpack"
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
@@ -67,6 +67,7 @@
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
+    "@shipworthy/publisher": "workspace:*",
     "effect": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

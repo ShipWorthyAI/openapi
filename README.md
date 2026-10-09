@@ -58,7 +58,7 @@ The workflow requires an `NPM_TOKEN` repository secret with publish access to th
 In the workspace, each package's `exports` (and `bin`/`imports`) point at TypeScript in `src`, so tests and tools run without a build. Published packages contain compiled ESM and `.d.ts` files in `dist`:
 
 - `bun run build` runs `tsc -p tsconfig.build.json` in every package (via Turborepo).
-- `prepack` builds the package, then `scripts/publish-manifest.ts` promotes the `dist` entries in `publishConfig` to the top level of `package.json`. `postpack` restores the development manifest. Bun ignores most `publishConfig` fields, so this swap is what makes `bun pm pack` and `bun publish` emit the right `exports`.
+- `prepack` builds the package, then the private `@shipworthy/publisher` command, `publish-manifest prepack`, promotes the `dist` entries in `publishConfig` to the top level of `package.json`. `postpack` restores the development manifest. Bun ignores most `publishConfig` fields, so this swap is what makes `bun pm pack` and `bun publish` emit the right `exports`.
 
 ## License
 

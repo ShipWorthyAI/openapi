@@ -4,6 +4,8 @@
 # which `changeset publish` (npm) does not.
 set -euo pipefail
 
+cd "$(dirname "${BASH_SOURCE[0]}")/../../.."
+
 for manifest in packages/*/package.json; do
   if [ "$(jq -r '.private // false' "$manifest")" = "true" ]; then
     continue

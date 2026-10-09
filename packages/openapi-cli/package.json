@@ -35,8 +35,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "rm -rf dist && tsc -p tsconfig.build.json && sed -i.bak '1s|^#!.*|#!/usr/bin/env node|' dist/bin.js && rm dist/bin.js.bak",
-    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
-    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
+    "prepack": "bun run build && bun run publish-manifest prepack",
+    "postpack": "bun run publish-manifest postpack"
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
@@ -50,6 +50,7 @@
     "@shipworthy/openapi-tanstack-query": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
+    "@shipworthy/publisher": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",

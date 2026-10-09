@@ -267,6 +267,10 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 - Not generated: request bodies, responses, parameters. Validators are standalone and are not called by a fetch client.
 - Do not edit generated files. Re-run the CLI instead.
 
+## Workspace publishing
+
+In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

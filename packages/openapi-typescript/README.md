@@ -567,6 +567,10 @@ in place of `NodeServices` on Bun) and
   external `$ref`s: `generate` from `@shipworthy/openapi-generator` or the CLI.
 - Do not pass a raw OpenAPI document to `typescript.generate`.
 
+## Workspace publishing
+
+In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

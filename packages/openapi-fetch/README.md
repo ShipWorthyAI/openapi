@@ -573,6 +573,10 @@ Without the flag, the types are unchanged.
 - Path-based alternative: `createPathBasedClient<paths>(opts)["/pets/{id}"].GET(init)`.
 - Response data is not validated at runtime.
 
+## Workspace publishing
+
+In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

@@ -30,8 +30,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bun run build && bun ../../scripts/publish-manifest.ts prepack",
-    "postpack": "bun ../../scripts/publish-manifest.ts postpack"
+    "prepack": "bun run build && bun run publish-manifest prepack",
+    "postpack": "bun run publish-manifest postpack"
   },
   "dependencies": {
     "@stoplight/spectral-core": "1.24.0",
@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
+    "@shipworthy/publisher": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "effect": "catalog:",

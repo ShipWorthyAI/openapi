@@ -1,0 +1,17 @@
+{
+  "name": "@shipworthy/publisher",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "publish-manifest": "./src/publish-manifest.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "release": "bash src/publish.sh"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.3",
+    "@shipworthy/typescript-config": "workspace:*",
+    "@types/node": "catalog:"
+  }
+}

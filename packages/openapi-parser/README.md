@@ -357,6 +357,10 @@ None of these settings can be configured through the public API.
 - Requires `effect` `^4.0.0` (peer dependency), ESM, and Node.js `>=22.19.0` or Bun. Ships compiled JavaScript. It does not run in browsers.
 - Next step in the toolchain: pass the result to `decode` from `@shipworthy/openapi-transformer` to get a `ParsedService` for code generators.
 
+## Workspace publishing
+
+In this repository, `bun pm pack` builds the package and uses the private `@shipworthy/publisher` command, `publish-manifest prepack|postpack`, to switch between development and compiled manifests.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

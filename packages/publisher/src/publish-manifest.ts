@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 // Swaps a package's development manifest for its publish manifest while Bun packs it.
 //
 // In the workspace, `exports`, `bin`, and `imports` point at TypeScript source so tests and
@@ -6,7 +7,7 @@
 // `prepack` and runs `postpack` afterwards, so `prepack` promotes the other `publishConfig`
 // fields to the top level and `postpack` restores the development manifest.
 //
-// Usage (from a package directory): bun ../../scripts/publish-manifest.ts prepack|postpack
+// Usage (from a package directory): publish-manifest prepack|postpack
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 const manifestPath = "package.json";
