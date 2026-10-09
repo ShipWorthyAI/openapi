@@ -96,3 +96,7 @@ export interface operations {
     };
   };
 }
+
+export enum ApiPaths {
+  createReservationToken = "/api/v6/app/reservations/token",
+}

@@ -30,7 +30,6 @@ function operationsIndex(ctx: GlobalContext): number {
 
   ctx.injectFooter.push(
     ts.factory.createInterfaceDeclaration(
-      // important: do NOT make this immutable
       /* modifiers       */ tsModifiers({ export: true }),
       /* name            */ ts.factory.createIdentifier("operations"),
       /* typeParameters  */ undefined,
@@ -60,7 +59,7 @@ function injectOperation(
     [
       ...operations.members,
       ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(operationId),
         /* questionToken */ undefined,
         /* type          */ ts.factory.createTypeLiteralNode(members),
@@ -72,22 +71,15 @@ function injectOperation(
 /**
  * Transform a Path Item Object (4.8.9) into its `parameters` and one entry per method.
  * Operations with an `operationId` move to the `operations` interface and are referenced here.
- *
- * `url` is the URL template, for `generatePathParams`.
  * @see https://spec.openapis.org/oas/v3.1.0#path-item-object
  */
 export const transformPathItem = Effect.fnUntraced(function* (
   item: ParsedPathItem,
   path: string,
-  url?: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
 
-  const parameters = yield* transformParameters(
-    item.parameters,
-    createRef([path, "parameters"]),
-    url,
-  );
+  const parameters = yield* transformParameters(item.parameters, createRef([path, "parameters"]));
 
   const methods = yield* Effect.forEach(
     httpMethods,
@@ -96,9 +88,9 @@ export const transformPathItem = Effect.fnUntraced(function* (
         (entry) => entry.method.toLowerCase() === method,
       );
 
-      if (!operation || (ctx.excludeDeprecated && operation.deprecated)) {
+      if (!operation) {
         return ts.factory.createPropertySignature(
-          /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+          /* modifiers     */ undefined,
           /* name          */ tsPropertyIndex(method),
           /* questionToken */ QUESTION_TOKEN,
           /* type          */ NEVER,
@@ -129,7 +121,7 @@ export const transformPathItem = Effect.fnUntraced(function* (
       }
 
       const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(method),
         /* questionToken */ undefined,
         /* type          */ operationType,

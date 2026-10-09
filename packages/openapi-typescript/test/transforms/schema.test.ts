@@ -73,8 +73,73 @@ describe("transformSchema", () => {
   it.effect("prints tuples from prefixItems", () =>
     Effect.gen(function* () {
       expect(
-        yield* schemaType({ type: "array", prefixItems: [{ type: "string" }, { type: "number" }] }),
+        yield* schemaType({
+          type: "array",
+          prefixItems: [{ type: "string" }, { type: "number" }],
+          minItems: 2,
+          maxItems: 2,
+        }),
       ).toBe("[\n  string,\n  number\n]");
+    }),
+  );
+
+  it.effect("uses required lists rather than defaults to decide property optionality", () =>
+    Effect.gen(function* () {
+      const properties = {
+        count: { type: "integer", default: 0 },
+        label: { type: ["string", "null"], default: null },
+        enabled: { type: "boolean", default: false },
+      };
+
+      yield* Effect.forEach(
+        [
+          { type: "object", properties },
+          { type: "object", properties, required: [] },
+        ],
+        Effect.fnUntraced(function* (schema) {
+          const printed = yield* schemaType(schema);
+          expect(printed).toContain("count?: number;");
+          expect(printed).toContain("label?: string | null;");
+          expect(printed).toContain("enabled?: boolean;");
+        }),
+        { discard: true },
+      );
+
+      const printed = yield* schemaType({
+        type: "object",
+        properties,
+        required: ["count", "label"],
+      });
+
+      expect(printed).toContain("count: number;");
+      expect(printed).toContain("label: string | null;");
+      expect(printed).toContain("enabled?: boolean;");
+    }),
+  );
+
+  it.effect("uses explicit additionalProperties for populated and empty objects", () =>
+    Effect.gen(function* () {
+      expect(yield* schemaType({ type: "object" })).toBe("Record<string, never>");
+
+      expect(yield* schemaType({ type: "object", additionalProperties: false })).toBe(
+        "Record<string, never>",
+      );
+
+      expect(yield* schemaType({ type: "object", additionalProperties: true })).toContain(
+        "[key: string]: unknown;",
+      );
+
+      expect(
+        yield* schemaType({
+          type: "object",
+          properties: { a: { type: "string" } },
+          additionalProperties: true,
+        }),
+      ).toContain("[key: string]: unknown;");
+
+      expect(
+        yield* schemaType({ type: "object", properties: { a: { type: "string" } } }),
+      ).not.toContain("[key: string]");
     }),
   );
 
@@ -109,30 +174,36 @@ describe("transformSchema", () => {
     }),
   );
 
-  it.effect("follows options", () =>
+  it.effect("infers tuple lengths by default and allows disabling length inference", () =>
     Effect.gen(function* () {
-      const object = { type: "object", properties: { a: { type: "string" } } };
+      const schema = { type: "array", items: { type: "string" }, minItems: 2, maxItems: 3 };
 
-      expect(yield* schemaType(object, { immutable: true })).toMatchInlineSnapshot(`
-        "{
-          readonly a?: string;
-        }"
-      `);
+      expect(yield* schemaType(schema)).toBe(
+        "[\n  string,\n  string\n] | [\n  string,\n  string,\n  string\n]",
+      );
 
-      expect(yield* schemaType(object, { propertiesRequiredByDefault: true }))
-        .toMatchInlineSnapshot(`
-        "{
-          a: string;
-        }"
-      `);
+      expect(yield* schemaType(schema, { arrayLength: false })).toBe("string[]");
 
-      expect(yield* schemaType(object, { additionalProperties: true })).toMatchInlineSnapshot(`
-        "{
-          a?: string;
-        } & {
-          [key: string]: unknown;
-        }"
-      `);
+      expect(yield* schemaType({ ...schema, maxItems: undefined })).toBe(
+        "[\n  string,\n  string,\n  ...string[]\n]",
+      );
+
+      expect(yield* schemaType({ ...schema, minItems: 0, maxItems: 0 })).toBe("[\n]");
+      expect(yield* schemaType({ ...schema, maxItems: 20 })).toBe("string[]");
+    }),
+  );
+
+  it.effect("keeps nested arrays as tuple elements when inferring length", () =>
+    Effect.gen(function* () {
+      const schema = {
+        type: "array",
+        items: { type: "array", items: { type: "string" } },
+        minItems: 2,
+        maxItems: 2,
+      };
+
+      expect(yield* schemaType(schema)).toBe("[\n  string[],\n  string[]\n]");
+      expect(yield* schemaType(schema, { arrayLength: false })).toBe("string[][]");
     }),
   );
 });

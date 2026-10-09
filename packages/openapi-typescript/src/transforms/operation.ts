@@ -1,7 +1,7 @@
 import type { ParsedOperation } from "@shipworthy/openapi-transformer";
 import { Effect } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.ts";
+import type { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
 import {
   addJSDocComment,
@@ -9,7 +9,6 @@ import {
   NEVER,
   QUESTION_TOKEN,
   refType,
-  tsModifiers,
   tsPropertyIndex,
 } from "../lib/ts.ts";
 import { createRef } from "../lib/utils.ts";
@@ -25,20 +24,18 @@ export const transformOperation = Effect.fnUntraced(function* (
   operation: ParsedOperation,
   path: string,
 ): Effect.fn.Return<ts.TypeElement[], TypegenError, TypegenContext> {
-  const ctx = yield* TypegenContext;
   const { request } = operation;
 
   const parameters = yield* transformParameters(
     [...request.query, ...request.headers, ...request.path, ...request.cookie],
     path,
-    operation.path,
   );
 
   let requestBody: ts.PropertySignature;
 
   if (request.body) {
     requestBody = ts.factory.createPropertySignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+      /* modifiers     */ undefined,
       /* name          */ tsPropertyIndex("requestBody"),
       /* questionToken */ request.body.required ? undefined : QUESTION_TOKEN,
       /* type          */ request.body.reference
@@ -49,7 +46,7 @@ export const transformOperation = Effect.fnUntraced(function* (
     addJSDocComment(annotationsOf(request.body), requestBody);
   } else {
     requestBody = ts.factory.createPropertySignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+      /* modifiers     */ undefined,
       /* name          */ tsPropertyIndex("requestBody"),
       /* questionToken */ QUESTION_TOKEN,
       /* type          */ NEVER,
@@ -57,7 +54,7 @@ export const transformOperation = Effect.fnUntraced(function* (
   }
 
   const responses = ts.factory.createPropertySignature(
-    /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+    /* modifiers     */ undefined,
     /* name          */ tsPropertyIndex("responses"),
     /* questionToken */ undefined,
     /* type          */ yield* transformResponses(operation.responses, path),

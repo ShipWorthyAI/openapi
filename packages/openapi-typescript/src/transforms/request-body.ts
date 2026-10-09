@@ -1,17 +1,16 @@
 import type { ParsedRequestBody } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.ts";
+import type { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
 import {
   addJSDocComment,
   annotationsOf,
   NEVER,
   QUESTION_TOKEN,
-  tsModifiers,
   tsPropertyIndex,
 } from "../lib/ts.ts";
-import { createRef, getEntries } from "../lib/utils.ts";
+import { createRef } from "../lib/utils.ts";
 import { transformMediaType } from "./media-type.ts";
 
 /**
@@ -22,14 +21,13 @@ export const transformRequestBody = Effect.fnUntraced(function* (
   body: ParsedRequestBody,
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const ctx = yield* TypegenContext;
   const contents = Object.fromEntries(body.contents.map((media) => [media.mediaType, media]));
 
   const type = yield* Effect.forEach(
-    getEntries(contents, ctx),
+    Record.toEntries(contents),
     Effect.fnUntraced(function* ([mediaType, media]) {
       const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(mediaType),
         /* questionToken */ undefined,
         /* type          */ yield* transformMediaType(
@@ -45,7 +43,7 @@ export const transformRequestBody = Effect.fnUntraced(function* (
 
   return ts.factory.createTypeLiteralNode([
     ts.factory.createPropertySignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+      /* modifiers     */ undefined,
       /* name          */ tsPropertyIndex("content"),
       /* questionToken */ undefined,
       /* type          */ ts.factory.createTypeLiteralNode(

@@ -98,6 +98,9 @@ describe("typescript plugin", () => {
               };
             };
           };
+        }
+        export enum ApiPaths {
+          listPets = "/pets"
         }"
       `);
     }),
@@ -117,14 +120,16 @@ describe("typescript plugin", () => {
           pathItems: never;
         }
         export type $defs = Record<string, never>;
-        export type operations = Record<string, never>;"
+        export type operations = Record<string, never>;
+        export enum ApiPaths {
+        }"
       `);
     }),
   );
 
-  it.effect("exports type aliases with exportType, and an ApiPaths enum with makePathsEnum", () =>
+  it.effect("exports type aliases with exportType and always includes ApiPaths", () =>
     Effect.gen(function* () {
-      const printed = yield* run(document(petstore), { exportType: true, makePathsEnum: true });
+      const printed = yield* run(document(petstore), { exportType: true });
 
       expect(printed).toContain("export type paths = {");
       expect(printed).toContain('listPets = "/pets"');
@@ -133,9 +138,80 @@ describe("typescript plugin", () => {
 
   it.effect("rejects options of the wrong type", () =>
     Effect.gen(function* () {
-      const error = yield* Effect.flip(run(document({}), { alphabetize: "yes" }));
+      const error = yield* Effect.flip(run(document({}), { arrayLength: "yes" }));
       expect(error._tag).toBe("TypegenError");
-      expect(error.message).toContain("alphabetize");
+      expect(error.message).toContain("arrayLength");
+    }),
+  );
+
+  it.effect("rejects unknown options", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(run(document({}), { unknownOption: true }));
+      expect(error._tag).toBe("TypegenError");
+      expect(error.message).toContain("unknownOption");
+    }),
+  );
+
+  it.effect("exports component and operation aliases with rootTypes", () =>
+    Effect.gen(function* () {
+      const model = document({
+        ...petstore,
+        paths: {
+          ...petstore.paths,
+          "/http": { get: { operationId: "getHTTP", responses: { "200": { description: "OK" } } } },
+        },
+        webhooks: {
+          updated: {
+            post: { operationId: "onPetUpdate", responses: { "200": { description: "OK" } } },
+          },
+        },
+        components: {
+          ...petstore.components,
+          pathItems: {
+            Shared: {
+              get: { operationId: "getShared", responses: { "200": { description: "OK" } } },
+            },
+          },
+        },
+      });
+
+      const printed = yield* run(model, { rootTypes: true });
+      expect(printed).toContain('export type Pet = components["schemas"]["Pet"];');
+      expect(printed).toContain('export type ListPets = operations["listPets"];');
+      expect(printed).toContain('export type GetHTTP = operations["getHTTP"];');
+      expect(printed).toContain('export type OnPetUpdate = operations["onPetUpdate"];');
+      expect(printed).toContain('export type GetShared = operations["getShared"];');
+
+      const withoutAliases = yield* run(model);
+      expect(withoutAliases).not.toContain("export type Pet =");
+      expect(withoutAliases).not.toContain("export type ListPets =");
+    }),
+  );
+
+  it.effect("avoids root alias collisions with components and ApiPaths", () =>
+    Effect.gen(function* () {
+      const model = document({
+        ...petstore,
+        paths: {
+          ...petstore.paths,
+          "/other": {
+            get: { operationId: "ListPets", responses: { "200": { description: "OK" } } },
+          },
+        },
+        components: {
+          schemas: {
+            ...petstore.components.schemas,
+            ListPets: { type: "string" },
+            ApiPaths: { type: "string" },
+          },
+        },
+      });
+
+      const printed = yield* run(model, { rootTypes: true });
+      expect(printed).toContain('export type ListPets = components["schemas"]["ListPets"];');
+      expect(printed).toContain('export type ListPets_2 = operations["listPets"];');
+      expect(printed).toContain('export type ListPets_3 = operations["ListPets"];');
+      expect(printed).toContain('export type ApiPaths_2 = components["schemas"]["ApiPaths"];');
     }),
   );
 

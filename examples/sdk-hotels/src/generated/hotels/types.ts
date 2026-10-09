@@ -365,7 +365,7 @@ export interface components {
     /** GetRatesByHotelIds */
     GetRatesByHotelIds: components["schemas"]["GetRatesCommonRequest"] & {
       /** @description Look up a batch of hotel identifiers. */
-      hotel_ids: components["schemas"]["Id"][];
+      hotel_ids: [components["schemas"]["Id"], ...components["schemas"]["Id"][]];
     };
     /** GetRatesByMarket */
     GetRatesByMarket: components["schemas"]["GetRatesCommonRequest"] & {
@@ -400,7 +400,7 @@ export interface components {
        * @description Maximum collection time in seconds before returning available rates. Values above 60 are treated as 60. Response delivery may take slightly longer.
        * @default 10
        */
-      timeout: number;
+      timeout?: number;
       /** @description Maximum number of rates returned per hotel. */
       limit_per_hotel?: number;
       /** @description Sorts offers within each hotel and hotels by their first offer. Criteria are applied in order, with later criteria breaking ties. Sorting applies to the returned page, not all matching hotels. recommended requests recommended results; other criteria order those results by price, Cash Back, or hotel guest review score. Rating ties for offers within a hotel. Omitted or empty uses recommendation order. */
@@ -411,7 +411,7 @@ export interface components {
        * @description Requested page size. Defaults to 200, with a maximum of 5000.
        * @default 200
        */
-      limit: number;
+      limit?: number;
     };
     GroupsPolicy: components["schemas"]["Policy"] & {
       /** @constant */
@@ -457,7 +457,10 @@ export interface components {
     };
     HotelOffer: {
       id: components["schemas"]["Id"];
-      rooms: components["schemas"]["HotelOfferRoom"][];
+      rooms: [
+        components["schemas"]["HotelOfferRoom"],
+        ...components["schemas"]["HotelOfferRoom"][],
+      ];
       price: components["schemas"]["Price"];
       policies: components["schemas"]["BookingPolicies"];
     };
@@ -696,12 +699,12 @@ export interface components {
        * @description Total number of children across all rooms.
        * @default 0
        */
-      children: number;
+      children?: number;
       /**
        * @description Total number of pets across all rooms. Positive counts restrict rate searches to supplier-classified pet-friendly hotels.
        * @default 0
        */
-      pets: number;
+      pets?: number;
     };
     /** @enum {string} */
     TransactionStatus:
@@ -1132,7 +1135,10 @@ export interface operations {
           payment_source_id: string;
           quote_id: components["schemas"]["Id"] & unknown;
           booking_id?: components["schemas"]["Id"];
-          guests: components["schemas"]["BookingGuest"][];
+          guests: [
+            components["schemas"]["BookingGuest"],
+            ...components["schemas"]["BookingGuest"][],
+          ];
         };
       };
     };
@@ -1332,3 +1338,18 @@ export interface operations {
 type WithRequired<T, K extends keyof T> = T & {
   [P in K]-?: T[P];
 };
+
+export enum ApiPaths {
+  getHotels = "/hotels",
+  getHotel = "/hotels/{hotel_id}",
+  getHotelReviews = "/hotels/{hotel_id}/reviews",
+  getRates = "/rates",
+  createQuote = "/quotes",
+  getQuote = "/quotes/{quote_id}",
+  getBookings = "/bookings",
+  createBooking = "/bookings",
+  getBooking = "/bookings/{booking_id}",
+  cancelBooking = "/bookings/{booking_id}",
+  updateBooking = "/bookings/{booking_id}",
+  createRebookingQuote = "/bookings/{booking_id}/quotes",
+}

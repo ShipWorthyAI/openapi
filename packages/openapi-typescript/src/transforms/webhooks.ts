@@ -1,10 +1,10 @@
 import type { ParsedPathItem } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.ts";
+import type { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
-import { refType, tsModifiers, tsPropertyIndex } from "../lib/ts.ts";
-import { createRef, getEntries } from "../lib/utils.ts";
+import { refType, tsPropertyIndex } from "../lib/ts.ts";
+import { createRef } from "../lib/utils.ts";
 import { transformPathItem } from "./path-item.ts";
 
 /**
@@ -14,13 +14,11 @@ import { transformPathItem } from "./path-item.ts";
 export const transformWebhooks = Effect.fnUntraced(function* (
   webhooks: Readonly<Record<string, ParsedPathItem>>,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const ctx = yield* TypegenContext;
-
   const type = yield* Effect.forEach(
-    getEntries(webhooks, ctx),
+    Record.toEntries(webhooks),
     Effect.fnUntraced(function* ([name, item]) {
       return ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(name),
         /* questionToken */ undefined,
         /* type          */ item.reference

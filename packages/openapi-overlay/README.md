@@ -119,6 +119,99 @@ complex keys, tag/directive processing, recursive aliases, or document streams. 
 block collections for nested YAML; formatted JSON is accepted. Comments and source formatting
 are not retained.
 
+## Preparing a document for generation
+
+Apply an overlay before running a generator so the same document changes are available to
+TypeScript types, runtime validators, and clients:
+
+```sh
+openapi overlay openapi.yaml --overlay types.overlay.yaml -o types.openapi.json
+openapi generate typescript types.openapi.json -o schema.ts
+```
+
+The examples below assume the named schemas and paths exist. Target an existing parent to add
+a property; an unmatched target has no effect. Updates contain literal values, so list property
+and parameter names explicitly.
+
+### Require properties
+
+Add property names to `required`. A property's `default` alone does not require its presence
+in generated TypeScript types; the default remains available as documentation.
+
+```yaml
+overlay: 1.1.0
+info: { title: Required pet properties, version: "1" }
+actions:
+  - target: $.components.schemas.Pet
+    update: { required: [id, name] }
+```
+
+This appends to an existing `required` list. To replace the list, first remove
+`$.components.schemas.Pet.required`, then update its parent with the new list.
+
+### Allow additional keys
+
+Set `additionalProperties: true` on the intended object schemas, including empty object
+schemas. The TypeScript generator emits an index signature with `unknown` values.
+
+```yaml
+overlay: 1.1.0
+info: { title: Open object schemas, version: "1" }
+actions:
+  - target: $.components.schemas.Pet
+    update: { additionalProperties: true }
+  - target: $.components.schemas.Metadata
+    update: { additionalProperties: true }
+```
+
+Preserve existing schema-valued `additionalProperties` constraints when they should still
+apply. To replace a schema-valued constraint with `true`, remove the `additionalProperties`
+property first, then update its parent; object and boolean values cannot merge.
+
+### Remove deprecated members
+
+Use a filter to remove properties or parameters marked `deprecated: true`, and remove
+individual operations by their path and method:
+
+```yaml
+overlay: 1.1.0
+info: { title: Public pet API, version: "1" }
+actions:
+  - target: $.components.schemas.Pet.properties[?@.deprecated == true]
+    remove: true
+  - target: $.components.schemas.Pet.required[?@ == 'legacy']
+    remove: true
+  - target: $.paths['/pets/{id}'].get.parameters[?@.deprecated == true]
+    remove: true
+  - target: $.paths['/pets/{id}'].delete
+    remove: true
+```
+
+Here `legacy` is a deprecated property listed in `Pet.required`. Remove each corresponding
+`required` entry when removing a property. Filters inspect the selected object, not the target
+of a `$ref`; handle referenced deprecated members explicitly. When removing a component,
+repair or remove references to it as well.
+
+### Declare path parameters
+
+Add a required parameter declaration for each placeholder in a path template. This example
+adds `id` to the path item's parameters, making it available to all operations on that path:
+
+```yaml
+overlay: 1.1.0
+info: { title: Pet path parameters, version: "1" }
+actions:
+  - target: $.paths['/pets/{id}']
+    update:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+```
+
+Parameter arrays append on update, so add declarations only for parameters that are missing.
+
 ## Schemas and errors
 
 The public API exports `applyOverlay`, `OverlayError`, and the Effect schemas `Overlay`,

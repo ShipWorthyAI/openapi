@@ -3,7 +3,7 @@
 Generate TypeScript types from OpenAPI 3.0 and 3.1 documents. The package is a generator plugin
 for the `@shipworthy/*` OpenAPI toolchain. It takes a parsed document (`ParsedService` from
 `@shipworthy/openapi-transformer`) and returns TypeScript AST nodes for `paths`, `webhooks`,
-`components`, `$defs`, and `operations`. It emits types only and adds no runtime code. Use it to
+`components`, `$defs`, and `operations`. The output includes an `ApiPaths` enum for route values. Use it to
 get compile-time types for an API, either directly or through the `openapi generate typescript`
 CLI command from `@shipworthy/openapi-cli`. The output follows the shape of
 [openapi-typescript](https://github.com/openapi-ts/openapi-typescript), which this package is
@@ -95,7 +95,7 @@ const document = {
 
 const program = Effect.gen(function* () {
   const model = yield* decode(document);
-  const nodes = yield* typescript.generate(model, { alphabetize: true });
+  const nodes = yield* typescript.generate(model, {});
   // Print each top-level declaration separately so they are separated by blank lines.
   return nodes.map((node) => astToString([node])).join("\n");
 });
@@ -170,6 +170,10 @@ export interface operations {
     };
   };
 }
+
+export enum ApiPaths {
+  getPet = "/pets/{id}",
+}
 ```
 
 ## CLI: `openapi generate typescript`
@@ -190,12 +194,10 @@ Every other flag maps to a [plugin option](#options) with the same name in kebab
 flags are booleans:
 
 `--enum`, `--enum-values`, `--conditional-enums`, `--dedupe-enums`, `--export-type` (`-t`),
-`--immutable`, `--additional-properties`, `--empty-objects-unknown`, `--default-non-nullable`
-(on by default; turn it off with `--default-non-nullable=false` or `--no-default-non-nullable`),
-`--properties-required-by-default`, `--array-length`, `--path-params-as-types`, `--alphabetize`,
-`--exclude-deprecated`, `--root-types`, `--root-types-no-schema-prefix`,
-`--root-types-keep-casing`, `--make-paths-enum`, `--read-write-markers`,
-`--generate-path-params`.
+`--array-length`, `--root-types`, `--read-write-markers`.
+
+Array-length inference is enabled by default. Disable it with `--array-length=false` or
+`--no-array-length`. The other generation flags default to `false`.
 
 The CLI formats the output with `formatTypeScript` and adds a header:
 
@@ -220,12 +222,9 @@ cat openapi.json | openapi generate typescript > schema.ts
 # Fail CI when the committed types are out of date
 openapi generate typescript ./openapi.yaml -o ./src/api/schema.ts --check
 
-# Readonly types, root-level aliases, and real enums
-openapi generate typescript ./openapi.yaml -o schema.ts --immutable --root-types --enum
+# Root-level component and operation aliases, and real enums
+openapi generate typescript ./openapi.yaml -o schema.ts --root-types --enum
 ```
-
-The CLI warns if you pass `--root-types-no-schema-prefix` or `--root-types-keep-casing` without
-`--root-types`.
 
 ## API
 
@@ -246,15 +245,17 @@ This is the generator plugin. `Generator` comes from `@shipworthy/openapi-genera
 
 - `model`: the decoded document.
 - `options`: an object of [plugin options](#options). Missing booleans take their defaults.
-  The object is validated, so a value of the wrong type (for example `{ alphabetize: "yes" }`)
-  fails with a `TypegenError` whose message names the key (`Expected boolean at ["alphabetize"]`).
+  The object is validated, so a value of the wrong type (for example `{ arrayLength: "yes" }`)
+  fails with a `TypegenError` whose message names the key (`Expected boolean at ["arrayLength"]`).
+  Unknown options also fail with `TypegenError`.
 - Returns an `Effect` that succeeds with the top-level declarations in this order:
   1. The `$Read`/`$Write` helper types, if `readWriteMarkers` is set.
   2. The `inject` code, if `inject` is set.
   3. `paths`, `webhooks`, `components`, `$defs`, and any root type aliases (`rootTypes`).
   4. `operations` and any enums created by `enum`/`enumValues`, in the order they were
      generated. In practice, enums from component schemas come after `operations`.
-  5. The `ApiPaths` enum, if `makePathsEnum` is set.
+  5. The `ApiPaths` enum.
+  6. Root-level operation aliases when `rootTypes` is enabled.
 - Fails with `TypegenError` if the options are invalid, if a `$ref` is not a JSON Pointer, or if
   a `transform`, `postTransform`, or `transformProperty` hook throws. A hook's error message
   becomes the `TypegenError` message.
@@ -386,37 +387,67 @@ API. Do not assume that a `ts.*` member not listed here exists.
 You can pass these to `typescript.generate(model, options)`, through `pluginOptions` in
 `@shipworthy/openapi-generator`, or, for the boolean options, as CLI flags.
 
-Hook options (`transform`, `postTransform`, and `transformProperty`) must be functions when supplied. Invalid hook values fail with `TypegenError`; omitted or `undefined` hooks use the default behavior.
+Unknown option keys fail with `TypegenError`. Hook options (`transform`, `postTransform`, and `transformProperty`) must be functions when supplied. Invalid hook values fail with `TypegenError`; omitted or `undefined` hooks use the default behavior.
 
-| Option                        | Type     | Default | Effect                                                                                                                                                                                     |
-| ----------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `additionalProperties`        | boolean  | `false` | Treat every object as if it had `additionalProperties: true`. This adds `& { [key: string]: unknown }`.                                                                                    |
-| `alphabetize`                 | boolean  | `false` | Sort object keys alphabetically.                                                                                                                                                           |
-| `arrayLength`                 | boolean  | `false` | Generate tuples from `minItems` / `maxItems`.                                                                                                                                              |
-| `emptyObjectsUnknown`         | boolean  | `false` | Generate `unknown` instead of `Record<string, never>` for objects with no properties.                                                                                                      |
-| `defaultNonNullable`          | boolean  | `true`  | Treat properties that have a `default` as required (`n: number` instead of `n?: number`).                                                                                                  |
-| `excludeDeprecated`           | boolean  | `false` | Leave out deprecated operations and fields. For example, a deprecated `get` is printed as `get?: never`.                                                                                   |
-| `immutable`                   | boolean  | `false` | Add `readonly` to properties and arrays.                                                                                                                                                   |
-| `exportType`                  | boolean  | `false` | Export the top-level roots as `export type X = {...}` instead of `export interface X {...}`.                                                                                               |
-| `enum`                        | boolean  | `false` | Export TypeScript `enum`s (for example `export enum PetTag { dog = "dog", cat = "cat" }`) instead of union types.                                                                          |
-| `enumValues`                  | boolean  | `false` | Export enum values as arrays.                                                                                                                                                              |
-| `conditionalEnums`            | boolean  | `false` | Generate TypeScript enums only when `x-enum-*` metadata is present.                                                                                                                        |
-| `dedupeEnums`                 | boolean  | `false` | Remove duplicate enum types when `enum` is set.                                                                                                                                            |
-| `pathParamsAsTypes`           | boolean  | `false` | Key `paths` by template literal types, such as ``[path: `/pets/${number}`]``.                                                                                                              |
-| `propertiesRequiredByDefault` | boolean  | `false` | Treat every object as if `required` listed all of its properties.                                                                                                                          |
-| `rootTypes`                   | boolean  | `false` | Also export root-level aliases, for example `export type SchemaPet = components["schemas"]["Pet"]`, `ResponseNotFound`, and `ParameterLimit`.                                              |
-| `rootTypesNoSchemaPrefix`     | boolean  | `false` | Leave out the `Schema` prefix on root schema aliases. Requires `rootTypes`.                                                                                                                |
-| `rootTypesKeepCasing`         | boolean  | `false` | Keep the original casing of root type names. Requires `rootTypes`.                                                                                                                         |
-| `makePathsEnum`               | boolean  | `false` | Add `export enum ApiPaths`. Each member is named after the `operationId`, or after the method and path when there is no `operationId` (`listPets = "/pets"`, `DeletePets = "/pets/{id}"`). |
-| `generatePathParams`          | boolean  | `false` | Add `path` parameters taken from the path template (as `string`) even when the document does not declare them.                                                                             |
-| `readWriteMarkers`            | boolean  | `false` | Wrap `readOnly`/`writeOnly` properties in `$Read<T>`/`$Write<T>` and prepend the `$Read`, `$Write`, `Readable`, and `Writable` helper types.                                               |
-| `silent`                      | boolean  | `false` | Suppress warnings, such as those for unresolved `$ref`s.                                                                                                                                   |
-| `inject`                      | string   | none    | TypeScript source to insert at the top of the output.                                                                                                                                      |
-| `transform`                   | function | none    | `(schemaObject, options: TransformNodeOptions) => ts.TypeNode \| TransformObject \| undefined`. Replaces the type generated for a schema. Return `undefined` to keep the default.          |
-| `postTransform`               | function | none    | `(type: ts.TypeNode, options: TransformNodeOptions) => ts.TypeNode \| undefined`. Modifies each generated schema type.                                                                     |
-| `transformProperty`           | function | none    | `(property: ts.PropertySignature, schemaObject, options: TransformNodeOptions) => ts.PropertySignature \| undefined`. Modifies each object property signature.                             |
+| Option              | Type     | Default | Effect                                                                                                                                                                            |
+| ------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `arrayLength`       | boolean  | `true`  | Generate tuples from `minItems` / `maxItems`.                                                                                                                                     |
+| `exportType`        | boolean  | `false` | Export the top-level roots as `export type X = {...}` instead of `export interface X {...}`.                                                                                      |
+| `enum`              | boolean  | `false` | Export TypeScript `enum`s (for example `export enum PetTag { dog = "dog", cat = "cat" }`) instead of union types.                                                                 |
+| `enumValues`        | boolean  | `false` | Export enum values as arrays.                                                                                                                                                     |
+| `conditionalEnums`  | boolean  | `false` | Generate TypeScript enums only when `x-enum-*` metadata is present.                                                                                                               |
+| `dedupeEnums`       | boolean  | `false` | Remove duplicate enum types when `enum` is set.                                                                                                                                   |
+| `rootTypes`         | boolean  | `false` | Also export root-level aliases, for example `export type Pet = components["schemas"]["Pet"]`, `ListPets = operations["listPets"]`, `ResponseNotFound`, and `ParameterLimit`.      |
+| `readWriteMarkers`  | boolean  | `false` | Wrap `readOnly`/`writeOnly` properties in `$Read<T>`/`$Write<T>` and prepend the `$Read`, `$Write`, `Readable`, and `Writable` helper types.                                      |
+| `silent`            | boolean  | `false` | Suppress warnings, such as those for unresolved `$ref`s.                                                                                                                          |
+| `inject`            | string   | none    | TypeScript source to insert at the top of the output.                                                                                                                             |
+| `transform`         | function | none    | `(schemaObject, options: TransformNodeOptions) => ts.TypeNode \| TransformObject \| undefined`. Replaces the type generated for a schema. Return `undefined` to keep the default. |
+| `postTransform`     | function | none    | `(type: ts.TypeNode, options: TransformNodeOptions) => ts.TypeNode \| undefined`. Modifies each generated schema type.                                                            |
+| `transformProperty` | function | none    | `(property: ts.PropertySignature, schemaObject, options: TransformNodeOptions) => ts.PropertySignature \| undefined`. Modifies each object property signature.                    |
 
 To load relative files, pass `cwd` to `generate` from `@shipworthy/openapi-generator`.
+
+### Root type aliases
+
+Enable `rootTypes` to export aliases alongside the indexed `components` and `operations` types:
+
+```ts
+export type Pet = components["schemas"]["Pet"];
+export type ResponseNotFound = components["responses"]["NotFound"];
+export type ListPets = operations["listPets"];
+export type GetHTTP = operations["getHTTP"];
+```
+
+Schema aliases use PascalCase names without a prefix. Other component aliases use a category
+prefix, such as `Response` or `Parameter`. Operation aliases uppercase the first character of
+the operation ID, preserving the remaining casing; characters invalid in identifiers become
+underscores. Colliding aliases receive a numeric suffix such as `_2`.
+
+`ApiPaths` is always exported, with one member per path operation. Members use the operation ID
+when present, or a name derived from the HTTP method and path:
+
+```ts
+export enum ApiPaths {
+  listPets = "/pets",
+  DeletePets = "/pets/{id}",
+}
+```
+
+### Schema changes through overlays
+
+Use [`@shipworthy/overlay`](../openapi-overlay/README.md) to change the document before
+TypeScript generation. The generator uses explicit `required` lists; a property's `default`
+does not make it required. Deprecated members remain in the output, and missing path parameter
+declarations are not inferred from URL templates.
+
+See the [overlay examples](../openapi-overlay/README.md#preparing-a-document-for-generation)
+for requiring properties, allowing additional keys, removing deprecated members, and declaring
+path parameters.
+
+```sh
+openapi overlay openapi.yaml --overlay types.overlay.yaml -o types.openapi.json
+openapi generate typescript types.openapi.json -o schema.ts
+```
 
 ### Hook example
 
@@ -472,7 +503,7 @@ const program = generate({
   specifier: "@shipworthy/openapi-typescript",
   exportName: "typescript",
   source: new URL("./openapi.yaml", import.meta.url), // or a URL string, or a document object
-  pluginOptions: { immutable: true },
+  pluginOptions: { rootTypes: true },
 }).pipe(
   Effect.map((nodes) => (nodes as ts.Node[]).map((node) => astToString([node])).join("\n")),
   Effect.provideService(ModuleLoader, { load: (specifier) => import(specifier) }),
@@ -558,8 +589,10 @@ in place of `NodeServices` on Bun) and
   stdout when there is no `-o`.
 - Output roots: `paths`, `webhooks`, `components`, `$defs`, and `operations`. Use them as
   `components["schemas"]["X"]` and `operations["id"]["responses"][200]["content"]["application/json"]`.
-- Every option defaults to `false` except `defaultNonNullable`, which defaults to `true`. Options
-  are validated, and invalid values fail with `TypegenError`.
+- `arrayLength` defaults to `true`; the other boolean options default to `false`. Options are
+  validated, and invalid values or unknown keys fail with `TypegenError`.
+- `ApiPaths` is always generated. With `rootTypes`, schema aliases have no prefix and operation
+  aliases capitalize the first character of the operation ID.
 - Raw 3.1 objects: `decode` and then `typescript.generate`. Files, URLs, 3.0 documents, or
   external `$ref`s: `generate` from `@shipworthy/openapi-generator` or the CLI.
 - Do not pass a raw OpenAPI document to `typescript.generate`.

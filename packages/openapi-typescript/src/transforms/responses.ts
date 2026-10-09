@@ -1,17 +1,10 @@
 import type { ParsedOperationResponse } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.ts";
+import type { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
-import {
-  addJSDocComment,
-  annotationsOf,
-  NEVER,
-  refType,
-  tsModifiers,
-  tsPropertyIndex,
-} from "../lib/ts.ts";
-import { createRef, getEntries } from "../lib/utils.ts";
+import { addJSDocComment, annotationsOf, NEVER, refType, tsPropertyIndex } from "../lib/ts.ts";
+import { createRef } from "../lib/utils.ts";
 import { transformResponse } from "./response.ts";
 
 /**
@@ -22,14 +15,13 @@ export const transformResponses = Effect.fnUntraced(function* (
   responses: readonly ParsedOperationResponse[],
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const ctx = yield* TypegenContext;
   const byCode = Object.fromEntries(responses.map((response) => [response.code, response]));
 
   const type = yield* Effect.forEach(
-    getEntries(byCode, ctx),
+    Record.toEntries(byCode),
     Effect.fnUntraced(function* ([code, response]) {
       const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(code),
         /* questionToken */ undefined,
         /* type          */ response.reference

@@ -144,11 +144,11 @@ describe("transformOperation", () => {
     }),
   );
 
-  it.effect("adds undeclared path parameters with generatePathParams", () =>
+  it.effect("does not infer undeclared parameters from the path template", () =>
     Effect.gen(function* () {
-      expect(yield* operationType({ get: {} }, { generatePathParams: true })).toContain(
-        "path: {\n      id: string;\n    };",
-      );
+      const printed = yield* operationType({ get: {} });
+      expect(printed).toContain("path?: never;");
+      expect(printed).not.toContain("id: string;");
     }),
   );
 });

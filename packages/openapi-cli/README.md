@@ -241,32 +241,33 @@ openapi generate typescript ./openapi.yaml -o ./schema.ts --check   # CI drift c
 | `--output`, `-o` | file path   | stdout  | Output file. Parent directories are created. Writes to stdout when omitted.                                                                                                           |
 | `--check`        | boolean     | `false` | Writes nothing. Compares the generated output with the existing `--output` file and exits `1` with `Generated types are not up-to-date!` when they differ. Use it together with `-o`. |
 
-Type-generation flags. All are boolean and default to `false` unless noted:
+Type-generation flags. All are boolean and default to `false` except `--array-length`, which
+defaults to `true`:
 
-| Flag                               | Description                                                                                                                                           |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--enum`                           | Export true TS enums instead of unions.                                                                                                               |
-| `--enum-values`                    | Export enum values as arrays.                                                                                                                         |
-| `--conditional-enums`              | Only generate true TS enums when enum metadata is available.                                                                                          |
-| `--dedupe-enums`                   | Dedupe enum types when `--enum` is set.                                                                                                               |
-| `--export-type`, `-t`              | Export top-level type aliases instead of interfaces.                                                                                                  |
-| `--immutable`                      | Generate `readonly` types.                                                                                                                            |
-| `--additional-properties`          | Treat schema objects as if `additionalProperties: true` is set.                                                                                       |
-| `--empty-objects-unknown`          | Generate `unknown` instead of `Record<string, never>` for empty objects.                                                                              |
-| `--default-non-nullable`           | **Default `true`.** Properties that have a `default` become required. Turn it off with `--default-non-nullable=false` or `--no-default-non-nullable`. |
-| `--properties-required-by-default` | Treat schema objects as if `required` lists every property.                                                                                           |
-| `--array-length`                   | Generate tuples using array `minItems` / `maxItems`.                                                                                                  |
-| `--path-params-as-types`           | Convert paths to template literal types.                                                                                                              |
-| `--alphabetize`                    | Sort object keys alphabetically.                                                                                                                      |
-| `--exclude-deprecated`             | Exclude deprecated types.                                                                                                                             |
-| `--root-types`                     | Export schema types at the root level.                                                                                                                |
-| `--root-types-no-schema-prefix`    | Do not add a `Schema` prefix to root types. Requires `--root-types`; without it, prints a warning and has no effect.                                  |
-| `--root-types-keep-casing`         | Keep the casing of root types. Requires `--root-types`; without it, prints a warning and has no effect.                                               |
-| `--make-paths-enum`                | Generate an `ApiPaths` enum for all paths.                                                                                                            |
-| `--read-write-markers`             | Generate `$Read`/`$Write` markers for `readOnly`/`writeOnly` properties.                                                                              |
-| `--generate-path-params`           | Generate path params from the path template even when the schema omits them.                                                                          |
+| Flag                   | Description                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--enum`               | Export true TS enums instead of unions.                                                                                                                       |
+| `--enum-values`        | Export enum values as arrays.                                                                                                                                 |
+| `--conditional-enums`  | Only generate true TS enums when enum metadata is available.                                                                                                  |
+| `--dedupe-enums`       | Dedupe enum types when `--enum` is set.                                                                                                                       |
+| `--export-type`, `-t`  | Export top-level type aliases instead of interfaces.                                                                                                          |
+| `--array-length`       | Generate tuples using array `minItems` / `maxItems`. Enabled by default; disable with `--array-length=false` or `--no-array-length`.                          |
+| `--root-types`         | Export component and operation aliases at the root level. Schema aliases have no prefix; operation aliases uppercase the first character of the operation ID. |
+| `--read-write-markers` | Generate `$Read`/`$Write` markers for `readOnly`/`writeOnly` properties.                                                                                      |
+
+The output always includes an `ApiPaths` enum with route values. Paths retain their literal
+OpenAPI templates, such as `/pets/{id}`.
 
 With `-o`, the command logs `<input> → <output> [<elapsed>]` when it finishes.
+
+Use an overlay before generation to require properties, allow additional keys, remove
+deprecated members, or declare path parameters. See the
+[overlay examples](../openapi-overlay/README.md#preparing-a-document-for-generation).
+
+```sh
+openapi overlay openapi.yaml --overlay types.overlay.yaml -o types.openapi.json
+openapi generate typescript types.openapi.json -o schema.ts
+```
 
 ### `openapi generate zod <input> -o <file>`
 
@@ -366,7 +367,7 @@ The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers
 
 - The command regenerates `types.ts` only if the file is missing or its stamp differs from the current one. A stamp changes when the schema contents or the `@shipworthy/openapi-typescript` version change. Otherwise the existing `types.ts` is left as is.
 - `--force` always regenerates it.
-- These commands always write `types.ts` with the default type flags. To use custom flags (`--enum`, `--immutable`, …), run `openapi generate typescript` yourself.
+- These commands always write `types.ts` with the default type flags. To use custom flags (`--enum`, `--root-types`, …), run `openapi generate typescript` yourself.
 - The main output (`client.ts`, the Zod file) is always overwritten.
 
 ## Programmatic use

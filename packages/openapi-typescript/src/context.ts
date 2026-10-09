@@ -20,30 +20,18 @@ function hook<F extends (...args: never[]) => unknown>() {
 
 /** The options the plugin accepts. See `OpenAPITSOptions` for what each one does. */
 const PluginOptions = Schema.Struct({
-  additionalProperties: flag(false),
-  alphabetize: flag(false),
-  arrayLength: flag(false),
-  emptyObjectsUnknown: flag(false),
-  defaultNonNullable: flag(true),
-  excludeDeprecated: flag(false),
+  arrayLength: flag(true),
   transform: hook<NonNullable<OpenAPITSOptions["transform"]>>(),
   postTransform: hook<NonNullable<OpenAPITSOptions["postTransform"]>>(),
   transformProperty: hook<NonNullable<OpenAPITSOptions["transformProperty"]>>(),
-  immutable: flag(false),
   silent: flag(false),
   exportType: flag(false),
   enum: flag(false),
   enumValues: flag(false),
   conditionalEnums: flag(false),
   dedupeEnums: flag(false),
-  pathParamsAsTypes: flag(false),
-  propertiesRequiredByDefault: flag(false),
   rootTypes: flag(false),
-  rootTypesNoSchemaPrefix: flag(false),
-  rootTypesKeepCasing: flag(false),
   inject: Schema.optionalKey(Schema.String),
-  makePathsEnum: flag(false),
-  generatePathParams: flag(false),
   readWriteMarkers: flag(false),
 });
 
@@ -54,7 +42,9 @@ export const makeTypegenContext = Effect.fnUntraced(function* (
 ): Effect.fn.Return<GlobalContext, TypegenError> {
   const { transform, postTransform, transformProperty, ...options } = yield* Schema.decodeEffect(
     PluginOptions,
-  )(raw).pipe(Effect.mapError((cause) => new TypegenError({ message: cause.message })));
+  )(raw, { onExcessProperty: "error" }).pipe(
+    Effect.mapError((cause) => new TypegenError({ message: cause.message })),
+  );
 
   return {
     ...options,

@@ -85,14 +85,6 @@ const run = Effect.fn("run")(function* (
     readonly check: boolean;
   } & TypeFlags,
 ) {
-  if (flags.rootTypesNoSchemaPrefix && !flags.rootTypes) {
-    yield* Console.warn("--root-types-no-schema-prefix has no effect without --root-types flag");
-  }
-
-  if (flags.rootTypesKeepCasing && !flags.rootTypes) {
-    yield* Console.warn("--root-types-keep-casing has no effect without --root-types flag");
-  }
-
   const output = Option.getOrUndefined(flags.output);
   const input = Option.getOrUndefined(flags.input);
   const started = yield* Clock.currentTimeMillis;

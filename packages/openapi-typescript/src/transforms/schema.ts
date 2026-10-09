@@ -1,5 +1,5 @@
 import type { ParsedSchema } from "@shipworthy/openapi-transformer";
-import { Effect, type JsonSchema, Predicate } from "effect";
+import { Array as Arr, Effect, type JsonSchema, Predicate, Record } from "effect";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
@@ -35,7 +35,7 @@ import {
   subschemaList,
   subschemaMap,
 } from "../lib/schema.ts";
-import { createDiscriminatorProperty, createRef, getEntries } from "../lib/utils.ts";
+import { createDiscriminatorProperty, createRef } from "../lib/utils.ts";
 import type { GlobalContext, TransformObject } from "../types.ts";
 
 type Transformed = Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext>;
@@ -343,10 +343,7 @@ const transformComposition = Effect.fnUntraced(function* (
 
   // When no type can be generated, fall back to unknown (or related variants)
   if (!finalType) {
-    finalType =
-      schema.type !== undefined
-        ? tsRecord(STRING, ctx.emptyObjectsUnknown ? UNKNOWN : NEVER)
-        : UNKNOWN;
+    finalType = schema.type !== undefined ? tsRecord(STRING, NEVER) : UNKNOWN;
   }
 
   return finalType;
@@ -430,10 +427,7 @@ const transformArray = Effect.fnUntraced(function* (
   } else if (items !== undefined) {
     const itemsType = yield* transformSchema(items, path);
 
-    itemType =
-      Predicate.isObject(items) && items.type === "array"
-        ? ts.factory.createArrayTypeNode(itemsType)
-        : itemsType;
+    itemType = itemsType;
   }
 
   const { minItems, maxItems } = schema;
@@ -445,22 +439,23 @@ const transformArray = Effect.fnUntraced(function* (
   const estimateCodeSize = typeof max !== "number" ? min : (max * (max + 1) - min * (min - 1)) / 2;
 
   // "30" is roughly where TS starts to struggle with tuple inference
-  if (ctx.arrayLength && (min !== 0 || max !== undefined) && estimateCodeSize < 30) {
+  if (
+    ctx.arrayLength &&
+    !prefixItems &&
+    (min !== 0 || max !== undefined) &&
+    estimateCodeSize < 30
+  ) {
     if (min === max) {
       return tsUnion([ts.factory.createTupleTypeNode(Array.from({ length: min }, () => itemType))]);
     }
 
     if (max !== undefined && max > 0) {
       // a union of every tuple length from min to max
-      const members: ts.TypeNode[] = [];
-
-      for (let length = min; length <= max; length++) {
-        members.push(
-          ts.factory.createTupleTypeNode(Array.from({ length: length - min }, () => itemType)),
-        );
-      }
-
-      return tsUnion(members);
+      return tsUnion(
+        Arr.map(Arr.range(min, max), (length) =>
+          ts.factory.createTupleTypeNode(Array.from({ length }, () => itemType)),
+        ),
+      );
     }
 
     // without maxItems, a tuple of `min` items and a rest element
@@ -470,15 +465,7 @@ const transformArray = Effect.fnUntraced(function* (
     ]);
   }
 
-  // wrap itemType in array type, but only if not a tuple or array already
-  const finalType =
-    ts.isTupleTypeNode(itemType) || ts.isArrayTypeNode(itemType)
-      ? itemType
-      : ts.factory.createArrayTypeNode(itemType);
-
-  return ctx.immutable
-    ? ts.factory.createTypeOperatorNode(ts.SyntaxKind.ReadonlyKeyword, finalType)
-    : finalType;
+  return prefixItems ? itemType : ts.factory.createArrayTypeNode(itemType);
 });
 
 /** A schema without its allOf/anyOf/oneOf. */
@@ -549,9 +536,7 @@ const transformCore = Effect.fnUntraced(function* (
       : ctx.discriminators.objects[path];
 
     if (discriminator) {
-      coreObjectType.unshift(
-        createDiscriminatorProperty(discriminator, { path, readonly: ctx.immutable }),
-      );
+      coreObjectType.unshift(createDiscriminatorProperty(discriminator, { path }));
     }
   }
 
@@ -567,11 +552,11 @@ const transformCore = Effect.fnUntraced(function* (
     return coreObjectType.length ? ts.factory.createTypeLiteralNode(coreObjectType) : undefined;
   }
 
-  const propertyTypes = yield* Effect.forEach(getEntries(properties, ctx), ([key, value]) =>
+  const propertyTypes = yield* Effect.forEach(Record.toEntries(properties), ([key, value]) =>
     transformProperty(schema, key, value, path),
   );
 
-  coreObjectType.push(...propertyTypes.filter(Predicate.isNotUndefined));
+  coreObjectType.push(...propertyTypes);
 
   if (Object.keys($defs).length) {
     const defKeys = yield* Effect.forEach(
@@ -590,7 +575,7 @@ const transformCore = Effect.fnUntraced(function* (
 
         let property = ts.factory.createPropertySignature(
           /* modifiers     */ tsModifiers({
-            readonly: ctx.immutable || (!ctx.readWriteMarkers && readOnly),
+            readonly: !ctx.readWriteMarkers && readOnly,
           }),
           /* name          */ tsPropertyIndex(key),
           /* questionToken */ undefined,
@@ -631,14 +616,13 @@ const transformCore = Effect.fnUntraced(function* (
 
   if (
     additionalProperties === true ||
-    (Predicate.isObject(additionalProperties) && additionalKeys === 0) ||
-    (!additionalProperties && ctx.additionalProperties)
+    (Predicate.isObject(additionalProperties) && additionalKeys === 0)
   ) {
     stringIndexTypes.push(UNKNOWN);
   }
 
   const patternTypes = yield* Effect.forEach(
-    getEntries(subschemaMap(schema.patternProperties) ?? {}, ctx),
+    Record.toEntries(subschemaMap(schema.patternProperties) ?? {}),
     ([, value]) => transformSchema(value, path),
   );
 
@@ -652,7 +636,7 @@ const transformCore = Effect.fnUntraced(function* (
     ...(coreObjectType.length ? [ts.factory.createTypeLiteralNode(coreObjectType)] : []),
     ts.factory.createTypeLiteralNode([
       ts.factory.createIndexSignature(
-        /* modifiers  */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers  */ undefined,
         /* parameters */ [
           ts.factory.createParameterDeclaration(
             /* modifiers      */ undefined,
@@ -668,39 +652,20 @@ const transformCore = Effect.fnUntraced(function* (
   ]);
 });
 
-/** One entry of `properties`, or `undefined` when `excludeDeprecated` drops it. */
+/** One entry of `properties`. */
 const transformProperty = Effect.fnUntraced(function* (
   schema: JsonSchema.JsonSchema,
   key: string,
   value: ParsedSchema,
   path: string,
-): Effect.fn.Return<ts.PropertySignature | undefined, TypegenError, TypegenContext> {
+): Effect.fn.Return<ts.PropertySignature, TypegenError, TypegenContext> {
   const ctx = yield* TypegenContext;
   const propertyPath = createRef([path, key]);
   const object = Predicate.isObject(value) ? value : undefined;
   const $ref = Predicate.isString(object?.$ref) ? object.$ref : undefined;
   const readOnly = object?.readOnly === true;
   const writeOnly = object?.writeOnly === true;
-  const hasDefault = object?.default !== undefined;
-
-  if (ctx.excludeDeprecated) {
-    const resolved = $ref !== undefined ? resolveSchema(ctx, $ref) : object;
-    if (resolved?.deprecated) return undefined;
-  }
-
-  // a property with a default is always present, except in parameters and request bodies
-  const requiredKeys = stringList(schema.required);
-
-  const required =
-    requiredKeys?.includes(key) ||
-    (requiredKeys === undefined && ctx.propertiesRequiredByDefault) ||
-    (hasDefault &&
-      ctx.defaultNonNullable &&
-      !path.includes("parameters") &&
-      !path.includes("requestBody") &&
-      !path.includes("requestBodies"));
-
-  let optional = required ? undefined : QUESTION_TOKEN;
+  let optional = stringList(schema.required)?.includes(key) ? undefined : QUESTION_TOKEN;
 
   let type =
     $ref !== undefined ? yield* refType($ref) : yield* transformSchema(value, propertyPath);
@@ -720,7 +685,7 @@ const transformProperty = Effect.fnUntraced(function* (
 
   let property = ts.factory.createPropertySignature(
     /* modifiers     */ tsModifiers({
-      readonly: ctx.immutable || (!ctx.readWriteMarkers && readOnly),
+      readonly: !ctx.readWriteMarkers && readOnly,
     }),
     /* name          */ tsPropertyIndex(key),
     /* questionToken */ optional,

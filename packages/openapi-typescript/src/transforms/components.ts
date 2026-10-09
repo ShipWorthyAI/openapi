@@ -1,5 +1,5 @@
 import type { ParsedComponents, ParsedSchema } from "@shipworthy/openapi-transformer";
-import { Effect, Predicate, String } from "effect";
+import { Effect, Predicate, String, Record } from "effect";
 import { performance } from "node:perf_hooks";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
@@ -8,12 +8,13 @@ import {
   addJSDocComment,
   annotationsOf,
   NEVER,
+  oapiRef,
   QUESTION_TOKEN,
   refType,
   tsModifiers,
   tsPropertyIndex,
 } from "../lib/ts.ts";
-import { createRef, debug, getEntries } from "../lib/utils.ts";
+import { createRef, debug } from "../lib/utils.ts";
 import { transformHeader } from "./header.ts";
 import { transformParameter } from "./parameter.ts";
 import { transformPathItem } from "./path-item.ts";
@@ -33,7 +34,7 @@ type ComponentKey =
  * True for a schema that `--enum` turns into a TypeScript enum. `--root-types` skips these so the
  * enum is not exported twice.
  */
-export function isEnumSchema(schema: unknown): boolean {
+function isEnumSchema(schema: unknown): boolean {
   return (
     Predicate.isObject(schema) &&
     Array.isArray(schema.enum) &&
@@ -43,7 +44,7 @@ export function isEnumSchema(schema: unknown): boolean {
   );
 }
 
-export function singularizeComponentKey(key: ComponentKey): string {
+function singularizeComponentKey(key: ComponentKey): string {
   // requestBodies is the only irregular plural
   return key === "requestBodies" ? "requestBody" : key.slice(0, -1);
 }
@@ -105,7 +106,7 @@ function transformGroup<A>(
     const componentT = performance.now();
 
     const items = yield* Effect.forEach(
-      getEntries(nodes, ctx),
+      Record.toEntries(nodes),
       Effect.fnUntraced(function* ([name, node]) {
         const { type, questionToken, doc } = yield* transform(
           node,
@@ -113,7 +114,7 @@ function transformGroup<A>(
         );
 
         const property = ts.factory.createPropertySignature(
-          /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+          /* modifiers     */ undefined,
           /* name          */ tsPropertyIndex(name),
           /* questionToken */ questionToken ? QUESTION_TOKEN : undefined,
           /* type          */ type,
@@ -123,23 +124,20 @@ function transformGroup<A>(
 
         // with --enum, an enum schema is already exported as a TypeScript enum
         if (ctx.rootTypes && !(ctx.enum && key === "schemas" && isEnumSchema(node))) {
-          const componentKey = String.pascalCase(singularizeComponentKey(key));
-
-          const componentName =
-            ctx.rootTypesKeepCasing && key === "schemas" ? name : String.pascalCase(name);
-
-          let aliasName = `${componentKey}${componentName}`;
+          const prefix = key === "schemas" ? "" : String.pascalCase(singularizeComponentKey(key));
+          const baseName = `${prefix}${String.pascalCase(name)}`;
+          let aliasName = baseName;
 
           // Add counter suffix (e.g. "_2") if conflict in name
-          for (let counter = 2; rootTypeAliases[aliasName] !== undefined; counter++) {
-            aliasName = `${componentKey}${componentName}_${counter}`;
+          for (
+            let counter = 2;
+            aliasName === "ApiPaths" || rootTypeAliases[aliasName] !== undefined;
+            counter++
+          ) {
+            aliasName = `${baseName}_${counter}`;
           }
 
-          const ref = ts.factory.createTypeReferenceNode(`components['${key}']['${name}']`);
-
-          if (ctx.rootTypesNoSchemaPrefix && key === "schemas") {
-            aliasName = aliasName.replace(componentKey, "");
-          }
+          const ref = oapiRef(createRef(["components", key, name]));
 
           rootTypeAliases[aliasName] = ts.factory.createTypeAliasDeclaration(
             /* modifiers      */ tsModifiers({ export: true }),

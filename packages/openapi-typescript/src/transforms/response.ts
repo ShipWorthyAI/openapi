@@ -1,7 +1,7 @@
 import type { ParsedResponse } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.ts";
+import type { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
 import {
   addJSDocComment,
@@ -10,11 +10,10 @@ import {
   QUESTION_TOKEN,
   refType,
   STRING,
-  tsModifiers,
   tsPropertyIndex,
   UNKNOWN,
 } from "../lib/ts.ts";
-import { createRef, getEntries } from "../lib/utils.ts";
+import { createRef } from "../lib/utils.ts";
 import { transformHeader } from "./header.ts";
 import { transformMediaType } from "./media-type.ts";
 
@@ -26,14 +25,13 @@ export const transformResponse = Effect.fnUntraced(function* (
   response: ParsedResponse,
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const ctx = yield* TypegenContext;
   const declared = Object.fromEntries(response.headers.map((header) => [header.name, header]));
 
   const headers: ts.TypeElement[] = yield* Effect.forEach(
-    getEntries(declared, ctx),
+    Record.toEntries(declared),
     Effect.fnUntraced(function* ([name, header]) {
       const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(name),
         // a referenced header has always printed as required
         /* questionToken */ header.reference || header.required ? undefined : QUESTION_TOKEN,
@@ -50,7 +48,7 @@ export const transformResponse = Effect.fnUntraced(function* (
   // allow additional unknown headers
   headers.push(
     ts.factory.createIndexSignature(
-      /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+      /* modifiers     */ undefined,
       /* parameters */ [
         ts.factory.createParameterDeclaration(
           /* modifiers      */ undefined,
@@ -67,10 +65,10 @@ export const transformResponse = Effect.fnUntraced(function* (
   const contents = Object.fromEntries(response.contents.map((media) => [media.mediaType, media]));
 
   const content = yield* Effect.forEach(
-    getEntries(contents, ctx),
+    Record.toEntries(contents),
     Effect.fnUntraced(function* ([mediaType, media]) {
       const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(mediaType),
         /* questionToken */ undefined,
         /* type          */ yield* transformMediaType(

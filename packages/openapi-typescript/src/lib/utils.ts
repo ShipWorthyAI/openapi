@@ -135,29 +135,6 @@ export function formatTime(t: number) {
   return t;
 }
 
-/** Call Object.entries() and optionally sort */
-export function getEntries<T>(
-  obj: ArrayLike<T> | Record<string, T>,
-  options?: {
-    alphabetize?: boolean;
-    excludeDeprecated?: boolean;
-  },
-) {
-  let entries = Object.entries(obj);
-
-  if (options?.alphabetize) {
-    entries.sort(([a], [b]) => a.localeCompare(b, "en-us", { numeric: true }));
-  }
-
-  if (options?.excludeDeprecated) {
-    entries = entries.filter(
-      ([, v]) => !(v && typeof v === "object" && "deprecated" in v && v.deprecated),
-    );
-  }
-
-  return entries;
-}
-
 /** Follow a local `$ref` through a parsed model. Its components, `$defs`, and path maps keep the document's keys. */
 export function resolveRef<T = unknown>(
   model: unknown,

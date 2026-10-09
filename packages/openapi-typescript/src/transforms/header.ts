@@ -1,16 +1,10 @@
 import type { ParsedHeader } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import ts from "#compiler";
-import { TypegenContext } from "../context.ts";
+import type { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
-import {
-  addJSDocComment,
-  annotationsOf,
-  tsModifiers,
-  tsPropertyIndex,
-  UNKNOWN,
-} from "../lib/ts.ts";
-import { createRef, getEntries } from "../lib/utils.ts";
+import { addJSDocComment, annotationsOf, tsPropertyIndex, UNKNOWN } from "../lib/ts.ts";
+import { createRef } from "../lib/utils.ts";
 import { transformMediaType } from "./media-type.ts";
 import { transformSchema } from "./schema.ts";
 
@@ -22,8 +16,6 @@ export const transformHeader = Effect.fnUntraced(function* (
   header: ParsedHeader,
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const ctx = yield* TypegenContext;
-
   if (header.schema !== undefined) {
     return yield* transformSchema(header.schema, path);
   }
@@ -35,10 +27,10 @@ export const transformHeader = Effect.fnUntraced(function* (
   const contents = Object.fromEntries(header.contents.map((media) => [media.mediaType, media]));
 
   const type = yield* Effect.forEach(
-    getEntries(contents, ctx),
+    Record.toEntries(contents),
     Effect.fnUntraced(function* ([mediaType, media]) {
       const property = ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(mediaType),
         /* questionToken */ undefined,
         /* type          */ yield* transformMediaType(media, createRef([path, mediaType])),

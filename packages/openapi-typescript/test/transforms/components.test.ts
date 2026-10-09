@@ -73,13 +73,13 @@ describe("transformComponents", () => {
         rootTypes: true,
       });
 
-      expect(printed).toContain("export type SchemaPet = components['schemas']['Pet'];");
+      expect(printed).toContain('export type Pet = components["schemas"]["Pet"];');
 
       expect(printed).toContain(
-        "export type ResponseNotFound = components['responses']['NotFound'];",
+        'export type ResponseNotFound = components["responses"]["NotFound"];',
       );
 
-      expect(printed).toContain("export type ParameterLimit = components['parameters']['Limit'];");
+      expect(printed).toContain('export type ParameterLimit = components["parameters"]["Limit"];');
     }),
   );
 });

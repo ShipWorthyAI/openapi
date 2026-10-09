@@ -75,19 +75,19 @@ describe("transformPaths", () => {
       }),
   );
 
-  it.effect("leaves deprecated operations out with excludeDeprecated", () =>
+  it.effect("keeps deprecated operations declared in the document", () =>
     Effect.gen(function* () {
       const model = document({
         paths: { "/old": { get: { deprecated: true, responses: ok } } },
       });
 
-      expect(
-        yield* print(model, transformPaths(model.paths), { excludeDeprecated: true }),
-      ).toContain("get?: never;");
+      const printed = yield* print(model, transformPaths(model.paths));
+      expect(printed).toContain("get: {");
+      expect(printed).toContain("@deprecated");
     }),
   );
 
-  it.effect("prints template literal keys with pathParamsAsTypes", () =>
+  it.effect("keeps path templates as literal keys", () =>
     Effect.gen(function* () {
       const model = document({
         paths: {
@@ -100,9 +100,9 @@ describe("transformPaths", () => {
         },
       });
 
-      expect(
-        yield* print(model, transformPaths(model.paths), { pathParamsAsTypes: true }),
-      ).toContain("[path: `/pets/${number}`]: {");
+      const printed = yield* print(model, transformPaths(model.paths));
+      expect(printed).toContain('"/pets/{id}": {');
+      expect(printed).not.toContain("[path:");
     }),
   );
 });

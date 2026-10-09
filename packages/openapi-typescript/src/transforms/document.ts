@@ -1,11 +1,19 @@
 import type { ParsedService } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Array, Effect, pipe, Predicate, Record, Result, String } from "effect";
 import { performance } from "node:perf_hooks";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
-import { NEVER, STRING, stringToAST, tsModifiers, tsPropertyIndex, tsRecord } from "../lib/ts.ts";
-import { createRef, debug, getEntries } from "../lib/utils.ts";
+import {
+  NEVER,
+  oapiRef,
+  STRING,
+  stringToAST,
+  tsModifiers,
+  tsPropertyIndex,
+  tsRecord,
+} from "../lib/ts.ts";
+import { createRef, debug } from "../lib/utils.ts";
 import { transformApiPaths } from "./api-paths.ts";
 import { transformComponents } from "./components.ts";
 import { transformPaths } from "./paths.ts";
@@ -20,17 +28,64 @@ export type Readable<T> = T extends $Write<any> ? never : T extends $Read<infer 
 export type Writable<T> = T extends $Read<any> ? never : T extends $Write<infer U> ? Writable<U> : T extends (infer E)[] ? Writable<E>[] : T extends object ? { [K in keyof T as NonNullable<T[K]> extends $Read<any> ? never : K]: Writable<T[K]> } & { [K in keyof T as NonNullable<T[K]> extends $Read<any> ? K : never]?: never } : T;
 `;
 
+/** Root aliases for the operations that were emitted, including webhooks and shared path items. */
+function operationRootTypes(declarations: readonly ts.Node[]): ts.TypeAliasDeclaration[] {
+  const names = new Set([
+    "ApiPaths",
+    ...Array.filterMap(declarations, (node) =>
+      Predicate.hasProperty(node, "name") &&
+      Predicate.hasProperty(node.name, "text") &&
+      Predicate.isString(node.name.text)
+        ? Result.succeed(node.name.text)
+        : Result.fail(undefined),
+    ),
+  ]);
+
+  return pipe(
+    declarations,
+    Array.filter(ts.isInterfaceDeclaration),
+    Array.filter((node) => node.name.text === "operations"),
+    Array.flatMap((node) => Array.filter(node.members, ts.isPropertySignature)),
+    Array.filterMap((property) => {
+      if (
+        !Predicate.hasProperty(property.name, "text") ||
+        !Predicate.isString(property.name.text)
+      ) {
+        return Result.fail(undefined);
+      }
+
+      const operationId = property.name.text;
+      const capitalized = String.capitalize(operationId).replace(/[^a-zA-Z\d_$]/g, "_");
+      const baseName = /^\d/.test(capitalized) ? `_${capitalized}` : capitalized;
+      let aliasName = baseName;
+
+      for (let counter = 2; names.has(aliasName); counter++) {
+        aliasName = `${baseName}_${counter}`;
+      }
+
+      names.add(aliasName);
+
+      return Result.succeed(
+        ts.factory.createTypeAliasDeclaration(
+          /* modifiers      */ tsModifiers({ export: true }),
+          /* name           */ aliasName,
+          /* typeParameters */ undefined,
+          /* type           */ oapiRef(createRef(["operations", operationId])),
+        ),
+      );
+    }),
+  );
+}
+
 /** The root `$defs`, keyed by name. */
 const transformDefs = Effect.fnUntraced(function* (
   $defs: ParsedService["$defs"],
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const ctx = yield* TypegenContext;
-
   const members = yield* Effect.forEach(
-    getEntries($defs, ctx),
+    Record.toEntries($defs),
     Effect.fnUntraced(function* ([name, schema]) {
       return ts.factory.createPropertySignature(
-        /* modifiers     */ tsModifiers({ readonly: ctx.immutable }),
+        /* modifiers     */ undefined,
         /* name          */ tsPropertyIndex(name),
         /* questionToken */ undefined,
         /* type          */ yield* transformSchema(schema, createRef(["$defs", name])),
@@ -134,8 +189,10 @@ export const transformDocument = Effect.fnUntraced(function* (
     );
   }
 
-  if (ctx.makePathsEnum) {
-    type.push(yield* transformApiPaths(model.paths));
+  type.push(yield* transformApiPaths(model.paths));
+
+  if (ctx.rootTypes) {
+    type.push(...operationRootTypes(type));
   }
 
   return type;
