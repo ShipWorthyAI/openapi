@@ -7,9 +7,6 @@ The API is built on [Effect](https://effect.website) 4. `generate` returns an `E
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-generator effect @effect/platform-node
-pnpm add @shipworthy/openapi-generator effect @effect/platform-node
-yarn add @shipworthy/openapi-generator effect @effect/platform-node
 bun add @shipworthy/openapi-generator effect @effect/platform-node
 ```
 

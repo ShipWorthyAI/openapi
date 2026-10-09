@@ -16,16 +16,13 @@ Use this package when you want a project to type-check with the same settings as
 Install it as a dev dependency. Install `typescript` too; the package declares no dependencies or peers and supplies no runtime code or Node.js engine requirement.
 
 ```sh
-npm install -D @shipworthy/typescript-config typescript
-pnpm add -D @shipworthy/typescript-config typescript
-yarn add -D @shipworthy/typescript-config typescript
 bun add -d @shipworthy/typescript-config typescript
 ```
 
 If you use `library.json`, also install Node.js types, because the preset sets `"types": ["node"]`:
 
 ```sh
-npm install --save-dev @types/node
+bun add -d @types/node
 ```
 
 ### TypeScript version

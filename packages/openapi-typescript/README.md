@@ -12,9 +12,6 @@ based on. `@shipworthy/openapi-tanstack-query` uses these types for its generate
 ## Installation
 
 ```sh
-npm install -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
-pnpm add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
-yarn add -D @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
 bun add -d @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
 ```
 
@@ -29,12 +26,12 @@ Requirements:
 | Runtime           | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed.                                                    |
 | Module format     | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                                                                               |
 | Entry points      | `.` and `./compiler`.                                                                                                                                                                                    |
-| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js (`npx @shipworthy/openapi-cli ...`) or Bun (`bunx --bun @shipworthy/openapi-cli ...`).                                               |
+| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).                                                                                   |
 | Dependencies      | `oxfmt` ^0.72.0 (used by `formatTypeScript`).                                                                                                                                                            |
 
 ## Quick start
 
-Run the `openapi` commands below in a package script, or use `npx @shipworthy/openapi-cli` (Node.js) or `bunx --bun @shipworthy/openapi-cli` (Bun) in place of `openapi`.
+Run the `openapi` commands below in a package script, or use `bunx --bun @shipworthy/openapi-cli` in place of `openapi`.
 
 ### CLI
 

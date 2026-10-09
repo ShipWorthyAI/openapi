@@ -1,6 +1,6 @@
 # @shipworthy/openapi-transformer
 
-Turn a bundled OpenAPI 3.1 document into `ParsedService`, a flat HTTP model of the API that code generators can read without walking the raw document. It lists every operation with its method and path. Each operation gets a `request` that merges path-level and operation-level parameters, grouped by location. Responses are keyed by status `code`, and servers and security are resolved through inheritance. Local `$ref`s are resolved, and each resolved node keeps its Reference Object in `reference`. The shape follows Stoplight's `IHttpService` / `IHttpOperation`.
+Turn a bundled OpenAPI 3.1 document into `ParsedService`, a flat HTTP model of the API that code generators can read without walking the raw document. It lists every operation with its method and path. Each operation gets a `request` that merges path-level and operation-level parameters, grouped by location. Responses are keyed by status `code`, and servers and security are resolved through inheritance. Local `$ref`s are resolved, and each resolved node keeps its Reference Object in `reference`.
 
 Use this package if you are writing a generator or another tool that consumes an OpenAPI description. Load and bundle the document with [`@shipworthy/openapi-parser`](../openapi-parser) first, then decode it here. The `ParsedService` type and the other `Parsed*` types are the model that the `@shipworthy/*` generator plugins (`openapi-typescript`, `openapi-zod`, `openapi-tanstack-query`, ...) receive. `@shipworthy/openapi-generator` runs parser, transformer, and plugin in that order. The `Generator` interface there declares `generate(model: ParsedService, options)`.
 
@@ -9,9 +9,6 @@ The package is built on [Effect](https://effect.website) 4. Every model type is 
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-transformer @shipworthy/openapi-parser effect @effect/platform-node
-pnpm add @shipworthy/openapi-transformer @shipworthy/openapi-parser effect @effect/platform-node
-yarn add @shipworthy/openapi-transformer @shipworthy/openapi-parser effect @effect/platform-node
 bun add @shipworthy/openapi-transformer @shipworthy/openapi-parser effect @effect/platform-node
 ```
 

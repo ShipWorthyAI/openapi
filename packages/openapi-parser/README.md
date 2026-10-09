@@ -7,9 +7,6 @@ The API is Effect-native. Every entry point is an `Effect` or an Effect `Schema`
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-parser effect @effect/platform-node
-pnpm add @shipworthy/openapi-parser effect @effect/platform-node
-yarn add @shipworthy/openapi-parser effect @effect/platform-node
 bun add @shipworthy/openapi-parser effect @effect/platform-node
 ```
 

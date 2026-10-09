@@ -16,16 +16,12 @@ utilities that work with TanStack's own `useQuery`.
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-react-query @tanstack/react-query react
-pnpm add @shipworthy/openapi-react-query @tanstack/react-query react
-yarn add @shipworthy/openapi-react-query @tanstack/react-query react
 bun add @shipworthy/openapi-react-query @tanstack/react-query react
 ```
 
 To generate types, also install the CLI, the TypeScript generator, and the generator's peers as dev dependencies:
 
 ```sh
-npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 typescript@^7
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 typescript@^7
 ```
 
@@ -36,7 +32,7 @@ bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 type
 | Dependency                   | `@shipworthy/openapi-fetch` (installed automatically)                                                                             |
 | Module format                | ESM only (`"type": "module"`). There is no CommonJS build.                                                                        |
 | Shipped files                | Compiled JavaScript and `.d.ts` declarations in `dist/` (`exports["."]` and the `react-native` field point to `./dist/index.js`). |
-| CLI runtime                  | The `openapi` binary runs on Node.js `>=22.19.0` (`npx @shipworthy/openapi-cli`) or Bun (`bunx --bun @shipworthy/openapi-cli`)    |
+| CLI runtime                  | The `openapi` binary runs on Node.js `>=22.19.0` or Bun (`bunx --bun @shipworthy/openapi-cli`)                                    |
 
 No TypeScript or TSX transpilation of `node_modules` is needed. The provider's JSX is compiled
 with the automatic runtime (`react/jsx-runtime`), so there is no `import React`. The package
@@ -48,7 +44,6 @@ React Native environment, or server runtime. The Node.js requirement above appli
 ### 1. Generate the `paths` type
 
 ```sh
-npx @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/api.ts
 bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/api.ts
 ```
 

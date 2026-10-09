@@ -37,8 +37,7 @@ export interface ParsedCallbackOperationSchema extends Schema.Struct<
 > {}
 
 /**
- * An operation of a callback. `key` is the callback's name and `path` its expression. As in
- * Stoplight's model, callback operations have no callbacks of their own.
+ * An operation of a callback. `key` is the callback's name and `path` its expression.
  */
 export const ParsedCallbackOperation: ParsedCallbackOperationSchema = Schema.Struct(
   parsedCallbackOperationFields,

@@ -11,22 +11,19 @@ pipeline bundles references and upgrades OpenAPI 3.0 documents to 3.1 before gen
 Install the CLI, the TypeScript generator, and its peer dependencies in your project:
 
 ```sh
-npm install -D @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 typescript@^7
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 typescript@^7
 ```
 
 Lint your API document and generate TypeScript types:
 
 ```sh
-npx @shipworthy/openapi-cli lint ./openapi.yaml
-npx @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/api.ts
+bunx --bun @shipworthy/openapi-cli lint ./openapi.yaml
+bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/api.ts
 ```
 
 The generated file exports `paths`, `components`, and `operations` types. Use them directly in
 your application, or with [`@shipworthy/openapi-fetch`](./packages/openapi-fetch/README.md) for
 typed HTTP requests.
-
-With Bun, use `bun add -d` to install the same packages and `bunx --bun @shipworthy/openapi-cli`
-to run the commands.
 
 The CLI requires Node.js **22.19.0 or later**, or Bun. Packages ship ESM JavaScript and TypeScript
 declarations. Install only the generators you need; see the
@@ -43,11 +40,11 @@ Each package's README includes installation instructions, examples, and API docu
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | [`@shipworthy/openapi-cli`](./packages/openapi-cli/README.md)                         | Bundle, lint, and generate code from the command line.                          |
 | [`@shipworthy/openapi-typescript`](./packages/openapi-typescript/README.md)           | Generate TypeScript types for paths, operations, and components.                |
-| [`@shipworthy/openapi-fetch`](./packages/openapi-fetch/README.md)                     | Make typed HTTP requests using generated `paths` types.                         |
-| [`@shipworthy/openapi-react-query`](./packages/openapi-react-query/README.md)         | Use path-based React hooks with an API client provider.                         |
-| [`@shipworthy/openapi-tanstack-query`](./packages/openapi-tanstack-query/README.md)   | Generate operation-based query options, keys, and mutations for TanStack Query. |
-| [`@shipworthy/openapi-zod`](./packages/openapi-zod/README.md)                         | Generate Zod 4 runtime validators.                                              |
 | [`@shipworthy/openapi-standard-schema`](./packages/openapi-standard-schema/README.md) | Generate Standard Schema validators backed by Effect Schema.                    |
+| [`@shipworthy/openapi-zod`](./packages/openapi-zod/README.md)                         | Generate Zod 4 runtime validators.                                              |
+| [`@shipworthy/openapi-tanstack-query`](./packages/openapi-tanstack-query/README.md)   | Generate operation-based query options, keys, and mutations for TanStack Query. |
+| [`@shipworthy/openapi-react-query`](./packages/openapi-react-query/README.md)         | Use path-based React hooks with an API client provider.                         |
+| [`@shipworthy/openapi-fetch`](./packages/openapi-fetch/README.md)                     | Make typed HTTP requests using generated `paths` types.                         |
 
 ### Programmatic tooling
 
@@ -68,8 +65,10 @@ release workflow.
 
 ## Acknowledgments
 
-The TypeScript generator, Fetch client, and supporting helpers are based on
-[openapi-typescript](https://github.com/openapi-ts/openapi-typescript).
+- [`@shipworthy/openapi-transformer`](./packages/openapi-transformer/README.md) was inspired by [@stoplightio/http-spec](https://github.com/stoplightio/http-spec).
+- [`@shipworthy/openapi-tanstack-query`](./packages/openapi-tanstack-query/README.md) was inspired by [@orpc/tanstack-query](https://github.com/middleapi/orpc).
+- [`@shipworthy/openapi-typescript`](./packages/openapi-typescript/README.md) was inspired by [openapi-typescript](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-typescript).
+- [`@shipworthy/openapi-fetch`](./packages/openapi-fetch/README.md) was inspired by [openapi-fetch](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-fetch).
 
 ## License
 

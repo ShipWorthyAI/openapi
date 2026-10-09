@@ -5,22 +5,19 @@ Generate [Zod 4](https://zod.dev) validators from an OpenAPI 3.1 document. Every
 ## Installation
 
 ```sh
-npm install -D @shipworthy/openapi-zod @shipworthy/openapi-cli effect@^4.0.0 typescript@^7
-pnpm add -D @shipworthy/openapi-zod @shipworthy/openapi-cli effect@^4.0.0 typescript@^7
-yarn add -D @shipworthy/openapi-zod @shipworthy/openapi-cli effect@^4.0.0 typescript@^7
 bun add -d @shipworthy/openapi-zod @shipworthy/openapi-cli effect@^4.0.0 typescript@^7
 ```
 
 The generator and generated file both import `zod`. It is a required peer dependency of this package, so install this exact version as your app's runtime dependency:
 
 ```sh
-npm install zod@4.6.5
+bun add zod@4.6.5
 ```
 
 Requirements:
 
 - **Zod 4.6.5.** The generated code calls `z.fromJSONSchema` and `z.compile`. `fromJSONSchema` is experimental in Zod, so the package pins `zod@4.6.5`. Use the same version in your app.
-- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js (`npx @shipworthy/openapi-cli ...`) or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
+- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
 - **Peer dependencies.** `effect` `^4.0.0`, installed by you so every package shares one Effect instance, and `zod` `4.6.5`, shared by the generator and your app. `@shipworthy/openapi-typescript` (a dependency) also needs `typescript` `^7.0.0` as a peer. npm 7+ installs peers automatically, but install all three explicitly as shown above.
 - **Installed dependencies.** The package installs `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@shipworthy/openapi-typescript`.
@@ -31,7 +28,7 @@ Install `@shipworthy/openapi-cli` only if you use the CLI. For programmatic exam
 
 ## Quick start
 
-Run the `openapi` commands below in a package script, or use `npx @shipworthy/openapi-cli` (Node.js) or `bunx --bun @shipworthy/openapi-cli` (Bun) in place of `openapi`.
+Run the `openapi` commands below in a package script, or use `bunx --bun @shipworthy/openapi-cli` in place of `openapi`.
 
 `openapi.json`:
 
@@ -81,8 +78,6 @@ Run the `openapi` commands below in a package script, or use `npx @shipworthy/op
 Generate:
 
 ```sh
-npx @shipworthy/openapi-cli generate zod ./openapi.json -o ./src/generated/hotels/zod-schema.ts
-# or
 bunx --bun @shipworthy/openapi-cli generate zod ./openapi.json -o ./src/generated/hotels/zod-schema.ts
 ```
 

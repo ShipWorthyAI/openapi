@@ -13,9 +13,6 @@ of calling this package.
 ## Installation
 
 ```sh
-npm install @shipworthy/openapi-validator effect@^4.0.0
-pnpm add @shipworthy/openapi-validator effect@^4.0.0
-yarn add @shipworthy/openapi-validator effect@^4.0.0
 bun add @shipworthy/openapi-validator effect@^4.0.0
 ```
 

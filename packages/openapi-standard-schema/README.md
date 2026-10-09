@@ -5,25 +5,19 @@ Generate [Standard Schema](https://standardschema.dev) validators from an OpenAP
 ## Installation
 
 ```sh
-npm install -D @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
-pnpm add -D @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
-yarn add -D @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
 bun add -d @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
 ```
 
 The generated file imports `effect`, and the package lists it as a peer dependency, so your app needs `effect` as a runtime dependency:
 
 ```sh
-npm install effect@^4.0.0
-pnpm add effect@^4.0.0
-yarn add effect@^4.0.0
 bun add effect@^4.0.0
 ```
 
 Requirements:
 
 - **Effect 4.** `effect` `^4.0.0` is a peer dependency, so every package shares one Effect instance. The generated code uses Effect 4 Schema APIs (`Schema.toStandardSchemaV1`, `Schema.StructWithRest`, `Schema.isPattern`, and others). Effect 3 will not run it.
-- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js (`npx @shipworthy/openapi-cli ...`) or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
+- **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
 - **Installed dependencies.** The package installs `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`.
 
@@ -33,7 +27,7 @@ Install `@shipworthy/openapi-cli` only if you use the CLI. For a direct call to 
 
 ## Quick start
 
-Run the `openapi` commands below in a package script, or use `npx @shipworthy/openapi-cli` (Node.js) or `bunx --bun @shipworthy/openapi-cli` (Bun) in place of `openapi`.
+Run the `openapi` commands below in a package script, or use `bunx --bun @shipworthy/openapi-cli` in place of `openapi`.
 
 `openapi.yaml`:
 

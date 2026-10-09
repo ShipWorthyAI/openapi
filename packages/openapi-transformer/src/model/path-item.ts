@@ -21,7 +21,7 @@ export interface ParsedPathItemSchema extends Schema.Struct<typeof parsedPathIte
 
 /**
  * A path item: the operations under one URL template, webhook, callback expression, or
- * `components.pathItems` entry. Stoplight flattens these away; generators that print per-path
+ * `components.pathItems` entry. Generators that print per-path
  * types need the path-level parameters and `reference`.
  */
 export const ParsedPathItem: ParsedPathItemSchema = Schema.Struct(parsedPathItemFields);

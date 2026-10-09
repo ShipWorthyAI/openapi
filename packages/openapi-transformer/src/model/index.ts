@@ -3,8 +3,8 @@
  * read this model, never the OpenAPI document. Each schema validates a model value, and its type
  * is the model type of the same name.
  *
- * The shape follows Stoplight's `IHttpService` / `IHttpOperation`: a service with flat operations,
- * a `request` per operation, responses keyed by `code`, and parameters with resolved styles.
+ * A service with flat operations, a `request` per operation,
+ * responses keyed by `code`, and parameters with resolved styles.
  *
  * - `id` is the JSON Pointer of the node's definition in the bundled document. A node reached
  *   through a `$ref` takes the id of its target, so shared components share an id.
