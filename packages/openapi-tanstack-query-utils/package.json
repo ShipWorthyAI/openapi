@@ -14,9 +14,7 @@
     "effect": "catalog:"
   },
   "devDependencies": {
-    "@effect/platform-node": "catalog:",
     "@shipworthy/openapi-generator": "workspace:*",
-    "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",

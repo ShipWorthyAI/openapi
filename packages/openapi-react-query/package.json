@@ -8,9 +8,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@shipworthy/openapi-fetch": "workspace:*",
-    "effect": "catalog:",
-    "typescript": "catalog:"
+    "@shipworthy/openapi-fetch": "workspace:*"
   },
   "devDependencies": {
     "@shipworthy/typescript-config": "workspace:*",

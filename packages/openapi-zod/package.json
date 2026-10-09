@@ -19,7 +19,6 @@
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
-    "@effect/vitest": "catalog:",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "vitest": "catalog:"
