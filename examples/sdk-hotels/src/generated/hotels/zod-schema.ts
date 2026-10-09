@@ -1150,10 +1150,7 @@ const definitions: Record<"Address" | "Booking" | "BookingGuest" | "BookingPolic
     "properties": {
       "url": {
         "type": "string",
-        "format": "uri",
-        "x-ogen-validate": {
-          "hotelsURI": true
-        }
+        "format": "uri"
       },
       "caption": {
         "type": "string"
@@ -1365,10 +1362,7 @@ const definitions: Record<"Address" | "Booking" | "BookingGuest" | "BookingPolic
     "properties": {
       "type": {
         "type": "string",
-        "format": "uri",
-        "x-ogen-validate": {
-          "hotelsURI": true
-        }
+        "format": "uri"
       },
       "title": {
         "type": "string"
@@ -1970,7 +1964,6 @@ export const Stay = z.compile(z.fromJSONSchema(definitions.Stay)) as z.ZodType<c
 export const TransactionStatus = z.compile(z.fromJSONSchema(definitions.TransactionStatus)) as z.ZodType<components["schemas"]["TransactionStatus"]>;
 
 export const getRatesRequestBody = z.compile(z.fromJSONSchema({
-  "x-go-type-name": "GetRatesRequest",
   "oneOf": [
     {
       "$ref": "#/$defs/GetRatesByHotelIds"
@@ -1998,8 +1991,7 @@ export const getRatesRequestBody = z.compile(z.fromJSONSchema({
             "place_id": false
           }
         }
-      ],
-      "x-ogen-name": "GetRatesByQuery"
+      ]
     }
   ],
   $defs: {

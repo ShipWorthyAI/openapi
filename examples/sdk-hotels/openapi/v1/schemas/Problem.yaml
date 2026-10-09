@@ -3,8 +3,6 @@ properties:
   type:
     type: string
     format: uri
-    x-ogen-validate:
-      hotelsURI: true
     default: about:blank
   title:
     type: string

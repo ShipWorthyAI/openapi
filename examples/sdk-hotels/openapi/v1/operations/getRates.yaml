@@ -8,7 +8,6 @@ requestBody:
   content:
     application/json:
       schema:
-        x-go-type-name: GetRatesRequest
         oneOf:
           - $ref: ../schemas/GetRatesByHotelIds.yaml
           - $ref: ../schemas/GetRatesByGeo.yaml
@@ -26,7 +25,6 @@ requestBody:
                         - market
                     - required:
                         - place_id
-            x-ogen-name: GetRatesByQuery
 responses:
   "200":
     description: Successful response.
