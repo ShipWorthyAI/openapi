@@ -1,5 +1,0 @@
-{
-  "extends": "@shipworthy/typescript-config/library.json",
-  "include": ["src", "test"],
-  "exclude": ["node_modules"]
-}

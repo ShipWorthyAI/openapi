@@ -9,7 +9,7 @@ import { fileHeader, generatorStamp } from "../../stamp";
 
 export const dependencies = ["typescript"] as const;
 
-const specifier = "@shipworthy/openapi-tanstack-query-utils/generator";
+const specifier = "@shipworthy/openapi-tanstack-query/generator";
 
 const run = Effect.fn("run")(function* (flags: {
   readonly input: URL;

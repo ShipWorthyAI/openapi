@@ -48,8 +48,17 @@ void test("CLI writes types and Zod validators", async () => {
   await writeFile(input, JSON.stringify(schema));
 
   try {
-    await exec("bun", ["run", cli, "generate", "zod", input, "-o", directory, "--name", "fixture"]);
-    const schemas = await readFile(resolve(directory, "fixture/schema.ts"), "utf8");
+    await exec("bun", [
+      "run",
+      cli,
+      "generate",
+      "zod",
+      input,
+      "-o",
+      resolve(directory, "fixture/zod-schema.ts"),
+    ]);
+
+    const schemas = await readFile(resolve(directory, "fixture/zod-schema.ts"), "utf8");
     const types = await readFile(resolve(directory, "fixture/types.ts"), "utf8");
 
     assert.match(
@@ -66,7 +75,7 @@ void test("CLI writes types and Zod validators", async () => {
     await writeFile(
       resolve(directory, "consumer.ts"),
       `
-      import { Item, createItemRequestBody } from "./fixture/schema";
+      import { Item, createItemRequestBody } from "./fixture/zod-schema";
       import type { components } from "./fixture/types";
       const item: components["schemas"]["Item"] = Item.parse({ name: "Hotel" });
       const body: { name: string } = createItemRequestBody.parse({ name: "Hotel" });

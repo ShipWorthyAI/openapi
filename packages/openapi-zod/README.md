@@ -3,7 +3,7 @@
 Generate Zod validators from an OpenAPI 3.1 document. Component schemas become named exports. Each JSON request body becomes `<operationId>RequestBody`. Shared JSON Schema stays in a module-local `definitions` object, and each validator includes only the `$defs` it references.
 
 ```sh
-openapi generate zod ./openapi.yaml -o ./src/generated --name hotels
+openapi generate zod ./openapi.yaml -o ./src/generated/hotels/zod-schema.ts
 ```
 
 That writes `hotels/schema.ts`. The command also runs `openapi generate typescript` for the same schema when `hotels/types.ts` is missing or was generated from a different input. Re-running the command overwrites `schema.ts` after generation succeeds.

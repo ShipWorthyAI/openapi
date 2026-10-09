@@ -4,7 +4,7 @@ import { Argument, CliError, Command, Flag } from "effect/cli";
 import { asCliError, schemaSource } from "../../../input";
 import { ensureDependencies } from "../../ensure";
 import { force } from "../../force";
-import { ClientName, writeGenerated } from "../../files";
+import { publish } from "../../publish";
 import { fileHeader, generatorStamp } from "../../stamp";
 
 export const dependencies = ["typescript"] as const;
@@ -14,15 +14,15 @@ const specifier = "@shipworthy/openapi-zod";
 const run = Effect.fn("run")(function* (flags: {
   readonly input: URL;
   readonly output: string;
-  readonly name: string;
   readonly force: boolean;
 }) {
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
+  const outputPath = path.resolve(flags.output);
 
   yield* ensureDependencies(dependencies, {
     source: flags.input,
-    directory: path.resolve(flags.output, flags.name),
+    directory: path.dirname(outputPath),
     started,
     force: flags.force,
   });
@@ -41,8 +41,13 @@ const run = Effect.fn("run")(function* (flags: {
 
   const header = fileHeader(yield* generatorStamp(specifier, flags.input));
 
-  yield* writeGenerated(flags.output, flags.name, {
-    "schema.ts": `${header}${decoded.success}`,
+  yield* publish({
+    result: `${header}${decoded.success}`,
+    outputPath,
+    check: false,
+    label: flags.input.href,
+    outputLabel: flags.output,
+    started,
   });
 }, Effect.mapError(asCliError));
 
@@ -55,11 +60,7 @@ export const zod = Command.make(
     ),
     output: Flag.String("output").pipe(
       Flag.withAlias("o"),
-      Flag.withDescription("Directory that will contain <name>/."),
-    ),
-    name: Flag.String("name").pipe(
-      Flag.withDescription("Client name. Used as the output directory."),
-      Flag.withSchema(ClientName),
+      Flag.withDescription("Output file. types.ts is written next to it."),
     ),
     force,
   },
@@ -69,8 +70,8 @@ export const zod = Command.make(
   Command.withShortDescription("Generate Zod validators"),
   Command.withExamples([
     {
-      command: "openapi generate zod ./openapi.yaml -o ./src/generated --name hotels",
-      description: "Write hotels/schema.ts",
+      command: "openapi generate zod ./openapi.yaml -o ./src/generated/hotels/zod-schema.ts",
+      description: "Write hotels/zod-schema.ts and hotels/types.ts",
     },
   ]),
 );

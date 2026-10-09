@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@shipworthy/openapi-standard-schema": "workspace:*",
-    "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+    "@shipworthy/openapi-tanstack-query": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
@@ -29,7 +29,7 @@
   },
   "peerDependencies": {
     "@shipworthy/openapi-standard-schema": "workspace:*",
-    "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+    "@shipworthy/openapi-tanstack-query": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*"
   },
@@ -37,7 +37,7 @@
     "@shipworthy/openapi-standard-schema": {
       "optional": true
     },
-    "@shipworthy/openapi-tanstack-query-utils": {
+    "@shipworthy/openapi-tanstack-query": {
       "optional": true
     },
     "@shipworthy/openapi-typescript": {

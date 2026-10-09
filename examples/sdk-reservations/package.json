@@ -6,17 +6,20 @@
   "react-native": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/generated/reservations/schema.ts"
+    "./zod-schema": "./src/generated/reservations/zod-schema.ts",
+    "./standard-schema": "./src/generated/reservations/standard-schema.ts"
   },
   "scripts": {
-    "generate": "openapi generate tanstack-query openapi.json -o src/generated --name reservations && openapi generate zod openapi.json -o src/generated --name reservations"
+    "generate": "openapi generate tanstack-query openapi.json -o src/generated --name reservations && openapi generate zod openapi.json -o src/generated/reservations/zod-schema.ts && openapi generate standard-schema openapi.json -o src/generated/reservations/standard-schema.ts"
   },
   "dependencies": {
-    "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+    "@shipworthy/openapi-tanstack-query": "workspace:*",
+    "effect": "catalog:",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@shipworthy/openapi-cli": "workspace:*",
+    "@shipworthy/openapi-standard-schema": "workspace:*",
     "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/openapi-zod": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",

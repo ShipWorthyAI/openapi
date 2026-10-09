@@ -20,11 +20,13 @@
       "name": "@shipworthy/example-sdk-core",
       "version": "0.0.0",
       "dependencies": {
-        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "@shipworthy/openapi-tanstack-query": "workspace:*",
+        "effect": "catalog:",
         "zod": "4.6.5",
       },
       "devDependencies": {
         "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-standard-schema": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
@@ -42,11 +44,13 @@
       "name": "@shipworthy/example-sdk-hotels",
       "version": "0.0.0",
       "dependencies": {
-        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "@shipworthy/openapi-tanstack-query": "workspace:*",
+        "effect": "catalog:",
         "zod": "4.6.5",
       },
       "devDependencies": {
         "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-standard-schema": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
@@ -63,11 +67,13 @@
       "name": "@shipworthy/example-sdk-reservations",
       "version": "0.0.0",
       "dependencies": {
-        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "@shipworthy/openapi-tanstack-query": "workspace:*",
+        "effect": "catalog:",
         "zod": "4.6.5",
       },
       "devDependencies": {
         "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-standard-schema": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
@@ -94,7 +100,7 @@
       },
       "devDependencies": {
         "@shipworthy/openapi-standard-schema": "workspace:*",
-        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "@shipworthy/openapi-tanstack-query": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/openapi-zod": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
@@ -103,13 +109,13 @@
       },
       "peerDependencies": {
         "@shipworthy/openapi-standard-schema": "workspace:*",
-        "@shipworthy/openapi-tanstack-query-utils": "workspace:*",
+        "@shipworthy/openapi-tanstack-query": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/openapi-zod": "workspace:*",
       },
       "optionalPeers": [
         "@shipworthy/openapi-standard-schema",
-        "@shipworthy/openapi-tanstack-query-utils",
+        "@shipworthy/openapi-tanstack-query",
         "@shipworthy/openapi-typescript",
         "@shipworthy/openapi-zod",
       ],
@@ -187,8 +193,8 @@
         "vitest": "catalog:",
       },
     },
-    "packages/openapi-tanstack-query-utils": {
-      "name": "@shipworthy/openapi-tanstack-query-utils",
+    "packages/openapi-tanstack-query": {
+      "name": "@shipworthy/openapi-tanstack-query",
       "version": "0.0.1",
       "dependencies": {
         "@shipworthy/openapi-fetch": "workspace:*",
@@ -594,7 +600,7 @@
 
     "@shipworthy/openapi-standard-schema": ["@shipworthy/openapi-standard-schema@workspace:packages/openapi-standard-schema"],
 
-    "@shipworthy/openapi-tanstack-query-utils": ["@shipworthy/openapi-tanstack-query-utils@workspace:packages/openapi-tanstack-query-utils"],
+    "@shipworthy/openapi-tanstack-query": ["@shipworthy/openapi-tanstack-query@workspace:packages/openapi-tanstack-query"],
 
     "@shipworthy/openapi-transformer": ["@shipworthy/openapi-transformer@workspace:packages/openapi-transformer"],
 

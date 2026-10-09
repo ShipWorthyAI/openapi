@@ -61,7 +61,7 @@ test("records each generator's version and the schema hash in the comment header
   expect(readFileSync(typesPath(), "utf8")).toContain("}\n\nexport type webhooks");
 
   expect(readFileSync(join(dir, "out/pets/client.ts"), "utf8")).toMatch(
-    header("@shipworthy/openapi-tanstack-query-utils"),
+    header("@shipworthy/openapi-tanstack-query"),
   );
 });
 
