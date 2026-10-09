@@ -251,21 +251,22 @@ Every failure surfaces as `Schema.SchemaError`, including broken syntax, an unsu
 
 `@shipworthy/openapi-parser/schemas/3.1` exports one Effect `Schema` per OpenAPI 3.1 object. The root entry point exports a TypeScript type of the same name for each schema (`export type *`).
 
-| Name                                                                                           | OpenAPI object                                                  |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `ParsedOpenApi`                                                                                | The OpenAPI document (`openapi` must match `3.1.x`)             |
-| `OpenApiInfo`, `OpenApiContact`, `OpenApiLicense`                                              | Info, Contact, License                                          |
-| `OpenApiServer`, `OpenApiServerVariable`                                                       | Server, Server Variable                                         |
-| `OpenApiPaths`, `OpenApiPathItem`, `OpenApiOperation`                                          | Paths, Path Item, Operation                                     |
-| `OpenApiParameter`, `OpenApiHeader`                                                            | Parameter, Header                                               |
-| `OpenApiRequestBody`, `OpenApiMediaType`, `OpenApiEncoding`                                    | Request Body, Media Type, Encoding                              |
-| `OpenApiResponses`, `OpenApiResponse`                                                          | Responses, Response                                             |
-| `OpenApiCallback`, `OpenApiLink`, `OpenApiExample`                                             | Callback, Link, Example                                         |
-| `OpenApiComponents`                                                                            | Components                                                      |
-| `OpenApiSchema`                                                                                | Schema Object: any JSON object or a boolean                     |
-| `OpenApiReference`                                                                             | Reference Object (`$ref`, optional `summary` and `description`) |
-| `OpenApiSecurityScheme`, `OpenApiSecurityRequirement`, `OpenApiOAuthFlows`, `OpenApiOAuthFlow` | Security objects                                                |
-| `OpenApiTag`, `OpenApiExternalDocs`                                                            | Tag, External Documentation                                     |
+| Name                                                                                           | OpenAPI object                                                       |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `ParsedOpenApi`                                                                                | The OpenAPI document (`openapi` must match `3.1.x`)                  |
+| `OpenApiInfo`, `OpenApiContact`, `OpenApiLicense`                                              | Info, Contact, License                                               |
+| `OpenApiServer`, `OpenApiServerVariable`                                                       | Server, Server Variable                                              |
+| `OpenApiPaths`, `OpenApiPathItem`, `OpenApiOperation`                                          | Paths, Path Item, Operation                                          |
+| `OpenApiHttpMethod`                                                                            | Lowercase operation keys; `.literals` provides their traversal order |
+| `OpenApiParameter`, `OpenApiHeader`                                                            | Parameter, Header                                                    |
+| `OpenApiRequestBody`, `OpenApiMediaType`, `OpenApiEncoding`                                    | Request Body, Media Type, Encoding                                   |
+| `OpenApiResponses`, `OpenApiResponse`                                                          | Responses, Response                                                  |
+| `OpenApiCallback`, `OpenApiLink`, `OpenApiExample`                                             | Callback, Link, Example                                              |
+| `OpenApiComponents`                                                                            | Components                                                           |
+| `OpenApiSchema`                                                                                | Schema Object: any JSON object or a boolean                          |
+| `OpenApiReference`                                                                             | Reference Object (`$ref`, optional `summary` and `description`)      |
+| `OpenApiSecurityScheme`, `OpenApiSecurityRequirement`, `OpenApiOAuthFlows`, `OpenApiOAuthFlow` | Security objects                                                     |
+| `OpenApiTag`, `OpenApiExternalDocs`                                                            | Tag, External Documentation                                          |
 
 ```ts
 import type { ParsedOpenApi, OpenApiOperation } from "@shipworthy/openapi-parser";

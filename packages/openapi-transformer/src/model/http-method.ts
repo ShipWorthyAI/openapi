@@ -1,16 +1,8 @@
 import { Schema } from "effect";
+import { OpenApiHttpMethod } from "@shipworthy/openapi-parser/schemas/3.1";
 
 /** Path item keys that hold operations, in the order operations are listed. */
-export const httpMethods = [
-  "get",
-  "put",
-  "post",
-  "delete",
-  "options",
-  "head",
-  "patch",
-  "trace",
-] as const;
+export const httpMethods = OpenApiHttpMethod.literals;
 
 export const HttpMethodName = Schema.Literals([
   "GET",

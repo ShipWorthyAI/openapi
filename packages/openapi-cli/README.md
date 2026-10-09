@@ -169,13 +169,15 @@ the declared `overlay` version selects validation and action behavior.
 ```sh
 openapi overlay openapi.yaml --overlay overlay.yaml -o bundled.openapi.json
 openapi overlay https://example.com/openapi.yaml --overlay https://example.com/public.overlay.yaml --output public.openapi.json
+openapi overlay openapi.yaml --overlay selected.overlay.yaml --remove-unused-components -o selected.openapi.json
 ```
 
-| Argument / flag  | Description                                                |
-| ---------------- | ---------------------------------------------------------- |
-| `<input>`        | Required OpenAPI JSON/YAML file or URL.                    |
-| `--overlay`      | Required Overlay JSON/YAML file or URL.                    |
-| `--output`, `-o` | Required output JSON file. Parent directories are created. |
+| Argument / flag              | Description                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `<input>`                    | Required OpenAPI JSON/YAML file or URL.                                                                               |
+| `--overlay`                  | Required Overlay JSON/YAML file or URL.                                                                               |
+| `--output`, `-o`             | Required output JSON file. Parent directories are created.                                                            |
+| `--remove-unused-components` | Optional; defaults to `false`. Remove paths without operations and unreachable components after applying all actions. |
 
 Actions run sequentially against the bundled document. Supports RFC 9535 JSONPath, recursive
 object updates, array concatenation/appending, primitive replacement, copying from a single
@@ -183,8 +185,16 @@ source node, and removal. A target matching no nodes has no effect. `extends` is
 `<input>` determines the document. The overlaid result is written directly without another
 bundling or validation pass.
 
-An existing output file is overwritten only after bundling and overlay application succeed.
-Loading, invalid overlay, incompatible merge, JSONPath, and write errors exit with code `1`.
+With `--remove-unused-components`, the result is validated as OpenAPI 3.1 and only components
+reachable from retained paths, webhooks, document-level security, and root `$defs` remain. References are
+followed transitively across all component categories, including recursive schemas,
+discriminator mappings and inheritance, and security scheme names. Empty component groups
+are removed. Pruning requires local JSON Pointer references; reachable external/anchor refs
+and `$dynamicRef` fail. Broken references and links to removed operation IDs also fail before
+writing output. See the overlay package's operation filtering example below.
+
+An existing output file is overwritten only after bundling, overlay application, and optional pruning succeed.
+Loading, invalid overlay, incompatible merge, JSONPath, pruning, and write errors exit with code `1`.
 Action errors include the one-based action number and target. See the
 [`@shipworthy/overlay` documentation](../openapi-overlay/README.md) for merge rules and errors.
 
@@ -414,7 +424,7 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 
 - Binary: `openapi` (compiled `dist/bin.js`). Runs on **Node.js `>=22.19.0`** or **Bun** (`bunx --bun @shipworthy/openapi-cli`). ESM only. OpenAPI 3.0 and 3.1 input (3.0 is upgraded), JSON or YAML, as a local path or URL. Swagger 2.0 is rejected.
 - Commands:
-  - `openapi overlay <input> --overlay <overlay> -o <output>`: bundles and upgrades first, then applies actions using the declared Overlay 1.0 or 1.1 version and writes JSON.
+  - `openapi overlay <input> --overlay <overlay> -o <output> [--remove-unused-components]`: bundles and upgrades first, then applies actions using the declared Overlay 1.0 or 1.1 version and writes JSON. The optional flag prunes paths without operations and unreachable components after overlaying.
   - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
   - `openapi generate typescript [<input>] [-o file] [--check] [type flags]`: reads stdin when `<input>` is omitted and writes stdout when `-o` is omitted.
   - `openapi generate zod <input> -o <file> [--force]`: also writes `types.ts` in the same directory.

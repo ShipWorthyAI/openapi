@@ -14,6 +14,39 @@ function failure(document: unknown, input: unknown) {
   return Effect.runPromise(applyOverlay(document, input).pipe(Effect.flip));
 }
 
+test.each([undefined, {}, { removeUnusedComponents: false }])(
+  "keeps pruning disabled for options %j",
+  async (options) => {
+    expect(
+      await Effect.runPromise(
+        applyOverlay({}, overlay({ target: "$", update: { kept: true } }), options),
+      ),
+    ).toEqual({ kept: true });
+  },
+);
+
+test.each([
+  null,
+  [],
+  { removeUnusedComponents: "true" },
+  { removeUnusedComponents: 1 },
+  { unknown: true },
+])("reports invalid options %j as OverlayError", async (options) => {
+  const document = { kept: true };
+
+  const error = await Effect.runPromise(
+    applyOverlay(
+      document,
+      overlay({ target: "$", update: { added: true } }),
+      options as never,
+    ).pipe(Effect.flip),
+  );
+
+  expect(error).toBeInstanceOf(OverlayError);
+  expect(error.message).toContain("Invalid options:");
+  expect(document).toEqual({ kept: true });
+});
+
 test("merges objects recursively, concatenates arrays, and replaces primitives", async () => {
   const document = {
     info: { title: "Pets", version: "1" },

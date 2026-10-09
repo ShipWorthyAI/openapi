@@ -1,8 +1,27 @@
-import { Effect, Predicate, Schema } from "effect";
+import { Effect, Option, Predicate, Schema } from "effect";
 import * as Yaml from "effect/encoding/Yaml";
 import { exec, type Path } from "jsonpath-rfc9535";
 import { OverlayError } from "./errors.ts";
+import { removeUnusedComponents } from "./prune.ts";
 import { Overlay, type OverlayAction } from "./schemas.ts";
+
+const applyOverlayOptions = Schema.Struct({
+  removeUnusedComponents: Schema.optionalKey(Schema.Boolean),
+});
+
+type ApplyOverlayOptions = typeof applyOverlayOptions.Type;
+
+function applyIfEnabled<E, R>(
+  enabled: boolean | undefined,
+  transform: (document: Schema.MutableJsonObject) => Effect.Effect<Schema.MutableJsonObject, E, R>,
+) {
+  return Effect.flatMap((document: Schema.MutableJsonObject) =>
+    Effect.suspend(() => transform(document)).pipe(
+      Effect.when(Effect.succeed(enabled === true)),
+      Effect.map(Option.getOrElse(() => document)),
+    ),
+  );
+}
 
 const parseInput = Effect.fnUntraced(function* (input: unknown, label: string) {
   if (typeof input !== "string") return input;
@@ -198,7 +217,16 @@ function applyAction(
 export const applyOverlay = Effect.fn("applyOverlay")(function* (
   document: unknown,
   overlay: unknown,
+  options: ApplyOverlayOptions = {},
 ): Effect.fn.Return<Schema.MutableJsonObject, OverlayError> {
+  const checkedOptions = yield* Schema.decodeEffect(applyOverlayOptions)(options, {
+    onExcessProperty: "error",
+  }).pipe(
+    Effect.mapError(
+      (cause) => new OverlayError({ message: `Invalid options: ${cause.message}`, cause }),
+    ),
+  );
+
   const source = yield* Schema.decodeUnknownEffect(Schema.JsonObject)(
     yield* parseInput(document, "document"),
   ).pipe(
@@ -234,5 +262,7 @@ export const applyOverlay = Effect.fn("applyOverlay")(function* (
     { discard: true },
   );
 
-  return result;
+  return yield* Effect.succeed(result).pipe(
+    applyIfEnabled(checkedOptions.removeUnusedComponents, removeUnusedComponents),
+  );
 });

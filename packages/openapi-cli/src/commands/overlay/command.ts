@@ -10,10 +10,12 @@ const run = Effect.fn("overlay")(function* ({
   input,
   overlay,
   output,
+  removeUnusedComponents,
 }: {
   readonly input: URL;
   readonly overlay: URL;
   readonly output: string;
+  readonly removeUnusedComponents: boolean;
 }) {
   const document = yield* bundleDocument(input);
   const fs = yield* FileSystem.FileSystem;
@@ -26,7 +28,7 @@ const run = Effect.fn("overlay")(function* ({
           Effect.flatMap((response) => response.text),
         );
 
-  const result = yield* applyOverlay(document, text);
+  const result = yield* applyOverlay(document, text, { removeUnusedComponents });
   const path = yield* Path.Path;
   const outputPath = path.resolve(output);
 
@@ -54,6 +56,12 @@ export const overlay = Command.make(
     output: Flag.String("output").pipe(
       Flag.withAlias("o"),
       Flag.withDescription("Output JSON file. Parent directories are created."),
+    ),
+    removeUnusedComponents: Flag.Boolean("remove-unused-components").pipe(
+      Flag.withDescription(
+        "Remove paths without operations and unreachable components after overlaying.",
+      ),
+      Flag.withDefault(false),
     ),
   },
   run,

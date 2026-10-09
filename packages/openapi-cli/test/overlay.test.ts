@@ -198,3 +198,151 @@ test("fails without writing output when input bundling or overlay loading fails"
 
   expect(existsSync(join(dir, "output.json"))).toBe(false);
 });
+
+function writeOperationFilter() {
+  writeFileSync(join(dir, "address.yaml"), "type: object\nproperties:\n  city: { type: string }\n");
+
+  writeFileSync(
+    join(dir, "pet.yaml"),
+    "type: object\nproperties:\n  address:\n    $ref: ./address.yaml\n  friend:\n    $ref: ./pet.yaml\n",
+  );
+
+  const paths = Object.fromEntries(
+    Array.from({ length: 100 }, (_, index) => [
+      `/pets/${index}`,
+      {
+        parameters: [{ $ref: "#/components/parameters/Tenant" }],
+        get: {
+          operationId: `getPet${index}`,
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: `#/components/schemas/${index === 0 ? "Pet" : `Unused${index}`}`,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    ]),
+  );
+
+  const schemas = Object.fromEntries(
+    Array.from({ length: 99 }, (_, index) => [`Unused${index + 1}`, { type: "string" }]),
+  );
+
+  writeFileSync(
+    join(dir, "openapi.json"),
+    JSON.stringify({
+      openapi: "3.0.3",
+      info: { title: "Pets", version: "1" },
+      paths,
+      security: [{ Auth: [] }],
+      components: {
+        schemas: { Pet: { $ref: "./pet.yaml" }, ...schemas },
+        parameters: {
+          Tenant: { name: "tenant", in: "query", schema: { type: "string" } },
+          Unused: { name: "unused", in: "query", schema: { type: "string" } },
+        },
+        responses: { Unused: { description: "unused" } },
+        securitySchemes: {
+          Auth: { type: "http", scheme: "bearer" },
+          Unused: { type: "http", scheme: "basic" },
+        },
+      },
+    }),
+  );
+
+  writeFileSync(
+    join(dir, "selected.overlay.yaml"),
+    `overlay: 1.1.0
+info: { title: Selected operations, version: '1' }
+actions:
+  - target: "$.paths.*[?(@.responses && !(@.operationId == 'getPet0'))]"
+    remove: true
+`,
+  );
+}
+
+test("operationId allowlist preserves unused components unless the flag is supplied", () => {
+  writeOperationFilter();
+  overlay("openapi.json", "--overlay", "selected.overlay.yaml", "-o", "default.json");
+  const result = JSON.parse(readFileSync(join(dir, "default.json"), "utf8"));
+  expect(result.paths["/pets/0"].get.operationId).toBe("getPet0");
+  expect(result.paths["/pets/1"].get).toBeUndefined();
+  expect(result.paths["/pets/1"].parameters).toHaveLength(1);
+  expect(result.components.schemas.Unused99).toEqual({ type: "string" });
+  expect(result.components.responses.Unused).toEqual({ description: "unused" });
+});
+
+test("--remove-unused-components keeps one of 100 operations and its bundled dependency closure", () => {
+  writeOperationFilter();
+  const before = readFileSync(join(dir, "openapi.json"), "utf8");
+
+  overlay(
+    "openapi.json",
+    "--overlay",
+    "selected.overlay.yaml",
+    "--remove-unused-components",
+    "-o",
+    "nested/selected.json",
+  );
+
+  const text = readFileSync(join(dir, "nested/selected.json"), "utf8");
+  const result = JSON.parse(text);
+  expect(result.openapi).toBe("3.1.0");
+  expect(Object.keys(result.paths)).toEqual(["/pets/0"]);
+  expect(result.paths["/pets/0"].get.operationId).toBe("getPet0");
+  expect(Object.keys(result.components.schemas).sort()).toEqual(["Pet", "address"]);
+
+  expect(result.components.schemas.Pet.properties.address).toEqual({
+    $ref: "#/components/schemas/address",
+  });
+
+  expect(result.components.schemas.Pet.properties.friend).toEqual({
+    $ref: "#/components/schemas/Pet",
+  });
+
+  expect(Object.keys(result.components.parameters)).toEqual(["Tenant"]);
+  expect(Object.keys(result.components.securitySchemes)).toEqual(["Auth"]);
+  expect(result.components.responses).toBeUndefined();
+  expect(text).not.toContain("./address.yaml");
+  expect(readFileSync(join(dir, "openapi.json"), "utf8")).toBe(before);
+});
+
+test("pruning failures preserve existing output", () => {
+  writeOperationFilter();
+
+  const actions = [
+    { target: "$.paths.*[?(@.responses && !(@.operationId == 'getPet0'))]", remove: true },
+    { target: "$.components.schemas.Pet", remove: true },
+  ];
+
+  writeFileSync(
+    join(dir, "broken.overlay.json"),
+    JSON.stringify({ overlay: "1.1.0", info: { title: "Broken", version: "1" }, actions }),
+  );
+
+  writeFileSync(join(dir, "selected.json"), "existing output");
+
+  expect(() =>
+    overlay(
+      "openapi.json",
+      "--overlay",
+      "broken.overlay.json",
+      "--remove-unused-components",
+      "-o",
+      "selected.json",
+    ),
+  ).toThrow(/Missing reference/);
+
+  expect(readFileSync(join(dir, "selected.json"), "utf8")).toBe("existing output");
+});
+
+test("--help documents opt-in pruning", () => {
+  expect(overlay("--help")).toContain("--remove-unused-components");
+});

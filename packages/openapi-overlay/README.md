@@ -37,15 +37,53 @@ const result = await Effect.runPromise(applyOverlay(document, overlay));
 // result.info.title is "Public Pets"; document is unchanged.
 ```
 
-`applyOverlay(document, overlay)` accepts either a parsed object or JSON/YAML text for each
-argument. It returns `Effect.Effect<Schema.MutableJsonObject, OverlayError>` without requiring
+`applyOverlay(document, overlay, options?)` accepts either a parsed object or JSON/YAML text for
+the document and overlay. Options are schema-validated: `removeUnusedComponents` is an optional
+boolean, and unknown options are rejected with `OverlayError`. The options type is inferred
+from its Effect Schema. It returns `Effect.Effect<Schema.MutableJsonObject, OverlayError>` without requiring
 services. Input documents must be JSON-compatible objects. Inputs are validated with Effect
 schemas and copied before applying actions; neither input is mutated, including on failure.
 
-The function applies overlays to the supplied document. It does not load files, fetch URLs,
-resolve references, or validate the resulting OpenAPI structure. `extends` is descriptive
+By default, the function applies overlays without validating the resulting OpenAPI structure.
+It does not load files or fetch URLs. `extends` is descriptive
 metadata; callers choose the document explicitly. To bundle and upgrade first, use
 `bundleDocument` from `@shipworthy/openapi-parser`, then pass the result to `applyOverlay`.
+
+### Filtering operations and removing unused components
+
+Use an Overlay removal action to select operations by `operationId`, then opt into pruning:
+
+```ts
+const selected = {
+  overlay: "1.1.0",
+  info: { title: "Selected operations", version: "1.0.0" },
+  actions: [
+    {
+      target:
+        "$.paths.*[?(@.responses && !(@.operationId == 'listPets' || @.operationId == 'getPet'))]",
+      remove: true,
+    },
+  ],
+};
+
+const result = await Effect.runPromise(
+  applyOverlay(document, selected, { removeUnusedComponents: true }),
+);
+```
+
+This selector identifies operations by their `responses` field. For operations without that
+field, use method-specific selectors. Pruning runs after all actions, removes paths without
+operations, and keeps the transitive component dependencies of remaining paths, webhooks,
+document-level security, and retained root `$defs`. It handles all component categories, recursive schemas,
+discriminator mappings and inheritance, and security scheme names. Example payloads,
+schema defaults, and extension values do not count as references. Empty component groups
+are removed; component extensions are preserved.
+
+Pruning requires a bundled OpenAPI 3.1 document with local JSON Pointer references. Bundle
+and upgrade with `bundleDocument` first; the CLI does this automatically. Reachable external
+or anchor references and `$dynamicRef` are rejected. Broken references or links to removed
+operation IDs fail with `OverlayError`. Neither input is mutated. Without the option,
+unused components and paths are retained and no OpenAPI validation is performed.
 
 ## Actions
 
@@ -115,6 +153,7 @@ Install `@shipworthy/openapi-cli` to bundle a local or remote OpenAPI document b
 
 ```sh
 openapi overlay openapi.yaml --overlay overlay.yaml -o bundled.openapi.json
+openapi overlay openapi.yaml --overlay selected.overlay.yaml --remove-unused-components -o selected.openapi.json
 ```
 
 The CLI resolves external references and upgrades OpenAPI 3.0 to 3.1, then applies the overlay

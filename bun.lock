@@ -157,6 +157,7 @@
       "name": "@shipworthy/overlay",
       "version": "0.0.1",
       "dependencies": {
+        "@shipworthy/openapi-parser": "workspace:*",
         "jsonpath-rfc9535": "1.3.0",
       },
       "devDependencies": {

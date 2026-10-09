@@ -1,10 +1,11 @@
 import { JsonSchema, Predicate } from "effect";
+import { OpenApiHttpMethod } from "../schemas/3.1/http-method.ts";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return Predicate.isObject(value) ? value : undefined;
 }
 
-const METHODS = new Set(["get", "put", "post", "delete", "options", "head", "patch", "trace"]);
+const METHODS: ReadonlySet<string> = new Set(OpenApiHttpMethod.literals);
 
 const SINGLE_KEYS = [
   "not",

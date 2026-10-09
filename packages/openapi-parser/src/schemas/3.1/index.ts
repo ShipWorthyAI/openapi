@@ -6,6 +6,7 @@ export { OpenApiEncoding } from "./encoding.ts";
 export { OpenApiExample } from "./example.ts";
 export { OpenApiExternalDocs } from "./external-docs.ts";
 export { OpenApiHeader } from "./header.ts";
+export { OpenApiHttpMethod } from "./http-method.ts";
 export { OpenApiInfo } from "./info.ts";
 export { OpenApiLicense } from "./license.ts";
 export { OpenApiLink } from "./link.ts";
