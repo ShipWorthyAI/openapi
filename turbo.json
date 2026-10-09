@@ -38,6 +38,12 @@
         "NPM_CONFIG_*",
         "npm_config_*"
       ]
+    },
+    "bundle": {
+      "cache": false
+    },
+    "generate": {
+      "cache": false
     }
   }
 }

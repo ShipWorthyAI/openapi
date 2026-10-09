@@ -10,6 +10,7 @@
     "./standard-schema": "./src/generated/hotels/standard-schema.ts"
   },
   "scripts": {
+    "bundle": "openapi bundle ./openapi.json ./bundled.openapi.json",
     "generate": "openapi generate tanstack-query openapi.json -o src/generated --name hotels && openapi generate zod openapi.json -o src/generated/hotels/zod-schema.ts && openapi generate standard-schema openapi.json -o src/generated/hotels/standard-schema.ts"
   },
   "dependencies": {

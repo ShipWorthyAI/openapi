@@ -40,7 +40,9 @@
     "prepare": "lefthook install && effect-tsgo patch --oxlint",
     "changeset": "changeset",
     "version-packages": "changeset version && bun install",
-    "release": "turbo run release --filter=@shipworthy/publisher"
+    "release": "turbo run release --filter=@shipworthy/publisher",
+    "examples:bundle": "turbo run bundle --filter='./examples/*'",
+    "examples:generate": "turbo run generate --filter='./examples/*'"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

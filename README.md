@@ -43,6 +43,17 @@ The parser preserves the distinction between omitted fields and explicit empty a
 - **`ParsedOpenApiFromString`:** Encoding produces the prepared document as JSON. It does not restore the original file layout or YAML formatting.
 - **`ParsedServiceFromParsedOpenApi`:** Encoding is forbidden; conversion to the HTTP meta model is one-way.
 
+## Examples
+
+Run these commands from the repository root to process all packages in `examples` with Turborepo:
+
+```sh
+bun run examples:bundle
+bun run examples:generate
+```
+
+Bundling writes each example's `bundled.openapi.json`. Generation updates its SDK files in `src/generated`. Both tasks run without caching so they use the current contracts and generator code.
+
 ## Releasing
 
 Versions and changelogs are managed with [Changesets](https://changesets.dev).

@@ -3,10 +3,11 @@
 Example SDK with Hotels types, operation-based TanStack Query utilities, and `getRates` request guards.
 
 ```sh
+bun run bundle
 bun run generate
 ```
 
-That writes `src/generated/hotels/client.ts`, `types.ts`, `zod-schema.ts`, and `standard-schema.ts`. `zod-schema.ts` holds Zod validators for each component schema and JSON request body, exported from `@shipworthy/example-sdk-hotels/zod-schema`. `standard-schema.ts` holds the same validators as Standard Schema objects, exported from `@shipworthy/example-sdk-hotels/standard-schema`.
+`bundle` writes `bundled.openapi.json`. `generate` writes `src/generated/hotels/client.ts`, `types.ts`, `zod-schema.ts`, and `standard-schema.ts`. `zod-schema.ts` holds Zod validators for each component schema and JSON request body, exported from `@shipworthy/example-sdk-hotels/zod-schema`. `standard-schema.ts` holds the same validators as Standard Schema objects, exported from `@shipworthy/example-sdk-hotels/standard-schema`.
 
 `openapi.json` contains the example Hotels API contract.
 
