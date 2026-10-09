@@ -29,7 +29,7 @@ Requirements:
 | Module format   | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                            |
 | Entry points    | `exports` points at TypeScript source files (`./src/index.ts`, `./src/compiler.ts`). Use Bun or another runtime or bundler that can load `.ts` files. |
 | CLI runtime     | The `openapi` binary from `@shipworthy/openapi-cli` runs on Bun (`#!/usr/bin/env bun`).                                                               |
-| Bundled deps    | `effect` 4.0.0, `oxfmt` ^0.71.0 (used by `formatTypeScript`), `change-case` ^5.4.4.                                                                   |
+| Bundled deps    | `effect` 4.0.0, `oxfmt` ^0.71.0 (used by `formatTypeScript`).                                                                                         |
 
 ## Quick start
 

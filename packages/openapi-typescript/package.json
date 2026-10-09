@@ -34,7 +34,6 @@
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
-    "change-case": "^5.4.4",
     "effect": "catalog:",
     "oxfmt": "catalog:",
     "typescript": "catalog:"

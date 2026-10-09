@@ -1,6 +1,5 @@
 import type { ParsedComponents, ParsedSchema } from "@shipworthy/openapi-transformer";
-import { Effect, Predicate } from "effect";
-import * as changeCase from "change-case";
+import { Effect, Predicate, String } from "effect";
 import { performance } from "node:perf_hooks";
 import ts from "#compiler";
 import { TypegenContext } from "../context.js";
@@ -124,10 +123,10 @@ function transformGroup<A>(
 
       // with --enum, an enum schema is already exported as a TypeScript enum
       if (ctx.rootTypes && !(ctx.enum && key === "schemas" && isEnumSchema(node))) {
-        const componentKey = changeCase.pascalCase(singularizeComponentKey(key));
+        const componentKey = String.pascalCase(singularizeComponentKey(key));
 
         const componentName =
-          ctx.rootTypesKeepCasing && key === "schemas" ? name : changeCase.pascalCase(name);
+          ctx.rootTypesKeepCasing && key === "schemas" ? name : String.pascalCase(name);
 
         let aliasName = `${componentKey}${componentName}`;
 
