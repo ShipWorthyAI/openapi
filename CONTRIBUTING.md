@@ -2,8 +2,8 @@
 
 ## Local setup
 
-Use **Bun 1.4.2** and **Node.js 24**, as configured in [mise.toml](./mise.toml). From a clone of
-the repository, install dependencies at the root:
+Use the tool versions configured in [mise.toml](./mise.toml). From a clone of the repository,
+install dependencies at the root:
 
 ```sh
 bun install --frozen-lockfile
