@@ -14,9 +14,6 @@ properties:
     type: string
     pattern: ^[1-9][0-9]*$
     description: Core project location ID
-    x-inkind:
-      opentable: "rid"
-      sevenrooms: "venue_id"
   provider:
     $ref: ./ReservationProvider.yaml
   status:
@@ -30,9 +27,6 @@ properties:
     type: string
     format: date-time
     description: The instant at which the hold expires.
-    x-inkind:
-      opentable: "expires_at"
-      sevenrooms: "data.hold_duration_sec"
   slot:
     $ref: ./ReservationSlot.yaml
   cash_back_percent:

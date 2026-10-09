@@ -8,31 +8,16 @@ properties:
   id:
     type: string
     minLength: 1
-    description: Opaque inKind seating option identifier with the seat_ prefix
-    x-inkind:
-      opentable: ["times_available[].availability_types[].dining_area[].id", "dining_area_id"]
-      sevenrooms:
-        - "data.availability[].times[].access_seating_area_id"
-        - "data.venue_seating_area_id"
-        - "access_seating_area_id"
+    description: Opaque seating option identifier with the seat_ prefix
   name:
     type: [string, "null"]
     description: The name of the seating
-    x-inkind:
-      opentable: "data.dining_areas[].name"
-      sevenrooms: "data.venue_seating_area_name"
   environment:
     type: [string, "null"]
     description: The environment of the seating
-    x-inkind:
-      opentable: ["times_available[].availability_types[].dining_area[].environment", "environment"]
   attributes:
     type: array
     maxItems: 1
     items:
       type: string
     description: Attributes of the selected seating option.
-    x-inkind:
-      opentable:
-        - "times_available[].availability_types[].dining_area[].attributes[]"
-        - "reservation_attribute"

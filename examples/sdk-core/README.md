@@ -1,6 +1,6 @@
 # @shipworthy/example-sdk-core
 
-Example modeled on inKind's `@inkind/sdk-core`: Core types, client, and operation-based TanStack Query utilities for the Reservations token exchange.
+Example SDK with Core types, a client, and operation-based TanStack Query utilities for the Reservations token exchange.
 
 ```sh
 bun run generate

@@ -20,9 +20,6 @@ parameters:
       items:
         type: string
         pattern: ^[1-9][0-9]*$
-      x-inkind:
-        opentable: "rid"
-        sevenrooms: "venue_id"
   - name: timestamp
     in: query
     schema:
@@ -30,9 +27,6 @@ parameters:
       description: Center of the availability interval. Defaults to the request time.
       format: date-time
       example: "2026-09-27T18:00:00-05:00"
-      x-inkind:
-        opentable: ["start_date_time", "backward_minutes"]
-        sevenrooms: ["date", "start_time"]
   - name: guests
     in: query
     schema:
@@ -41,9 +35,6 @@ parameters:
       minimum: 1
       maximum: 20
       default: 1
-      x-inkind:
-        opentable: "party_size"
-        sevenrooms: "party_size"
   - name: accept
     in: header
     schema:

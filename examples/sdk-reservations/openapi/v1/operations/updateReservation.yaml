@@ -39,15 +39,9 @@ requestBody:
             description: Number of guests in the party
             minimum: 1
             maximum: 20
-            x-inkind:
-              opentable: "party_size"
-              sevenrooms: "party_size"
           notes:
             type: string
             description: User written notes for the reservation
-            x-inkind:
-              opentable: "special_request"
-              sevenrooms: "notes"
 responses:
   "200":
     description: Modified reservation or newly confirmed replacement reservation

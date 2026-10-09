@@ -2,7 +2,7 @@
 # only `createReservationToken` from the full document.
 openapi: 3.0.1
 info:
-  title: inKind API V6
+  title: Core API V6
   version: v6
   description: Clean, performance-optimized API with standardized patterns
 components:
@@ -79,7 +79,7 @@ servers:
   - url: https://{defaultHost}
     variables:
       defaultHost:
-        default: app.staging.inkind-staging.com
+        default: app.staging.example.com
   - url: http://{defaultHost}
     variables:
       defaultHost:

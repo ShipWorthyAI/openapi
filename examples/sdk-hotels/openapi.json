@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "inKind Hotels API",
+    "title": "Hotels API",
     "version": "1.0.0",
     "description": "Unified API for Hotels and Bookings."
   },
@@ -44,7 +44,7 @@
                 "$ref": "#/components/schemas/Id"
               }
             },
-            "description": "Look up a batch of inKind hotel identifiers.",
+            "description": "Look up a batch of hotel identifiers.",
             "style": "form",
             "explode": true
           },
@@ -1753,7 +1753,7 @@
             "type": "object",
             "properties": {
               "hotel_ids": {
-                "description": "Look up a batch of inKind hotel identifiers.",
+                "description": "Look up a batch of hotel identifiers.",
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/Id"
@@ -2248,7 +2248,7 @@
         "type": "string",
         "minLength": 1,
         "pattern": "^[^,]*[^,\\s\\v\\p{Z}\\u0085][^,]*$",
-        "description": "Opaque inKind identifier. Must contain a non-whitespace character and must not contain commas. Clients must not interpret its encoding."
+        "description": "Opaque identifier. Must contain a non-whitespace character and must not contain commas. Clients must not interpret its encoding."
       },
       "Image": {
         "type": "object",
@@ -2370,7 +2370,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "Stable inKind policy category."
+            "description": "Stable policy category."
           },
           "name": {
             "type": "string"

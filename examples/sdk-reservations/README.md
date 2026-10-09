@@ -1,6 +1,6 @@
 # @shipworthy/example-sdk-reservations
 
-Example modeled on inKind's `@inkind/sdk-reservations`: Reservations types and operation-based TanStack Query utilities.
+Example SDK with Reservations types and operation-based TanStack Query utilities.
 
 ```sh
 bun run bundle
@@ -15,6 +15,6 @@ import {
   createReservationsApiQueryUtils,
 } from "@shipworthy/example-sdk-reservations";
 
-const client = createReservationsApiClient({ baseUrl: "http://reservations.inkind.localhost" });
+const client = createReservationsApiClient({ baseUrl: "http://reservations.localhost" });
 const reservationsApiQueryUtils = createReservationsApiQueryUtils(client);
 ```

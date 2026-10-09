@@ -20,20 +20,14 @@ requestBody:
             description: Opaque hold identifier with the hold_ prefix
           slot_id:
             type: string
-            description: Opaque inKind reservation slot identifier with the slot_ prefix
+            description: Opaque reservation slot identifier with the slot_ prefix
           project_location_id:
             type: string
             pattern: ^[1-9][0-9]*$
             description: Core project location ID
-            x-inkind:
-              opentable: "rid"
-              sevenrooms: "venue_id"
           notes:
             type: string
             description: User written notes for the reservation
-            x-inkind:
-              opentable: "special_request"
-              sevenrooms: "notes"
           payment_source_id:
             type: string
             minLength: 1

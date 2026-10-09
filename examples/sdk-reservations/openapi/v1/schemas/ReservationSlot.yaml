@@ -10,14 +10,11 @@ required:
 properties:
   id:
     type: string
-    description: Opaque inKind reservation slot identifier with the slot_ prefix
+    description: Opaque reservation slot identifier with the slot_ prefix
   project_location_id:
     type: string
     pattern: ^[1-9][0-9]*$
     description: Core project location ID
-    x-inkind:
-      opentable: "rid"
-      sevenrooms: "venue_id"
   provider:
     $ref: ./ReservationProvider.yaml
   guests:
@@ -26,27 +23,14 @@ properties:
     minimum: 1
     maximum: 20
     default: 1
-    x-inkind:
-      opentable: "party_size"
-      sevenrooms: "party_size"
   timestamp:
     type: string
     format: date-time
     description: Timestamp of the reservation slot
-    x-inkind:
-      opentable: "times_available[].time"
-      sevenrooms:
-        - "data.availability[].times[].time_iso"
-        - "data.availability[].times[].real_datetime_of_slot"
   seating:
     $ref: ./ReservationSeating.yaml
   payment:
     description: Payment requirements for the slot. Null when the total amount is zero and no credit card is required.
-    x-inkind:
-      opentable: "times_available[].availability_types[].cancellation_policy"
-      sevenrooms:
-        - "data.availability[].times[].require_credit_card"
-        - "data.availability[].times[].cost"
     oneOf:
       - type: "null"
       - $ref: ./ReservationPayment.yaml

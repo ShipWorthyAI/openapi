@@ -2,8 +2,5 @@ name: hold_id
 in: path
 required: true
 description: Opaque hold identifier with the hold_ prefix
-x-inkind:
-  opentable: reservation_token
-  sevenrooms: reservation_hold_id
 schema:
   type: string

@@ -7,9 +7,6 @@ properties:
     type: string
     pattern: ^[1-9][0-9]*$
     description: Core project location ID
-    x-inkind:
-      opentable: "rid"
-      sevenrooms: "venue_id"
   slots:
     type: array
     items:
