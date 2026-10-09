@@ -165,7 +165,7 @@ These flags come from the Effect CLI framework and work on every command:
 Bundles an OpenAPI document and writes formatted JSON to the required positional output path. Resolves references to other files or URLs, upgrades OpenAPI 3.0 to 3.1, and validates the result. Requires no generator packages.
 
 ```sh
-openapi bundle ./v1/openapi.yaml ./v1/bundled.openapi.json
+openapi bundle ./openapi/v1/openapi.yaml ./openapi/v1/bundled.openapi.json
 openapi bundle https://example.com/openapi.yaml ./bundled.openapi.json
 ```
 

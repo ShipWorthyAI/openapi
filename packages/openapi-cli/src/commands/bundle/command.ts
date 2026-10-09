@@ -37,7 +37,7 @@ export const bundle = Command.make(
   Command.withShortDescription("Bundle an OpenAPI document"),
   Command.withExamples([
     {
-      command: "openapi bundle ./v1/openapi.yaml ./v1/bundled.openapi.json",
+      command: "openapi bundle ./openapi/v1/openapi.yaml ./openapi/v1/bundled.openapi.json",
       description: "Write a bundled JSON document for a local schema",
     },
   ]),
