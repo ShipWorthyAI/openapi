@@ -1,6 +1,6 @@
 # @shipworthy/openapi
 
-OpenAPI tooling for TypeScript: bundle and lint API documents, generate types and runtime
+OpenAPI tooling for TypeScript: bundle, overlay, and lint API documents, generate types and runtime
 validators, and build typed Fetch and TanStack Query clients.
 
 Accepts OpenAPI 3.0 and 3.1 documents in JSON or YAML, including external `$ref`s. The generation
@@ -38,7 +38,7 @@ Each package's README includes installation instructions, examples, and API docu
 
 | Package                                                                               | Use it to                                                                       |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [`@shipworthy/openapi-cli`](./packages/openapi-cli/README.md)                         | Bundle, lint, and generate code from the command line.                          |
+| [`@shipworthy/openapi-cli`](./packages/openapi-cli/README.md)                         | Bundle, overlay, lint, and generate code from the command line.                 |
 | [`@shipworthy/openapi-typescript`](./packages/openapi-typescript/README.md)           | Generate TypeScript types for paths, operations, and components.                |
 | [`@shipworthy/openapi-standard-schema`](./packages/openapi-standard-schema/README.md) | Generate Standard Schema validators backed by Effect Schema.                    |
 | [`@shipworthy/openapi-zod`](./packages/openapi-zod/README.md)                         | Generate Zod 4 runtime validators.                                              |
@@ -53,6 +53,7 @@ it into a shared `ParsedService` model, then passes that model to a generator pl
 
 | Package                                                                       | Use it to                                                               |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [`@shipworthy/overlay`](./packages/openapi-overlay/README.md)                 | Apply OpenAPI Overlay 1.1 documents with Effect.                        |
 | [`@shipworthy/openapi-parser`](./packages/openapi-parser/README.md)           | Load, bundle, upgrade, and validate OpenAPI documents.                  |
 | [`@shipworthy/openapi-transformer`](./packages/openapi-transformer/README.md) | Convert a bundled OpenAPI document into the `ParsedService` HTTP model. |
 | [`@shipworthy/openapi-generator`](./packages/openapi-generator/README.md)     | Run generator plugins from code or write your own.                      |

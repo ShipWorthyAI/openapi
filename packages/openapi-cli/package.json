@@ -43,6 +43,7 @@
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-parser": "workspace:*",
     "@shipworthy/openapi-validator": "workspace:*",
+    "@shipworthy/overlay": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

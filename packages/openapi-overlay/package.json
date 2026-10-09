@@ -1,0 +1,55 @@
+{
+  "name": "@shipworthy/overlay",
+  "version": "0.0.1",
+  "description": "Apply OpenAPI Overlay 1.1 documents with Effect.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShipWorthyAI/openapi.git",
+    "directory": "packages/openapi-overlay"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "bun run build && bun run publish-manifest prepack",
+    "postpack": "bun run publish-manifest postpack"
+  },
+  "dependencies": {
+    "jsonpath-rfc9535": "1.3.0",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@shipworthy/publisher": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

@@ -98,6 +98,7 @@
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-parser": "workspace:*",
         "@shipworthy/openapi-validator": "workspace:*",
+        "@shipworthy/overlay": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -139,6 +140,26 @@
       "dependencies": {
         "@shipworthy/openapi-parser": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
+      },
+      "devDependencies": {
+        "@effect/vitest": "catalog:",
+        "@shipworthy/publisher": "workspace:*",
+        "@shipworthy/typescript-config": "workspace:*",
+        "@types/node": "catalog:",
+        "effect": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+      "peerDependencies": {
+        "effect": "^4.0.0",
+      },
+    },
+    "packages/openapi-overlay": {
+      "name": "@shipworthy/overlay",
+      "version": "0.0.1",
+      "dependencies": {
+        "jsonpath-rfc9535": "1.3.0",
+        "yaml": "2.9.1",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
@@ -702,6 +723,8 @@
 
     "@shipworthy/openapi-zod": ["@shipworthy/openapi-zod@workspace:packages/openapi-zod"],
 
+    "@shipworthy/overlay": ["@shipworthy/overlay@workspace:packages/openapi-overlay"],
+
     "@shipworthy/publisher": ["@shipworthy/publisher@workspace:packages/publisher"],
 
     "@shipworthy/typescript-config": ["@shipworthy/typescript-config@workspace:packages/typescript-config"],
@@ -1073,6 +1096,8 @@
     "jsonc-parser": ["jsonc-parser@3.3.1", "", {}, "sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ=="],
 
     "jsonpath-plus": ["jsonpath-plus@10.4.0", "", { "dependencies": { "@jsep-plugin/assignment": "^1.3.0", "@jsep-plugin/regex": "^1.0.4", "jsep": "^1.4.0" }, "bin": { "jsonpath": "bin/jsonpath-cli.js", "jsonpath-plus": "bin/jsonpath-cli.js" } }, "sha512-T92WWatJXmhBbKsgH/0hl+jxjdXrifi5IKeMY02DWggRxX0UElcbVzPlmgLTbvsPeW1PasQ6xE2Q75stkhGbsA=="],
+
+    "jsonpath-rfc9535": ["jsonpath-rfc9535@1.3.0", "", {}, "sha512-3jFHya7oZ45aDxIIdx+/zQARahHXxFSMWBkcBUldfXpLS9VCXDJyTKt35kQfEXLqh0K3Ixw/9xFnvcDStaxh7Q=="],
 
     "jsonpointer": ["jsonpointer@5.0.1", "", {}, "sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ=="],
 

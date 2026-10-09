@@ -1,16 +1,16 @@
 # @shipworthy/openapi-cli
 
-`@shipworthy/openapi-cli` installs the `openapi` command. It bundles and lints OpenAPI 3.x documents and generates code from them: TypeScript types, Zod validators, Standard Schema validators, and typed TanStack Query clients. Use it in a build step or `generate` script that keeps generated API code in sync with a local or remote OpenAPI document. Each generator is a separate optional package (`@shipworthy/openapi-typescript`, `@shipworthy/openapi-zod`, `@shipworthy/openapi-standard-schema`, `@shipworthy/openapi-tanstack-query`). The CLI loads a generator only when you run its command, so install just the ones you use.
+`@shipworthy/openapi-cli` installs the `openapi` command. It bundles, overlays, and lints OpenAPI 3.x documents and generates code from them: TypeScript types, Zod validators, Standard Schema validators, and typed TanStack Query clients. Use it in a build step or `generate` script that keeps generated API code in sync with a local or remote OpenAPI document. Each generator is a separate optional package (`@shipworthy/openapi-typescript`, `@shipworthy/openapi-zod`, `@shipworthy/openapi-standard-schema`, `@shipworthy/openapi-tanstack-query`). The CLI loads a generator only when you run its command, so install just the ones you use.
 
 ## Requirements
 
 - **Node.js `>=22.19.0` or Bun.** The `openapi` binary is compiled JavaScript (`dist/bin.js`) with a `#!/usr/bin/env node` shebang, and it runs on `@effect/platform-node`. Run it with `bunx --bun @shipworthy/openapi-cli …`.
 - **ESM only.** The package sets `"type": "module"` and ships compiled ESM JavaScript with `.d.ts` declarations. There is no CommonJS build.
-- **Input:** OpenAPI 3.x documents in JSON or YAML. `bundle` and `generate` upgrade OpenAPI 3.0 documents to 3.1 before writing their output. Swagger 2.0 is rejected.
+- **Input:** OpenAPI 3.x documents in JSON or YAML. `bundle`, `overlay`, and `generate` upgrade OpenAPI 3.0 documents to 3.1 before writing their output. Swagger 2.0 is rejected.
 
 ## Installation
 
-Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-validator`):
+Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
 
 ```sh
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
@@ -120,6 +120,7 @@ openapi <subcommand> [flags]
 
 SUBCOMMANDS
   bundle      Bundle an OpenAPI document
+  overlay     Apply an OpenAPI Overlay
   generate    Run a generator plugin
   lint        Lint an OpenAPI schema
 ```
@@ -133,7 +134,7 @@ Every command takes a positional `<input>`:
 - JSON or YAML.
 - **No globs.** An input that contains `*` fails with `Globbing is unsupported.`
 
-`bundle` and `generate` resolve `$ref`s, including references to other files or URLs, before writing their output. `lint` lints the original document text as is, without bundling it.
+`bundle`, `overlay`, and `generate` resolve `$ref`s, including references to other files or URLs, before writing their output. `lint` lints the original document text as is, without bundling it.
 
 ### Global flags
 
@@ -157,6 +158,34 @@ openapi bundle https://example.com/openapi.yaml ./bundled.openapi.json
 ```
 
 Parent directories are created automatically. An existing output file is overwritten. Loading, reference resolution, validation, or write errors exit with code `1`.
+
+### `openapi overlay <input> --overlay <overlay> -o <output>`
+
+Bundles the OpenAPI document first, resolving external references and upgrading OpenAPI 3.0 to
+3.1. Then applies an [OpenAPI Overlay 1.1](https://github.com/OAI/Overlay-Specification/blob/main/versions/1.1.0.md)
+and writes formatted JSON. Requires no generator packages.
+
+```sh
+openapi overlay openapi.yaml --overlay overlay.yaml -o bundled.openapi.json
+openapi overlay https://example.com/openapi.yaml --overlay https://example.com/public.overlay.yaml --output public.openapi.json
+```
+
+| Argument / flag  | Description                                                |
+| ---------------- | ---------------------------------------------------------- |
+| `<input>`        | Required OpenAPI JSON/YAML file or URL.                    |
+| `--overlay`      | Required Overlay JSON/YAML file or URL.                    |
+| `--output`, `-o` | Required output JSON file. Parent directories are created. |
+
+Actions run sequentially against the bundled document. Supports RFC 9535 JSONPath, recursive
+object updates, array concatenation/appending, primitive replacement, copying from a single
+source node, and removal. A target matching no nodes has no effect. `extends` is metadata;
+`<input>` determines the document. The overlaid result is written directly without another
+bundling or validation pass.
+
+An existing output file is overwritten only after bundling and overlay application succeed.
+Loading, invalid overlay, incompatible merge, JSONPath, and write errors exit with code `1`.
+Action errors include the one-based action number and target. See the
+[`@shipworthy/overlay` documentation](../openapi-overlay/README.md) for merge rules and errors.
 
 ### `openapi lint [--strict] <input>`
 
@@ -334,7 +363,7 @@ The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers
 The package entry point (`@shipworthy/openapi-cli`) exports one value:
 
 ```ts
-export const openapi: Command<"openapi", …>; // an `effect/cli` Command with `generate` and `lint` subcommands
+export const openapi: Command<"openapi", …>; // an `effect/cli` Command with `bundle`, `overlay`, `generate`, and `lint` subcommands
 ```
 
 Use it to embed the CLI in your own entry point. This example mirrors the package's own binary:
@@ -384,6 +413,7 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 
 - Binary: `openapi` (compiled `dist/bin.js`). Runs on **Node.js `>=22.19.0`** or **Bun** (`bunx --bun @shipworthy/openapi-cli`). ESM only. OpenAPI 3.0 and 3.1 input (3.0 is upgraded), JSON or YAML, as a local path or URL. Swagger 2.0 is rejected.
 - Commands:
+  - `openapi overlay <input> --overlay <overlay> -o <output>`: bundles and upgrades first, then applies Overlay 1.1 actions and writes JSON.
   - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
   - `openapi generate typescript [<input>] [-o file] [--check] [type flags]`: reads stdin when `<input>` is omitted and writes stdout when `-o` is omitted.
   - `openapi generate zod <input> -o <file> [--force]`: also writes `types.ts` in the same directory.
