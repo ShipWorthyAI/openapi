@@ -1,56 +1,73 @@
 # @shipworthy/publisher
 
-Private workspace commands for preparing package manifests and publishing Bun tarballs.
-Requires Bun, Bash, jq, Node.js 24, and npm 11.5.1 or later.
+Private workspace commands for packing and verifying release artifacts. Requires Bun, tar,
+Node.js 24, and npm 11.5.1 or later. Install workspace dependencies and run commands from the
+repository root.
 
-## Installation
+## Prepare artifacts
 
-Declare the workspace tool as a development dependency:
-
-```json
-{
-  "devDependencies": {
-    "@shipworthy/publisher": "workspace:*"
-  }
-}
-```
-
-## Commands
-
-Run commands from the directory containing the target package's `package.json`.
-
-### `publish-manifest prepack`
-
-Prepares the manifest using the package's `publishConfig` entries. An already active
-preparation fails. Configure the compiled `main`, `types`, `exports`, and `bin` entries in
-`publishConfig`; registry options such as `access` and `registry` remain there.
-
-### `publish-manifest postpack`
-
-Restores the original manifest. It has no effect if no preparation is active.
-
-### `publish-package`
-
-Publishes the current public package's version. Its build must already be complete.
-The command skips private packages and versions already present on npm. Registry errors,
-packing errors, and publish errors fail with a nonzero exit code. The original manifest is
-restored after packing, including when packing fails.
+Complete checks and builds, then pack and verify:
 
 ```sh
+bun run check
 bun run build
-bun run --cwd packages/openapi-cli release
+bun run release:pack
+bun run release:verify
 ```
 
-For the repository-wide release command and contributor workflow, see
-[CONTRIBUTING.md](../../CONTRIBUTING.md#releasing).
+`release-artifacts pack` discovers unpublished versions through Changesets and writes tarballs
+and a Changesets-compatible `publish-plan.json` to `.release`. The command preserves source
+manifests and refuses to overwrite an existing output directory. Builds must already be complete.
+
+To use a saved Changesets plan or a different output directory:
+
+```sh
+bun run release-artifacts pack --from-publish-plan ./plan.json --out-dir ./release-artifacts
+bun run release-artifacts verify ./release-artifacts
+```
+
+Private packages, unknown packages, duplicate releases, and versions differing from the
+workspace manifests are rejected. Changesets dependency groups, npm access, dist-tags, and
+tag-only entries are preserved.
+
+## Verify artifacts
+
+`release-artifacts verify` checks archive digests, manifests, resolved dependency ranges,
+compiled entry points, declarations, and executables. It installs the tarballs in an isolated
+npm consumer with lifecycle scripts disabled, imports JavaScript entry points and schema
+subpaths, type-checks their declarations, and runs CLI help commands. Consumer verification
+requires registry access. Successful verification creates `verified.json` in the artifact directory.
+
+Before publication, verify the saved result and archive digests without installing a consumer:
+
+```sh
+bun run release-artifacts verify ./release-artifacts --integrity-only
+```
+
+A missing verification marker, changed plan, changed tarball, or failed consumer check fails
+with a nonzero exit code. A failed full verification removes any previous verification marker.
+
+## Publish and retry
+
+The repository's `bun run release` command checks `.release` integrity and delegates publication
+to Changesets. For a custom verified directory:
+
+```sh
+bun run release-artifacts verify ./release-artifacts --integrity-only
+bun run changeset publish --from-pack-dir ./release-artifacts
+```
+
+Reuse saved tarballs for retries. Changesets handles versions already published and creates
+Git tags for successful releases. The GitHub Actions v2 publish action consumes structured
+Changesets output to push tags and create GitHub releases. See
+[CONTRIBUTING.md](../../CONTRIBUTING.md#releasing) for the complete contributor workflow.
 
 ## Authentication
 
-npm uses its configured local login credentials or GitHub Actions trusted publishing.
-Run `npm login` for a local release. For two-factor authentication through Turbo, provide
-`NPM_CONFIG_OTP`; direct package release commands allow npm to use the terminal interactively.
+npm uses local login credentials or GitHub Actions trusted publishing. Use `npm login` for an
+initial local release. npm supports interactive two-factor authentication and `NPM_CONFIG_OTP`.
 
-For GitHub Actions, configure a trusted publisher for each public package:
+Configure a GitHub Actions trusted publisher for each public package:
 
 - Organization or user: `ShipWorthyAI`
 - Repository: `openapi`
@@ -58,9 +75,9 @@ For GitHub Actions, configure a trusted publisher for each public package:
 - Environment name: leave blank.
 - Allowed actions: allow direct publishing with `npm publish`.
 
-The workflow requires a GitHub-hosted runner, Node.js 24, and `id-token: write`. The release
-configuration passes the OIDC request variables, GitHub context, and npm configuration to npm.
-No `NPM_TOKEN` repository secret is required. Already published versions are skipped, so
-validating a new trusted publisher requires an unpublished version.
+Only the publish job requires `id-token: write`. No `NPM_TOKEN` secret is required. A newly
+created trusted publisher must complete its first successful publish within two days; otherwise
+it expires and must be recreated. Packing, integrity checks, and already-published versions do
+not validate a new trusted publisher.
 
 See [npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).

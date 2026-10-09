@@ -42,15 +42,9 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bunx turbo run prepare:pack",
-    "version": "bunx turbo run build",
-    "test": "vitest run",
-    "postpack": "bun run publish-manifest postpack",
-    "prepare:pack": "bun run publish-manifest prepack",
-    "release": "bun run publish-package"
+    "test": "vitest run"
   },
   "devDependencies": {
-    "@shipworthy/publisher": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

@@ -54,12 +54,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bunx turbo run prepare:pack",
     "test": "vitest run",
-    "version": "bunx turbo run build",
-    "postpack": "bun run publish-manifest postpack",
-    "prepare:pack": "bun run publish-manifest prepack",
-    "release": "bun run publish-package"
+    "version": "bunx turbo run build"
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
@@ -69,7 +65,6 @@
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
-    "@shipworthy/publisher": "workspace:*",
     "effect": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

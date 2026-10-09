@@ -7,6 +7,7 @@
       "devDependencies": {
         "@changesets/cli": "3.0.3",
         "@effect/tsgo": "catalog:",
+        "@shipworthy/publisher": "workspace:*",
         "@stylistic/eslint-plugin": "5.10.0",
         "effect": "catalog:",
         "lefthook": "2.1.16",
@@ -106,7 +107,6 @@
         "@shipworthy/openapi-tanstack-query": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/openapi-zod": "workspace:*",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "typescript": "catalog:",
@@ -129,7 +129,6 @@
       "name": "@shipworthy/openapi-fetch",
       "version": "0.0.1",
       "devDependencies": {
-        "@shipworthy/publisher": "workspace:*",
         "typescript": "catalog:",
         "vitest": "catalog:",
       },
@@ -143,7 +142,6 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "effect": "catalog:",
@@ -162,7 +160,6 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "effect": "catalog:",
@@ -182,7 +179,6 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "effect": "catalog:",
@@ -200,7 +196,6 @@
         "@shipworthy/openapi-fetch": "workspace:*",
       },
       "devDependencies": {
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
@@ -222,7 +217,6 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "effect": "catalog:",
@@ -242,7 +236,6 @@
       },
       "devDependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
@@ -270,7 +263,6 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "effect": "catalog:",
@@ -292,7 +284,6 @@
       "devDependencies": {
         "@effect/platform-node": "catalog:",
         "@effect/vitest": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "effect": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
@@ -313,7 +304,6 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "effect": "catalog:",
@@ -334,7 +324,6 @@
       },
       "devDependencies": {
         "@effect/platform-node": "catalog:",
-        "@shipworthy/publisher": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "effect": "catalog:",
@@ -351,8 +340,7 @@
       "name": "@shipworthy/publisher",
       "version": "0.0.0",
       "bin": {
-        "publish-manifest": "./src/publish-manifest.ts",
-        "publish-package": "./src/publish-package.sh",
+        "release-artifacts": "./src/cli.ts",
       },
       "dependencies": {
         "@effect/platform-node": "catalog:",
@@ -366,9 +354,6 @@
     "packages/typescript-config": {
       "name": "@shipworthy/typescript-config",
       "version": "0.0.1",
-      "devDependencies": {
-        "@shipworthy/publisher": "workspace:*",
-      },
     },
   },
   "catalog": {

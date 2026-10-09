@@ -3,8 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "bin": {
-    "publish-manifest": "./src/publish-manifest.ts",
-    "publish-package": "./src/publish-package.sh"
+    "release-artifacts": "./src/cli.ts"
   },
   "type": "module",
   "scripts": {

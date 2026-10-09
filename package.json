@@ -39,15 +39,17 @@
     "typecheck": "oxlint --type-aware --type-check .",
     "prepare": "lefthook install && effect-tsgo patch --oxlint",
     "changeset": "changeset",
-    "version-packages": "changeset version && bun install",
-    "release": "turbo run release:tags",
+    "version-packages": "changeset version && bun install && bun run check",
+    "release": "bun run release:verify --integrity-only && changeset publish --from-pack-dir .release",
     "examples:bundle": "turbo run bundle --filter='./examples/*'",
     "examples:generate": "turbo run generate --filter='./examples/*'",
-    "release:tags": "changeset git-tag"
+    "release:pack": "release-artifacts pack",
+    "release:verify": "release-artifacts verify"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
     "@effect/tsgo": "catalog:",
+    "@shipworthy/publisher": "workspace:*",
     "@stylistic/eslint-plugin": "5.10.0",
     "effect": "catalog:",
     "lefthook": "2.1.16",

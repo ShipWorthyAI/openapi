@@ -41,18 +41,13 @@
     "generate:schemas": "bun scripts/generate-schemas.ts",
     "check:schemas": "bun scripts/generate-schemas.ts --check",
     "test": "vitest run",
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "bunx turbo run prepare:pack",
-    "postpack": "bun run publish-manifest postpack",
-    "prepare:pack": "bun run publish-manifest prepack",
-    "release": "bun run publish-package"
+    "build": "rm -rf dist && tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "jsonpath-rfc9535": "1.3.0"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
-    "@shipworthy/publisher": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "effect": "catalog:",

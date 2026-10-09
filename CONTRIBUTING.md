@@ -82,7 +82,7 @@ Each example's source document is `openapi/v1/openapi.yaml`, with relative refer
 In the workspace, each package's `exports` (and `bin`/`imports`) point at TypeScript in `src`, so tests and tools run without a build. Published packages contain compiled ESM and `.d.ts` files in `dist`:
 
 - `bun run build` runs `tsc -p tsconfig.build.json` in buildable packages via Turborepo. Build hashes exclude package README and test files; tests and quality tasks still track them. Package-specific input overrides extend this default where needed.
-- `prepack` runs the uncached `prepare:pack` Turbo task, which depends on the package build and its workspace dependencies, then the private `@shipworthy/publisher` command, `publish-manifest prepack`, promotes the `dist` entries in `publishConfig` to the top level of `package.json`. `postpack` restores the development manifest. Bun ignores most `publishConfig` fields, so this swap is what makes `bun pm pack` and `bun publish` emit the right `exports`.
+- `bun run release:pack` prepares compiled entries from `publishConfig` in a temporary workspace and packs the declared `files` with Bun. The staging workspace includes the pinned lockfile so `workspace:` and `catalog:` ranges resolve correctly. Source manifests remain unchanged. Use this command to prepare release packages; direct `bun pm pack` does not promote compiled entry points.
 
 ## Standard Schema generator output
 
@@ -169,43 +169,63 @@ To support a new feature version:
    Generating a file alone does not enable the version; unimplemented action versions fail.
 4. Add version-specific validation/action tests, update this README, and run `bun run check`.
 
-## Publishing task configuration
+## Release artifacts
 
-Buildable public packages declare these scripts and depend on `@shipworthy/publisher` as
-development tooling. Turbo is installed once in the root package:
+Run release preparation from the repository root:
 
-```json
-{
-  "scripts": {
-    "prepare:pack": "bun run publish-manifest prepack",
-    "prepack": "bunx turbo run prepare:pack",
-    "postpack": "bun run publish-manifest postpack",
-    "release": "bun run publish-package"
-  }
-}
+```sh
+bun run check
+bun run build
+bun run release:pack
+bun run release:verify
 ```
 
-The shared root `turbo.json` defines `prepare:pack → build` and
-`release → build + ^release`. The `release:tags` root task waits for every public package's
-release. Add new public package release tasks to its prerequisites. Private packages have no
-release command.
+`release:pack` asks Changesets for a publish plan, preserving its dependency groups and npm
+access/tag choices. It stages the declared public package files and compiled manifest entries,
+then creates `.release/publish-plan.json` and `.release/packages/*.tgz`. Private packages are
+excluded. New public packages need `files` and compiled `publishConfig` entries, without
+per-package release scripts or a central package-name list.
 
-`publish-manifest` saves the source manifest in `node_modules/.package.dev.json`, promotes
-compiled entries from `publishConfig`, and restores the source manifest after packing.
-The single-package release command performs that transaction itself and runs
-`bun pm pack --ignore-scripts`, since its Turbo build prerequisite has already completed.
-This avoids invoking Turbo inside a Turbo release task.
+`release:verify` checks each tarball's SHA-256 digest, package identity, dependency ranges,
+exports, declarations, and executable paths. It installs the tarballs in an isolated npm
+consumer with lifecycle scripts disabled, imports the JavaScript and schema entry points,
+type-checks their declarations, and runs executable help commands. It writes `.release/verified.json`
+only after every check succeeds. These consumer checks need npm registry access.
 
-Bun's `pm pack` lifecycle does not expose the installed workspace Turbo binary on PATH in the
-current toolchain. The packing hooks use `bunx` to resolve the root-installed Turbo dependency.
-`--no-install` is unnecessary after the workspace dependencies have been installed.
+The final `bun run release` command requires that verification marker and checks the plan and
+all tarball digests again before calling `changeset publish --from-pack-dir .release`.
+Changesets owns publishing order, handling already-published versions, and creating git tags.
+Run it only when ready to publish.
+
+Existing artifact directories are preserved. To prepare a new release locally, archive the
+previous `.release` directory or use a new output directory with the
+[publisher commands](./packages/publisher/README.md). For a retry, reuse the existing tarballs
+without repacking. Release artifacts are ignored by Git.
 
 ## Releasing
 
-Versions and changelogs are managed with Changesets.
+Versions and changelogs are managed with Changesets v3.
 
 1. Run `bun run changeset` in your PR to describe the change and choose a bump for each affected package.
-2. On merge to `main`, the [release workflow](./.github/workflows/release.yml) opens a "chore: version packages" PR that applies pending changesets (`bun run version-packages`).
-3. Merging that PR runs `bun run release`. Turbo schedules public package release tasks after their builds and dependency releases. Each task skips versions already on npm, packs with Bun to resolve `workspace:` and `catalog:` dependencies, and publishes the tarball with npm. The root tagging task waits for all releases before creating Changesets git tags.
+2. On merge to `main`, the [release workflow](./.github/workflows/release.yml) selects versioning or publication. Its version job applies pending changesets, updates the lockfile, and runs `bun run check` before creating the "chore: version packages" PR. Changesets commits through the GitHub API, so local Git hooks and auto-fixes do not run during the bot commit.
+3. Merging that PR runs the pack job: checks, all builds, packing the selected Changesets plan, and real consumer verification. No package is published until this job succeeds.
+4. The publish job downloads the same retained tarballs, checks verification and integrity, and publishes them through Changesets. The v2 action reads CLI v3's structured tag events to push tags and create GitHub releases. The publish job alone has `id-token: write` for npm trusted publishing.
 
-The workflow uses npm trusted publishing and does not require an `NPM_TOKEN` repository secret. For the initial local release, run `npm login` followed by `bun run release`, providing `NPM_CONFIG_OTP` if needed. To use interactive two-factor authentication, build first and run individual public package release commands directly; see the publisher documentation. Then configure a GitHub Actions trusted publisher for every public package with owner `ShipWorthyAI`, repository `openapi`, workflow `release.yml`, no environment, and direct `npm publish` allowed. See the [publisher setup instructions](./packages/publisher/README.md) for requirements and configuration expiry.
+The [PR CI workflow](./.github/workflows/ci.yml) also runs checks and builds explicitly.
+PR workflows created by automation using `GITHUB_TOKEN` can require approval before running;
+the version and pack jobs therefore perform their own checks independently. See
+[GitHub's workflow-triggering rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow).
+
+GitHub retains release tarballs and their plan for 30 days, including when consumer verification
+fails. Rerun a failed publish job to retry the same artifacts at the same commit. npm writes
+are not atomic across packages: a registry failure can still leave a partial release, and
+Changesets handles versions already published on the next attempt.
+
+The workflow uses npm trusted publishing and needs no `NPM_TOKEN` secret. For an initial local
+release, run `npm login`, then the preparation commands above and `bun run release`. npm can
+use interactive two-factor authentication, or `NPM_CONFIG_OTP` when provided.
+Then configure a trusted publisher for every public package with owner `ShipWorthyAI`,
+repository `openapi`, workflow filename `release.yml`, no environment, and direct `npm publish`
+allowed. See the [publisher authentication instructions](./packages/publisher/README.md#authentication)
+for requirements and configuration expiry. Keep `release.yml` stable because npm binds the
+trusted publisher to that filename.
