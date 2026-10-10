@@ -269,7 +269,6 @@ export default function createClient<Paths extends {}, Media extends MediaType =
               if (result) {
                 // if error is handled by returning a response, skip remaining middleware
                 if (result instanceof Response) {
-                  errorAfterMiddleware = undefined;
                   response = result;
                   break;
                 }
@@ -285,8 +284,8 @@ export default function createClient<Paths extends {}, Media extends MediaType =
           }
         }
 
-        // rethrow error if not handled by middleware
-        if (errorAfterMiddleware) {
+        // rethrow error if not handled by middleware (the rejection value may be falsy)
+        if (!response) {
           throw errorAfterMiddleware;
         }
       }

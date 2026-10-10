@@ -76,8 +76,10 @@ Each call returns `Promise<FetchResponse>`, a discriminated union:
 - **Empty bodies:** a 204 response, any `HEAD` request, or `Content-Length: 0` (without chunked transfer encoding) gives `data: undefined` (OK) or `error: undefined` (not OK). The same happens for an empty non-OK body and for an OK JSON response with no `Content-Length` and an empty body. When the body is empty, check `response.status` or `response.ok` rather than relying on `data`/`error` being truthy.
 - **No throw on HTTP errors.** 4XX and 5XX responses resolve normally. The promise rejects only when:
   - `fetch` itself throws (network error, abort) and no `onError` middleware handles it.
+  - Middleware or a serializer throws or rejects.
   - Middleware returns an invalid value (see [Middleware](#middleware)).
-  - A successful response declares a `Content-Length` but contains invalid JSON while `parseAs` is `"json"`.
+  - A successful response contains invalid JSON while `parseAs` is `"json"`.
+  - Request construction fails, for example because the URL or request options are invalid.
   - A query parameter contains a nested object or array (see [Limitations](#limitations-and-caveats)).
 - Requests default to `redirect: "follow"`.
 
