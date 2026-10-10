@@ -11,9 +11,9 @@ export { operationRoutes, type HttpMethod, type OperationRoute } from "./routes.
 
 export const zod: Generator<ZodSource, ZodGenerationError> = {
   id: "zod",
-  generate: Effect.fnUntraced(function* (
-    model: ParsedService,
-  ): Effect.fn.Return<ZodSource, ZodGenerationError> {
-    return yield* zodSources(model, yield* operationRoutes(model));
+  generate: Effect.fnUntraced(function* (model: ParsedService) {
+    return yield* operationRoutes(model).pipe(
+      Effect.flatMap((routes) => zodSources(model, routes)),
+    );
   }),
 };

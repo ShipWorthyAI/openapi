@@ -1,13 +1,12 @@
-import type { ParsedService } from "@shipworthy/openapi-transformer";
-import { Effect, Predicate, Schema } from "effect";
+import { ParsedSchema, type ParsedService } from "@shipworthy/openapi-transformer";
+import { Array, Effect, Option, Order, Predicate, Record, Schema, pipe } from "effect";
 import * as z from "zod";
 import { ZodGenerationError } from "./errors.ts";
 import { assertExportName } from "./names.ts";
 import { resolveDocumentRef } from "./refs.ts";
 import type { OperationRoute } from "./routes.ts";
 
-type JsonSchema = z.core.JSONSchema.JSONSchema;
-type SchemaNode = JsonSchema | boolean;
+type JsonSchema = Exclude<ParsedSchema, boolean>;
 
 const schemaMaps = ["properties", "patternProperties"] as const;
 const compositions = ["allOf", "anyOf", "oneOf"] as const;
@@ -67,7 +66,7 @@ export type ZodSource = string;
 
 interface SchemaExport {
   name: string;
-  schema: SchemaNode;
+  schema: ParsedSchema;
   /** The `./types` export that `type` reads from. */
   types: "components" | "operations";
   /** TypeScript type that the validator parses to. */
@@ -75,30 +74,57 @@ interface SchemaExport {
   expression?: string;
 }
 
-function reject(message: string): never {
-  throw new ZodGenerationError({ message });
-}
-
 function isAnnotation(key: string): boolean {
   return annotations.has(key) || key.startsWith("x-");
 }
 
-function asSchema(value: unknown, path: string): SchemaNode {
-  if (typeof value === "boolean") return value;
-  if (Predicate.isObject(value)) return value as JsonSchema;
-  reject(`${path}: Expected a JSON schema`);
-}
+const encodeJson = Effect.fnUntraced(function* (value: unknown) {
+  return yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(value).pipe(
+    Effect.mapError((cause) => new ZodGenerationError({ message: cause.message, cause })),
+  );
+});
 
-function definitionSchema(schema: SchemaNode): JsonSchema {
+const asSchema = Effect.fnUntraced(function* (value: unknown, path: string) {
+  return yield* Schema.decodeUnknownEffect(ParsedSchema)(value).pipe(
+    Effect.mapError(() => new ZodGenerationError({ message: `${path}: Expected a JSON schema` })),
+  );
+});
+
+const schemaMap = Effect.fnUntraced(function* (value: unknown, path: string, keyword: string) {
+  return yield* Schema.decodeUnknownEffect(Schema.Record(Schema.String, Schema.Unknown))(
+    value,
+  ).pipe(
+    Effect.mapError(() => new ZodGenerationError({ message: `${path}: Unsupported ${keyword}` })),
+    Effect.flatMap((values) =>
+      Effect.forEach(Record.toEntries(values), ([name, part]) =>
+        asSchema(part, `${path}/${keyword}/${name}`).pipe(
+          Effect.map((schema) => [name, schema] as const),
+        ),
+      ),
+    ),
+    Effect.map(Record.fromEntries),
+  );
+});
+
+const schemaList = Effect.fnUntraced(function* (value: unknown, path: string, keyword: string) {
+  return yield* Schema.decodeUnknownEffect(Schema.Array(Schema.Unknown))(value).pipe(
+    Effect.mapError(() => new ZodGenerationError({ message: `${path}: Unsupported ${keyword}` })),
+    Effect.flatMap((values) =>
+      Effect.forEach(values, (part, index) => asSchema(part, `${path}/${keyword}/${index}`)),
+    ),
+  );
+});
+
+function definitionSchema(schema: ParsedSchema): JsonSchema {
   if (schema === true) return {};
   if (schema === false) return { not: {} };
   return schema;
 }
 
-function isSingleRequiredKey(part: SchemaNode): part is JsonSchema & { required: string[] } {
+function isSingleRequiredKey(part: ParsedSchema): part is JsonSchema & { required: string[] } {
   return (
     Predicate.isObject(part) &&
-    Object.keys(part).length === 1 &&
+    Record.keys<string, unknown>(part).length === 1 &&
     Array.isArray(part.required) &&
     part.required.length === 1 &&
     Predicate.isString(part.required[0])
@@ -108,17 +134,26 @@ function isSingleRequiredKey(part: SchemaNode): part is JsonSchema & { required:
 function indent(value: string, spaces: number): string {
   const pad = " ".repeat(spaces);
 
-  return value
-    .split("\n")
-    .map((line) => (line.length === 0 ? line : pad + line))
-    .join("\n");
+  return pipe(
+    value.split("\n"),
+    Array.map((line) => (line.length === 0 ? line : pad + line)),
+    Array.join("\n"),
+  );
 }
 
-function schemaLiteral(schema: SchemaNode, names: readonly string[], expression?: string): string {
+function schemaLiteral(
+  schema: ParsedSchema,
+  names: readonly string[],
+  expression?: string,
+): string {
   if (names.length === 0) return expression ?? JSON.stringify(schema, null, 2);
 
   const defs = indent(
-    names.map((name) => `${JSON.stringify(name)}: definitions.${name}`).join(",\n"),
+    pipe(
+      names,
+      Array.map((name) => `${JSON.stringify(name)}: definitions.${name}`),
+      Array.join(",\n"),
+    ),
     4,
   );
 
@@ -128,70 +163,97 @@ function schemaLiteral(schema: SchemaNode, names: readonly string[], expression?
   return `{\n${json.slice(2, -2)},\n  $defs: {\n${defs}\n  },\n}`;
 }
 
-function definitionName(ref: string): string {
+const definitionName = Effect.fnUntraced(function* (
+  ref: string,
+): Effect.fn.Return<string, ZodGenerationError> {
   const marker = "#/$defs/";
-  if (!ref.startsWith(marker)) reject(`${ref}: Reference not found`);
+  if (!ref.startsWith(marker))
+    return yield* new ZodGenerationError({ message: `${ref}: Reference not found` });
   return ref.slice(marker.length).replaceAll("~1", "/").replaceAll("~0", "~");
-}
+});
 
-function objectProperties(
+const objectProperties = Effect.fnUntraced(function* (
   document: ParsedService,
-  schema: SchemaNode,
+  schema: ParsedSchema,
   path: string,
   seen: ReadonlySet<string>,
-): Record<string, SchemaNode> {
+): Effect.fn.Return<Record<string, ParsedSchema>, ZodGenerationError> {
   if (typeof schema === "boolean") return {};
 
-  if (schema.$ref) {
-    if (seen.has(schema.$ref)) return {};
-    const resolved = asSchema(resolveDocumentRef(document, schema.$ref), schema.$ref);
-    return objectProperties(document, resolved, path, new Set([...seen, schema.$ref]));
+  if (Predicate.isString(schema.$ref) && schema.$ref) {
+    const ref = schema.$ref;
+    if (seen.has(ref)) return {};
+
+    const resolved = yield* resolveDocumentRef(document, ref).pipe(
+      Effect.flatMap((value) => asSchema(value, ref)),
+    );
+
+    return yield* objectProperties(document, resolved, path, new Set([...seen, schema.$ref]));
   }
 
-  const merged: Record<string, SchemaNode> = {};
+  const parts = yield* schemaList(schema.allOf ?? [], path, "allOf");
 
-  for (const [index, part] of (schema.allOf ?? []).entries()) {
-    const child = asSchema(part, `${path}/allOf/${index}`);
-    Object.assign(merged, objectProperties(document, child, `${path}/allOf/${index}`, seen));
-  }
+  const inherited = yield* Effect.forEach(parts, (part, index) =>
+    objectProperties(document, part, `${path}/allOf/${index}`, seen),
+  );
 
-  if (schema.properties) Object.assign(merged, schema.properties);
-  return merged;
-}
+  const properties = schema.properties
+    ? yield* schemaMap(schema.properties, path, "properties")
+    : {};
 
-function normalize(
+  return {
+    ...Array.reduce(inherited, {}, (merged, part) => ({ ...merged, ...part })),
+    ...properties,
+  };
+});
+
+const normalize = Effect.fnUntraced(function* (
   document: ParsedService,
-  schema: SchemaNode,
+  schema: ParsedSchema,
   path: string,
-  inherited: Record<string, SchemaNode> = {},
-): JsonSchema {
+  inherited: Record<string, ParsedSchema> = {},
+): Effect.fn.Return<JsonSchema, ZodGenerationError> {
   // `true` and `false` are the same as `{}` and `{ not: {} }` once Zod converts them.
   if (typeof schema === "boolean") return definitionSchema(schema);
 
-  for (const key of Object.keys(schema)) {
-    if (!keywords.has(key) && !isAnnotation(key)) reject(`${path}: Unsupported keyword ${key}`);
-  }
+  const unsupported = Array.findFirst(
+    Record.keys<string, unknown>(schema),
+    (key) => !keywords.has(key) && !isAnnotation(key),
+  );
+
+  if (Option.isSome(unsupported))
+    return yield* new ZodGenerationError({
+      message: `${path}: Unsupported keyword ${unsupported.value}`,
+    });
 
   const result: JsonSchema = { ...schema };
   delete result.default;
 
   const properties = {
     ...inherited,
-    ...objectProperties(document, schema, path, new Set()),
+    ...(yield* objectProperties(document, schema, path, new Set())),
   };
 
   if (schema.$ref) {
-    if (!schema.$ref.startsWith("#/components/schemas/")) {
-      reject(`${path}: Unsupported schema reference ${schema.$ref}`);
+    if (!Predicate.isString(schema.$ref) || !schema.$ref.startsWith("#/components/schemas/")) {
+      const ref = Predicate.isString(schema.$ref) ? schema.$ref : yield* encodeJson(schema.$ref);
+
+      return yield* new ZodGenerationError({
+        message: `${path}: Unsupported schema reference ${ref}`,
+      });
     }
 
-    resolveDocumentRef(document, schema.$ref);
+    yield* resolveDocumentRef(document, schema.$ref);
 
-    for (const key of Object.keys(schema)) {
-      if (key !== "$ref" && !isAnnotation(key)) {
-        reject(`${path}: Zod does not preserve ${key} alongside $ref`);
-      }
-    }
+    const sibling = Array.findFirst(
+      Record.keys<string, unknown>(schema),
+      (key) => key !== "$ref" && !isAnnotation(key),
+    );
+
+    if (Option.isSome(sibling))
+      return yield* new ZodGenerationError({
+        message: `${path}: Zod does not preserve ${sibling.value} alongside $ref`,
+      });
 
     result.$ref = `#/$defs/${schema.$ref.slice("#/components/schemas/".length)}`;
     return result;
@@ -202,27 +264,31 @@ function normalize(
   if (schema.not !== undefined) {
     const notSchema = schema.not;
     const exclusions = Predicate.isObject(notSchema) ? notSchema.anyOf : undefined;
-    const onlyNot = Object.keys(schema).every((key) => key === "not" || isAnnotation(key));
+
+    const onlyNot = Array.every(
+      Record.keys<string, unknown>(schema),
+      (key) => key === "not" || isAnnotation(key),
+    );
 
     if (
       !Array.isArray(exclusions) ||
       !Predicate.isObject(notSchema) ||
-      Object.keys(notSchema).length !== 1 ||
-      Object.keys(properties).length === 0 ||
+      Record.keys(notSchema).length !== 1 ||
+      Record.keys(properties).length === 0 ||
       !onlyNot
     ) {
-      reject(`${path}: Unsupported not constraint`);
+      return yield* new ZodGenerationError({ message: `${path}: Unsupported not constraint` });
     }
 
-    const forbidden: Record<string, SchemaNode> = {};
-
-    for (const part of exclusions) {
-      const key = asSchema(part, path);
-      if (!isSingleRequiredKey(key)) reject(`${path}: Unsupported not constraint`);
-      const name = key.required[0];
-      if (!name) reject(`${path}: Unsupported not constraint`);
-      forbidden[name] = false;
-    }
+    const forbidden = yield* Effect.forEach(
+      exclusions,
+      Effect.fnUntraced(function* (part) {
+        const key = yield* asSchema(part, path);
+        if (!isSingleRequiredKey(key) || !key.required[0])
+          return yield* new ZodGenerationError({ message: `${path}: Unsupported not constraint` });
+        return [key.required[0], false] as const;
+      }),
+    ).pipe(Effect.map(Record.fromEntries));
 
     delete result.not;
     result.type = "object";
@@ -234,244 +300,327 @@ function normalize(
   // forbids the trigger key or requires it with its dependencies.
   if (schema.dependentRequired !== undefined) {
     if (!Predicate.isObject(schema.dependentRequired)) {
-      reject(`${path}: Unsupported dependentRequired`);
+      return yield* new ZodGenerationError({ message: `${path}: Unsupported dependentRequired` });
     }
 
-    const branches: JsonSchema[] = [];
-
-    for (const [name, dependencies] of Object.entries(schema.dependentRequired)) {
-      if (!Array.isArray(dependencies) || !dependencies.every(Predicate.isString)) {
-        reject(`${path}: Unsupported dependentRequired`);
-      }
-
-      branches.push({
-        anyOf: [{ not: { anyOf: [{ required: [name] }] } }, { required: [name, ...dependencies] }],
-      });
-    }
+    const branches = yield* Effect.forEach(
+      Record.toEntries(schema.dependentRequired),
+      ([name, value]) =>
+        Schema.decodeUnknownEffect(Schema.Array(Schema.String))(value).pipe(
+          Effect.mapError(
+            () => new ZodGenerationError({ message: `${path}: Unsupported dependentRequired` }),
+          ),
+          Effect.map((dependencies): ParsedSchema => ({
+            anyOf: [
+              { not: { anyOf: [{ required: [name] }] } },
+              { required: [name, ...dependencies] },
+            ],
+          })),
+        ),
+    );
 
     delete result.dependentRequired;
-    result.allOf = [...(result.allOf ?? []), ...branches];
+    result.allOf = [...(yield* schemaList(result.allOf ?? [], path, "allOf")), ...branches];
   }
 
   // Zod ignores required-only allOf branches. Copy the property schemas they inherit.
   if (schema.required && !schema.type) {
-    if (!Array.isArray(schema.required)) reject(`${path}: Unsupported required constraint`);
+    const required = yield* Schema.decodeUnknownEffect(Schema.Array(Schema.String))(
+      schema.required,
+    ).pipe(
+      Effect.mapError(
+        () => new ZodGenerationError({ message: `${path}: Unsupported required constraint` }),
+      ),
+    );
+
     result.type = "object";
-    const props: Record<string, SchemaNode> = { ...schema.properties };
 
-    for (const name of schema.required) {
-      const property = properties[name];
-      if (property === undefined) reject(`${path}: Cannot resolve required property ${name}`);
-      props[name] = property;
-    }
+    const props = yield* Effect.forEach(
+      required,
+      Effect.fnUntraced(function* (name) {
+        const property = properties[name];
+        if (property === undefined)
+          return yield* new ZodGenerationError({
+            message: `${path}: Cannot resolve required property ${name}`,
+          });
+        return [name, property] as const;
+      }),
+    ).pipe(Effect.map(Record.fromEntries));
 
-    result.properties = props;
+    result.properties = {
+      ...(schema.properties ? yield* schemaMap(schema.properties, path, "properties") : {}),
+      ...props,
+    };
   }
 
   if (
     !result.type &&
-    Object.keys(schema).some((key) => keywords.has(key) && !untypedKeywords.has(key))
+    Array.some(
+      Record.keys<string, unknown>(schema),
+      (key) => keywords.has(key) && !untypedKeywords.has(key),
+    )
   ) {
-    reject(`${path}: Constraints without a type are not supported by Zod`);
-  }
-
-  for (const key of schemaMaps) {
-    const values = result[key];
-    if (!values) continue;
-    if (!Predicate.isObject(values)) reject(`${path}: Unsupported ${key}`);
-    const normalized: Record<string, SchemaNode> = {};
-
-    for (const [name, value] of Object.entries(values)) {
-      normalized[name] = normalize(
-        document,
-        asSchema(value, `${path}/${key}/${name}`),
-        `${path}/${key}/${name}`,
-      );
-    }
-
-    result[key] = normalized;
-  }
-
-  for (const key of compositions) {
-    const values = result[key];
-    if (!values) continue;
-    if (!Array.isArray(values)) reject(`${path}: Unsupported ${key}`);
-    const normalized: JsonSchema[] = [];
-
-    for (const [index, part] of values.entries()) {
-      normalized.push(
-        normalize(
-          document,
-          asSchema(part, `${path}/${key}/${index}`),
-          `${path}/${key}/${index}`,
-          properties,
-        ),
-      );
-    }
-
-    result[key] = normalized;
-  }
-
-  if (result.prefixItems) {
-    if (!Array.isArray(result.prefixItems)) reject(`${path}: Unsupported prefixItems`);
-    const normalized: JsonSchema[] = [];
-
-    for (const [index, part] of result.prefixItems.entries()) {
-      normalized.push(
-        normalize(
-          document,
-          asSchema(part, `${path}/prefixItems/${index}`),
-          `${path}/prefixItems/${index}`,
-        ),
-      );
-    }
-
-    result.prefixItems = normalized;
-  }
-
-  for (const key of schemaFields) {
-    const value = result[key];
-    if (value === undefined) continue;
-    if (Array.isArray(value)) reject(`${path}: Tuple items require prefixItems`);
-
-    result[key] = normalize(document, asSchema(value, `${path}/${key}`), `${path}/${key}`);
-  }
-
-  return result;
-}
-
-function visit(
-  schema: SchemaNode,
-  needed: Set<string>,
-  definitions: ReadonlyMap<string, JsonSchema>,
-) {
-  if (typeof schema === "boolean") return;
-
-  if (schema.$ref) {
-    const name = definitionName(schema.$ref);
-
-    if (!needed.has(name)) {
-      const definition = definitions.get(name);
-      if (definition === undefined) reject(`${schema.$ref}: Reference not found`);
-      needed.add(name);
-      visit(definition, needed, definitions);
-    }
-  }
-
-  for (const key of schemaMaps) {
-    const values = schema[key];
-    if (!Predicate.isObject(values)) continue;
-
-    for (const part of Object.values(values)) visit(asSchema(part, "schema"), needed, definitions);
-  }
-
-  for (const key of [...compositions, "prefixItems"] as const) {
-    const values = schema[key];
-    if (!Array.isArray(values)) continue;
-
-    for (const part of values) visit(asSchema(part, "schema"), needed, definitions);
-  }
-
-  for (const key of schemaFields) {
-    const value = schema[key];
-
-    if (value !== undefined && !Array.isArray(value)) {
-      visit(asSchema(value, "schema"), needed, definitions);
-    }
-  }
-}
-
-function compileExport(name: string, root: SchemaNode) {
-  try {
-    z.compile(z.fromJSONSchema(root));
-  } catch (cause) {
-    throw new ZodGenerationError({
-      message: `${name}: ${cause instanceof Error ? cause.message : String(cause)}`,
-      cause,
+    return yield* new ZodGenerationError({
+      message: `${path}: Constraints without a type are not supported by Zod`,
     });
   }
-}
 
-function source(
-  entries: readonly SchemaExport[],
-  definitions: ReadonlyMap<string, JsonSchema>,
-): ZodSource {
-  const seen = new Set<string>();
+  yield* Effect.forEach(
+    schemaMaps,
+    Effect.fnUntraced(function* (key) {
+      const values = result[key];
+      if (!values) return;
+      const schemas = yield* schemaMap(values, path, key);
 
-  for (const { name } of entries) {
-    assertExportName(name, ["z", "definitions"]);
-    if (seen.has(name)) reject(`${name}: Duplicate schema export`);
-    seen.add(name);
-  }
+      result[key] = yield* Effect.forEach(Record.toEntries(schemas), ([name, value]) =>
+        normalize(document, value, `${path}/${key}/${name}`).pipe(
+          Effect.map((schema) => [name, schema] as const),
+        ),
+      ).pipe(Effect.map(Record.fromEntries));
+    }),
+    { discard: true },
+  );
 
-  const exports: string[] = [];
+  yield* Effect.forEach(
+    compositions,
+    Effect.fnUntraced(function* (key) {
+      const values = result[key];
+      if (!values) return;
+      const schemas = yield* schemaList(values, path, key);
 
-  for (const { name, schema, type, expression } of entries) {
-    const needed = new Set<string>();
-    visit(schema, needed, definitions);
-    const names = [...needed].sort();
-    const defs: Record<string, JsonSchema> = {};
+      result[key] = yield* Effect.forEach(schemas, (part, index) =>
+        normalize(document, part, `${path}/${key}/${index}`, properties),
+      );
+    }),
+    { discard: true },
+  );
 
-    for (const definition of names) {
-      const value = definitions.get(definition);
-      if (!value) reject(`#/$defs/${definition}: Reference not found`);
-      defs[definition] = value;
-    }
+  if (result.prefixItems) {
+    const schemas = yield* schemaList(result.prefixItems, path, "prefixItems");
 
-    const root =
-      typeof schema === "boolean"
-        ? schema
-        : { ...schema, ...(names.length > 0 ? { $defs: defs } : {}) };
-
-    compileExport(name, root);
-
-    const argument = schemaLiteral(schema, names, expression);
-
-    exports.push(
-      `export const ${name} = z.compile(z.fromJSONSchema(${argument})) as z.ZodType<${type}>;`,
+    result.prefixItems = yield* Effect.forEach(schemas, (part, index) =>
+      normalize(document, part, `${path}/prefixItems/${index}`),
     );
   }
 
+  yield* Effect.forEach(
+    schemaFields,
+    Effect.fnUntraced(function* (key) {
+      const value = result[key];
+      if (value === undefined) return;
+      if (Array.isArray(value))
+        return yield* new ZodGenerationError({
+          message: `${path}: Tuple items require prefixItems`,
+        });
+
+      result[key] = yield* asSchema(value, `${path}/${key}`).pipe(
+        Effect.flatMap((schema) => normalize(document, schema, `${path}/${key}`)),
+      );
+    }),
+    { discard: true },
+  );
+
+  return result;
+});
+
+const visit = Effect.fnUntraced(function* (
+  schema: ParsedSchema,
+  needed: Set<string>,
+  definitions: ReadonlyMap<string, JsonSchema>,
+): Effect.fn.Return<void, ZodGenerationError> {
+  if (typeof schema === "boolean") return;
+
+  if (Predicate.isString(schema.$ref) && schema.$ref) {
+    const name = yield* definitionName(schema.$ref);
+
+    if (!needed.has(name)) {
+      const definition = definitions.get(name);
+      if (definition === undefined)
+        return yield* new ZodGenerationError({ message: `${schema.$ref}: Reference not found` });
+      needed.add(name);
+      yield* visit(definition, needed, definitions);
+    }
+  }
+
+  yield* Effect.forEach(
+    schemaMaps,
+    Effect.fnUntraced(function* (key) {
+      const values = schema[key];
+      if (!Predicate.isObject(values)) return;
+
+      yield* Effect.forEach(
+        Record.values(values),
+        (part) =>
+          asSchema(part, "schema").pipe(
+            Effect.flatMap((child) => visit(child, needed, definitions)),
+          ),
+        { discard: true },
+      );
+    }),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    [...compositions, "prefixItems"] as const,
+    Effect.fnUntraced(function* (key) {
+      const values = schema[key];
+      if (!Array.isArray(values)) return;
+
+      yield* Effect.forEach(
+        values,
+        (part) =>
+          asSchema(part, "schema").pipe(
+            Effect.flatMap((child) => visit(child, needed, definitions)),
+          ),
+        { discard: true },
+      );
+    }),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    schemaFields,
+    Effect.fnUntraced(function* (key) {
+      const value = schema[key];
+
+      if (value !== undefined && !Array.isArray(value)) {
+        yield* asSchema(value, "schema").pipe(
+          Effect.flatMap((child) => visit(child, needed, definitions)),
+        );
+      }
+    }),
+    { discard: true },
+  );
+});
+
+const compileExport = Effect.fnUntraced(function* (name: string, root: ParsedSchema) {
+  return yield* Effect.try({
+    try: () => {
+      z.compile(z.fromJSONSchema(root));
+    },
+    catch: (cause) =>
+      new ZodGenerationError({
+        message: `${name}: ${cause instanceof Error ? cause.message : String(cause)}`,
+        cause,
+      }),
+  });
+});
+
+function renderSource(
+  entries: readonly SchemaExport[],
+  definitions: ReadonlyMap<string, JsonSchema>,
+  exports: readonly string[],
+): ZodSource {
   if (exports.length === 0) return "";
-  const types = [...new Set(entries.map((entry) => entry.types))].sort();
+
+  const types = pipe(
+    entries,
+    Array.map((entry) => entry.types),
+    Array.dedupe,
+    Array.sort(Order.String),
+  );
 
   const blocks = [
-    [
-      `import * as z from "zod";`,
-      ...(types.length > 0 ? [`import type { ${types.join(", ")} } from "./types";`] : []),
-    ].join("\n"),
+    Array.join(
+      [
+        `import * as z from "zod";`,
+        ...(types.length > 0 ? [`import type { ${Array.join(types, ", ")} } from "./types";`] : []),
+      ],
+      "\n",
+    ),
   ];
 
   if (definitions.size > 0) {
-    const keys = [...definitions.keys()].map((name) => JSON.stringify(name)).join(" | ");
+    const keys = pipe(
+      Array.fromIterable(definitions.keys()),
+      Array.map((name) => JSON.stringify(name)),
+      Array.join(" | "),
+    );
 
-    const values = [...definitions]
-      .map(([name, schema]) => `${JSON.stringify(name)}: ${JSON.stringify(schema, null, 2)}`)
-      .join(",\n");
+    const values = pipe(
+      Array.fromIterable(definitions),
+      Array.map(([name, schema]) => `${JSON.stringify(name)}: ${JSON.stringify(schema, null, 2)}`),
+      Array.join(",\n"),
+    );
 
     blocks.push(
       `const definitions: Record<${keys}, z.core.JSONSchema.JSONSchema> = {\n${indent(values, 2)},\n};`,
     );
   }
 
-  return `${[...blocks, ...exports].join("\n\n")}\n`;
+  return `${Array.join([...blocks, ...exports], "\n\n")}\n`;
 }
 
-function compile(model: ParsedService, routes: Record<string, OperationRoute>): ZodSource {
-  if (!model.openapi.startsWith("3.1.")) reject("Zod generation requires OpenAPI 3.1");
+const source = Effect.fnUntraced(function* (
+  entries: readonly SchemaExport[],
+  definitions: ReadonlyMap<string, JsonSchema>,
+): Effect.fn.Return<ZodSource, ZodGenerationError> {
+  const seen = new Set<string>();
 
-  if (model.jsonSchemaDialect || Object.keys(model.$defs).length > 0) {
-    reject("Zod generation does not support custom dialects or top-level $defs");
+  yield* Effect.forEach(
+    entries,
+    Effect.fnUntraced(function* ({ name }) {
+      yield* assertExportName(name, ["z", "definitions"]);
+      if (seen.has(name))
+        return yield* new ZodGenerationError({ message: `${name}: Duplicate schema export` });
+      seen.add(name);
+    }),
+    { discard: true },
+  );
+
+  return yield* Effect.forEach(
+    entries,
+    Effect.fnUntraced(function* ({ name, schema, type, expression }) {
+      const needed = new Set<string>();
+      yield* visit(schema, needed, definitions);
+      const names = Array.sort(needed, Order.String);
+
+      const defs = yield* Effect.forEach(
+        names,
+        Effect.fnUntraced(function* (definition) {
+          const value = definitions.get(definition);
+          if (value === undefined)
+            return yield* new ZodGenerationError({
+              message: `#/$defs/${definition}: Reference not found`,
+            });
+          return [definition, value] as const;
+        }),
+      ).pipe(Effect.map(Record.fromEntries));
+
+      const root =
+        typeof schema === "boolean"
+          ? schema
+          : { ...schema, ...(names.length > 0 ? { $defs: defs } : {}) };
+
+      yield* compileExport(name, root);
+      const argument = schemaLiteral(schema, names, expression);
+      return `export const ${name} = z.compile(z.fromJSONSchema(${argument})) as z.ZodType<${type}>;`;
+    }),
+  ).pipe(Effect.map((exports) => renderSource(entries, definitions, exports)));
+});
+
+const compile = Effect.fnUntraced(function* (
+  model: ParsedService,
+  routes: Record<string, OperationRoute>,
+): Effect.fn.Return<ZodSource, ZodGenerationError> {
+  if (!model.openapi.startsWith("3.1."))
+    return yield* new ZodGenerationError({ message: "Zod generation requires OpenAPI 3.1" });
+
+  if (model.jsonSchemaDialect || Record.keys(model.$defs).length > 0) {
+    return yield* new ZodGenerationError({
+      message: "Zod generation does not support custom dialects or top-level $defs",
+    });
   }
 
-  const definitions = new Map<string, JsonSchema>();
+  const definitions = yield* Effect.forEach(
+    Record.toEntries(model.components.schemas),
+    ([name, schema]) =>
+      normalize(model, schema, `#/components/schemas/${name}`).pipe(
+        Effect.map((normalized) => [name, normalized] as const),
+      ),
+  ).pipe(Effect.map((entries) => new Map(entries)));
 
-  for (const [name, schema] of Object.entries(model.components.schemas)) {
-    const path = `#/components/schemas/${name}`;
-    definitions.set(name, normalize(model, asSchema(schema, path), path));
-  }
-
-  const entries: SchemaExport[] = [...definitions].map(([name, schema]) => ({
+  const components = Array.map(Array.fromIterable(definitions), ([name, schema]): SchemaExport => ({
     name,
     schema,
     types: "components",
@@ -479,43 +628,47 @@ function compile(model: ParsedService, routes: Record<string, OperationRoute>): 
     expression: `definitions.${name}`,
   }));
 
-  for (const operation of model.operations) {
-    const id = operation.operationId;
-    if (!id || !Object.hasOwn(routes, id)) continue;
-    const location = `${operation.method} ${operation.path}`;
-    const body = operation.request.body;
-    if (!body) continue;
-    const content = body.contents.find((entry) => entry.mediaType === "application/json");
+  const operations = yield* Effect.forEach(
+    model.operations,
+    Effect.fnUntraced(function* (operation): Effect.fn.Return<
+      SchemaExport | undefined,
+      ZodGenerationError
+    > {
+      const id = operation.operationId;
+      if (!id || !Object.hasOwn(routes, id)) return;
+      const location = `${operation.method} ${operation.path}`;
+      const body = operation.request.body;
+      if (!body) return;
 
-    if (body.contents.length !== 1 || !content) {
-      reject(`${location}: Request bodies require a single application/json media type`);
-    }
+      const content = Array.findFirst(
+        body.contents,
+        (entry) => entry.mediaType === "application/json",
+      );
 
-    if (content.schema === undefined) {
-      reject(`${location}: Request body has no schema`);
-    }
+      if (body.contents.length !== 1 || Option.isNone(content)) {
+        return yield* new ZodGenerationError({
+          message: `${location}: Request bodies require a single application/json media type`,
+        });
+      }
 
-    const media = content.schema;
+      if (content.value.schema === undefined)
+        return yield* new ZodGenerationError({
+          message: `${location}: Request body has no schema`,
+        });
 
-    entries.push({
-      name: `${id}RequestBody`,
-      types: "operations",
-      type: `NonNullable<operations[${JSON.stringify(id)}]["requestBody"]>["content"]["application/json"]`,
-      schema: normalize(model, asSchema(media, location), location),
-    });
-  }
+      const idLiteral = yield* encodeJson(id);
 
-  return source(entries, definitions);
-}
+      return {
+        name: `${id}RequestBody`,
+        types: "operations",
+        type: `NonNullable<operations[${idLiteral}]["requestBody"]>["content"]["application/json"]`,
+        schema: yield* normalize(model, content.value.schema, location),
+      };
+    }),
+  ).pipe(Effect.map(Array.filter(Predicate.isNotUndefined)));
 
-function failure(cause: unknown): ZodGenerationError {
-  if (Schema.is(ZodGenerationError)(cause)) return cause;
-
-  return new ZodGenerationError({
-    message: cause instanceof Error ? cause.message : String(cause),
-    cause,
-  });
-}
+  return yield* source([...components, ...operations], definitions);
+});
 
 /**
  * Turn an OpenAPI 3.1 document into Zod source.
@@ -533,8 +686,5 @@ export const zodSources = Effect.fn("zodSources")(function* (
   document: ParsedService,
   routes: Record<string, OperationRoute>,
 ): Effect.fn.Return<ZodSource, ZodGenerationError> {
-  return yield* Effect.try({
-    try: () => compile(document, routes),
-    catch: failure,
-  });
+  return yield* compile(document, routes);
 });

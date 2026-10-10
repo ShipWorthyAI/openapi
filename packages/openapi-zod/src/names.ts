@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { ZodGenerationError } from "./errors.ts";
 
 const reservedWords = new Set([
@@ -52,7 +53,10 @@ const reservedWords = new Set([
 const identifier = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 /** Reject names that cannot be emitted as `export const` bindings. */
-export function assertExportName(name: string, blocked: readonly string[]): void {
+export const assertExportName = Effect.fnUntraced(function* (
+  name: string,
+  blocked: readonly string[],
+): Effect.fn.Return<void, ZodGenerationError> {
   if (
     !identifier.test(name) ||
     reservedWords.has(name) ||
@@ -61,8 +65,8 @@ export function assertExportName(name: string, blocked: readonly string[]): void
     name === "constructor" ||
     name === "prototype"
   ) {
-    throw new ZodGenerationError({
+    return yield* new ZodGenerationError({
       message: `${name}: Cannot emit this name as a schema export`,
     });
   }
-}
+});

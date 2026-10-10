@@ -3,7 +3,7 @@ import { NodeServices } from "@effect/platform-node";
 import { generate, ModuleLoader } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
-import { zod, type ZodSource } from "../src/index";
+import { operationRoutes, zod, zodSources, ZodGenerationError, type ZodSource } from "../src/index";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -390,4 +390,124 @@ void test("unsupported documents and schemas fail before files are written", () 
   const tuple = structuredClone(document) as any;
   tuple.components.schemas.Item = { type: "array", items: [{ type: "string" }] };
   assert.throws(() => sourceFor(tuple), /Tuple items require prefixItems/);
+});
+
+void test("nested validation failures are recoverable and stop at the first schema", () => {
+  const model = Effect.runSync(
+    decode({
+      openapi: "3.1.0",
+      info: document.info,
+      paths: {},
+      components: {
+        schemas: {
+          First: { type: "object", properties: { value: { type: "string", if: {} } } },
+          Second: { discriminator: { propertyName: "kind" } },
+        },
+      },
+    }),
+  );
+
+  const message = Effect.runSync(
+    zodSources(model, {}).pipe(
+      Effect.catchTag("ZodGenerationError", (error) => Effect.succeed(error.message)),
+    ),
+  );
+
+  assert.equal(message, "#/components/schemas/First/properties/value: Unsupported keyword if");
+});
+
+void test("reference and keyword decoding failures stay in the typed error channel", () => {
+  const failureFor = (schema: Parameters<typeof decode>[0]) => {
+    const model = Effect.runSync(decode(schema));
+    return Effect.runSync(Effect.flip(zodSources(model, {})));
+  };
+
+  const unresolved = failureFor({
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: { schemas: { Missing: { $ref: "#/components/schemas/Absent" } } },
+  });
+
+  assert.ok(unresolved instanceof ZodGenerationError);
+  assert.equal(unresolved.message, "#/components/schemas/Absent: Unresolved reference");
+
+  const malformed = failureFor({
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: { schemas: { Bad: { type: "object", properties: { field: 1 } } } },
+  });
+
+  assert.ok(malformed instanceof ZodGenerationError);
+
+  assert.equal(
+    malformed.message,
+    "#/components/schemas/Bad/properties/field: Expected a JSON schema",
+  );
+});
+
+void test("Zod conversion failures preserve the export name and original cause", () => {
+  const model = Effect.runSync(
+    decode({
+      openapi: "3.1.0",
+      info: document.info,
+      paths: {},
+      components: { schemas: { Broken: { type: "string", pattern: "[" } } },
+    }),
+  );
+
+  const failure = Effect.runSync(Effect.flip(zodSources(model, {})));
+  assert.ok(failure instanceof ZodGenerationError);
+  assert.match(failure.message, /^Broken: /);
+  assert.ok(failure.cause instanceof SyntaxError);
+});
+
+void test("generation and route effects can be rerun without retaining traversal state", async () => {
+  const model = Effect.runSync(
+    decode({
+      ...document,
+      components: {
+        schemas: {
+          Anything: true,
+          Nothing: false,
+          Node: {
+            type: "object",
+            properties: {
+              next: { $ref: "#/components/schemas/Node" },
+              value: { $ref: "#/components/schemas/Anything" },
+              forbidden: { $ref: "#/components/schemas/Nothing" },
+            },
+          },
+          Item: document.components.schemas.Item,
+        },
+      },
+    }),
+  );
+
+  const original = structuredClone(model);
+  const routeEffect = operationRoutes(model);
+  const firstRoutes = Effect.runSync(routeEffect);
+  const secondRoutes = Effect.runSync(routeEffect);
+  assert.notEqual(firstRoutes, secondRoutes);
+  assert.deepEqual(firstRoutes, secondRoutes);
+  assert.equal(Object.getPrototypeOf(secondRoutes), null);
+
+  const generation = zodSources(model, firstRoutes);
+  const firstSource = Effect.runSync(generation);
+  assert.equal(Effect.runSync(generation), firstSource);
+  assert.deepEqual(model, original);
+  const generated = await loadGenerated(firstSource);
+
+  try {
+    assert.deepEqual(generated.schemas.Node.parse({ next: { value: 42 } }), {
+      next: { value: 42 },
+    });
+
+    assert.throws(() => generated.schemas.Node.parse({ forbidden: 42 }));
+    assert.equal(generated.schemas.Anything.parse(42), 42);
+    assert.throws(() => generated.schemas.Nothing.parse(42));
+  } finally {
+    await generated.dispose();
+  }
 });
