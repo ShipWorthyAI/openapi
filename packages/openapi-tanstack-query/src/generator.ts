@@ -54,7 +54,7 @@ export const tanstackQuery: Generator<string, TanstackGenerationError> = {
   }),
 };
 
-export function clientSource(
+function clientSource(
   prefix: string,
   name: string,
   routes: Record<string, OperationRoute>,
