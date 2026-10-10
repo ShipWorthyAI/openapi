@@ -499,19 +499,19 @@ Client and request types:
 
 Schema helpers:
 
-| Type                                                                                                                        | Purpose                                                                                             |
-| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `HttpMethod`                                                                                                                | `"get" \| "put" \| "post" \| "delete" \| "options" \| "head" \| "patch" \| "trace"`.                |
-| `OkStatus`, `ErrorStatus`                                                                                                   | The status codes treated as success, and as error (including `"4XX"`, `"5XX"`, and `default`).      |
-| `PathsWithMethod<Paths, Method>`                                                                                            | The paths that define `Method`.                                                                     |
-| `SuccessResponse<Responses, Media>`, `ErrorResponse<Responses, Media>`                                                      | Success or error body union from a responses map.                                                   |
-| `SuccessResponseJSON<Op>`, `ErrorResponseJSON<Op>`, `RequestBodyJSON<Op>`                                                   | JSON-only variants that take an operation.                                                          |
-| `ResponseObjectMap`, `ResponseContent`, `GetResponseContent`, `OKStatusUnion`, `FirstErrorStatus`                           | Response-map utilities.                                                                             |
-| `OperationRequestBody`, `OperationRequestBodyContent`, `OperationRequestBodyMediaContent`, `IsOperationRequestBodyOptional` | Request-body utilities.                                                                             |
-| `OperationObject`, `PathItemObject`                                                                                         | Structural helpers used for inference.                                                              |
-| `MediaType`, `JSONLike<T>`                                                                                                  | `` `${string}/${string}` `` and a JSON media-type filter.                                           |
-| `FilterKeys`, `RequiredKeysOf`                                                                                              | Generic utilities. `GetValueWithDefault`, `FindRequiredKeys`, and `HasRequiredKeys` are deprecated. |
-| `$Read<T>`, `$Write<T>`, `Readable<T>`, `Writable<T>`                                                                       | readOnly/writeOnly support (see below).                                                             |
+| Type                                                                                                                        | Purpose                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `HttpMethod`                                                                                                                | `"get" \| "put" \| "post" \| "delete" \| "options" \| "head" \| "patch" \| "trace"`.           |
+| `OkStatus`, `ErrorStatus`                                                                                                   | The status codes treated as success, and as error (including `"4XX"`, `"5XX"`, and `default`). |
+| `PathsWithMethod<Paths, Method>`                                                                                            | The paths that define `Method`.                                                                |
+| `SuccessResponse<Responses, Media>`, `ErrorResponse<Responses, Media>`                                                      | Success or error body union from a responses map.                                              |
+| `SuccessResponseJSON<Op>`, `ErrorResponseJSON<Op>`, `RequestBodyJSON<Op>`                                                   | JSON-only variants that take an operation.                                                     |
+| `ResponseObjectMap`, `ResponseContent`, `GetResponseContent`, `OKStatusUnion`, `FirstErrorStatus`                           | Response-map utilities.                                                                        |
+| `OperationRequestBody`, `OperationRequestBodyContent`, `OperationRequestBodyMediaContent`, `IsOperationRequestBodyOptional` | Request-body utilities.                                                                        |
+| `OperationObject`, `PathItemObject`                                                                                         | Structural helpers used for inference.                                                         |
+| `MediaType`, `JSONLike<T>`                                                                                                  | `` `${string}/${string}` `` and a JSON media-type filter.                                      |
+| `FilterKeys`, `RequiredKeysOf`                                                                                              | Generic utilities.                                                                             |
+| `$Read<T>`, `$Write<T>`, `Readable<T>`, `Writable<T>`                                                                       | readOnly/writeOnly support (see below).                                                        |
 
 ```ts
 import type { MethodResponse } from "@shipworthy/openapi-fetch";

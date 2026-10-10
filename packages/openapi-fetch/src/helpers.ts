@@ -294,36 +294,11 @@ export type RequestBodyJSON<PathMethod> = JSONLike<
 
 /** Find first match of multiple keys */
 export type FilterKeys<Obj, Matchers> = Obj[keyof Obj & Matchers];
-/**
- * @deprecated Use `FilterKeys` instead
- * Get the type of a value of an input object with a given key. If the key is
- * not found, return a default type. Works with unions of objects too.
- */
-export type GetValueWithDefault<Obj, KeyPattern, Default> = Obj extends any
-  ? FilterKeys<Obj, KeyPattern> extends never
-    ? Default
-    : FilterKeys<Obj, KeyPattern>
-  : never;
 
 /** Return any `[string]/[string]` media type (important because openapi-fetch allows any content response, not just JSON-like) */
 export type MediaType = `${string}/${string}`;
 /** Return any media type containing "json" (works for "application/json", "application/vnd.api+json", "application/vnd.oai.openapi+json") */
 export type JSONLike<T> = FilterKeys<T, `${string}/json`>;
-
-/**
- * Filter objects that have required keys
- * @deprecated Use `RequiredKeysOf` instead
- */
-export type FindRequiredKeys<T, K extends keyof T> = K extends unknown
-  ? undefined extends T[K]
-    ? never
-    : K
-  : K;
-/**
- * Does this object contain required keys?
- * @deprecated Use `RequiredKeysOf` instead
- */
-export type HasRequiredKeys<T> = FindRequiredKeys<T, keyof T>;
 
 /** Helper to get the required keys of an object. If no keys are required, will be `undefined` with strictNullChecks enabled, else `never` */
 type RequiredKeysOfHelper<T> = {
