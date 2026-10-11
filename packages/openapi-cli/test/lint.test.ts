@@ -1,10 +1,7 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "vitest";
-
-const bin = new URL("../src/bin.ts", import.meta.url).pathname;
+import { test } from "vitest";
+import { serve, workspace } from "./cli.ts";
 
 const missingPathParam = `openapi: 3.1.0
 info: { title: Test, version: '1' }
@@ -16,30 +13,42 @@ paths:
         "200": { description: ok }
 `;
 
-let dir: string;
+const duplicateIds = `openapi: 3.1.0
+info: { title: Test, version: '1' }
+paths:
+  /a:
+    get: { operationId: duplicate, responses: {} }
+  /b:
+    get: { operationId: duplicate, responses: {} }
+`;
 
-beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "openapi-cli-lint-"));
-  writeFileSync(join(dir, "openapi.yaml"), missingPathParam);
+test("lint passes with warnings by default", async (context) => {
+  const cli = workspace(context);
+  writeFileSync(join(cli.dir, "openapi.yaml"), missingPathParam);
+  await cli.ok("lint", "openapi.yaml");
 });
 
-afterEach(() => {
-  rmSync(dir, { recursive: true, force: true });
+test("lint --strict fails on error-severity oas rules", async (context) => {
+  const { expect } = context;
+  const cli = workspace(context);
+  writeFileSync(join(cli.dir, "openapi.yaml"), missingPathParam);
+  expect(await cli.fails("lint", "--strict", "openapi.yaml")).toMatch(/path parameter|\{id\}/);
 });
 
-function lint(...args: string[]) {
-  return () =>
-    execFileSync("bun", [bin, "lint", ...args], {
-      cwd: dir,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-}
-
-test("lint passes with warnings by default", () => {
-  expect(lint("openapi.yaml")).not.toThrow();
+test("lints the original file without bundling or normalizing it", async (context) => {
+  const { expect } = context;
+  const cli = workspace(context);
+  writeFileSync(join(cli.dir, "openapi.yaml"), duplicateIds);
+  const output = await cli.fails("lint", "openapi.yaml");
+  expect(output).toMatch(/operationId/);
+  expect(output).not.toMatch(/Responses must contain at least one/);
 });
 
-test("lint --strict fails on error-severity oas rules", () => {
-  expect(lint("--strict", "openapi.yaml")).toThrow(/path parameter|\{id\}/);
+test("reads the original document from an HTTP URL", async (context) => {
+  const { expect } = context;
+  const cli = workspace(context);
+  const url = await serve(context, (_request, response) => response.end(duplicateIds));
+  const output = await cli.fails("lint", `${url}/openapi.yaml`);
+  expect(output).toMatch(/operationId/);
+  expect(output).not.toMatch(/Responses must contain at least one/);
 });

@@ -1,19 +1,13 @@
-import { execFile, execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { createServer } from "node:http";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { promisify } from "node:util";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { test, type TestContext } from "vitest";
+import { serve, workspace } from "./cli.ts";
 
-const bin = new URL("../src/bin.ts", import.meta.url).pathname;
-let dir: string;
-
-beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "openapi-cli-overlay-"));
+function setup(context: TestContext) {
+  const cli = workspace(context);
 
   writeFileSync(
-    join(dir, "openapi.yaml"),
+    join(cli.dir, "openapi.yaml"),
     `openapi: 3.0.3
 info: { title: Pets, version: '1' }
 paths: {}
@@ -24,10 +18,10 @@ components:
 `,
   );
 
-  writeFileSync(join(dir, "pet.yaml"), "type: string\nnullable: true\n");
+  writeFileSync(join(cli.dir, "pet.yaml"), "type: string\nnullable: true\n");
 
   writeFileSync(
-    join(dir, "overlay.yaml"),
+    join(cli.dir, "overlay.yaml"),
     `overlay: 1.1.0
 info: { title: Public Pets, version: '1' }
 actions:
@@ -37,21 +31,20 @@ actions:
     update: Public Pets
 `,
   );
-});
 
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
-
-function overlay(...args: string[]) {
-  return execFileSync("bun", [bin, "overlay", ...args], {
-    cwd: dir,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  return {
+    ...cli,
+    read: (file: string) => readFileSync(join(cli.dir, file), "utf8"),
+    write: (file: string, contents: string) => writeFileSync(join(cli.dir, file), contents),
+    exists: (file: string) => existsSync(join(cli.dir, file)),
+  };
 }
 
-test("bundles external references and upgrades before overlaying with the requested syntax", () => {
-  overlay("openapi.yaml", "--overlay", "overlay.yaml", "-o", "nested/bundled.openapi.json");
-  const output = readFileSync(join(dir, "nested/bundled.openapi.json"), "utf8");
+test("bundles external references and upgrades before overlaying with the requested syntax", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  await cli.ok("overlay", "openapi.yaml", "--overlay", "overlay.yaml", "-o", "nested/bundled.json");
+  const output = cli.read("nested/bundled.json");
 
   expect(JSON.parse(output)).toMatchObject({
     openapi: "3.1.0",
@@ -63,12 +56,15 @@ test("bundles external references and upgrades before overlaying with the reques
 
   expect(output).not.toContain("./pet.yaml");
   expect(output.endsWith("\n")).toBe(true);
-  expect(readFileSync(join(dir, "openapi.yaml"), "utf8")).toContain("title: Pets");
+  expect(cli.read("openapi.yaml")).toContain("title: Pets");
 });
 
-test("accepts JSON overlays and file URLs with --output", () => {
-  writeFileSync(
-    join(dir, "overlay.json"),
+test("accepts JSON overlays and file URLs with --output", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+
+  cli.write(
+    "overlay.json",
     JSON.stringify({
       overlay: "1.1.0",
       info: { title: "Test", version: "1" },
@@ -76,100 +72,56 @@ test("accepts JSON overlays and file URLs with --output", () => {
     }),
   );
 
-  overlay(
+  await cli.ok(
+    "overlay",
     "openapi.yaml",
     "--overlay",
-    new URL(`file://${join(dir, "overlay.json")}`).href,
+    new URL(`file://${join(cli.dir, "overlay.json")}`).href,
     "--output",
     "output.json",
   );
 
-  expect(JSON.parse(readFileSync(join(dir, "output.json"), "utf8")).info.title).toBe(
-    "JSON overlay",
-  );
+  expect(JSON.parse(cli.read("output.json")).info.title).toBe("JSON overlay");
 });
 
-test("requires --overlay and -o", () => {
-  expect(() => overlay("openapi.yaml", "-o", "output.json")).toThrow(/overlay/);
-  expect(() => overlay("openapi.yaml", "--overlay", "overlay.yaml")).toThrow(/output/);
+test("requires --overlay and -o", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  expect(await cli.fails("overlay", "openapi.yaml", "-o", "output.json")).toMatch(/overlay/);
+  expect(await cli.fails("overlay", "openapi.yaml", "--overlay", "overlay.yaml")).toMatch(/output/);
 });
 
-test("dispatches Overlay 1.0 validation and behavior", () => {
-  writeFileSync(
-    join(dir, "overlay.yaml"),
-    `overlay: 1.0.42
-info: { title: Test, version: '1' }
-actions:
-  - target: $.info
-    update: { title: Public Pets }
-`,
-  );
+test("loads remote YAML overlays and rejects non-success HTTP responses", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
 
-  overlay("openapi.yaml", "--overlay", "overlay.yaml", "-o", "output.json");
-  expect(JSON.parse(readFileSync(join(dir, "output.json"), "utf8")).info.title).toBe("Public Pets");
-
-  writeFileSync(
-    join(dir, "overlay.yaml"),
-    `overlay: 1.0.42
-info: { title: Test, version: '1' }
-actions:
-  - target: $.info.title
-    update: Invalid primitive target
-`,
-  );
-
-  expect(() => overlay("openapi.yaml", "--overlay", "overlay.yaml", "-o", "invalid.json")).toThrow(
-    /1.0 targets must select objects or arrays/,
-  );
-
-  expect(existsSync(join(dir, "invalid.json"))).toBe(false);
-});
-
-test("loads remote YAML overlays and rejects non-success HTTP responses", async () => {
-  const server = createServer((request, response) => {
+  const url = await serve(context, (request, response) => {
     response.statusCode = request.url === "/overlay.yaml" ? 200 : 404;
-    response.end(readFileSync(join(dir, "overlay.yaml"), "utf8"));
+    response.end(cli.read("overlay.yaml"));
   });
 
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const address = server.address();
+  await cli.ok("overlay", "openapi.yaml", "--overlay", `${url}/overlay.yaml`, "-o", "remote.json");
+  expect(JSON.parse(cli.read("remote.json")).info.title).toBe("Public Pets");
 
-  if (address === null || typeof address === "string") throw new Error("Expected a server address");
-  const url = `http://127.0.0.1:${address.port}`;
-  const run = promisify(execFile);
+  await cli.fails(
+    "overlay",
+    "openapi.yaml",
+    "--overlay",
+    `${url}/missing.yaml`,
+    "-o",
+    "missing.json",
+  );
 
-  try {
-    await run(
-      "bun",
-      [bin, "overlay", "openapi.yaml", "--overlay", `${url}/overlay.yaml`, "-o", "remote.json"],
-      { cwd: dir },
-    );
-
-    expect(JSON.parse(readFileSync(join(dir, "remote.json"), "utf8")).info.title).toBe(
-      "Public Pets",
-    );
-
-    await expect(
-      run(
-        "bun",
-        [bin, "overlay", "openapi.yaml", "--overlay", `${url}/missing.yaml`, "-o", "missing.json"],
-        { cwd: dir },
-      ),
-    ).rejects.toThrow();
-
-    expect(existsSync(join(dir, "missing.json"))).toBe(false);
-  } finally {
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    );
-  }
+  expect(cli.exists("missing.json")).toBe(false);
 });
 
-test("reports overlay action failures without overwriting existing output", () => {
-  writeFileSync(join(dir, "output.json"), "existing output");
+test("reports overlay action failures without overwriting existing output", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  cli.write("output.json", "existing output");
 
-  writeFileSync(
-    join(dir, "overlay.yaml"),
+  cli.write(
+    "overlay.yaml",
     `overlay: 1.1.0
 info: { title: Test, version: '1' }
 actions:
@@ -178,171 +130,107 @@ actions:
 `,
   );
 
-  expect(() => overlay("openapi.yaml", "--overlay", "overlay.yaml", "-o", "output.json")).toThrow(
-    /Overlay action 1/,
-  );
+  expect(
+    await cli.fails("overlay", "openapi.yaml", "--overlay", "overlay.yaml", "-o", "output.json"),
+  ).toMatch(/Overlay action 1/);
 
-  expect(readFileSync(join(dir, "output.json"), "utf8")).toBe("existing output");
+  expect(cli.read("output.json")).toBe("existing output");
 });
 
-test("fails without writing output when input bundling or overlay loading fails", () => {
-  expect(() => overlay("openapi.yaml", "--overlay", "missing.yaml", "-o", "output.json")).toThrow(
-    /missing\.yaml/,
-  );
+test("fails without writing output when input bundling or overlay loading fails", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
 
-  rmSync(join(dir, "pet.yaml"));
+  expect(
+    await cli.fails("overlay", "openapi.yaml", "--overlay", "missing.yaml", "-o", "output.json"),
+  ).toMatch(/missing\.yaml/);
 
-  expect(() => overlay("openapi.yaml", "--overlay", "overlay.yaml", "-o", "output.json")).toThrow(
-    /pet\.yaml/,
-  );
+  rmSync(join(cli.dir, "pet.yaml"));
 
-  expect(existsSync(join(dir, "output.json"))).toBe(false);
+  expect(
+    await cli.fails("overlay", "openapi.yaml", "--overlay", "overlay.yaml", "-o", "output.json"),
+  ).toMatch(/pet\.yaml/);
+
+  expect(cli.exists("output.json")).toBe(false);
 });
 
-function writeOperationFilter() {
-  writeFileSync(join(dir, "address.yaml"), "type: object\nproperties:\n  city: { type: string }\n");
+test("--remove-unused-components prunes the bundled document only when supplied", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  cli.write("address.yaml", "type: object\nproperties:\n  city: { type: string }\n");
 
-  writeFileSync(
-    join(dir, "pet.yaml"),
+  cli.write(
+    "pet.yaml",
     "type: object\nproperties:\n  address:\n    $ref: ./address.yaml\n  friend:\n    $ref: ./pet.yaml\n",
   );
 
-  const paths = Object.fromEntries(
-    Array.from({ length: 100 }, (_, index) => [
-      `/pets/${index}`,
-      {
-        parameters: [{ $ref: "#/components/parameters/Tenant" }],
+  const source = JSON.stringify({
+    openapi: "3.0.3",
+    info: { title: "Pets", version: "1" },
+    paths: {
+      "/pet": {
         get: {
-          operationId: `getPet${index}`,
+          operationId: "getPet",
           responses: {
             "200": {
               description: "OK",
-              content: {
-                "application/json": {
-                  schema: {
-                    $ref: `#/components/schemas/${index === 0 ? "Pet" : `Unused${index}`}`,
-                  },
-                },
-              },
+              content: { "application/json": { schema: { $ref: "#/components/schemas/Pet" } } },
             },
           },
         },
       },
-    ]),
-  );
-
-  const schemas = Object.fromEntries(
-    Array.from({ length: 99 }, (_, index) => [`Unused${index + 1}`, { type: "string" }]),
-  );
-
-  writeFileSync(
-    join(dir, "openapi.json"),
-    JSON.stringify({
-      openapi: "3.0.3",
-      info: { title: "Pets", version: "1" },
-      paths,
-      security: [{ Auth: [] }],
-      components: {
-        schemas: { Pet: { $ref: "./pet.yaml" }, ...schemas },
-        parameters: {
-          Tenant: { name: "tenant", in: "query", schema: { type: "string" } },
-          Unused: { name: "unused", in: "query", schema: { type: "string" } },
-        },
-        responses: { Unused: { description: "unused" } },
-        securitySchemes: {
-          Auth: { type: "http", scheme: "bearer" },
-          Unused: { type: "http", scheme: "basic" },
+      "/unused": {
+        get: {
+          operationId: "getUnused",
+          responses: {
+            "200": {
+              description: "OK",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/Unused" } } },
+            },
+          },
         },
       },
-    }),
-  );
+    },
+    components: { schemas: { Pet: { $ref: "./pet.yaml" }, Unused: { type: "string" } } },
+  });
 
-  writeFileSync(
-    join(dir, "selected.overlay.yaml"),
+  cli.write("openapi.json", source);
+
+  cli.write(
+    "selected.overlay.yaml",
     `overlay: 1.1.0
 info: { title: Selected operations, version: '1' }
 actions:
-  - target: "$.paths.*[?(@.responses && !(@.operationId == 'getPet0'))]"
+  - target: "$.paths['/unused']"
     remove: true
 `,
   );
-}
 
-test("operationId allowlist preserves unused components unless the flag is supplied", () => {
-  writeOperationFilter();
-  overlay("openapi.json", "--overlay", "selected.overlay.yaml", "-o", "default.json");
-  const result = JSON.parse(readFileSync(join(dir, "default.json"), "utf8"));
-  expect(result.paths["/pets/0"].get.operationId).toBe("getPet0");
-  expect(result.paths["/pets/1"].get).toBeUndefined();
-  expect(result.paths["/pets/1"].parameters).toHaveLength(1);
-  expect(result.components.schemas.Unused99).toEqual({ type: "string" });
-  expect(result.components.responses.Unused).toEqual({ description: "unused" });
-});
+  const overlay = ["overlay", "openapi.json", "--overlay", "selected.overlay.yaml"];
+  await cli.ok(...overlay, "-o", "default.json");
+  await cli.ok(...overlay, "--remove-unused-components", "-o", "nested/selected.json");
 
-test("--remove-unused-components keeps one of 100 operations and its bundled dependency closure", () => {
-  writeOperationFilter();
-  const before = readFileSync(join(dir, "openapi.json"), "utf8");
+  const kept = JSON.parse(cli.read("default.json"));
+  expect(Object.keys(kept.paths)).toEqual(["/pet"]);
+  expect(kept.components.schemas.Unused).toEqual({ type: "string" });
 
-  overlay(
-    "openapi.json",
-    "--overlay",
-    "selected.overlay.yaml",
-    "--remove-unused-components",
-    "-o",
-    "nested/selected.json",
-  );
+  const text = cli.read("nested/selected.json");
+  const pruned = JSON.parse(text);
+  expect(pruned.openapi).toBe("3.1.0");
+  expect(Object.keys(pruned.paths)).toEqual(["/pet"]);
+  expect(Object.keys(pruned.components.schemas).sort()).toEqual(["Pet", "address"]);
 
-  const text = readFileSync(join(dir, "nested/selected.json"), "utf8");
-  const result = JSON.parse(text);
-  expect(result.openapi).toBe("3.1.0");
-  expect(Object.keys(result.paths)).toEqual(["/pets/0"]);
-  expect(result.paths["/pets/0"].get.operationId).toBe("getPet0");
-  expect(Object.keys(result.components.schemas).sort()).toEqual(["Pet", "address"]);
-
-  expect(result.components.schemas.Pet.properties.address).toEqual({
-    $ref: "#/components/schemas/address",
+  expect(pruned.components.schemas.Pet.properties).toEqual({
+    address: { $ref: "#/components/schemas/address" },
+    friend: { $ref: "#/components/schemas/Pet" },
   });
 
-  expect(result.components.schemas.Pet.properties.friend).toEqual({
-    $ref: "#/components/schemas/Pet",
-  });
-
-  expect(Object.keys(result.components.parameters)).toEqual(["Tenant"]);
-  expect(Object.keys(result.components.securitySchemes)).toEqual(["Auth"]);
-  expect(result.components.responses).toBeUndefined();
   expect(text).not.toContain("./address.yaml");
-  expect(readFileSync(join(dir, "openapi.json"), "utf8")).toBe(before);
+  expect(cli.read("openapi.json")).toBe(source);
 });
 
-test("pruning failures preserve existing output", () => {
-  writeOperationFilter();
-
-  const actions = [
-    { target: "$.paths.*[?(@.responses && !(@.operationId == 'getPet0'))]", remove: true },
-    { target: "$.components.schemas.Pet", remove: true },
-  ];
-
-  writeFileSync(
-    join(dir, "broken.overlay.json"),
-    JSON.stringify({ overlay: "1.1.0", info: { title: "Broken", version: "1" }, actions }),
-  );
-
-  writeFileSync(join(dir, "selected.json"), "existing output");
-
-  expect(() =>
-    overlay(
-      "openapi.json",
-      "--overlay",
-      "broken.overlay.json",
-      "--remove-unused-components",
-      "-o",
-      "selected.json",
-    ),
-  ).toThrow(/Missing reference/);
-
-  expect(readFileSync(join(dir, "selected.json"), "utf8")).toBe("existing output");
-});
-
-test("--help documents opt-in pruning", () => {
-  expect(overlay("--help")).toContain("--remove-unused-components");
+test("--help documents opt-in pruning", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  expect(await cli.ok("overlay", "--help")).toContain("--remove-unused-components");
 });

@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { Config, Effect, FileSystem, Path, Schema } from "effect";
 import { ChildProcess } from "effect/process";
-import { afterAll, afterEach, beforeEach, expect, test } from "vitest";
+import { afterAll, beforeAll, test, type TestContext } from "vitest";
 import { execute, runtime } from "./runtime.ts";
 
 const fs = await runtime.runPromise(FileSystem.FileSystem);
@@ -14,7 +14,7 @@ const changesets = fileURLToPath(
 );
 
 const Json = Schema.fromJsonString(Schema.JsonObject, { space: 2 });
-let directory: string;
+let template: string;
 
 const plan = {
   version: 1,
@@ -25,55 +25,78 @@ const plan = {
   ],
 };
 
-async function write(file: string, contents: string) {
-  const target = path.join(directory, file);
-  await runtime.runPromise(fs.makeDirectory(path.dirname(target), { recursive: true }));
-  await runtime.runPromise(fs.writeFileString(target, contents));
+function files(directory: string) {
+  const resolve = (file: string) => path.join(directory, file);
+
+  async function write(file: string, contents: string) {
+    await runtime.runPromise(fs.makeDirectory(path.dirname(resolve(file)), { recursive: true }));
+    await runtime.runPromise(fs.writeFileString(resolve(file), contents));
+  }
+
+  async function writeJson(file: string, value: Schema.JsonObject) {
+    await write(file, await runtime.runPromise(Schema.encodeEffect(Json)(value)));
+  }
+
+  return {
+    resolve,
+    write,
+    writeJson,
+    read: (file: string) => runtime.runPromise(fs.readFileString(resolve(file))),
+    readJson: (file: string) =>
+      runtime.runPromise(
+        fs.readFileString(resolve(file)).pipe(Effect.flatMap(Schema.decodeEffect(Json))),
+      ),
+    exists: (file: string) => runtime.runPromise(fs.exists(resolve(file))),
+    remove: (file: string) => runtime.runPromise(fs.remove(resolve(file))),
+  };
 }
 
-async function writeJson(file: string, value: Schema.JsonObject) {
-  await write(file, await runtime.runPromise(Schema.encodeEffect(Json)(value)));
+// Each test works on its own copy of the workspace so the tests can run concurrently.
+async function fixture({ expect, onTestFinished }: TestContext) {
+  const directory = await runtime.runPromise(fs.makeTempDirectory({ prefix: "release-test-" }));
+  onTestFinished(() => runtime.runPromise(fs.remove(directory, { recursive: true, force: true })));
+  await runtime.runPromise(fs.copy(template, directory));
+  const workspace = files(directory);
+
+  function command(args: Array<string>) {
+    return runtime.runPromise(
+      execute(ChildProcess.make("bun", [cli, ...args], { cwd: directory })),
+    );
+  }
+
+  async function pack() {
+    const result = await command(["pack", "--from-publish-plan", "plan.json"]);
+    expect(result.status, result.stderr).toBe(0);
+    return result;
+  }
+
+  async function unpack(name: string, version: string) {
+    const target = workspace.resolve(`unpacked/${name}`);
+    await runtime.runPromise(fs.makeDirectory(target, { recursive: true }));
+
+    const result = await runtime.runPromise(
+      execute(
+        ChildProcess.make("tar", [
+          "-xzf",
+          workspace.resolve(`.release/packages/fixture-${name}-${version}.tgz`),
+          "--strip-components",
+          "1",
+          "-C",
+          target,
+        ]),
+      ),
+    );
+
+    expect(result.status, result.stderr).toBe(0);
+    return workspace.readJson(`unpacked/${name}/package.json`);
+  }
+
+  return { ...workspace, directory, command, pack, unpack };
 }
 
-function readJson(file: string) {
-  return runtime.runPromise(
-    fs.readFileString(path.join(directory, file)).pipe(Effect.flatMap(Schema.decodeEffect(Json))),
-  );
-}
-
-function command(args: Array<string>) {
-  return runtime.runPromise(execute(ChildProcess.make("bun", [cli, ...args], { cwd: directory })));
-}
-
-async function pack() {
-  const result = await command(["pack", "--from-publish-plan", "plan.json"]);
-  expect(result.status, result.stderr).toBe(0);
-  return result;
-}
-
-async function unpack(name: string, version: string) {
-  const target = path.join(directory, "unpacked", name);
-  await runtime.runPromise(fs.makeDirectory(target, { recursive: true }));
-
-  const result = await runtime.runPromise(
-    execute(
-      ChildProcess.make("tar", [
-        "-xzf",
-        path.join(directory, ".release/packages", `fixture-${name}-${version}.tgz`),
-        "--strip-components",
-        "1",
-        "-C",
-        target,
-      ]),
-    ),
-  );
-
-  expect(result.status, result.stderr).toBe(0);
-  return readJson(`unpacked/${name}/package.json`);
-}
-
-beforeEach(async () => {
-  directory = await runtime.runPromise(fs.makeTempDirectory({ prefix: "release-test-" }));
+beforeAll(async () => {
+  template = await runtime.runPromise(fs.makeTempDirectory({ prefix: "release-template-" }));
+  const { resolve, write, writeJson } = files(template);
 
   await writeJson("package.json", {
     name: "@fixture/root",
@@ -115,7 +138,7 @@ beforeEach(async () => {
   await write("packages/core/dist/index.js", "export const answer = 42;\n");
   await write("packages/core/dist/index.d.ts", "export declare const answer: 42;\n");
   await write("packages/core/dist/bin.js", "#!/usr/bin/env node\nconsole.log('fixture help');\n");
-  await runtime.runPromise(fs.chmod(path.join(directory, "packages/core/dist/bin.js"), 0o755));
+  await runtime.runPromise(fs.chmod(resolve("packages/core/dist/bin.js"), 0o755));
   await write("packages/core/dist/schemas/1.0.js", "export const version = '1.0';\n");
   await write("packages/core/dist/schemas/1.0.d.ts", "export declare const version: '1.0';\n");
   await write("packages/core/README.md", "Fixture core\n");
@@ -153,18 +176,23 @@ beforeEach(async () => {
   const install = await runtime.runPromise(
     execute(
       ChildProcess.make("bun", ["install", "--lockfile-only", "--ignore-scripts"], {
-        cwd: directory,
+        cwd: template,
       }),
     ),
   );
 
-  expect(install.status, install.stderr).toBe(0);
+  if (install.status !== 0) throw new Error(install.stderr);
 });
 
-afterEach(() => runtime.runPromise(fs.remove(directory, { recursive: true, force: true })));
-afterAll(() => runtime.dispose());
+afterAll(async () => {
+  await runtime.runPromise(fs.remove(template, { recursive: true, force: true }));
+  await runtime.dispose();
+});
 
-test("packs real Bun tarballs without touching source manifests and preserves the Changesets plan", async () => {
+test("packs real Bun tarballs without touching source manifests and preserves the Changesets plan", async (context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+
   const sourceFiles = [
     "package.json",
     "packages/core/package.json",
@@ -173,20 +201,12 @@ test("packs real Bun tarballs without touching source manifests and preserves th
     "packages/private/package.json",
   ];
 
-  const originals = await runtime.runPromise(
-    Effect.forEach(sourceFiles, (file) => fs.readFileString(path.join(directory, file))),
-  );
-
-  await pack();
-
-  expect(
-    await runtime.runPromise(
-      Effect.forEach(sourceFiles, (file) => fs.readFileString(path.join(directory, file))),
-    ),
-  ).toEqual(originals);
-
-  const core = await unpack("core", "1.0.0");
-  const client = await unpack("client", "2.0.0");
+  const readSources = () => Promise.all(sourceFiles.map(release.read));
+  const originals = await readSources();
+  await release.pack();
+  expect(await readSources()).toEqual(originals);
+  const core = await release.unpack("core", "1.0.0");
+  const client = await release.unpack("client", "2.0.0");
 
   expect(core).toMatchObject({
     main: "./dist/index.js",
@@ -202,71 +222,78 @@ test("packs real Bun tarballs without touching source manifests and preserves th
 
   expect(client.dependencies).toEqual({ "@fixture/core": "1.0.0" });
   expect(client.peerDependencies).toEqual({ "@fixture/core": "^1.0.0" });
-  expect(await readJson(".release/publish-plan.json")).toMatchObject(plan);
+  expect(await release.readJson(".release/publish-plan.json")).toMatchObject(plan);
 
-  expect(
-    await runtime.runPromise(fs.readDirectory(path.join(directory, ".release/packages"))),
-  ).toEqual(["fixture-client-2.0.0.tgz", "fixture-core-1.0.0.tgz"]);
+  expect(await runtime.runPromise(fs.readDirectory(release.resolve(".release/packages")))).toEqual([
+    "fixture-client-2.0.0.tgz",
+    "fixture-core-1.0.0.tgz",
+  ]);
 
-  expect(await runtime.runPromise(fs.exists(path.join(directory, ".release/verified.json")))).toBe(
-    false,
-  );
-
-  expect(await runtime.runPromise(fs.exists(path.join(directory, "unpacked/core/src")))).toBe(
-    false,
-  );
-
-  expect(
-    await runtime.runPromise(fs.readFileString(path.join(directory, "unpacked/core/LICENSE"))),
-  ).toBe("MIT\n");
+  expect(await release.exists(".release/verified.json")).toBe(false);
+  expect(await release.exists("unpacked/core/src")).toBe(false);
+  expect(await release.read("unpacked/core/LICENSE")).toBe("MIT\n");
 });
 
-test("installs the tarballs in a clean consumer, imports schema subpaths, checks declarations and runs the CLI", async () => {
-  await pack();
-  const verification = await command(["verify"]);
+test("installs the tarballs in a clean consumer and requires that verification before integrity-only checks", async (context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+  await release.pack();
+
+  const unverified = await release.command(["verify", "--integrity-only"]);
+  expect(unverified.status).not.toBe(0);
+  expect(unverified.stderr).toContain("verified.json");
+
+  const verification = await release.command(["verify"]);
   expect(verification.status, verification.stderr).toBe(0);
   expect(verification.stdout).toContain("TypeScript declarations");
+  expect(await release.exists(".release/verified.json")).toBe(true);
 
-  expect(await runtime.runPromise(fs.exists(path.join(directory, ".release/verified.json")))).toBe(
-    true,
-  );
-
-  const integrity = await command(["verify", "--integrity-only"]);
+  const integrity = await release.command(["verify", "--integrity-only"]);
   expect(integrity.status, integrity.stderr).toBe(0);
-}, 30_000);
-
-test("requires consumer verification before allowing the integrity-only publish check", async () => {
-  await pack();
-  const result = await command(["verify", "--integrity-only"]);
-  expect(result.status).not.toBe(0);
-  expect(result.stderr).toContain("verified.json");
 });
 
-test("rejects missing published entries before installing a consumer", async () => {
-  await runtime.runPromise(fs.remove(path.join(directory, "packages/core/dist/index.d.ts")));
-  await pack();
-  const result = await command(["verify"]);
+test("rejects changed plans and tarballs after successful verification", async (context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+  await release.pack();
+  const verification = await release.command(["verify"]);
+  expect(verification.status, verification.stderr).toBe(0);
+
+  const original = await release.read(".release/publish-plan.json");
+  await release.write(".release/publish-plan.json", `${original}\n`);
+  const changedPlan = await release.command(["verify", "--integrity-only"]);
+  expect(changedPlan.status).not.toBe(0);
+  expect(changedPlan.stderr).toContain("plan has changed");
+
+  await release.write(".release/publish-plan.json", original);
+  await release.write(".release/packages/fixture-core-1.0.0.tgz", "tampered");
+  const changedTarball = await release.command(["verify", "--integrity-only"]);
+  expect(changedTarball.status).not.toBe(0);
+  expect(changedTarball.stderr).toContain("integrity mismatch");
+
+  const failedVerification = await release.command(["verify"]);
+  expect(failedVerification.status).not.toBe(0);
+  expect(await release.exists(".release/verified.json")).toBe(false);
+});
+
+test("rejects missing published entries before installing a consumer", async (context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+  await release.remove("packages/core/dist/index.d.ts");
+  await release.pack();
+  const result = await release.command(["verify"]);
   expect(result.status).not.toBe(0);
   expect(result.stderr).toContain("Missing published entry");
-
-  expect(await runtime.runPromise(fs.exists(path.join(directory, ".release/verified.json")))).toBe(
-    false,
-  );
+  expect(await release.exists(".release/verified.json")).toBe(false);
 });
 
-test("rejects a broken compiled import rather than accepting source-workspace resolution", async () => {
-  await write("packages/client/dist/index.js", "export { answer } from './missing.js';\n");
-  await pack();
-  const result = await command(["verify"]);
-  expect(result.status).not.toBe(0);
-  expect(result.stderr).toContain("missing.js");
-
-  expect(await runtime.runPromise(fs.exists(path.join(directory, ".release/verified.json")))).toBe(
-    false,
-  );
-}, 30_000);
-
-test.each([
+test.for([
+  [
+    "compiled import rather than accepting source-workspace resolution",
+    "packages/client/dist/index.js",
+    "export { answer } from './missing.js';\n",
+    "missing.js",
+  ],
   [
     "declarations",
     "packages/client/dist/index.d.ts",
@@ -279,79 +306,50 @@ test.each([
     "#!/usr/bin/env node\nprocess.exit(64);\n",
     "Command failed (64)",
   ],
-])(
-  "rejects broken packaged %s",
-  async (_, file, source, message) => {
-    await write(file, source);
-    await pack();
-    const result = await command(["verify"]);
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain(message);
+])("rejects a broken packaged %s", async ([, file, source, message], context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+  await release.write(file, source);
+  await release.pack();
+  const result = await release.command(["verify"]);
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain(message);
+  expect(await release.exists(".release/verified.json")).toBe(false);
+});
 
-    expect(
-      await runtime.runPromise(fs.exists(path.join(directory, ".release/verified.json"))),
-    ).toBe(false);
-  },
-  30_000,
-);
-
-test("rejects changed plans and tarballs after successful verification", async () => {
-  await pack();
-  const verified = await command(["verify"]);
-  expect(verified.status, verified.stderr).toBe(0);
-  const planFile = path.join(directory, ".release/publish-plan.json");
-  const original = await runtime.runPromise(fs.readFileString(planFile));
-  await runtime.runPromise(fs.writeFileString(planFile, `${original}\n`));
-  const changedPlan = await command(["verify", "--integrity-only"]);
-  expect(changedPlan.status).not.toBe(0);
-  expect(changedPlan.stderr).toContain("plan has changed");
-  await runtime.runPromise(fs.writeFileString(planFile, original));
-  await write(".release/packages/fixture-core-1.0.0.tgz", "tampered");
-  const changedTarball = await command(["verify", "--integrity-only"]);
-  expect(changedTarball.status).not.toBe(0);
-  expect(changedTarball.stderr).toContain("integrity mismatch");
-  const failedVerification = await command(["verify"]);
-  expect(failedVerification.status).not.toBe(0);
-
-  expect(await runtime.runPromise(fs.exists(path.join(directory, ".release/verified.json")))).toBe(
-    false,
-  );
-}, 30_000);
-
-test.each([
+test.for<[string, Schema.JsonObject]>([
   ["malformed", { version: 2, plan: [] }],
   ["unknown", { version: 1, plan: [[{ ...plan.plan[0][0], name: "@fixture/missing" }]] }],
   ["private", { version: 1, plan: [[{ ...plan.plan[0][0], name: "@fixture/private" }]] }],
   ["wrong version", { version: 1, plan: [[{ ...plan.plan[0][0], version: "9.0.0" }]] }],
   ["duplicate", { version: 1, plan: [plan.plan[0], plan.plan[0]] }],
-])("rejects %s plans without creating release output", async (_, invalid) => {
-  await writeJson("plan.json", invalid);
-  const result = await command(["pack", "--from-publish-plan", "plan.json"]);
+])("rejects %s plans without creating release output", async ([, invalid], context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+  await release.writeJson("plan.json", invalid);
+  const result = await release.command(["pack", "--from-publish-plan", "plan.json"]);
   expect(result.status).not.toBe(0);
-  expect(await runtime.runPromise(fs.exists(path.join(directory, ".release")))).toBe(false);
+  expect(await release.exists(".release")).toBe(false);
 });
 
-test("preserves existing release artifacts on a second pack attempt", async () => {
-  await pack();
-
-  const original = await runtime.runPromise(
-    fs.readFileString(path.join(directory, ".release/publish-plan.json")),
-  );
-
-  const result = await command(["pack", "--from-publish-plan", "plan.json"]);
+test("preserves existing release artifacts on a second pack attempt", async (context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+  await release.pack();
+  const original = await release.read(".release/publish-plan.json");
+  const result = await release.command(["pack", "--from-publish-plan", "plan.json"]);
   expect(result.status).not.toBe(0);
   expect(result.stderr).toContain("Output already exists");
-
-  expect(
-    await runtime.runPromise(fs.readFileString(path.join(directory, ".release/publish-plan.json"))),
-  ).toBe(original);
+  expect(await release.read(".release/publish-plan.json")).toBe(original);
 });
 
-test("Changesets resumes a partial artifact release, skips published versions and emits v3 tag events", async () => {
-  await pack();
+test("Changesets resumes a partial artifact release, skips published versions and emits v3 tag events", async (context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+  await release.pack();
 
   const git = (args: Array<string>) =>
-    runtime.runPromise(execute(ChildProcess.make("git", args, { cwd: directory })));
+    runtime.runPromise(execute(ChildProcess.make("git", args, { cwd: release.directory })));
 
   await git(["init", "-b", "main"]);
   await git(["config", "user.name", "Release fixture"]);
@@ -360,7 +358,7 @@ test("Changesets resumes a partial artifact release, skips published versions an
   const commit = await git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "fixture"]);
   expect(commit.status, commit.stderr).toBe(0);
 
-  await write(
+  await release.write(
     "bin/npm",
     `#!/usr/bin/env bash
 set -eu
@@ -387,20 +385,20 @@ echo '{}'
 `,
   );
 
-  await runtime.runPromise(fs.chmod(path.join(directory, "bin/npm"), 0o755));
-  await runtime.runPromise(fs.makeDirectory(path.join(directory, "registry-state")));
+  await runtime.runPromise(fs.chmod(release.resolve("bin/npm"), 0o755));
+  await runtime.runPromise(fs.makeDirectory(release.resolve("registry-state")));
 
   const publish = (output: string) =>
     runtime.runPromise(
       execute(
         ChildProcess.make("node", [changesets, "publish", "--from-pack-dir", ".release"], {
-          cwd: directory,
+          cwd: release.directory,
           extendEnv: true,
           env: {
-            PATH: `${path.join(directory, "bin")}:${environmentPath}`,
-            RELEASE_TEST_LOG: path.join(directory, "npm.log"),
-            RELEASE_TEST_STATE: path.join(directory, "registry-state"),
-            CHANGESETS_OUTPUT: path.join(directory, output),
+            PATH: `${release.resolve("bin")}:${environmentPath}`,
+            RELEASE_TEST_LOG: release.resolve("npm.log"),
+            RELEASE_TEST_STATE: release.resolve("registry-state"),
+            CHANGESETS_OUTPUT: release.resolve(output),
           },
         }),
       ),
@@ -409,20 +407,12 @@ echo '{}'
   const first = await publish("first.ndjson");
   expect(first.status).not.toBe(0);
   expect(first.stdout).toContain("fixture registry unavailable");
-
-  const firstEvents = await runtime.runPromise(
-    fs.readFileString(path.join(directory, "first.ndjson")),
-  );
-
+  const firstEvents = await release.read("first.ndjson");
   expect(firstEvents).toContain('"packageName":"@fixture/core"');
   expect(firstEvents).not.toContain('"packageName":"@fixture/client"');
   const result = await publish("retry.ndjson");
   expect(result.status, result.stderr).toBe(0);
-
-  const calls = (await runtime.runPromise(fs.readFileString(path.join(directory, "npm.log"))))
-    .trim()
-    .split("\n");
-
+  const calls = (await release.read("npm.log")).trim().split("\n");
   expect(calls).toHaveLength(4);
   expect(calls[0]).toContain("fixture-core-1.0.0.tgz");
   expect(calls[0]).toContain("--tag latest");
@@ -430,9 +420,9 @@ echo '{}'
   expect(calls[1]).toContain("--tag next");
   expect(calls[2]).toContain("fixture-core-1.0.0.tgz");
   expect(calls[3]).toContain("fixture-client-2.0.0.tgz");
-  const events = await runtime.runPromise(fs.readFileString(path.join(directory, "retry.ndjson")));
+  const events = await release.read("retry.ndjson");
   expect(events).toContain('"type":"git-tag"');
   expect(events).not.toContain('"packageName":"@fixture/core"');
   expect(events).toContain('"packageName":"@fixture/client"');
   expect(events).toContain('"packageName":"@fixture/config"');
-}, 30_000);
+});

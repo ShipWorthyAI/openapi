@@ -114,6 +114,7 @@ describe("transformSchema", () => {
       expect(printed).toContain("count: number;");
       expect(printed).toContain("label: string | null;");
       expect(printed).toContain("enabled?: boolean;");
+      expect(printed).toContain("@default 0");
     }),
   );
 
