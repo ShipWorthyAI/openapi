@@ -91,7 +91,7 @@ test("requires --overlay and -o", async (context) => {
   expect(await cli.fails("overlay", "openapi.yaml", "--overlay", "overlay.yaml")).toMatch(/output/);
 });
 
-test("--strict-targets rejects unmatched actions without overwriting output", async (context) => {
+test("warns for invalid and unmatched targets and writes the result of subsequent valid actions", async (context) => {
   const { expect } = context;
   const cli = setup(context);
   cli.write("output.json", "existing output");
@@ -101,25 +101,35 @@ test("--strict-targets rejects unmatched actions without overwriting output", as
     JSON.stringify({
       overlay: "1.1.0",
       info: { title: "Test", version: "1" },
-      actions: [{ target: "$.components.schemas.Missing", update: { description: "stale" } }],
+      actions: [
+        { target: "$.components.schemas.Missing", update: { description: "stale" } },
+        { target: "$.components[", remove: true },
+        { target: "$.info.title", update: "Still applied" },
+      ],
     }),
   );
 
-  expect(
-    await cli.fails(
-      "overlay",
-      "openapi.yaml",
-      "--overlay",
-      "overlay.json",
-      "--strict-targets",
-      "-o",
-      "output.json",
-    ),
-  ).toMatch(/Overlay action 1.*target matched no nodes/);
+  const result = await cli.run([
+    "overlay",
+    "openapi.yaml",
+    "--overlay",
+    "overlay.json",
+    "-o",
+    "output.json",
+  ]);
 
-  expect(cli.read("output.json")).toBe("existing output");
-  await cli.ok("overlay", "openapi.yaml", "--overlay", "overlay.json", "-o", "output.json");
-  expect(JSON.parse(cli.read("output.json")).components.schemas.Pet).toBeDefined();
+  expect(result.success).toBe(true);
+
+  expect(result.stderr).toContain(
+    "WARNING Overlay action 1 ($.components.schemas.Missing): Target matched no nodes",
+  );
+
+  expect(result.stderr).toContain("WARNING Overlay action 2 ($.components[): Invalid target:");
+  expect(result.stdout).toContain("output.json");
+  const document = JSON.parse(cli.read("output.json"));
+  expect(document.info.title).toBe("Still applied");
+  expect(document.components.schemas.Pet).toBeDefined();
+  expect(document).not.toHaveProperty("warnings");
 });
 
 test("loads remote YAML overlays and rejects non-success HTTP responses", async (context) => {

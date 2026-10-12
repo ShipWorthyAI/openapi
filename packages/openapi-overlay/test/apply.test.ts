@@ -1,6 +1,12 @@
 import { Effect, Schema } from "effect";
 import { describe, expect, test } from "vitest";
-import { applyOverlay, Overlay, OverlayError, type OverlayAction } from "../src/index.ts";
+import {
+  applyOverlay,
+  applyOverlayWithWarnings,
+  Overlay,
+  OverlayError,
+  type OverlayAction,
+} from "../src/index.ts";
 
 function overlay(...actions: OverlayAction[]) {
   return { overlay: "1.1.0", info: { title: "Test", version: "1" }, actions };
@@ -31,6 +37,7 @@ test.each([
   { removeUnusedComponents: "true" },
   { removeUnusedComponents: 1 },
   { unknown: true },
+  { strictTargets: true },
 ])("reports invalid options %j as OverlayError", async (options) => {
   const document = { kept: true };
 
@@ -47,39 +54,45 @@ test.each([
   expect(document).toEqual({ kept: true });
 });
 
-test("strictTargets rejects an unmatched action after earlier actions without mutating the input", async () => {
+test("collects invalid and unmatched targets in order and continues applying actions", async () => {
   const document = { info: { title: "Original" } };
 
-  const error = await Effect.runPromise(
-    applyOverlay(
+  const result = await Effect.runPromise(
+    applyOverlayWithWarnings(
       document,
       overlay(
         { target: "$.info", update: { title: "Updated" } },
         { target: "$.missing", update: {} },
+        { target: "$.info[", remove: true },
+        { target: "$.info", update: { version: "2" } },
+        { target: "$.alsoMissing", copy: "invalid JSONPath" },
       ),
-      { strictTargets: true },
-    ).pipe(Effect.flip),
+    ),
   );
 
-  expect(error.action).toBe(2);
-  expect(error.target).toBe("$.missing");
-  expect(error.message).toContain("target matched no nodes");
+  expect(result.document).toEqual({ info: { title: "Updated", version: "2" } });
+
+  expect(result.warnings).toEqual([
+    { action: 2, target: "$.missing", message: "Target matched no nodes" },
+    { action: 3, target: "$.info[", message: expect.stringContaining("Invalid target:") },
+    { action: 5, target: "$.alsoMissing", message: "Target matched no nodes" },
+  ]);
+
   expect(document.info.title).toBe("Original");
 });
 
-test("strictTargets evaluates each target against the preceding action's result", async () => {
+test("evaluates each target against the preceding action's result without warnings", async () => {
   expect(
     await Effect.runPromise(
-      applyOverlay(
+      applyOverlayWithWarnings(
         {},
         overlay(
           { target: "$", update: { added: {} } },
           { target: "$.added", update: { kept: true } },
         ),
-        { strictTargets: true },
       ),
     ),
-  ).toEqual({ added: { kept: true } });
+  ).toEqual({ document: { added: { kept: true } }, warnings: [] });
 });
 
 test("merges objects recursively, concatenates arrays, and replaces primitives", async () => {
@@ -377,9 +390,17 @@ describe("typed failures", () => {
   });
 
   test.each(["$.items[", "$.items[?(@.a = 1)]", "$.items[?(@.a.toString())]"])(
-    "rejects invalid or nonstandard JSONPath: %s",
+    "warns for invalid or nonstandard JSONPath: %s",
     async (target) => {
-      expect((await failure({ items: [] }, overlay({ target, update: {} }))).action).toBe(1);
+      const result = await Effect.runPromise(
+        applyOverlayWithWarnings({ items: [] }, overlay({ target, update: {} })),
+      );
+
+      expect(result.document).toEqual({ items: [] });
+
+      expect(result.warnings).toEqual([
+        { action: 1, target, message: expect.stringContaining("Invalid target:") },
+      ]);
     },
   );
 

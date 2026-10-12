@@ -1,4 +1,4 @@
-import { applyOverlay } from "@shipworthy/overlay";
+import { applyOverlayWithWarnings } from "@shipworthy/overlay";
 import { bundleDocument } from "@shipworthy/openapi-parser";
 import { Console, Effect, FileSystem, Path, Schema } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
@@ -11,13 +11,11 @@ const run = Effect.fn("overlay")(function* ({
   overlay,
   output,
   removeUnusedComponents,
-  strictTargets,
 }: {
   readonly input: URL;
   readonly overlay: URL;
   readonly output: string;
   readonly removeUnusedComponents: boolean;
-  readonly strictTargets: boolean;
 }) {
   const document = yield* bundleDocument(input);
   const fs = yield* FileSystem.FileSystem;
@@ -30,7 +28,17 @@ const run = Effect.fn("overlay")(function* ({
           Effect.flatMap((response) => response.text),
         );
 
-  const result = yield* applyOverlay(document, text, { removeUnusedComponents, strictTargets });
+  const result = yield* applyOverlayWithWarnings(document, text, { removeUnusedComponents });
+
+  yield* Effect.forEach(
+    result.warnings,
+    (warning) =>
+      Console.warn(
+        `WARNING Overlay action ${warning.action} (${warning.target}): ${warning.message}`,
+      ),
+    { discard: true },
+  );
+
   const path = yield* Path.Path;
   const outputPath = path.resolve(output);
 
@@ -38,7 +46,7 @@ const run = Effect.fn("overlay")(function* ({
 
   const serialized = yield* Schema.encodeEffect(
     Schema.fromJsonString(Schema.Unknown, { space: 2 }),
-  )(result);
+  )(result.document);
 
   yield* fs.writeFileString(outputPath, `${serialized}\n`);
   yield* Console.log(`${input.href} + ${overlay.href} → ${output}`);
@@ -63,10 +71,6 @@ export const overlay = Command.make(
       Flag.withDescription(
         "Remove paths without operations and unreachable components after overlaying.",
       ),
-      Flag.withDefault(false),
-    ),
-    strictTargets: Flag.Boolean("strict-targets").pipe(
-      Flag.withDescription("Fail if any overlay action target matches no nodes."),
       Flag.withDefault(false),
     ),
   },

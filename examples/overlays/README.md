@@ -22,7 +22,7 @@ The equivalent CLI command is:
 ```sh
 bunx --bun @shipworthy/openapi-cli overlay openapi/nuitee/search.json \
   --overlay overlays/nuitee/search.overlay.json \
-  --strict-targets --remove-unused-components \
+  --remove-unused-components \
   -o generated/nuitee/search.openapi.json
 ```
 
@@ -30,8 +30,9 @@ bunx --bun @shipworthy/openapi-cli overlay openapi/nuitee/search.json \
 The upstream snapshots are OpenAPI 3.0; the CLI bundles and upgrades them before applying
 the overlay. All corrections use standard Overlay 1.1 actions. Operation selection uses
 JSONPath removal actions, and `--remove-unused-components` prunes paths without operations
-and components unreachable from the selected contract. `--strict-targets` detects stale
-overlays by requiring every action target to match at its point in the action sequence.
+and components unreachable from the selected contract. Invalid or unmatched action targets
+produce CLI warnings; subsequent valid actions still run. The example tests assert that
+these correction overlays produce no target warnings.
 
 | Input                            | Overlay                                   | Selected operations                                                                       | Output                                     |
 | -------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------ |
@@ -46,7 +47,7 @@ removes the unrelated partner-service authentication scheme, and retains only ho
 operations and their dependencies. The source overlays used `openapi-format`'s `x-filter`
 configuration; these copies replace it with standard removal actions.
 
-Tests apply the overlays to the snapshots, check every action matches, verify the exact
+Tests apply the overlays to the snapshots, check there are no target warnings, verify the exact
 operation selections and key contract corrections, and compare the result with the CLI
 artifacts. The repository's root `bun run check` includes these tests and regenerates the
 artifacts first through the example's Turbo task dependencies.

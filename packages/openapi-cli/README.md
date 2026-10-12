@@ -178,11 +178,12 @@ openapi overlay openapi.yaml --overlay selected.overlay.yaml --remove-unused-com
 | `--overlay`                  | Required Overlay JSON/YAML file or URL.                                                                               |
 | `--output`, `-o`             | Required output JSON file. Parent directories are created.                                                            |
 | `--remove-unused-components` | Optional; defaults to `false`. Remove paths without operations and unreachable components after applying all actions. |
-| `--strict-targets`           | Optional; defaults to `false`. Fail if any action target matches no nodes, reporting its action number and target.    |
 
 Actions run sequentially against the bundled document. Supports RFC 9535 JSONPath, recursive
 object updates, array concatenation/appending, primitive replacement, copying from a single
-source node, and removal. A target matching no nodes has no effect. `extends` is metadata;
+source node, and removal. Invalid JSONPath target expressions and targets matching no nodes
+are skipped; the CLI logs each as a warning to stderr with its action number and target, then
+writes the result of the remaining actions. `extends` is metadata;
 `<input>` determines the document. The overlaid result is written directly without another
 bundling or validation pass.
 

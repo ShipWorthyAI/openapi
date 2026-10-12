@@ -95,9 +95,10 @@ bun run examples:generate
 Each SDK example's source document is `openapi/v1/openapi.yaml`, with relative references to individual operation and component YAML files. Bundling writes `openapi/v1/bundled.openapi.json`. Generation updates its SDK files in `src/generated`. Each SDK example has a package-level `turbo.json`: generation depends on bundling, and bundling tracks workspace tooling through the transit graph. Both tasks cache their outputs using authored contracts and tooling dependencies, excluding their own generated files from inputs. Generation reads the bundled JSON and refreshes `types.ts` first, then runs the remaining generators sequentially.
 
 The [overlays example](examples/overlays/README.md) applies correction and selection overlays to
-copied Nuitee and Core snapshots. Its `generate` task uses the CLI with `--strict-targets` and
+copied Nuitee and Core snapshots. Its `generate` task uses the CLI with
 `--remove-unused-components`, writing selected OpenAPI 3.1 JSON to `generated/`. Its tests depend
-on generation and verify the operation selections, corrections, and CLI output.
+on generation and verify there are no target warnings, along with the operation selections,
+corrections, and CLI output.
 
 ## Package builds
 

@@ -1,4 +1,4 @@
-import { Effect, Option, Predicate, Schema } from "effect";
+import { Array as Arr, Effect, Option, Predicate, Result, Schema } from "effect";
 import * as Yaml from "effect/encoding/Yaml";
 import { exec, type Path } from "jsonpath-rfc9535";
 import { OverlayError } from "./errors.ts";
@@ -7,10 +7,17 @@ import { Overlay, type OverlayAction } from "./schemas.ts";
 
 const applyOverlayOptions = Schema.Struct({
   removeUnusedComponents: Schema.optionalKey(Schema.Boolean),
-  strictTargets: Schema.optionalKey(Schema.Boolean),
 });
 
 type ApplyOverlayOptions = typeof applyOverlayOptions.Type;
+
+const overlayWarning = Schema.Struct({
+  action: Schema.Int,
+  target: Schema.String,
+  message: Schema.String,
+});
+
+type OverlayWarning = typeof overlayWarning.Type;
 
 function applyIfEnabled<E, R>(
   enabled: boolean | undefined,
@@ -152,17 +159,10 @@ function applyAction(
   document: Schema.MutableJsonObject,
   action: OverlayAction,
   version: string,
-  strictTargets: boolean,
+  nodes: Node[],
 ): void {
   if (version !== "1.0" && version !== "1.1") {
     throw new TypeError(`Overlay ${version} action behavior is not implemented`);
-  }
-
-  const nodes = select(document, action.target);
-
-  if (nodes.length === 0) {
-    if (strictTargets) throw new TypeError("Overlay target matched no nodes");
-    return;
   }
 
   if (version === "1.0" && nodes.some((node) => kind(node.value) === "primitive")) {
@@ -218,12 +218,12 @@ function applyAction(
   }
 }
 
-/** Apply version-specific Overlay actions to a JSON/YAML document or object without mutating inputs. */
-export const applyOverlay = Effect.fn("applyOverlay")(function* (
+/** Apply actions and collect invalid or unmatched targets without mutating inputs. */
+export const applyOverlayWithWarnings = Effect.fn("applyOverlayWithWarnings")(function* (
   document: unknown,
   overlay: unknown,
   options: ApplyOverlayOptions = {},
-): Effect.fn.Return<Schema.MutableJsonObject, OverlayError> {
+) {
   const checkedOptions = yield* Schema.decodeEffect(applyOverlayOptions)(options, {
     onExcessProperty: "error",
   }).pipe(
@@ -251,11 +251,31 @@ export const applyOverlay = Effect.fn("applyOverlay")(function* (
   const result = cloneObject(source);
   const version = parsed.overlay.split(".").slice(0, 2).join(".");
 
-  yield* Effect.forEach(
+  const warnings = yield* Effect.forEach(
     parsed.actions,
-    (action, index) =>
-      Effect.try({
-        try: () => applyAction(result, action, version, checkedOptions.strictTargets === true),
+    Effect.fnUntraced(function* (action, index) {
+      const selected = yield* Effect.try({
+        try: () => select(result, action.target),
+        catch: (cause): OverlayWarning => ({
+          action: index + 1,
+          target: action.target,
+          message: `Invalid target: ${String(cause)}`,
+        }),
+      }).pipe(Effect.result);
+
+      if (Result.isFailure(selected)) return [selected.failure];
+
+      if (selected.success.length === 0)
+        return [
+          {
+            action: index + 1,
+            target: action.target,
+            message: "Target matched no nodes",
+          },
+        ];
+
+      yield* Effect.try({
+        try: () => applyAction(result, action, version, selected.success),
         catch: (cause) =>
           new OverlayError({
             message: `Overlay action ${index + 1} (${action.target}): ${String(cause)}`,
@@ -263,11 +283,23 @@ export const applyOverlay = Effect.fn("applyOverlay")(function* (
             target: action.target,
             cause,
           }),
-      }),
-    { discard: true },
+      });
+
+      return [];
+    }),
   );
 
-  return yield* Effect.succeed(result).pipe(
+  const output = yield* Effect.succeed(result).pipe(
     applyIfEnabled(checkedOptions.removeUnusedComponents, removeUnusedComponents),
   );
+
+  return { document: output, warnings: Arr.flatten(warnings) };
 });
+
+/** Apply version-specific Overlay actions without mutating inputs. */
+export const applyOverlay = Effect.fn("applyOverlay")(
+  (document: unknown, overlay: unknown, options: ApplyOverlayOptions = {}) =>
+    applyOverlayWithWarnings(document, overlay, options).pipe(
+      Effect.map((result) => result.document),
+    ),
+);

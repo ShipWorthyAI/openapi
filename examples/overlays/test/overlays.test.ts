@@ -2,7 +2,7 @@ import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { assert, it } from "@effect/vitest";
 import { bundleDocument } from "@shipworthy/openapi-parser";
 import { OpenApiHttpMethod, ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
-import { applyOverlay } from "@shipworthy/overlay";
+import { applyOverlayWithWarnings } from "@shipworthy/overlay";
 import { Array, Effect, FileSystem, Layer, Order, Predicate, Record, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { fileURLToPath } from "node:url";
@@ -61,12 +61,12 @@ it.effect.each(examples)(
       const source = yield* bundleDocument(new URL(example.source, root));
       const overlay = yield* fs.readFileString(fileURLToPath(new URL(example.overlay, root)));
 
-      const result = yield* applyOverlay(source, overlay, {
-        strictTargets: true,
+      const result = yield* applyOverlayWithWarnings(source, overlay, {
         removeUnusedComponents: true,
       });
 
-      const document = yield* Schema.decodeUnknownEffect(ParsedOpenApi)(result);
+      assert.deepStrictEqual(result.warnings, []);
+      const document = yield* Schema.decodeUnknownEffect(ParsedOpenApi)(result.document);
 
       const operationIds = Array.filter(
         Array.flatMap(Record.values(document.paths ?? {}), (item) =>
@@ -86,7 +86,7 @@ it.effect.each(examples)(
         .readFileString(fileURLToPath(new URL(`generated/${example.name}.openapi.json`, root)))
         .pipe(Effect.flatMap(Schema.decodeEffect(Schema.fromJsonString(Schema.Unknown))));
 
-      assert.deepStrictEqual(artifact, result);
+      assert.deepStrictEqual(artifact, result.document);
     }).pipe(Effect.provide(layer)),
 );
 

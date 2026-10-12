@@ -38,16 +38,25 @@ const result = await Effect.runPromise(applyOverlay(document, overlay));
 ```
 
 `applyOverlay(document, overlay, options?)` accepts either a parsed object or JSON/YAML text for
-the document and overlay. Options are schema-validated: `removeUnusedComponents` and
-`strictTargets` are optional booleans, and unknown options are rejected with `OverlayError`. The options type is inferred
+the document and overlay. Options are schema-validated: `removeUnusedComponents` is an optional
+boolean, and unknown options are rejected with `OverlayError`. The options type is inferred
 from its Effect Schema. It returns `Effect.Effect<Schema.MutableJsonObject, OverlayError>` without requiring
 services. Input documents must be JSON-compatible objects. Inputs are validated with Effect
 schemas and copied before applying actions; neither input is mutated, including on failure.
 
-Set `strictTargets: true` to fail with `OverlayError` when an action target matches no nodes.
-The error includes the action number and target; actions are checked against the result of
-preceding actions. The default is `false`, so unmatched targets remain permitted. This is
-useful for detecting stale correction overlays when updating an upstream document.
+`applyOverlayWithWarnings(document, overlay, options?)` accepts the same inputs and returns
+`{ document, warnings }`. Each warning contains the one-based `action` number, `target`, and
+`message`. Unmatched targets and malformed JSONPath target expressions are skipped and
+collected in action order; subsequent actions still run against the preceding result.
+`applyOverlay` returns only the document. Neither function logs warnings.
+
+```ts
+import { applyOverlayWithWarnings } from "@shipworthy/overlay";
+
+const { document: updated, warnings } = await Effect.runPromise(
+  applyOverlayWithWarnings(document, overlay),
+);
+```
 
 By default, the function applies overlays without validating the resulting OpenAPI structure.
 It does not load files or fetch URLs. `extends` is descriptive
@@ -219,7 +228,7 @@ Parameter arrays append on update, so add declarations only for parameters that 
 
 ## Schemas and errors
 
-The public API exports `applyOverlay`, `OverlayError`, and the Effect schemas `Overlay`,
+The public API exports `applyOverlay`, `applyOverlayWithWarnings`, `OverlayError`, and the Effect schemas `Overlay`,
 `OverlayInfo`, and `OverlayAction`, each with its schema-inferred TypeScript type of the same name.
 Schema objects allow `x-` specification extensions and reject other undeclared fields. The root
 schemas accept the union of supported versions. Import a particular version to validate or type
