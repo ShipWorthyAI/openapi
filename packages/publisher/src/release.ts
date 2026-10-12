@@ -39,6 +39,17 @@ const WorkspaceManifest = Schema.Struct({
   }),
 });
 
+const Dependencies = Schema.Record(Schema.String, Schema.String);
+
+const ConsumerManifest = Schema.StructWithRest(
+  Schema.Struct({
+    dependencies: Schema.optionalKey(Dependencies),
+    devDependencies: Schema.optionalKey(Dependencies),
+    overrides: Schema.optionalKey(Schema.Record(Schema.String, Schema.Json)),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)],
+);
+
 const Tarball = Schema.Struct({ path: Schema.NonEmptyString, integrity: Schema.NonEmptyString });
 
 const Release = Schema.Union([
@@ -309,6 +320,46 @@ export const packRelease = Effect.fn("release.pack")(function* (options: {
   yield* Console.log(`Packed release artifacts into ${output}`);
 }, Effect.scoped);
 
+/**
+ * Install a consumer project from `consumers/` against the tarballs and run its `verify` script.
+ * Released packages resolve to their tarballs, directly and transitively. Everything else comes
+ * from the registry under the consumer's own `.npmrc`.
+ */
+const verifyConsumer = Effect.fn("release.verifyConsumer")(function* (
+  source: string,
+  tarballs: typeof Dependencies.Type,
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const project = yield* fs.makeTempDirectoryScoped({ prefix: "release-consumer-" });
+  yield* fs.copy(source, project, { overwrite: true });
+  yield* fs.remove(path.join(project, "node_modules"), { recursive: true, force: true });
+
+  const manifest = yield* readJson(path.join(project, "package.json")).pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(ConsumerManifest)),
+  );
+
+  const resolve = (dependencies: typeof Dependencies.Type = {}) =>
+    Record.map(dependencies, (range, name) => tarballs[name] ?? range);
+
+  yield* writeJson(path.join(project, "package.json"), {
+    ...manifest,
+    dependencies: resolve(manifest.dependencies),
+    devDependencies: resolve(manifest.devDependencies),
+    overrides: { ...manifest.overrides, ...tarballs },
+  });
+
+  yield* run(
+    ChildProcess.make(
+      "npm",
+      ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--no-package-lock"],
+      { cwd: project },
+    ),
+  );
+
+  yield* run(ChildProcess.make("npm", ["run", "verify"], { cwd: project }));
+}, Effect.scoped);
+
 export const verifyRelease = Effect.fn("release.verify")(function* (options: {
   directory: string;
   integrityOnly: boolean;
@@ -531,6 +582,21 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
         },
         { discard: true },
       );
+
+      const tarballs = Record.fromEntries(
+        Array.map(
+          published,
+          ({ archive, manifest }) => [manifest.name, `file:${archive}`] as const,
+        ),
+      );
+
+      const consumers = yield* fs.glob("consumers/*/package.json", { root: path.resolve(".") });
+
+      yield* Effect.forEach(
+        consumers,
+        (file) => verifyConsumer(path.dirname(path.resolve(file)), tarballs),
+        { discard: true },
+      );
     }
 
     yield* writeJson(verificationFile, { planIntegrity });
@@ -539,6 +605,6 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
   yield* Console.log(
     options.integrityOnly
       ? "Verified release artifact integrity"
-      : "Verified release tarballs, Node imports, CLI commands, and TypeScript declarations",
+      : "Verified release tarballs, Node imports, CLI commands, TypeScript declarations, and consumers",
   );
 }, Effect.scoped);

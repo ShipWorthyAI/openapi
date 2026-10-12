@@ -1,4 +1,5 @@
-import createClient, { type Client, type ClientOptions } from "@shipworthy/openapi-fetch";
+// Named import: bundled CommonJS reads a default import as the whole `exports` object.
+import { createClient, type Client, type ClientOptions } from "@shipworthy/openapi-fetch";
 
 export type AuthToken = string | undefined | null;
 export type AuthTokenProvider = () => AuthToken | Promise<AuthToken>;

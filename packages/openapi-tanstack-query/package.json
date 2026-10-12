@@ -17,13 +17,20 @@
     "./generator": "./src/generator.ts"
   },
   "publishConfig": {
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.cts",
     "react-native": "./dist/index.js",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        },
+        "require": {
+          "types": "./dist/index.d.cts",
+          "default": "./dist/index.cjs"
+        }
       },
       "./generator": {
         "types": "./dist/generator.d.ts",
@@ -34,30 +41,36 @@
     "access": "public"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json"
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@shipworthy/openapi-fetch": "workspace:*",
-    "@shipworthy/openapi-transformer": "workspace:*"
+    "@shipworthy/openapi-fetch": "workspace:*"
   },
   "devDependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
+    "@shipworthy/openapi-transformer": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
     "effect": "catalog:",
     "react": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
-    "@tanstack/react-query": "catalog:",
+    "@shipworthy/openapi-transformer": "workspace:*",
+    "@tanstack/react-query": "^5.59.0",
     "effect": "^4.0.0",
     "react": "^18.0.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
     "@shipworthy/openapi-generator": {
+      "optional": true
+    },
+    "@shipworthy/openapi-transformer": {
       "optional": true
     },
     "effect": {

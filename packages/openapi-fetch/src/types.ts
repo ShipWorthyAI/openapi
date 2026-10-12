@@ -8,7 +8,7 @@ import type {
   PathsWithMethod,
   Readable,
   RequiredKeysOf,
-  ResponseObjectMap,
+  ResponseMap,
   SuccessResponse,
   Writable,
 } from "./helpers.ts";
@@ -117,13 +117,13 @@ export type FetchResponse<
   Media extends MediaType,
 > =
   | {
-      data: ParseAsResponse<Readable<SuccessResponse<ResponseObjectMap<T>, Media>>, Options>;
+      data: ParseAsResponse<Readable<SuccessResponse<ResponseMap<T>, Media>>, Options>;
       error?: never;
       response: Response;
     }
   | {
       data?: never;
-      error: Readable<ErrorResponse<ResponseObjectMap<T>, Media>>;
+      error: Readable<ErrorResponse<ResponseMap<T>, Media>>;
       response: Response;
     };
 

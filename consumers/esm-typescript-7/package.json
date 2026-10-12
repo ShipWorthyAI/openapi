@@ -1,0 +1,20 @@
+{
+  "name": "consumer-esm-typescript-7",
+  "private": true,
+  "description": "An ESM app on TypeScript 7 with bundler resolution and the current TanStack Query.",
+  "type": "module",
+  "scripts": {
+    "verify": "openapi generate tanstack-query openapi.json -o src/generated --name pets && tsc -p tsconfig.json && node runtime.js"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-tanstack-query": "*",
+    "@tanstack/react-query": "^5.104.1",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@shipworthy/openapi-cli": "*",
+    "@shipworthy/openapi-typescript": "*",
+    "@types/react": "^19.0.0",
+    "typescript": "^7.0.2"
+  }
+}

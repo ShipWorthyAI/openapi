@@ -38,6 +38,12 @@ npm consumer with lifecycle scripts disabled, imports JavaScript entry points an
 subpaths, type-checks their declarations, and runs CLI help commands. Consumer verification
 requires registry access. Successful verification creates `verified.json` in the artifact directory.
 
+Each `consumers/*` project in the repository is then installed against the tarballs and its `verify`
+script is run. Dependencies named after a released package resolve to that tarball, directly and
+transitively; everything else installs from the registry under the project's own `.npmrc`. Use
+consumers to cover environments the default consumer does not, such as older TypeScript versions,
+CommonJS projects, or `legacy-peer-deps`.
+
 Before publication, verify the saved result and archive digests without installing a consumer:
 
 ```sh

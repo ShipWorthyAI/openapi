@@ -11,7 +11,7 @@ bun add @shipworthy/openapi-fetch
 To generate the `paths` type, install the CLI, its TypeScript generator, and the generator's peers as dev dependencies:
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 typescript@^7
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
 ```
 
 These packages are build-time tooling; the fetch client has no runtime or peer dependencies.
@@ -19,7 +19,7 @@ These packages are build-time tooling; the fetch client has no runtime or peer d
 Requirements:
 
 - **No dependencies or peer dependencies.**
-- **ESM only** (`"type": "module"`). Published packages contain compiled JavaScript and `.d.ts` declarations in `dist/`; no TypeScript transpilation of `node_modules` is needed. The package has no CommonJS build.
+- **ESM and CommonJS.** Published packages contain compiled JavaScript in both formats with matching `.d.ts` and `.d.cts` declarations in `dist/`; no TypeScript transpilation of `node_modules` is needed. Declarations type-check with TypeScript 5.0 and later.
 - **No Node.js engine requirement for the client.** The code-generation CLI needs Node.js `>=22.19.0`, or Bun with `bunx --bun`.
 - **Fetch API globals.** The client uses `fetch`, `Request`, `Response`, `Headers`, `FormData`, and `URLSearchParams` from `globalThis`, so it runs in browsers, Bun, Deno, and Node.js 18+. To use a different implementation, pass `fetch` and/or `Request` to `createClient`.
 - **TypeScript** with `strict` (or at least `strictNullChecks`) is recommended. Required/optional inference for `params` and `body` depends on it.
@@ -87,7 +87,7 @@ Each call returns `Promise<FetchResponse>`, a discriminated union:
 
 The package's single entry point (`@shipworthy/openapi-fetch`) provides these exports.
 
-### `createClient<Paths, Media>(options?)` (default export)
+### `createClient<Paths, Media>(options?)` (default and named export)
 
 ```ts
 function createClient<Paths extends {}, Media extends MediaType = MediaType>(
@@ -556,7 +556,7 @@ Without the flag, the types are unchanged.
 
 ## Key facts (for AI agents)
 
-- Import: `import createClient from "@shipworthy/openapi-fetch"`, a **default** export. ESM-only compiled JavaScript with `.d.ts` declarations and no dependencies.
+- Import: `import createClient from "@shipworthy/openapi-fetch"`, a **default** export, also available as the named export `createClient`. Compiled ESM and CommonJS with `.d.ts`/`.d.cts` declarations and no dependencies.
 - Typical setup: `createClient<paths>({ baseUrl })`, where `paths` comes from `openapi generate typescript <schema> -o schema.ts`.
 - Call signature: `client.GET("/template/{param}", { params: { path, query, header, cookie }, body, headers, parseAs, signal })`. Methods are uppercase: `GET PUT POST DELETE OPTIONS HEAD PATCH TRACE`. `client.request("get", path, init)` is also available.
 - Result: `{ data, error, response }`. The promise does not reject on 4XX/5XX. It rejects on network errors, invalid JSON in a successful response that has a `Content-Length`, and misbehaving middleware.

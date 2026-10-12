@@ -276,6 +276,50 @@ test("rejects changed plans and tarballs after successful verification", async (
   expect(await release.exists(".release/verified.json")).toBe(false);
 });
 
+test("installs each release consumer against the tarballs and runs its verify script", async (context) => {
+  const { expect } = context;
+  const release = await fixture(context);
+
+  await release.writeJson("consumers/app/package.json", {
+    name: "consumer-app",
+    private: true,
+    scripts: { verify: "node verify.cjs" },
+    dependencies: { "@fixture/client": "*" },
+  });
+
+  await release.write(
+    "consumers/app/verify.cjs",
+    "import('@fixture/client').then(() => require('node:fs').writeFileSync(process.env.MARKER, 'ok'));\n",
+  );
+
+  await release.pack();
+  const marker = release.resolve("consumer-ran");
+
+  const verification = await runtime.runPromise(
+    execute(
+      ChildProcess.make("bun", [cli, "verify"], {
+        cwd: release.directory,
+        env: { MARKER: marker },
+        extendEnv: true,
+      }),
+    ),
+  );
+
+  expect(verification.status, verification.stderr).toBe(0);
+  expect(await release.read("consumer-ran")).toBe("ok");
+
+  await release.writeJson("consumers/app/package.json", {
+    name: "consumer-app",
+    private: true,
+    scripts: { verify: "exit 65" },
+  });
+
+  const failed = await release.command(["verify"]);
+  expect(failed.status).not.toBe(0);
+  expect(failed.stderr).toContain("Command failed");
+  expect(await release.exists(".release/verified.json")).toBe(false);
+});
+
 test("rejects missing published entries before installing a consumer", async (context) => {
   const { expect } = context;
   const release = await fixture(context);

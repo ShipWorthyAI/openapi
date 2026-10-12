@@ -23,7 +23,7 @@ export default defineConfig({
     reportUnusedDisableDirectives: "error",
   },
   plugins: ["eslint", "typescript", "unicorn", "oxc", "import", "react", "effecttsgo"],
-  ignorePatterns: ["**/dist/**", "**/.turbo/**", "examples/*/src/generated/**"],
+  ignorePatterns: ["**/dist/**", "**/.turbo/**", "examples/*/src/generated/**", "consumers/**"],
   categories: {
     correctness: "error",
   },

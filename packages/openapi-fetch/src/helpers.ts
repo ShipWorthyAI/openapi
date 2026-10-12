@@ -218,6 +218,9 @@ export type PathItemObject = {
 /** Return `responses` for an Operation Object */
 export type ResponseObjectMap<T> = T extends { responses: any } ? T["responses"] : unknown;
 
+/** `ResponseObjectMap` narrowed to the Response Object shape. TypeScript 5.0 requires the narrowing. */
+export type ResponseMap<T> = Extract<ResponseObjectMap<T>, Record<string | number, any>>;
+
 /** Return `content` for a Response Object */
 export type ResponseContent<T> = T extends { content: any } ? T["content"] : unknown;
 
@@ -275,13 +278,13 @@ export type ErrorResponse<
 
 /** Return first JSON-like 2XX response from a path + HTTP method */
 export type SuccessResponseJSON<PathMethod extends Record<string | number, any>> = SuccessResponse<
-  ResponseObjectMap<PathMethod>,
+  ResponseMap<PathMethod>,
   `${string}/json`
 >;
 
 /** Return first JSON-like 5XX or 4XX response from a path + HTTP method */
 export type ErrorResponseJSON<PathMethod extends Record<string | number, any>> = ErrorResponse<
-  ResponseObjectMap<PathMethod>,
+  ResponseMap<PathMethod>,
   `${string}/json`
 >;
 

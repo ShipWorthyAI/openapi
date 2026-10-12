@@ -1,4 +1,4 @@
-export { default } from "./client.ts";
+export { default, default as createClient } from "./client.ts";
 export { wrapAsPathBasedClient, createPathBasedClient } from "./path-client.ts";
 export { mergeHeaders } from "./headers.ts";
 export {

@@ -3,10 +3,11 @@ import {
   skipToken,
   type DataTag,
   type InfiniteData,
+  type InfiniteQueryPageParamsOptions,
   type QueryFunction,
   type QueryKey,
+  type QueryObserverOptions,
   type SkipToken,
-  type UseInfiniteQueryOptions,
   type UseMutationOptions,
   type UseQueryOptions,
 } from "@tanstack/react-query";
@@ -41,15 +42,20 @@ type QueryResult<O, Selected, Fn> = QueryConfig<O, Selected> & {
   queryFn: Fn;
 };
 
+// Mirrors `UseInfiniteQueryOptions` from generic types that are stable across TanStack Query v5.
+// `UseInfiniteQueryOptions` itself dropped its `TQueryData` parameter in later v5 releases, so
+// positional arguments to it mean different things in older apps.
 type InfiniteConfig<O, Page, Selected> = Omit<
-  UseInfiniteQueryOptions<
+  QueryObserverOptions<
     DataOf<O>,
     ErrorOf<O>,
     Selected,
+    InfiniteData<DataOf<O>, Page>,
     Key<InfiniteData<DataOf<O>, Page>>,
     Page
-  >,
-  "queryKey" | "queryFn"
+  > &
+    InfiniteQueryPageParamsOptions<DataOf<O>, Page>,
+  "queryKey" | "queryFn" | "suspense"
 >;
 
 type InfiniteResult<O, Page, Selected, Fn> = InfiniteConfig<O, Page, Selected> & {
