@@ -60,7 +60,10 @@ describe("plugins", () => {
 
   it.effect("tells the caller to install the missing module", () =>
     Effect.gen(function* () {
-      const cause = new Error("Cannot find package");
+      const cause = Object.assign(
+        new Error("Cannot find package 'example-generator' imported from /app/cli.js"),
+        { code: "ERR_MODULE_NOT_FOUND" },
+      );
 
       const result = yield* Effect.result(
         generate(generator).pipe(
@@ -75,6 +78,34 @@ describe("plugins", () => {
       if (error._tag !== "MissingPlugin") return;
 
       assert.strictEqual(error.message, "Install example-generator to load generate.");
+
+      assert.strictEqual(error.cause, cause);
+    }).pipe(Effect.provide(layer)),
+  );
+
+  it.effect("reports why an installed module failed to load", () =>
+    Effect.gen(function* () {
+      const cause = Object.assign(
+        new Error("Cannot find module '/app/node_modules/typescript/unstable/ast'"),
+        { code: "ERR_MODULE_NOT_FOUND" },
+      );
+
+      const result = yield* Effect.result(
+        generate(generator).pipe(
+          Effect.provideService(ModuleLoader, { load: () => Promise.reject(cause) }),
+        ),
+      );
+
+      if (Result.isSuccess(result)) return yield* Effect.die("expected plugin load to fail");
+
+      const error = result.failure;
+      assert.strictEqual(error._tag, "MissingPlugin");
+      if (error._tag !== "MissingPlugin") return;
+
+      assert.strictEqual(
+        error.message,
+        "Could not load example-generator: Cannot find module '/app/node_modules/typescript/unstable/ast'",
+      );
 
       assert.strictEqual(error.cause, cause);
     }).pipe(Effect.provide(layer)),

@@ -1,6 +1,6 @@
 // oxlint-disable-next-line effecttsgo/node-builtin-import -- Detect the public Node Readable input before adapting it with NodeStream.
 import { Readable } from "node:stream";
-import { NodeStream } from "@effect/platform-node";
+import * as NodeStream from "@effect/platform-node/NodeStream";
 import { Effect, type FileSystem, Path, Predicate, Schema, Stream } from "effect";
 import type { HttpClient } from "effect/http";
 import { decodeDocument, type OpenAPIDocument } from "./document.ts";

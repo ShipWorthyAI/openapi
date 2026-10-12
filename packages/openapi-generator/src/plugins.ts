@@ -19,6 +19,15 @@ const generatorShape = Schema.Struct({
 const generatorSchema = Schema.declare<Generator<unknown>>(Schema.is(generatorShape));
 const moduleSchema = Schema.Record(Schema.String, Schema.Unknown);
 
+/** Whether `cause` reports `specifier`'s own package as missing, not one of its imports. */
+function isPackageNotFound(cause: unknown, specifier: string): boolean {
+  if (!Predicate.isError(cause) || !Predicate.hasProperty(cause, "code")) return false;
+  if (cause.code !== "ERR_MODULE_NOT_FOUND" && cause.code !== "MODULE_NOT_FOUND") return false;
+  const [scope = "", name = ""] = specifier.split("/");
+  const packageName = scope.startsWith("@") ? `${scope}/${name}` : scope;
+  return cause.message.includes(`'${packageName}'`);
+}
+
 export const importPlugin = Effect.fn("importPlugin")(function* (
   specifier: string,
   exportName: string,
@@ -31,7 +40,9 @@ export const importPlugin = Effect.fn("importPlugin")(function* (
       new MissingPlugin({
         specifier,
         exportName,
-        message: `Install ${specifier} to load ${exportName}.`,
+        message: isPackageNotFound(cause, specifier)
+          ? `Install ${specifier} to load ${exportName}.`
+          : `Could not load ${specifier}: ${Predicate.isError(cause) ? cause.message : String(cause)}`,
         cause,
       }),
   });

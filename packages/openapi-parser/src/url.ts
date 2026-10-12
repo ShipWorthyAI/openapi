@@ -1,4 +1,4 @@
-import { NodePath } from "@effect/platform-node";
+import * as NodePath from "@effect/platform-node/NodePath";
 import { fileURLToPath } from "node:url";
 import { Effect, Path } from "effect";
 import { ResolverFailure, nodeErrorCode } from "./errors.ts";

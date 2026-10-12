@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
-import { NodeRuntime, NodeServices } from "@effect/platform-node";
+// Import modules directly: the package index also loads NodeRedis, which requires `redis`.
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import { ModuleLoader } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { Command } from "effect/cli";
