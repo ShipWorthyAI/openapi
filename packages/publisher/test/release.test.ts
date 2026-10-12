@@ -276,11 +276,11 @@ test("rejects changed plans and tarballs after successful verification", async (
   expect(await release.exists(".release/verified.json")).toBe(false);
 });
 
-test("installs each release consumer against the tarballs and runs its verify script", async (context) => {
+test("installs each example with a verify script against the tarballs and runs it", async (context) => {
   const { expect } = context;
   const release = await fixture(context);
 
-  await release.writeJson("consumers/app/package.json", {
+  await release.writeJson("examples/app/package.json", {
     name: "consumer-app",
     private: true,
     scripts: { verify: "node verify.cjs" },
@@ -288,9 +288,15 @@ test("installs each release consumer against the tarballs and runs its verify sc
   });
 
   await release.write(
-    "consumers/app/verify.cjs",
+    "examples/app/verify.cjs",
     "import('@fixture/client').then(() => require('node:fs').writeFileSync(process.env.MARKER, 'ok'));\n",
   );
+
+  await release.writeJson("examples/docs/package.json", {
+    name: "example-docs",
+    private: true,
+    dependencies: { "@fixture/missing": "*" },
+  });
 
   await release.pack();
   const marker = release.resolve("consumer-ran");
@@ -308,7 +314,7 @@ test("installs each release consumer against the tarballs and runs its verify sc
   expect(verification.status, verification.stderr).toBe(0);
   expect(await release.read("consumer-ran")).toBe("ok");
 
-  await release.writeJson("consumers/app/package.json", {
+  await release.writeJson("examples/app/package.json", {
     name: "consumer-app",
     private: true,
     scripts: { verify: "exit 65" },
@@ -318,6 +324,22 @@ test("installs each release consumer against the tarballs and runs its verify sc
   expect(failed.status).not.toBe(0);
   expect(failed.stderr).toContain("Command failed");
   expect(await release.exists(".release/verified.json")).toBe(false);
+});
+
+test("skips workspace directories excluded with a negated pattern", async (context) => {
+  const release = await fixture(context);
+  const root = await release.readJson("package.json");
+
+  await release.writeJson("package.json", {
+    ...root,
+    workspaces: {
+      packages: ["packages/*", "!packages/excluded"],
+      catalog: { "@fixture/core": "^1.0.0" },
+    },
+  });
+
+  await release.writeJson("packages/excluded/package.json", { private: true });
+  await release.pack();
 });
 
 test("rejects missing published entries before installing a consumer", async (context) => {

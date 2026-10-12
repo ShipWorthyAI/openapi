@@ -23,7 +23,14 @@ export default defineConfig({
     reportUnusedDisableDirectives: "error",
   },
   plugins: ["eslint", "typescript", "unicorn", "oxc", "import", "react", "effecttsgo"],
-  ignorePatterns: ["**/dist/**", "**/.turbo/**", "examples/*/src/generated/**", "consumers/**"],
+  ignorePatterns: [
+    "**/dist/**",
+    "**/.turbo/**",
+    "examples/*/src/generated/**",
+    // Release examples generate their client during `release-artifacts verify`.
+    "examples/commonjs-typescript-5/src/**",
+    "examples/esm-typescript-7/src/**",
+  ],
   categories: {
     correctness: "error",
   },

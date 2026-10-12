@@ -46,6 +46,7 @@ const ConsumerManifest = Schema.StructWithRest(
     dependencies: Schema.optionalKey(Dependencies),
     devDependencies: Schema.optionalKey(Dependencies),
     overrides: Schema.optionalKey(Schema.Record(Schema.String, Schema.Json)),
+    scripts: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
   }),
   [Schema.Record(Schema.String, Schema.Json)],
 );
@@ -207,11 +208,23 @@ export const packRelease = Effect.fn("release.pack")(function* (options: {
   const rootManifest = yield* readJson(path.join(root, "package.json"));
   const workspace = yield* Schema.decodeUnknownEffect(WorkspaceManifest)(rootManifest);
 
-  const manifestFiles = yield* Effect.forEach(workspace.workspaces.packages, (pattern) =>
-    fs.glob(`${pattern}/package.json`, { root }),
+  // Like the package manager, `!pattern` excludes directories that other patterns include.
+  const patterns = workspace.workspaces.packages;
+  const included = Array.filter(patterns, (pattern) => !pattern.startsWith("!"));
+  const excluded = Array.filter(patterns, (pattern) => pattern.startsWith("!"));
+
+  const globManifests = (patterns: ReadonlyArray<string>) =>
+    Effect.forEach(patterns, (pattern) => fs.glob(`${pattern}/package.json`, { root })).pipe(
+      Effect.map((files) => pipe(files, Array.flatten, Array.dedupe)),
+    );
+
+  const excludedFiles = yield* globManifests(Array.map(excluded, (pattern) => pattern.slice(1)));
+
+  const manifestFiles = yield* globManifests(included).pipe(
+    Effect.map(Array.filter((file) => !Array.contains(excludedFiles, file))),
   );
 
-  const packages = yield* Effect.forEach(pipe(manifestFiles, Array.flatten, Array.dedupe), (file) =>
+  const packages = yield* Effect.forEach(manifestFiles, (file) =>
     readJson(path.resolve(root, file)).pipe(
       Effect.flatMap(Schema.decodeUnknownEffect(PackageManifest)),
       Effect.map((manifest) => ({
@@ -321,7 +334,7 @@ export const packRelease = Effect.fn("release.pack")(function* (options: {
 }, Effect.scoped);
 
 /**
- * Install a consumer project from `consumers/` against the tarballs and run its `verify` script.
+ * Install an example project against the tarballs and run its `verify` script.
  * Released packages resolve to their tarballs, directly and transitively. Everything else comes
  * from the registry under the consumer's own `.npmrc`.
  */
@@ -590,11 +603,19 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
         ),
       );
 
-      const consumers = yield* fs.glob("consumers/*/package.json", { root: path.resolve(".") });
+      // Examples that define a `verify` script describe consumer environments to verify.
+      const examples = yield* fs.glob("examples/*/package.json", { root: path.resolve(".") });
 
       yield* Effect.forEach(
-        consumers,
-        (file) => verifyConsumer(path.dirname(path.resolve(file)), tarballs),
+        examples,
+        Effect.fnUntraced(function* (file) {
+          const manifest = yield* readJson(path.resolve(file)).pipe(
+            Effect.flatMap(Schema.decodeUnknownEffect(ConsumerManifest)),
+          );
+
+          if (manifest.scripts?.verify === undefined) return;
+          yield* verifyConsumer(path.dirname(path.resolve(file)), tarballs);
+        }),
         { discard: true },
       );
     }

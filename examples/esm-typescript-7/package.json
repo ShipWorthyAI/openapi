@@ -1,5 +1,5 @@
 {
-  "name": "consumer-esm-typescript-7",
+  "name": "@shipworthy/example-esm-typescript-7",
   "private": true,
   "description": "An ESM app on TypeScript 7 with bundler resolution and the current TanStack Query.",
   "type": "module",

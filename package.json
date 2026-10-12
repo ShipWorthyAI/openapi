@@ -6,6 +6,8 @@
     "packages": [
       "apps/*",
       "examples/*",
+      "!examples/commonjs-typescript-5",
+      "!examples/esm-typescript-7",
       "packages/*"
     ],
     "catalog": {

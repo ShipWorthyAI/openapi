@@ -1,5 +1,5 @@
 {
-  "name": "consumer-commonjs-typescript-5",
+  "name": "@shipworthy/example-commonjs-typescript-5",
   "private": true,
   "description": "A React Native style app: CommonJS, TypeScript 5.0 pinned by an npm override, NodeNext resolution, TanStack Query 5.59, and npm's legacy peer dependency handling.",
   "scripts": {
