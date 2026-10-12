@@ -1,0 +1,26 @@
+{
+  "name": "@shipworthy/example-overlays",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "bun run generate:search && bun run generate:booking && bun run generate:hotel-data && bun run generate:core",
+    "generate:search": "openapi overlay openapi/nuitee/search.json --overlay overlays/nuitee/search.overlay.json --strict-targets --remove-unused-components -o generated/nuitee/search.openapi.json",
+    "generate:booking": "openapi overlay openapi/nuitee/booking.json --overlay overlays/nuitee/booking.overlay.json --strict-targets --remove-unused-components -o generated/nuitee/booking.openapi.json",
+    "generate:hotel-data": "openapi overlay openapi/nuitee/hotel-data.json --overlay overlays/nuitee/hotel-data.overlay.json --strict-targets --remove-unused-components -o generated/nuitee/hotel-data.openapi.json",
+    "generate:core": "openapi overlay openapi/core/openapi.yaml --overlay overlays/core/core.overlay.json --strict-targets --remove-unused-components -o generated/core.openapi.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@shipworthy/openapi-cli": "workspace:*",
+    "@shipworthy/openapi-parser": "workspace:*",
+    "@shipworthy/overlay": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "effect": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

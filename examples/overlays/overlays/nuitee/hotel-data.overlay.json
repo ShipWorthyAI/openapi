@@ -1,0 +1,38 @@
+{
+  "overlay": "1.1.0",
+  "info": {
+    "title": "Nuitee hotel data operation selection",
+    "version": "1.0.0"
+  },
+  "actions": [
+    {
+      "target": "$.paths[\"/data/places\"].get",
+      "update": {
+        "operationId": "searchPlaces"
+      }
+    },
+    {
+      "target": "$.paths[\"/data/places/{placeId}\"].get",
+      "update": {
+        "operationId": "getPlace"
+      }
+    },
+    {
+      "target": "$.paths[\"/data/hotels\"].get",
+      "update": {
+        "operationId": "listHotels"
+      }
+    },
+    {
+      "target": "$.paths[\"/data/hotel\"].get",
+      "update": {
+        "operationId": "getHotel"
+      }
+    },
+    {
+      "description": "Keep only the selected operations; prune their unreachable components after applying the overlay.",
+      "target": "$.paths.*[?(@.responses && !(@.operationId == \"searchPlaces\" || @.operationId == \"getPlace\" || @.operationId == \"listHotels\" || @.operationId == \"getHotel\"))]",
+      "remove": true
+    }
+  ]
+}

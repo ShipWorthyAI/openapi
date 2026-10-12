@@ -1,0 +1,14 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "generate": {
+      "dependsOn": ["^transit"],
+      "inputs": ["openapi/**", "overlays/**", "package.json"],
+      "outputs": ["generated/**"]
+    },
+    "test": {
+      "dependsOn": ["transit", "generate"]
+    }
+  }
+}

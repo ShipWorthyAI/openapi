@@ -4,6 +4,10 @@ Load an OpenAPI 3.0 or 3.1 document from a file path, a URL, a JSON or YAML stri
 
 The API is Effect-native. Every entry point is an `Effect` or an Effect `Schema` codec, so you need [`effect`](https://www.npmjs.com/package/effect) v4 to run it.
 
+Bundling preserves OpenAPI 3.1 schema keywords alongside `$ref`, including descriptions,
+constraints, and extensions. It rewrites external references to internal references without
+introducing `allOf` wrappers for their sibling keywords.
+
 ## Installation
 
 ```sh

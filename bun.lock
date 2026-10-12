@@ -19,6 +19,22 @@
         "typescript": "catalog:",
       },
     },
+    "examples/overlays": {
+      "name": "@shipworthy/example-overlays",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@effect/platform-node": "catalog:",
+        "@effect/vitest": "catalog:",
+        "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-parser": "workspace:*",
+        "@shipworthy/overlay": "workspace:*",
+        "@shipworthy/typescript-config": "workspace:*",
+        "@types/node": "catalog:",
+        "effect": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "examples/sdk-core": {
       "name": "@shipworthy/example-sdk-core",
       "version": "0.0.0",
@@ -619,6 +635,8 @@
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
     "@scarf/scarf": ["@scarf/scarf@1.4.0", "", {}, "sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ=="],
+
+    "@shipworthy/example-overlays": ["@shipworthy/example-overlays@workspace:examples/overlays"],
 
     "@shipworthy/example-sdk-core": ["@shipworthy/example-sdk-core@workspace:examples/sdk-core"],
 

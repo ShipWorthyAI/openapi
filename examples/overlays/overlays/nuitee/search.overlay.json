@@ -1,0 +1,30 @@
+{
+  "overlay": "1.1.0",
+  "info": {
+    "title": "Nuitee search reviewed contract corrections",
+    "version": "1.0.0"
+  },
+  "actions": [
+    {
+      "target": "$.paths[\"/hotels/rates\"].post",
+      "update": {
+        "operationId": "searchHotelRates"
+      }
+    },
+    {
+      "description": "Saved supplier responses contain this optional mapped room identifier; the pinned snapshot omits it.",
+      "target": "$.paths[\"/hotels/rates\"].post.responses[\"200\"].content[\"application/json\"].schema.properties.data.items.properties.roomTypes.items.properties.rates.items.properties",
+      "update": {
+        "mappedRoomId": {
+          "description": "Mapped room identifier returned when roomMapping is enabled.",
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "description": "Keep only the selected operations; prune their unreachable components after applying the overlay.",
+      "target": "$.paths.*[?(@.responses && !(@.operationId == \"searchHotelRates\"))]",
+      "remove": true
+    }
+  ]
+}

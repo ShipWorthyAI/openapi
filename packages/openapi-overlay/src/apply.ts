@@ -7,6 +7,7 @@ import { Overlay, type OverlayAction } from "./schemas.ts";
 
 const applyOverlayOptions = Schema.Struct({
   removeUnusedComponents: Schema.optionalKey(Schema.Boolean),
+  strictTargets: Schema.optionalKey(Schema.Boolean),
 });
 
 type ApplyOverlayOptions = typeof applyOverlayOptions.Type;
@@ -151,6 +152,7 @@ function applyAction(
   document: Schema.MutableJsonObject,
   action: OverlayAction,
   version: string,
+  strictTargets: boolean,
 ): void {
   if (version !== "1.0" && version !== "1.1") {
     throw new TypeError(`Overlay ${version} action behavior is not implemented`);
@@ -158,7 +160,10 @@ function applyAction(
 
   const nodes = select(document, action.target);
 
-  if (nodes.length === 0) return;
+  if (nodes.length === 0) {
+    if (strictTargets) throw new TypeError("Overlay target matched no nodes");
+    return;
+  }
 
   if (version === "1.0" && nodes.some((node) => kind(node.value) === "primitive")) {
     throw new TypeError("Overlay 1.0 targets must select objects or arrays, not primitives");
@@ -250,7 +255,7 @@ export const applyOverlay = Effect.fn("applyOverlay")(function* (
     parsed.actions,
     (action, index) =>
       Effect.try({
-        try: () => applyAction(result, action, version),
+        try: () => applyAction(result, action, version, checkedOptions.strictTargets === true),
         catch: (cause) =>
           new OverlayError({
             message: `Overlay action ${index + 1} (${action.target}): ${String(cause)}`,

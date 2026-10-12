@@ -11,11 +11,13 @@ const run = Effect.fn("overlay")(function* ({
   overlay,
   output,
   removeUnusedComponents,
+  strictTargets,
 }: {
   readonly input: URL;
   readonly overlay: URL;
   readonly output: string;
   readonly removeUnusedComponents: boolean;
+  readonly strictTargets: boolean;
 }) {
   const document = yield* bundleDocument(input);
   const fs = yield* FileSystem.FileSystem;
@@ -28,7 +30,7 @@ const run = Effect.fn("overlay")(function* ({
           Effect.flatMap((response) => response.text),
         );
 
-  const result = yield* applyOverlay(document, text, { removeUnusedComponents });
+  const result = yield* applyOverlay(document, text, { removeUnusedComponents, strictTargets });
   const path = yield* Path.Path;
   const outputPath = path.resolve(output);
 
@@ -61,6 +63,10 @@ export const overlay = Command.make(
       Flag.withDescription(
         "Remove paths without operations and unreachable components after overlaying.",
       ),
+      Flag.withDefault(false),
+    ),
+    strictTargets: Flag.Boolean("strict-targets").pipe(
+      Flag.withDescription("Fail if any overlay action target matches no nodes."),
       Flag.withDefault(false),
     ),
   },

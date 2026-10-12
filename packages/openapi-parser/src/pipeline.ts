@@ -157,7 +157,7 @@ function normalizeSchema(value: unknown): JsonSchema.Document<"draft-2020-12"> {
 
   const record = asRecord(value);
   if (!record) throw bundleFailure("A schema position must contain an object or a boolean");
-  const normalized = JsonSchema.fromSchemaOpenApi3_1(liftSiblings(record) as JsonSchema.JsonSchema);
+  const normalized = JsonSchema.fromSchemaOpenApi3_1(record as JsonSchema.JsonSchema);
   // A schema $id is its own resource, so its $defs join the shared pool.
   // Nested $defs on a schema without $id stay on that schema.
   if (typeof record.$id === "string") return normalized;
@@ -221,29 +221,6 @@ function rewriteDefName(schema: unknown, from: string, to: string): void {
   if (!record) return;
   if (record.$ref === `#/$defs/${from}`) record.$ref = `#/$defs/${to}`;
   for (const value of Object.values(record)) rewriteDefName(value, from, to);
-}
-
-function liftSiblings(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map((item) => liftSiblings(item));
-  const record = asRecord(value);
-  if (!record) return value;
-  const lifted: Record<string, unknown> = {};
-  for (const [key, child] of Object.entries(record)) lifted[key] = liftSiblings(child);
-  if (typeof lifted.$ref !== "string") return lifted;
-  const siblings = { ...lifted };
-  delete siblings.$ref;
-  // readOnly/writeOnly stay beside $ref so generators can wrap the reference itself.
-  const flags: Record<string, unknown> = {};
-
-  for (const key of ["readOnly", "writeOnly"] as const) {
-    if (siblings[key] === true) {
-      flags[key] = true;
-      delete siblings[key];
-    }
-  }
-
-  if (Object.keys(siblings).length === 0) return { $ref: lifted.$ref, ...flags };
-  return { allOf: [{ $ref: lifted.$ref }, siblings], ...flags };
 }
 
 function recursiveNames(definitions: Record<string, JsonSchema.JsonSchema>): Set<string> {
@@ -344,44 +321,64 @@ function resolveValue(
 
   if (typeof record.$ref === "string") {
     const key = referenceKey(record.$ref);
-    if (!key) return record;
 
-    if (!Object.hasOwn(definitions, key)) {
+    if (key && !Object.hasOwn(definitions, key)) {
       if (rootDefs.has(key)) {
         record.$ref = rootDefRef(key);
-        return record;
+      } else {
+        throw missingPointerFailure(key, record.$ref, record.$ref);
       }
+    } else if (key) {
+      const final = finalName(key, definitions, aliases);
+      const ref = joinPointer("#/$defs", final);
 
-      throw missingPointerFailure(key, record.$ref, record.$ref);
+      if (recursive.has(final) || mode === "bundle") {
+        if (recursive.has(final)) hooks?.onCircular?.(pointer);
+        record.$ref = ref;
+      } else {
+        if (resolving.has(final)) throw circularAliasFailure(final);
+        resolving.add(final);
+
+        const resolved = resolveValue(
+          structuredClone(definitions[final]),
+          definitions,
+          rootDefs,
+          recursive,
+          aliases,
+          resolving,
+          mode,
+          hooks,
+          ref,
+        );
+
+        resolving.delete(final);
+        const siblings = { ...record };
+        delete siblings.$ref;
+
+        const result =
+          Object.keys(siblings).length === 0
+            ? resolved
+            : {
+                allOf: [
+                  resolved,
+                  resolveValue(
+                    siblings,
+                    definitions,
+                    rootDefs,
+                    recursive,
+                    aliases,
+                    resolving,
+                    mode,
+                    hooks,
+                    pointer,
+                  ),
+                ],
+              };
+
+        hooks?.onDereference?.(pointer, result, record, "$ref");
+        return result;
+      }
     }
-
-    const final = finalName(key, definitions, aliases);
-    const ref = joinPointer("#/$defs", final);
-
-    if (recursive.has(final) || mode === "bundle") {
-      if (recursive.has(final)) hooks?.onCircular?.(pointer);
-      record.$ref = ref;
-      return record;
-    }
-
-    if (resolving.has(final)) throw circularAliasFailure(final);
-    resolving.add(final);
-
-    const resolved = resolveValue(
-      structuredClone(definitions[final]),
-      definitions,
-      rootDefs,
-      recursive,
-      aliases,
-      resolving,
-      mode,
-      hooks,
-      ref,
-    );
-
-    resolving.delete(final);
-    hooks?.onDereference?.(pointer, resolved, record, "$ref");
-    return resolved;
   }
 
   for (const [key, child] of Object.entries(record)) {

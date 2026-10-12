@@ -266,6 +266,46 @@ describe("openapi bundle", () => {
     expect(schemas.Filter.anyOf[0].type).toBe("object");
   });
 
+  it("preserves sibling constraints when dereferencing a schema", async () => {
+    expect(
+      await dereference({
+        openapi: "3.1.0",
+        info: { title: "Siblings", version: "1" },
+        paths: {},
+        components: {
+          schemas: {
+            Id: { type: "string", minLength: 1 },
+            Booking: {
+              type: "object",
+              properties: {
+                original_id: {
+                  $ref: "#/components/schemas/Id",
+                  description: "Original ID",
+                  minLength: 3,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ).toMatchObject({
+      components: {
+        schemas: {
+          Booking: {
+            properties: {
+              original_id: {
+                allOf: [
+                  { type: "string", minLength: 1 },
+                  { description: "Original ID", minLength: 3 },
+                ],
+              },
+            },
+          },
+        },
+      },
+    });
+  });
+
   it("keeps recursive schemas as $refs and inlines the others when dereferencing", async () => {
     const document = {
       openapi: "3.1.0",

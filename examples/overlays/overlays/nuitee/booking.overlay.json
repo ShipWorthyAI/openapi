@@ -1,0 +1,166 @@
+{
+  "overlay": "1.1.0",
+  "info": {
+    "title": "Nuitee booking reviewed contract corrections",
+    "version": "1.0.0"
+  },
+  "actions": [
+    {
+      "target": "$.paths[\"/prebooks/{prebookId}\"].get",
+      "update": {
+        "operationId": "getPrebook"
+      }
+    },
+    {
+      "target": "$.paths[\"/rates/prebook\"].post",
+      "update": {
+        "operationId": "createPrebook"
+      }
+    },
+    {
+      "target": "$.paths[\"/rates/book\"].post",
+      "update": {
+        "operationId": "createBooking"
+      }
+    },
+    {
+      "target": "$.paths[\"/rates/rebook\"].post",
+      "update": {
+        "operationId": "createRebooking"
+      }
+    },
+    {
+      "target": "$.paths[\"/bookings\"].get",
+      "update": {
+        "operationId": "listBookings"
+      }
+    },
+    {
+      "target": "$.paths[\"/bookings/{bookingId}\"].get",
+      "update": {
+        "operationId": "getBooking"
+      }
+    },
+    {
+      "target": "$.paths[\"/bookings/{bookingId}\"].put",
+      "update": {
+        "operationId": "cancelBooking"
+      }
+    },
+    {
+      "target": "$.paths[\"/bookings/{bookingId}/amend\"].put",
+      "update": {
+        "operationId": "amendBookingGuestName"
+      }
+    },
+    {
+      "target": "$.paths[\"/bookings/{bookingId}/alternative-prebooks\"].post",
+      "update": {
+        "operationId": "createAlternativePrebooks"
+      }
+    },
+    {
+      "description": "Payment method enum values are strings; declare the missing scalar type.",
+      "target": "$.paths[\"/rates/book\"].post.requestBody.content[\"application/json\"].schema.properties.payment.anyOf[0].properties.method",
+      "update": {
+        "type": "string"
+      }
+    },
+    {
+      "description": "Payment method enum values are strings; declare the missing scalar type.",
+      "target": "$.paths[\"/rates/book\"].post.requestBody.content[\"application/json\"].schema.properties.payment.anyOf[1].properties.method",
+      "update": {
+        "type": "string"
+      }
+    },
+    {
+      "description": "Payment method enum values are strings; declare the missing scalar type.",
+      "target": "$.paths[\"/rates/book\"].post.requestBody.content[\"application/json\"].schema.properties.payment.anyOf[2].properties.method",
+      "update": {
+        "type": "string"
+      }
+    },
+    {
+      "description": "Captured booking responses contain decimal retail totals; preserve exact decimals through json.Number.",
+      "target": "$.paths[\"/rates/book\"].post.responses[\"200\"].content[\"application/json\"].schema.properties.data.properties.bookedRooms.items.properties.rate.properties.retailRate.properties.total.properties.amount",
+      "update": {
+        "type": "number"
+      }
+    },
+    {
+      "description": "Captured booking responses contain decimal retail totals; preserve exact decimals through json.Number.",
+      "target": "$.paths[\"/bookings\"].get.responses[\"200\"].content[\"application/json\"].schema.properties.data.items.properties.rooms.items.properties.rate.properties.retailRate.properties.total.properties.amount",
+      "update": {
+        "type": "number"
+      }
+    },
+    {
+      "description": "Captured booking responses contain decimal retail totals; preserve exact decimals through json.Number.",
+      "target": "$.paths[\"/bookings/{bookingId}\"].get.responses[\"200\"].content[\"application/json\"].schema.properties.data.properties.bookedRooms.items.properties.rate.properties.retailRate.properties.total.properties.amount",
+      "update": {
+        "type": "number"
+      }
+    },
+    {
+      "description": "Keep the pinned identity shape and accept the observed integer form.",
+      "target": "$.paths[\"/bookings\"].get.responses[\"200\"].content[\"application/json\"].schema.properties.data.items.properties.guestId.type",
+      "remove": true
+    },
+    {
+      "target": "$.paths[\"/bookings\"].get.responses[\"200\"].content[\"application/json\"].schema.properties.data.items.properties.guestId",
+      "update": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    {
+      "description": "Keep the pinned identity shape and accept the observed integer form.",
+      "target": "$.paths[\"/bookings/{bookingId}\"].get.responses[\"200\"].content[\"application/json\"].schema.properties.data.properties.loyaltyGuestId.type",
+      "remove": true
+    },
+    {
+      "target": "$.paths[\"/bookings/{bookingId}\"].get.responses[\"200\"].content[\"application/json\"].schema.properties.data.properties.loyaltyGuestId",
+      "update": {
+        "oneOf": [
+          {
+            "type": "object"
+          },
+          {
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    {
+      "description": "Saved supplier responses contain this optional mapped room identifier; the pinned snapshot omits it.",
+      "target": "$.paths[\"/rates/prebook\"].post.responses[\"200\"].content[\"application/json\"].schema.properties.data.properties.roomTypes.items.properties.rates.items.properties",
+      "update": {
+        "mappedRoomId": {
+          "description": "Mapped room identifier returned when roomMapping is enabled.",
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "description": "Saved supplier responses contain this optional mapped room identifier; the pinned snapshot omits it.",
+      "target": "$.paths[\"/prebooks/{prebookId}\"].get.responses[\"200\"].content[\"application/json\"].schema.properties.data.properties.roomTypes.items.properties.rates.items.properties",
+      "update": {
+        "mappedRoomId": {
+          "description": "Mapped room identifier returned when roomMapping is enabled.",
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "description": "Keep only the selected operations; prune their unreachable components after applying the overlay.",
+      "target": "$.paths.*[?(@.responses && !(@.operationId == \"getPrebook\" || @.operationId == \"createPrebook\" || @.operationId == \"createBooking\" || @.operationId == \"createRebooking\" || @.operationId == \"listBookings\" || @.operationId == \"getBooking\" || @.operationId == \"cancelBooking\" || @.operationId == \"amendBookingGuestName\" || @.operationId == \"createAlternativePrebooks\"))]",
+      "remove": true
+    }
+  ]
+}

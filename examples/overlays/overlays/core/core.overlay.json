@@ -1,0 +1,29 @@
+{
+  "overlay": "1.1.0",
+  "info": {
+    "title": "Core hotel payment contract selection",
+    "version": "1.0.0"
+  },
+  "actions": [
+    {
+      "target": "$.info",
+      "update": {
+        "title": "Core hotel payments",
+        "description": "Core-owned saved-card authorization, retrieval, finalization, and release for Hotels. Requires the dedicated hotels_service client-credentials token."
+      }
+    },
+    {
+      "target": "$.security",
+      "remove": true
+    },
+    {
+      "target": "$.components.securitySchemes.partnerServiceToken",
+      "remove": true
+    },
+    {
+      "description": "Keep only the selected operations; prune their unreachable components after applying the overlay.",
+      "target": "$.paths.*[?(@.responses && !(@.operationId == \"authorizeHotelPayment\" || @.operationId == \"getHotelPayment\" || @.operationId == \"finalizeHotelPayment\" || @.operationId == \"releaseHotelPayment\"))]",
+      "remove": true
+    }
+  ]
+}

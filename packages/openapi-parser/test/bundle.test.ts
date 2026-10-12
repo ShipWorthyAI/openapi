@@ -39,6 +39,61 @@ const httpLayer = Layer.mergeAll(
 );
 
 describe("bundleDocument", () => {
+  it.effect("preserves keywords alongside schema references without introducing allOf", () =>
+    Effect.gen(function* () {
+      const siblings = {
+        $ref: "#/components/schemas/Id",
+        description: "Original booking ID",
+        minLength: 3,
+        readOnly: true,
+        "x-label": "original",
+      };
+
+      const document = yield* bundleDocument({
+        openapi: "3.1.0",
+        info: { title: "Bookings", version: "1" },
+        paths: {},
+        components: {
+          schemas: {
+            Id: { type: "string" },
+            Booking: { type: "object", properties: { original_id: siblings } },
+            LabelledId: siblings,
+          },
+        },
+      });
+
+      assert.deepEqual(document.components?.schemas?.Booking, {
+        type: "object",
+        properties: { original_id: siblings },
+      });
+
+      assert.deepEqual(document.components?.schemas?.LabelledId, siblings);
+    }).pipe(Effect.provide(layer)),
+  );
+
+  it.effect("validates references inside sibling schema keywords", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        bundleDocument({
+          openapi: "3.1.0",
+          info: { title: "Nested siblings", version: "1" },
+          paths: {},
+          components: {
+            schemas: {
+              Base: { type: "object" },
+              Extended: {
+                $ref: "#/components/schemas/Base",
+                properties: { missing: { $ref: "#/components/schemas/Missing" } },
+              },
+            },
+          },
+        }),
+      );
+
+      assert.match(error.message, /Missing/);
+    }).pipe(Effect.provide(layer)),
+  );
+
   it.effect("reports invalid cwd options through SchemaError", () =>
     Effect.gen(function* () {
       const error = yield* Effect.flip(

@@ -38,11 +38,16 @@ const result = await Effect.runPromise(applyOverlay(document, overlay));
 ```
 
 `applyOverlay(document, overlay, options?)` accepts either a parsed object or JSON/YAML text for
-the document and overlay. Options are schema-validated: `removeUnusedComponents` is an optional
-boolean, and unknown options are rejected with `OverlayError`. The options type is inferred
+the document and overlay. Options are schema-validated: `removeUnusedComponents` and
+`strictTargets` are optional booleans, and unknown options are rejected with `OverlayError`. The options type is inferred
 from its Effect Schema. It returns `Effect.Effect<Schema.MutableJsonObject, OverlayError>` without requiring
 services. Input documents must be JSON-compatible objects. Inputs are validated with Effect
 schemas and copied before applying actions; neither input is mutated, including on failure.
+
+Set `strictTargets: true` to fail with `OverlayError` when an action target matches no nodes.
+The error includes the action number and target; actions are checked against the result of
+preceding actions. The default is `false`, so unmatched targets remain permitted. This is
+useful for detecting stale correction overlays when updating an upstream document.
 
 By default, the function applies overlays without validating the resulting OpenAPI structure.
 It does not load files or fetch URLs. `extends` is descriptive

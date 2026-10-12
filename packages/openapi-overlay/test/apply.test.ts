@@ -47,6 +47,41 @@ test.each([
   expect(document).toEqual({ kept: true });
 });
 
+test("strictTargets rejects an unmatched action after earlier actions without mutating the input", async () => {
+  const document = { info: { title: "Original" } };
+
+  const error = await Effect.runPromise(
+    applyOverlay(
+      document,
+      overlay(
+        { target: "$.info", update: { title: "Updated" } },
+        { target: "$.missing", update: {} },
+      ),
+      { strictTargets: true },
+    ).pipe(Effect.flip),
+  );
+
+  expect(error.action).toBe(2);
+  expect(error.target).toBe("$.missing");
+  expect(error.message).toContain("target matched no nodes");
+  expect(document.info.title).toBe("Original");
+});
+
+test("strictTargets evaluates each target against the preceding action's result", async () => {
+  expect(
+    await Effect.runPromise(
+      applyOverlay(
+        {},
+        overlay(
+          { target: "$", update: { added: {} } },
+          { target: "$.added", update: { kept: true } },
+        ),
+        { strictTargets: true },
+      ),
+    ),
+  ).toEqual({ added: { kept: true } });
+});
+
 test("merges objects recursively, concatenates arrays, and replaces primitives", async () => {
   const document = {
     info: { title: "Pets", version: "1" },

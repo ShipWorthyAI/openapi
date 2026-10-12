@@ -91,6 +91,37 @@ test("requires --overlay and -o", async (context) => {
   expect(await cli.fails("overlay", "openapi.yaml", "--overlay", "overlay.yaml")).toMatch(/output/);
 });
 
+test("--strict-targets rejects unmatched actions without overwriting output", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  cli.write("output.json", "existing output");
+
+  cli.write(
+    "overlay.json",
+    JSON.stringify({
+      overlay: "1.1.0",
+      info: { title: "Test", version: "1" },
+      actions: [{ target: "$.components.schemas.Missing", update: { description: "stale" } }],
+    }),
+  );
+
+  expect(
+    await cli.fails(
+      "overlay",
+      "openapi.yaml",
+      "--overlay",
+      "overlay.json",
+      "--strict-targets",
+      "-o",
+      "output.json",
+    ),
+  ).toMatch(/Overlay action 1.*target matched no nodes/);
+
+  expect(cli.read("output.json")).toBe("existing output");
+  await cli.ok("overlay", "openapi.yaml", "--overlay", "overlay.json", "-o", "output.json");
+  expect(JSON.parse(cli.read("output.json")).components.schemas.Pet).toBeDefined();
+});
+
 test("loads remote YAML overlays and rejects non-success HTTP responses", async (context) => {
   const { expect } = context;
   const cli = setup(context);
