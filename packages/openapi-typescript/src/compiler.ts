@@ -47,12 +47,6 @@ export type {
   TypeNode,
 } from "typescript/unstable/ast";
 
-declare module "typescript/unstable/ast" {
-  interface Identifier {
-    escapedText?: string;
-  }
-}
-
 const rawText = new WeakMap<Node, string>();
 const typeParameterText = new WeakMap<Node, string>();
 
@@ -647,28 +641,64 @@ function transformNodes(
   };
 }
 
+// Bundled declarations inline TypeScript's AST types under their own names. Aliases with distinct
+// names keep the namespace members below from referring to themselves.
+type AstEnumDeclaration = import("typescript/unstable/ast").EnumDeclaration;
+type AstEnumMember = import("typescript/unstable/ast").EnumMember;
+type AstInterfaceDeclaration = import("typescript/unstable/ast").InterfaceDeclaration;
+type AstLiteralTypeNode = import("typescript/unstable/ast").LiteralTypeNode;
+type AstNode = import("typescript/unstable/ast").Node;
+
+type AstPropertySignatureDeclaration =
+  import("typescript/unstable/ast").PropertySignatureDeclaration;
+
+type AstQuestionToken = import("typescript/unstable/ast").QuestionToken;
+type AstTypeAliasDeclaration = import("typescript/unstable/ast").TypeAliasDeclaration;
+type AstTypeElement = import("typescript/unstable/ast").TypeElement;
+type AstTypeLiteralNode = import("typescript/unstable/ast").TypeLiteralNode;
+type AstTypeNode = import("typescript/unstable/ast").TypeNode;
+type AstModifierLike = import("typescript/unstable/ast").ModifierLike;
+const astNodeFlags = ImportedNodeFlags;
+const astScriptKind = ImportedScriptKind;
+const astScriptTarget = ImportedScriptTarget;
+const astSyntaxKind = ImportedSyntaxKind;
+const astVisitEachChild = visitEachChildNode;
+const astVisitNode = visitNodeChild;
+const astIsArrayTypeNode = importedIsArrayTypeNode;
+const astIsIdentifier = importedIsIdentifier;
+const astIsIndexedAccessTypeNode = importedIsIndexedAccessTypeNode;
+const astIsInterfaceDeclaration = importedIsInterfaceDeclaration;
+const astIsLiteralTypeNode = importedIsLiteralTypeNode;
+const astIsStringLiteral = importedIsStringLiteral;
+const astIsTupleTypeNode = importedIsTupleTypeNode;
+const astIsTypeAliasDeclaration = importedIsTypeAliasDeclaration;
+const astIsTypeLiteralNode = importedIsTypeLiteralNode;
+const astIsTypeNode = importedIsTypeNode;
+const astIsTypeReferenceNode = importedIsTypeReferenceNode;
+const astIsPropertySignature = isPropertySignatureDeclaration;
+
 namespace ts {
-  export type EnumDeclaration = import("typescript/unstable/ast").EnumDeclaration;
-  export type EnumMember = import("typescript/unstable/ast").EnumMember;
-  export type InterfaceDeclaration = import("typescript/unstable/ast").InterfaceDeclaration;
-  export type LiteralTypeNode = import("typescript/unstable/ast").LiteralTypeNode;
-  export type Node = import("typescript/unstable/ast").Node;
-  export type PropertySignature = import("typescript/unstable/ast").PropertySignatureDeclaration;
-  export type QuestionToken = import("typescript/unstable/ast").QuestionToken;
-  export type TypeAliasDeclaration = import("typescript/unstable/ast").TypeAliasDeclaration;
-  export type TypeElement = import("typescript/unstable/ast").TypeElement;
-  export type TypeLiteralNode = import("typescript/unstable/ast").TypeLiteralNode;
-  export type TypeNode = import("typescript/unstable/ast").TypeNode;
-  export type Modifier = import("typescript/unstable/ast").ModifierLike;
+  export type EnumDeclaration = AstEnumDeclaration;
+  export type EnumMember = AstEnumMember;
+  export type InterfaceDeclaration = AstInterfaceDeclaration;
+  export type LiteralTypeNode = AstLiteralTypeNode;
+  export type Node = AstNode;
+  export type PropertySignature = AstPropertySignatureDeclaration;
+  export type QuestionToken = AstQuestionToken;
+  export type TypeAliasDeclaration = AstTypeAliasDeclaration;
+  export type TypeElement = AstTypeElement;
+  export type TypeLiteralNode = AstTypeLiteralNode;
+  export type TypeNode = AstTypeNode;
+  export type Modifier = AstModifierLike;
   export type Visitor = (node: Node) => Node | undefined;
   export interface PrinterOptions {
     newLine?: number;
     removeComments?: boolean;
   }
-  export const NodeFlags = ImportedNodeFlags;
-  export const ScriptKind = ImportedScriptKind;
-  export const ScriptTarget = ImportedScriptTarget;
-  export const SyntaxKind = ImportedSyntaxKind;
+  export const NodeFlags: typeof astNodeFlags = astNodeFlags;
+  export const ScriptKind: typeof astScriptKind = astScriptKind;
+  export const ScriptTarget: typeof astScriptTarget = astScriptTarget;
+  export const SyntaxKind: typeof astSyntaxKind = astSyntaxKind;
   export const NewLineKind = {
     CarriageReturnLineFeed: 0,
     LineFeed: 1,
@@ -804,24 +834,25 @@ namespace ts {
       );
     },
   };
-  export const visitEachChild = visitEachChildNode;
-  export const visitNode = visitNodeChild;
+  export const visitEachChild: typeof astVisitEachChild = astVisitEachChild;
+  export const visitNode: typeof astVisitNode = astVisitNode;
   export const addSyntheticLeadingComment = addLeadingComment;
   export const createPrinter = makePrinter;
   export const createSourceFile = parseSourceFile;
-  export const isArrayTypeNode = importedIsArrayTypeNode;
-  export const isIdentifier = importedIsIdentifier;
-  export const isIndexedAccessTypeNode = importedIsIndexedAccessTypeNode;
-  export const isInterfaceDeclaration = importedIsInterfaceDeclaration;
-  export const isLiteralTypeNode = importedIsLiteralTypeNode;
-  export const isStringLiteral = importedIsStringLiteral;
-  export const isTupleTypeNode = importedIsTupleTypeNode;
-  export const isTypeAliasDeclaration = importedIsTypeAliasDeclaration;
-  export const isTypeLiteralNode = importedIsTypeLiteralNode;
-  export const isTypeNode = importedIsTypeNode;
-  export const isTypeReferenceNode = importedIsTypeReferenceNode;
+  export const isArrayTypeNode: typeof astIsArrayTypeNode = astIsArrayTypeNode;
+  export const isIdentifier: typeof astIsIdentifier = astIsIdentifier;
+  export const isIndexedAccessTypeNode: typeof astIsIndexedAccessTypeNode =
+    astIsIndexedAccessTypeNode;
+  export const isInterfaceDeclaration: typeof astIsInterfaceDeclaration = astIsInterfaceDeclaration;
+  export const isLiteralTypeNode: typeof astIsLiteralTypeNode = astIsLiteralTypeNode;
+  export const isStringLiteral: typeof astIsStringLiteral = astIsStringLiteral;
+  export const isTupleTypeNode: typeof astIsTupleTypeNode = astIsTupleTypeNode;
+  export const isTypeAliasDeclaration: typeof astIsTypeAliasDeclaration = astIsTypeAliasDeclaration;
+  export const isTypeLiteralNode: typeof astIsTypeLiteralNode = astIsTypeLiteralNode;
+  export const isTypeNode: typeof astIsTypeNode = astIsTypeNode;
+  export const isTypeReferenceNode: typeof astIsTypeReferenceNode = astIsTypeReferenceNode;
   export const transform = transformNodes;
-  export const isPropertySignature = isPropertySignatureDeclaration;
+  export const isPropertySignature: typeof astIsPropertySignature = astIsPropertySignature;
 }
 
 export default ts;

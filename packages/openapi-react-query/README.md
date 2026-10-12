@@ -22,7 +22,7 @@ bun add @shipworthy/openapi-react-query @tanstack/react-query react
 To generate types, also install the CLI, the TypeScript generator, and the generator's peers as dev dependencies:
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4 typescript@^7
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
 ```
 
 | Requirement                  | Value                                                                                                                             |

@@ -12,7 +12,7 @@ based on. `@shipworthy/openapi-tanstack-query` uses these types for its generate
 ## Installation
 
 ```sh
-bun add -d @shipworthy/openapi-typescript @shipworthy/openapi-cli typescript@^7 effect@^4.0.0
+bun add -d @shipworthy/openapi-typescript @shipworthy/openapi-cli effect@^4.0.0
 ```
 
 Install `@shipworthy/openapi-cli` only if you use the CLI. If you call the plugin from code, also
@@ -20,14 +20,14 @@ install `@shipworthy/openapi-transformer`.
 
 Requirements:
 
-| Requirement       | Detail                                                                                                                                                |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peer dependencies | `typescript` `^7.0.0`. `effect` `^4.0.0`: install it yourself so every package shares one Effect instance.                                            |
-| Runtime           | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. |
-| Module format     | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                            |
-| Entry points      | `.` and `./compiler`.                                                                                                                                 |
-| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).                                |
-| Dependencies      | `oxfmt` ^0.72.0 (used by `formatTypeScript`).                                                                                                         |
+| Requirement       | Detail                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Peer dependencies | `effect` `^4.0.0`: install it yourself so every package shares one Effect instance.                                                                    |
+| Runtime           | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed.  |
+| Module format     | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                             |
+| Entry points      | `.` and `./compiler`.                                                                                                                                  |
+| CLI runtime       | The `openapi` binary from `@shipworthy/openapi-cli` runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).                                 |
+| Dependencies      | `oxfmt` ^0.72.0 (used by `formatTypeScript`). TypeScript 7's AST modules are bundled, so generation works with any TypeScript version in your project. |
 
 ## Quick start
 
@@ -570,12 +570,11 @@ in place of `NodeServices` on Bun) and
 | `Install @shipworthy/openapi-typescript to load typescript.` | `@shipworthy/openapi-cli` could not import this package (`MissingPlugin`). Install it next to the CLI.                             |
 | `Could not resolve $ref "..."` warning                       | A local `$ref` points to a location that does not exist. The reference is left unresolved. Use `silent: true` to hide the warning. |
 | `NotFound: FileSystem.readFile (...)`                        | The CLI input path does not exist.                                                                                                 |
-| Errors importing `typescript/unstable/...`                   | `typescript` is older than 7. Install `typescript@^7`.                                                                             |
 
 ## Key facts (for AI agents)
 
 - Package: `@shipworthy/openapi-typescript`. ESM only, compiled JavaScript with `.d.ts` in
-  `dist/`. Node.js `>=22.19.0` or Bun. Peer dependencies `typescript@^7` and `effect@^4`. Exports
+  `dist/`. Node.js `>=22.19.0` or Bun. Bundles TypeScript 7's AST modules; peer dependency `effect@^4`. Exports
   `.` and `./compiler`.
 - Main export: `typescript`, a `Generator` with `id: "typescript"` and
   `generate(model: ParsedService, options) => Effect<ts.Node[], TypegenError>`.

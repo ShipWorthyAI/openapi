@@ -408,8 +408,7 @@ export function tsArrayLiteralExpression(
   if (
     options?.injectFooter &&
     !options.injectFooter.some(
-      (node) =>
-        ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "FlattenedDeepRequired",
+      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.text === "FlattenedDeepRequired",
     )
   ) {
     const helper = stringToAST(
@@ -700,7 +699,7 @@ export function tsWithRequired(
   // inject helper, if needed
   if (
     !injectFooter.some(
-      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "WithRequired",
+      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.text === "WithRequired",
     )
   ) {
     const helper = stringToAST(
@@ -727,7 +726,7 @@ export function tsReadonlyArray(type: ts.TypeNode, injectFooter?: ts.Node[]): ts
   if (
     injectFooter &&
     !injectFooter.some(
-      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.escapedText === "ReadonlyArray",
+      (node) => ts.isTypeAliasDeclaration(node) && node?.name?.text === "ReadonlyArray",
     )
   ) {
     const helper = stringToAST(

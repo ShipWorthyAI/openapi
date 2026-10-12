@@ -13,20 +13,20 @@
 Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
 ```
 
 ### Optional peer dependencies (generators)
 
 Install the generator package for each `generate` subcommand you use, at the same version as the CLI:
 
-| Command                            | Requires                                                                  | Notes                                                          |
-| ---------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `openapi generate typescript`      | `@shipworthy/openapi-typescript`                                          | That package peers on `typescript@^7.0.0` and `effect@^4.0.0`. |
-| `openapi generate zod`             | `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`            | Also writes `types.ts`.                                        |
-| `openapi generate tanstack-query`  | `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript` | Also writes `types.ts`.                                        |
-| `openapi generate standard-schema` | `@shipworthy/openapi-standard-schema`                                     |                                                                |
-| `openapi lint`                     | nothing extra                                                             | Bundled through `@shipworthy/openapi-validator` (Spectral).    |
+| Command                            | Requires                                                                  | Notes                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `openapi generate typescript`      | `@shipworthy/openapi-typescript`                                          | That package peers on `effect@^4.0.0`.                      |
+| `openapi generate zod`             | `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`            | Also writes `types.ts`.                                     |
+| `openapi generate tanstack-query`  | `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript` | Also writes `types.ts`.                                     |
+| `openapi generate standard-schema` | `@shipworthy/openapi-standard-schema`                                     |                                                             |
+| `openapi lint`                     | nothing extra                                                             | Bundled through `@shipworthy/openapi-validator` (Spectral). |
 
 The generated files import packages at runtime, so your application needs those packages too:
 
@@ -42,7 +42,7 @@ The generated files import packages at runtime, so your application needs those 
 Run the `openapi` commands below in a package script, or use `bunx --bun @shipworthy/openapi-cli` in place of `openapi`.
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript typescript@^7 effect@^4
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
 bunx --bun @shipworthy/openapi-cli lint ./openapi.yaml
 bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/types.ts
 ```
