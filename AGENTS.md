@@ -38,6 +38,7 @@
 
 - Keep package `README.md` files focused on public installation, usage, and configuration. Exclude implementation internals.
 - When changing a package's public API, update its `README.md` wherever the documented usage or behavior is affected.
+- Do NOT add a changeset or modify this directory `.changeset/` unless you are explicitly told to do so.
 
 - After completing code changes, run `bun run check` from the repository root.
 - If the check fails, run `bun run fix`, then resolve remaining errors manually.
