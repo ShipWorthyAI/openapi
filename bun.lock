@@ -141,17 +141,14 @@
       "dependencies": {
         "@shipworthy/openapi-parser": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "effect": "^4.0.0",
       },
     },
     "packages/openapi-overlay": {
@@ -159,19 +156,16 @@
       "version": "0.0.1",
       "dependencies": {
         "@shipworthy/openapi-parser": "workspace:*",
+        "effect": "catalog:",
         "jsonpath-rfc9535": "1.3.0",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "oxfmt": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "effect": "^4.0.0",
       },
     },
     "packages/openapi-parser": {
@@ -179,17 +173,14 @@
       "version": "0.0.1",
       "dependencies": {
         "@effect/platform-node": "catalog:",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "effect": "^4.0.0",
       },
     },
     "packages/openapi-react-query": {
@@ -217,17 +208,14 @@
       "dependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "effect": "^4.0.0",
       },
     },
     "packages/openapi-tanstack-query": {
@@ -235,6 +223,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@shipworthy/openapi-fetch": "workspace:*",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
@@ -242,7 +231,6 @@
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "react": "catalog:",
         "tsdown": "catalog:",
         "typescript": "catalog:",
@@ -252,13 +240,11 @@
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
         "@tanstack/react-query": "^5.59.0",
-        "effect": "^4.0.0",
         "react": "^18.0.0 || ^19.0.0",
       },
       "optionalPeers": [
         "@shipworthy/openapi-generator",
         "@shipworthy/openapi-transformer",
-        "effect",
       ],
     },
     "packages/openapi-transformer": {
@@ -266,17 +252,14 @@
       "version": "0.0.1",
       "dependencies": {
         "@shipworthy/openapi-parser": "workspace:*",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "effect": "^4.0.0",
       },
     },
     "packages/openapi-typescript": {
@@ -285,18 +268,15 @@
       "dependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
+        "effect": "catalog:",
         "oxfmt": "catalog:",
       },
       "devDependencies": {
         "@effect/platform-node": "catalog:",
         "@effect/vitest": "catalog:",
-        "effect": "catalog:",
         "tsdown": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "effect": "^4.0.0",
       },
     },
     "packages/openapi-validator": {
@@ -307,17 +287,14 @@
         "@stoplight/spectral-formats": "1.9.0",
         "@stoplight/spectral-parsers": "1.0.5",
         "@stoplight/spectral-rulesets": "1.23.0",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "effect": "^4.0.0",
       },
     },
     "packages/openapi-zod": {
@@ -327,18 +304,17 @@
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
         "@shipworthy/openapi-typescript": "workspace:*",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@effect/platform-node": "catalog:",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
-        "effect": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
         "zod": "4.6.5",
       },
       "peerDependencies": {
-        "effect": "^4.0.0",
         "zod": "4.6.5",
       },
     },

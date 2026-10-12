@@ -60,18 +60,15 @@
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
+    "effect": "catalog:",
     "oxfmt": "catalog:"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
-    "effect": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
-  },
-  "peerDependencies": {
-    "effect": "^4.0.0"
   },
   "engines": {
     "node": ">=22.19.0"

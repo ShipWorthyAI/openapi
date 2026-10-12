@@ -18,9 +18,9 @@ bun add @shipworthy/openapi-validator effect@^4.0.0
 
 ### Requirements
 
-- **Effect 4.** `effect` `^4.0.0` is a peer dependency. The public API is an Effect
-  `Context.Service` and an Effect `Schema` error. Install a compatible version so
-  every package shares one Effect instance.
+- **Effect 4.** The package depends on `effect` `^4.0.0`. The public API is an Effect
+  `Context.Service` and an Effect `Schema` error. Add a compatible version to your
+  app so every package resolves to one Effect instance.
 - **ESM only.** The package is `"type": "module"` and has no CommonJS build.
 - **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts`
   declarations in `dist/`. No TypeScript loader or bundler is needed. Its public
@@ -301,7 +301,7 @@ custom rulesets, or per-rule overrides.
 - Output goes through Effect `Console` (`error` for blocking diagnostics, `warn`
   otherwise). Color is used only on a TTY without `NO_COLOR`.
 - Requirements: ESM only, compiled JavaScript and `.d.ts` declarations in `dist/`,
-  Node.js `>=22.19.0` or Bun, and peer dependency `effect@^4.0.0`.
+  Node.js `>=22.19.0` or Bun, and a dependency on `effect@^4.0.0`.
 - The CLI equivalent is `openapi lint [--strict] <file-or-url>` from
   `@shipworthy/openapi-cli`.
 

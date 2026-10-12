@@ -12,7 +12,7 @@ bun add @shipworthy/openapi-generator effect @effect/platform-node
 
 Requirements:
 
-- **`effect` `^4.0.0`.** This is a peer dependency, so install it yourself. Every package then shares one copy of `effect`, which you use to build, run, and provide services to the returned `Effect`.
+- **`effect` `^4.0.0`.** The package depends on it. Your code uses `effect` to build, run, and provide services to the returned `Effect`, so add a compatible version to your `package.json` so both resolve to one copy.
 - **`@effect/platform-node` `^4.0.0`**, only because the examples below import `NodeServices` from it. `@shipworthy/openapi-parser` already depends on it, but your own code needs it in your `package.json` to import it.
 - **A platform layer.** `generate` requires the `FileSystem`, `Path`, and `HttpClient` services. Provide them with `NodeServices.layer` from `@effect/platform-node` or `BunServices.layer` from `@effect/platform-bun`, plus `FetchHttpClient.layer` from `effect/http`. `HttpClient` is required even when the source is inline, because it's part of the effect's type.
 - **ESM only.** The package is `"type": "module"` and ships compiled ESM JavaScript with `.d.ts` declarations. It has no CommonJS build, and it needs no TypeScript loader or bundler.
@@ -284,7 +284,7 @@ Defects, such as an `Effect.die` inside a plugin's effect, aren't converted to `
 
 - Entry point: `import { generate, importPlugin, ModuleLoader, ResolveError, TransformError, MissingPlugin, InvalidPlugin, type Generator, type GenerateOptions, type GenerateError } from "@shipworthy/openapi-generator"`.
 - `generate({ specifier, exportName, source, cwd?, pluginOptions? })` returns `Effect<unknown, GenerateError, FileSystem | Path | HttpClient>`. It's not a Promise. Run it with `Effect.runPromise` after providing `NodeServices.layer` (or `BunServices.layer`) and `FetchHttpClient.layer`.
-- Requires `effect` `^4.0.0` (peer dependency). ESM only, compiled JavaScript. Runs on Node.js `>=22.19.0` or Bun.
+- Depends on `effect` `^4.0.0`. ESM only, compiled JavaScript. Runs on Node.js `>=22.19.0` or Bun.
 - Pipeline: bundle (`ResolveError`), then decode to `ParsedService` (`TransformError`), then import the plugin (`MissingPlugin` / `InvalidPlugin`), then `plugin.generate(model, pluginOptions ?? {})` (plugin failures become `TransformError`).
 - File-path strings are parsed as YAML text. Pass `URL` objects for files. Strings starting with `http(s)://` or `file://` are fetched or read.
 - OpenAPI 3.0 is upgraded to 3.1. Swagger 2.0 is rejected.

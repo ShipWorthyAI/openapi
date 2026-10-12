@@ -33,18 +33,15 @@
   },
   "dependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
-    "@shipworthy/openapi-transformer": "workspace:*"
+    "@shipworthy/openapi-transformer": "workspace:*",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "effect": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
-  },
-  "peerDependencies": {
-    "effect": "^4.0.0"
   },
   "engines": {
     "node": ">=22.19.0"

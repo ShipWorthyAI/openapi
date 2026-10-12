@@ -19,10 +19,10 @@ utilities that work with TanStack's own `useQuery`.
 bun add @shipworthy/openapi-react-query @tanstack/react-query react
 ```
 
-To generate types, also install the CLI, the TypeScript generator, and the generator's peers as dev dependencies:
+To generate types, also install the CLI and the TypeScript generator as dev dependencies:
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 ```
 
 | Requirement                  | Value                                                                                                                             |

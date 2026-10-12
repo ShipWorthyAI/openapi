@@ -5,7 +5,7 @@ Generate [Zod 4](https://zod.dev) validators from an OpenAPI 3.1 document. Every
 ## Installation
 
 ```sh
-bun add -d @shipworthy/openapi-zod @shipworthy/openapi-cli effect@^4.0.0
+bun add -d @shipworthy/openapi-zod @shipworthy/openapi-cli
 ```
 
 The generator and generated file both import `zod`. It is a required peer dependency of this package, so install this exact version as your app's runtime dependency:
@@ -19,8 +19,8 @@ Requirements:
 - **Zod 4.6.5.** The generated code calls `z.fromJSONSchema` and `z.compile`. `fromJSONSchema` is experimental in Zod, so the package pins `zod@4.6.5`. Use the same version in your app.
 - **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
-- **Peer dependencies.** `effect` `^4.0.0`, installed by you so every package shares one Effect instance, and `zod` `4.6.5`, shared by the generator and your app. npm 7+ installs peers automatically, but install both explicitly as shown above.
-- **Installed dependencies.** The package installs `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@shipworthy/openapi-typescript`.
+- **Peer dependency.** `zod` `4.6.5`, shared by the generator and your app. npm 7+ installs peers automatically, but install it explicitly as shown above.
+- **Installed dependencies.** The package installs `effect`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@shipworthy/openapi-typescript`.
 
 Install `@shipworthy/openapi-cli` only if you use the CLI. For programmatic examples, also install the packages you import directly (`@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@effect/platform-node` as needed).
 
@@ -338,7 +338,7 @@ Not generated:
 - Package exports: `zod` (generator plugin), `zodSources`, `operationRoutes`, `ZodGenerationError`, and the types `ZodSource`, `OperationRoute`, `HttpMethod`. All functions return Effect 4 values.
 - Generation is all-or-nothing for the Zod file. Unsupported keywords fail with a JSON-pointer message, but the CLI may already have written `types.ts`.
 - Every operation needs a unique `operationId`. Component names must be valid JS identifiers.
-- The package ships compiled ESM JavaScript with `.d.ts` declarations (no CommonJS build). Peer dependencies `effect@^4` and `zod@4.6.5`.
+- The package ships compiled ESM JavaScript with `.d.ts` declarations (no CommonJS build). Peer dependency `zod@4.6.5`.
 
 ## License
 

@@ -13,7 +13,7 @@
 Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 ```
 
 ### Optional peer dependencies (generators)
@@ -22,7 +22,7 @@ Install the generator package for each `generate` subcommand you use, at the sam
 
 | Command                            | Requires                                                                  | Notes                                                       |
 | ---------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `openapi generate typescript`      | `@shipworthy/openapi-typescript`                                          | That package peers on `effect@^4.0.0`.                      |
+| `openapi generate typescript`      | `@shipworthy/openapi-typescript`                                          |                                                             |
 | `openapi generate zod`             | `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`            | Also writes `types.ts`.                                     |
 | `openapi generate tanstack-query`  | `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript` | Also writes `types.ts`.                                     |
 | `openapi generate standard-schema` | `@shipworthy/openapi-standard-schema`                                     |                                                             |
@@ -42,7 +42,7 @@ The generated files import packages at runtime, so your application needs those 
 Run the `openapi` commands below in a package script, or use `bunx --bun @shipworthy/openapi-cli` in place of `openapi`.
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 bunx --bun @shipworthy/openapi-cli lint ./openapi.yaml
 bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/types.ts
 ```
@@ -395,7 +395,7 @@ openapi.pipe(
 );
 ```
 
-This requires `effect` `^4.0.0` and `@effect/platform-node` `^4.0.0`, which the CLI also depends on. Add them to your own `package.json` if your code imports them directly. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
+This uses `effect` `^4.0.0` and `@effect/platform-node` `^4.0.0`. The CLI depends on both, but add them to your own `package.json` when your code imports them, using versions compatible with the CLI so they resolve to one copy. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
 
 ## Errors and exit codes
 

@@ -45,7 +45,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shipworthy/openapi-fetch": "workspace:*"
+    "@shipworthy/openapi-fetch": "workspace:*",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
@@ -53,7 +54,6 @@
     "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
-    "effect": "catalog:",
     "react": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
@@ -63,7 +63,6 @@
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
     "@tanstack/react-query": "^5.59.0",
-    "effect": "^4.0.0",
     "react": "^18.0.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
@@ -71,9 +70,6 @@
       "optional": true
     },
     "@shipworthy/openapi-transformer": {
-      "optional": true
-    },
-    "effect": {
       "optional": true
     }
   }

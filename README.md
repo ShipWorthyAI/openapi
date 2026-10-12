@@ -8,10 +8,10 @@ pipeline bundles references and upgrades OpenAPI 3.0 documents to 3.1 before gen
 
 ## Quick start
 
-Install the CLI, the TypeScript generator, and its peer dependencies in your project:
+Install the CLI and the TypeScript generator in your project:
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 ```
 
 Lint your API document and generate TypeScript types:

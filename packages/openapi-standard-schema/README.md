@@ -8,7 +8,7 @@ Generate [Standard Schema](https://standardschema.dev) validators from an OpenAP
 bun add -d @shipworthy/openapi-standard-schema @shipworthy/openapi-cli
 ```
 
-The generated file imports `effect`, and the package lists it as a peer dependency, so your app needs `effect` as a runtime dependency:
+The generated file imports `effect`, so your app needs `effect` as a runtime dependency:
 
 ```sh
 bun add effect@^4.0.0
@@ -16,7 +16,7 @@ bun add effect@^4.0.0
 
 Requirements:
 
-- **Effect 4.** `effect` `^4.0.0` is a peer dependency, so every package shares one Effect instance. Effect 3 is not supported.
+- **Effect 4.** The generated code needs `effect` `^4.0.0`. Effect 3 is not supported.
 - **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
 - **Installed dependencies.** The package installs `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`.
@@ -232,7 +232,7 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 
 ## Key facts (for AI agents)
 
-- Package: `@shipworthy/openapi-standard-schema`, ESM-only compiled JavaScript with `.d.ts` declarations. Node.js `>=22.19.0` or Bun. Peer dependency `effect@^4`. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
+- Package: `@shipworthy/openapi-standard-schema`, ESM-only compiled JavaScript with `.d.ts` declarations. Node.js `>=22.19.0` or Bun. Depends on `effect@^4`. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
 - CLI: `openapi generate standard-schema <input> [-o <file>]` (from `@shipworthy/openapi-cli`, runs on Node.js or Bun). Without `-o`, output goes to stdout.
 - `standardSchema.generate(model: ParsedService, {})` returns `Effect<string, SchemaGenerationError>`. The string is a TS module, or `""` when there are no component schemas.
 - Output: for each `components.schemas` entry `Name`, `export type Name` and `export const Name = Schema.toStandardSchemaV1(...)`. Validate with `Name["~standard"].validate(value)`, which is synchronous and returns `{ value }` or `{ issues }`. `vendor` is `"effect"`.

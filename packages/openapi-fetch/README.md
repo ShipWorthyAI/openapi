@@ -8,10 +8,10 @@ A small, type-safe `fetch` wrapper for OpenAPI 3.x APIs. You give it the `paths`
 bun add @shipworthy/openapi-fetch
 ```
 
-To generate the `paths` type, install the CLI, its TypeScript generator, and the generator's peers as dev dependencies:
+To generate the `paths` type, install the CLI and its TypeScript generator as dev dependencies:
 
 ```sh
-bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript effect@^4
+bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 ```
 
 These packages are build-time tooling; the fetch client has no runtime or peer dependencies.
