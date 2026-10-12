@@ -1,6 +1,6 @@
 {
   "name": "@shipworthy/openapi-validator",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Lint an OpenAPI document.",
   "license": "MIT",
   "repository": {
