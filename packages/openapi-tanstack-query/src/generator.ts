@@ -1,5 +1,7 @@
 import type { Generator } from "@shipworthy/openapi-generator";
 import type { ParsedService } from "@shipworthy/openapi-transformer";
+import type { CaseMapping } from "@shipworthy/openapi-fetch/middleware/transform-casing";
+import { buildCaseMapping } from "@shipworthy/openapi-typescript/case-mapping";
 import { Effect, Schema } from "effect";
 import { TanstackGenerationError } from "./errors.ts";
 import type { OperationRoute } from "./query-utils.ts";
@@ -11,6 +13,7 @@ const blockedOperationIds = new Set(["__proto__", "constructor", "prototype"]);
 const PluginOptions = Schema.Struct({
   prefix: Schema.optionalKey(Schema.String),
   name: Schema.optionalKey(Schema.String),
+  camelCase: Schema.optionalKey(Schema.Boolean),
 });
 
 function reject(message: string) {
@@ -50,7 +53,15 @@ export const tanstackQuery: Generator<string, TanstackGenerationError> = {
 
     const prefix = decoded.prefix ?? "";
     const name = decoded.name ?? prefix;
-    return clientSource(prefix, name, yield* operationRoutes(model));
+    const routes = yield* operationRoutes(model);
+
+    const mapping = decoded.camelCase
+      ? yield* buildCaseMapping(model).pipe(
+          Effect.mapError((error) => new TanstackGenerationError({ message: error.message })),
+        )
+      : undefined;
+
+    return clientSource(prefix, name, routes, mapping);
   }),
 };
 
@@ -58,16 +69,28 @@ function clientSource(
   prefix: string,
   name: string,
   routes: Record<string, OperationRoute>,
+  mapping?: CaseMapping,
 ): string {
   const entries = Object.entries(routes)
     .map(([id, route]) => `  ${JSON.stringify(id)}: ${JSON.stringify(route)},`)
     .join("\n");
 
-  return `import { createApiClient, createTanstackQueryUtils, type TanstackQueryUtilsOptions } from "@shipworthy/openapi-tanstack-query";
+  const clientImport = mapping
+    ? "createApiClient, createTanstackQueryUtils, type ApiClientOptions, type TanstackQueryUtilsOptions"
+    : "createApiClient, createTanstackQueryUtils, type TanstackQueryUtilsOptions";
+
+  const createClient = mapping
+    ? `const caseMapping = ${JSON.stringify(mapping, null, 2)} as const;
+
+export const create${prefix}ApiClient = (options: ApiClientOptions) =>
+  createApiClient<paths>({ ...options, caseMapping });`
+    : `export const create${prefix}ApiClient: typeof createApiClient<paths> = createApiClient<paths>;`;
+
+  return `import { ${clientImport} } from "@shipworthy/openapi-tanstack-query";
 import type { operations, paths } from "./types";
 
 export type { paths as ${prefix}ApiPaths, components as ${prefix}ApiComponents, operations as ${prefix}ApiOperations } from "./types";
-export const create${prefix}ApiClient: typeof createApiClient<paths> = createApiClient<paths>;
+${createClient}
 export type ${prefix}ApiClient = ReturnType<typeof create${prefix}ApiClient>;
 
 const routes = {

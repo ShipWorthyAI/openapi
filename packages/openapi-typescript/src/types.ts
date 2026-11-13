@@ -9,6 +9,8 @@ export interface TransformObject {
 }
 
 export interface OpenAPITSOptions {
+  /** Use camelCase for snake_case schema fields and parameter names (default: false) */
+  camelCase?: boolean;
   /** Generate tuples using array minItems / maxItems (default: true) */
   arrayLength?: boolean;
   /** Manually transform certain Schema Objects with a custom TypeScript type */
@@ -48,6 +50,7 @@ export interface OpenAPITSOptions {
 export interface GlobalContext {
   // user options
   arrayLength: boolean;
+  camelCase: boolean;
   discriminators: {
     objects: Record<string, ParsedDiscriminator>;
     refsHandled: string[];

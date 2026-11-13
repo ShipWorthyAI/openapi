@@ -7,6 +7,7 @@ import type {
 import { Effect, type JsonSchema, Predicate, Schema } from "effect";
 import ts, { type LiteralTypeNode, type TypeLiteralNode } from "#compiler";
 import { TypegenError } from "../errors.ts";
+import { propertyName } from "@shipworthy/openapi-transformer";
 import { parseRef } from "./ref.ts";
 
 export const JS_PROPERTY_INDEX_RE = /^[A-Za-z_$][A-Za-z_$0-9]*$/;
@@ -200,6 +201,8 @@ export interface OapiRefOptions {
   deep?: boolean;
   /** Array of property names to wrap with Extract<> when accessing */
   extractProperties?: string[];
+  /** Whether schema property segments use camelCase in the generated types. */
+  camelCase?: boolean;
 }
 
 /**
@@ -258,18 +261,27 @@ export function oapiRef(
     }
 
     if (resolved && index === original.length - 1) {
-      return addIndexedAccess(acc, String(resolved.in), String(resolved.name));
+      return addIndexedAccess(
+        acc,
+        String(resolved.in),
+        propertyName(String(resolved.name), options.camelCase ?? false),
+      );
     }
+
+    const name =
+      original[index - 1] === "properties"
+        ? propertyName(segment, options.camelCase ?? false)
+        : segment;
 
     // If this segment is in the extractProperties list,
     // wrap the current type with Extract<T, { segment: unknown }> before accessing.
     // This narrows union types to variants that have this property.
     if (extractSet.has(segment)) {
-      const narrowedType = wrapWithExtract(acc, segment);
-      return addIndexedAccess(narrowedType, segment);
+      const narrowedType = wrapWithExtract(acc, name);
+      return addIndexedAccess(narrowedType, name);
     }
 
-    return addIndexedAccess(acc, segment);
+    return addIndexedAccess(acc, name);
   }, leadingType);
 }
 

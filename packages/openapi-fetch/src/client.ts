@@ -1,5 +1,6 @@
 import type { MediaType } from "./helpers.ts";
 import { mergeHeaders } from "./headers.ts";
+import { createCaseMappingMiddleware } from "./middleware/transform-casing.ts";
 import { defaultBodySerializer } from "./serializers/body.ts";
 import { serializeCookieParams } from "./serializers/cookie.ts";
 import { defaultPathSerializer } from "./serializers/path.ts";
@@ -12,25 +13,19 @@ import type {
   MergedOptions,
   Middleware,
   MiddlewareRequestParams,
+  MiddlewareResult,
   ParseAs,
   PathSerializer,
   QuerySerializer,
   QuerySerializerOptions,
 } from "./types.ts";
 
-interface RequestParams {
-  query?: Record<string, unknown>;
-  header?: HeadersOptions;
-  path?: Record<string, unknown>;
-  cookie?: Record<string, unknown>;
-}
-
 interface CoreFetchOptions extends Omit<RequestInit, "body" | "headers"> {
   baseUrl?: string;
   fetch?: ClientOptions["fetch"] | typeof globalThis.fetch;
   Request?: typeof Request;
   headers?: HeadersOptions;
-  params?: RequestParams;
+  params?: MiddlewareRequestParams;
   parseAs?: ParseAs;
   querySerializer?: QuerySerializer<unknown> | QuerySerializerOptions;
   bodySerializer?: (body: unknown, headers?: Headers) => unknown;
@@ -76,6 +71,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
     querySerializer: globalQuerySerializer,
     bodySerializer: globalBodySerializer,
     pathSerializer: globalPathSerializer,
+    caseMapping,
     headers: baseHeaders,
     requestInitExt,
     ...baseOptions
@@ -84,6 +80,10 @@ export default function createClient<Paths extends {}, Media extends MediaType =
   requestInitExt = supportsRequestInitExt() ? requestInitExt : undefined;
   baseUrl = removeTrailingSlash(baseUrl);
   const globalMiddlewares: Middleware[] = [];
+
+  if (caseMapping !== undefined) {
+    globalMiddlewares.push(createCaseMappingMiddleware(caseMapping));
+  }
 
   /**
    * Per-request fetch (keeps settings created in createClient()
@@ -94,14 +94,14 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       fetch = baseFetch,
       Request = CustomRequest,
       headers,
-      params = {},
+      params: initialParams = {},
       parseAs = "json",
       querySerializer: requestQuerySerializer,
       bodySerializer = (globalBodySerializer ?? defaultBodySerializer) as NonNullable<
         CoreFetchOptions["bodySerializer"]
       >,
       pathSerializer: requestPathSerializer,
-      body,
+      body: initialBody,
       middleware: requestMiddlewares = [],
       ...init
     } = fetchOptions || {};
@@ -129,6 +129,54 @@ export default function createClient<Paths extends {}, Media extends MediaType =
 
     const pathSerializer: PathSerializer =
       requestPathSerializer || globalPathSerializer || defaultPathSerializer;
+
+    // Snapshot middleware before any hook runs so registration changes affect later requests only.
+    const finalMiddlewares = [...globalMiddlewares, ...requestMiddlewares];
+    const method = String(init.method ?? "GET").toUpperCase();
+    let id: string | undefined;
+    let options: MergedOptions | undefined;
+    let params = initialParams;
+    let body = initialBody;
+
+    if (finalMiddlewares.length) {
+      id = randomID();
+
+      options = Object.freeze({
+        baseUrl: finalBaseUrl,
+        fetch,
+        parseAs,
+        querySerializer,
+        bodySerializer,
+        pathSerializer,
+      }) as MergedOptions;
+
+      for (const m of finalMiddlewares) {
+        if (m && typeof m === "object" && typeof m.onRequestInit === "function") {
+          const result = await m.onRequestInit({
+            schemaPath,
+            method,
+            input: { params, body },
+            headers: mergeHeaders(baseHeaders, headers, params.header),
+            options,
+            id,
+          });
+
+          if (result !== undefined) {
+            if (
+              !result ||
+              typeof result !== "object" ||
+              !("params" in result) ||
+              !("body" in result)
+            ) {
+              throw new Error("onRequestInit: must return request input when modifying it");
+            }
+
+            params = result.params;
+            body = result.body;
+          }
+        }
+      }
+    }
 
     const serializedBody =
       body === undefined
@@ -169,9 +217,6 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       );
     }
 
-    // Client level middleware take priority over request-level middleware
-    const finalMiddlewares = [...globalMiddlewares, ...requestMiddlewares];
-
     const requestInit: RequestInit = {
       redirect: "follow",
       ...baseOptions,
@@ -179,9 +224,6 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       body: serializedBody as BodyInit | undefined,
       headers: finalHeaders,
     };
-
-    let id: string | undefined;
-    let options: MergedOptions | undefined;
 
     let request: Request = new Request(
       createFinalURL(schemaPath, {
@@ -205,26 +247,15 @@ export default function createClient<Paths extends {}, Media extends MediaType =
     }
 
     if (finalMiddlewares.length) {
-      id = randomID();
-
       // middleware (request)
-      options = Object.freeze({
-        baseUrl: finalBaseUrl,
-        fetch,
-        parseAs,
-        querySerializer,
-        bodySerializer,
-        pathSerializer,
-      }) as MergedOptions;
-
       for (const m of finalMiddlewares) {
         if (m && typeof m === "object" && typeof m.onRequest === "function") {
           const result = await m.onRequest({
             request,
             schemaPath,
-            params: params as MiddlewareRequestParams,
-            options,
-            id,
+            params,
+            options: options as MergedOptions,
+            id: id as string,
           });
 
           if (result) {
@@ -322,6 +353,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
 
     const finalResponse = response as Response;
     const contentLength = finalResponse.headers.get("Content-Length");
+    let parsedResult: MiddlewareResult;
 
     // handle empty content
     if (
@@ -330,13 +362,11 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       (contentLength === "0" &&
         !finalResponse.headers.get("Transfer-Encoding")?.includes("chunked"))
     ) {
-      return finalResponse.ok
+      parsedResult = finalResponse.ok
         ? { data: undefined, response: finalResponse }
         : { error: undefined, response: finalResponse };
-    }
-
-    // parse response (falling back to .text() when necessary)
-    if (finalResponse.ok) {
+    } else if (finalResponse.ok) {
+      // parse response (falling back to .text() when necessary)
       const getResponseData = async () => {
         // if "stream", skip parsing entirely
         if (parseAs === "stream") {
@@ -352,26 +382,56 @@ export default function createClient<Paths extends {}, Media extends MediaType =
         return await finalResponse[parseAs as Exclude<ParseAs, "stream">]();
       };
 
-      return { data: await getResponseData(), response: finalResponse };
+      parsedResult = { data: await getResponseData(), response: finalResponse };
+    } else {
+      // handle errors (use text() when no content-length to safely handle empty bodies from proxies)
+      const raw = await finalResponse.text();
+
+      if (!raw) {
+        parsedResult = { error: undefined, response: finalResponse };
+      } else {
+        let error: unknown = raw;
+
+        try {
+          error = JSON.parse(raw); // attempt to parse as JSON
+        } catch {
+          // noop - keep as raw text
+        }
+
+        parsedResult = { error, response: finalResponse };
+      }
     }
 
-    // handle errors (use text() when no content-length to safely handle empty bodies from proxies)
-    const raw = await finalResponse.text();
+    // Parsed-result hooks also run for responses returned by onRequest and onError.
+    for (let index = finalMiddlewares.length - 1; index >= 0; index--) {
+      const m = finalMiddlewares[index];
 
-    if (!raw) {
-      // empty error body - return undefined to be consistent with status 204 handling
-      return { error: undefined, response: finalResponse };
+      if (m && typeof m === "object" && typeof m.onResult === "function") {
+        const update = await m.onResult({
+          request,
+          schemaPath,
+          method,
+          params,
+          options: options as MergedOptions,
+          id: id as string,
+          result: parsedResult,
+        });
+
+        if (update !== undefined) {
+          if (
+            !update ||
+            typeof update !== "object" ||
+            Object.keys(update).some((key) => key !== "data" && key !== "error")
+          ) {
+            throw new Error("onResult: must return data and/or error when modifying the result");
+          }
+
+          parsedResult = { ...parsedResult, ...update, response: finalResponse };
+        }
+      }
     }
 
-    let error: unknown = raw;
-
-    try {
-      error = JSON.parse(raw); // attempt to parse as JSON
-    } catch {
-      // noop - keep as raw text
-    }
-
-    return { error, response: finalResponse };
+    return parsedResult;
   }
 
   const client = {
@@ -417,10 +477,17 @@ export default function createClient<Paths extends {}, Media extends MediaType =
           continue;
         }
 
-        if (typeof m !== "object" || !("onRequest" in m || "onResponse" in m || "onError" in m)) {
-          throw new Error(
-            "Middleware must be an object with one of `onRequest()`, `onResponse() or `onError()`",
-          );
+        if (
+          typeof m !== "object" ||
+          !(
+            "onRequestInit" in m ||
+            "onRequest" in m ||
+            "onResponse" in m ||
+            "onError" in m ||
+            "onResult" in m
+          )
+        ) {
+          throw new Error("Middleware must be an object with a supported hook");
         }
 
         globalMiddlewares.push(m);

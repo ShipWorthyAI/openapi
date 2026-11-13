@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api.staging.inkind-staging.com",
+      "url": "https://api.staging.example.com",
       "description": "Staging"
     },
     {

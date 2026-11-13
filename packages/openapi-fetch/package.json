@@ -1,7 +1,7 @@
 {
   "name": "@shipworthy/openapi-fetch",
   "version": "0.0.2",
-  "description": "Fast, type-safe fetch client for your OpenAPI schema. Only 6 kb (min). Works with React, Vue, Svelte, or vanilla JS.",
+  "description": "Fast, type-safe fetch client for your OpenAPI schema. Works with React, Vue, Svelte, or vanilla JS.",
   "keywords": [
     "api",
     "fetch",
@@ -26,7 +26,8 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./middleware/transform-casing": "./src/middleware/transform-casing.ts"
   },
   "publishConfig": {
     "main": "./dist/index.cjs",
@@ -42,6 +43,16 @@
         "require": {
           "types": "./dist/index.d.cts",
           "default": "./dist/index.cjs"
+        }
+      },
+      "./middleware/transform-casing": {
+        "import": {
+          "types": "./dist/transform-casing.d.ts",
+          "default": "./dist/transform-casing.js"
+        },
+        "require": {
+          "types": "./dist/transform-casing.d.cts",
+          "default": "./dist/transform-casing.cjs"
         }
       },
       "./package.json": "./package.json"

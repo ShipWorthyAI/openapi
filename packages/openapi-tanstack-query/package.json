@@ -51,6 +51,7 @@
   "devDependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
@@ -62,6 +63,7 @@
   "peerDependencies": {
     "@shipworthy/openapi-generator": "workspace:*",
     "@shipworthy/openapi-transformer": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
     "@tanstack/react-query": "^5.59.0",
     "react": "^18.0.0 || ^19.0.0"
   },
@@ -70,6 +72,9 @@
       "optional": true
     },
     "@shipworthy/openapi-transformer": {
+      "optional": true
+    },
+    "@shipworthy/openapi-typescript": {
       "optional": true
     }
   }

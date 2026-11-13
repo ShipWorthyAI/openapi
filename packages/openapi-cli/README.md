@@ -254,6 +254,7 @@ defaults to `true`:
 | `--dedupe-enums`       | Dedupe enum types when `--enum` is set.                                                                                                                       |
 | `--export-type`, `-t`  | Export top-level type aliases instead of interfaces.                                                                                                          |
 | `--array-length`       | Generate tuples using array `minItems` / `maxItems`. Enabled by default; disable with `--array-length=false` or `--no-array-length`.                          |
+| `--camel-case`         | Spell snake_case schema fields and parameter names in camelCase.                                                                                              |
 | `--root-types`         | Export component and operation aliases at the root level. Schema aliases have no prefix; operation aliases uppercase the first character of the operation ID. |
 | `--read-write-markers` | Generate `$Read`/`$Write` markers for `readOnly`/`writeOnly` properties.                                                                                      |
 
@@ -286,7 +287,14 @@ openapi generate zod ./openapi.yaml -o ./src/generated/hotels/zod-schema.ts
 | `--output`, `-o` | file path   | (required) | Output file. `types.ts` is written to the same directory. |
 | `--force`        | boolean     | `false`    | Regenerate `types.ts` even when its stamp matches.        |
 
-This command accepts the TypeScript generator flags listed above. For example, pass `--no-array-length` to keep array types when it refreshes `types.ts`. During generation, schema compilation resolves Zod from the output file's directory and requires `zod@4.6.5`.
+This command accepts the TypeScript generator flags listed above except `--camel-case`.
+Zod validators use the API's field names, so `--camel-case` is rejected rather than generating
+types that disagree with runtime validation. For example, pass `--no-array-length` to keep array
+types when it refreshes `types.ts`. During generation, schema compilation resolves Zod from the
+output file's directory and requires `zod@4.6.5`.
+
+If a sibling `types.ts` was generated with `--camel-case`, Zod refuses to overwrite it. Generate
+Zod into a separate directory so its validators and `types.ts` both use API field names.
 
 The output imports `zod` and `type { components } from "./types"`. It exports one validator per component schema, typed as `z.ZodType<components["schemas"][Name]>`, plus `<operationId>RequestBody` validators for request bodies:
 
@@ -298,7 +306,8 @@ const pet = Pet.parse(await response.json()); // typed as components["schemas"][
 
 ### `openapi generate tanstack-query <input> -o <dir> --name <name>`
 
-Generates a typed API client and TanStack Query helpers. Requires `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript`.
+Generates a typed API client and TanStack Query helpers. Requires
+`@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript`.
 
 ```sh
 openapi generate tanstack-query ./openapi.yaml -o ./src/generated --name hotels
@@ -311,8 +320,11 @@ openapi generate tanstack-query ./openapi.yaml -o ./src/generated --name hotels
 | `--output`, `-o` | directory   | (required) | Directory that will contain `<name>/client.ts` and `<name>/types.ts`.                                                                                                                                                                                 |
 | `--name`         | string      | (required) | Client name. Used as the output subdirectory and, in PascalCase, as the prefix of generated exports. It must start with a letter and contain only letters, numbers, and single `-` or `_` separators (`^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`). |
 | `--force`        | boolean     | `false`    | Regenerate `types.ts` even when its stamp matches.                                                                                                                                                                                                    |
+| `--camel-case`   | boolean     | `false`    | Generate camelCase types and convert declared parameter and JSON body fields in the generated client.                                                                                                                                                 |
+| `--wire-types`   | boolean     | `false`    | With `--camel-case`, also generate `wire-types.ts` with the API field names for raw fetch wrappers and response fixtures.                                                                                                                             |
 
 This command also accepts the TypeScript generator flags listed above. Pass the same flags to every command that may refresh the sibling `types.ts`.
+`--wire-types` requires `--camel-case` and uses the same TypeScript flags except casing.
 
 For `--name hotels`, `client.ts` exports:
 
@@ -336,6 +348,14 @@ const hotels = useQuery(
   hotelsApi.getHotels.queryOptions({ input: { query: { country: "US", min_stars: 5 } } }),
 );
 ```
+
+Run the same command with `--camel-case` to use `minStars` in app code while sending
+`min_stars` to the API. The generated client also converts JSON request, success, and error
+bodies according to the schema.
+
+Pass `--wire-types` with `--camel-case` to generate `<name>/wire-types.ts` from the same document.
+Import its `operations` or `components` types when a custom `fetch` or mock `Response` handles
+the API's snake_case payload before client conversion.
 
 See the `@shipworthy/openapi-tanstack-query` README for the full runtime API.
 
@@ -363,15 +383,16 @@ Every generated file starts with a stamped header:
  * This file was auto-generated by @shipworthy/openapi-typescript.
  * Do not make direct changes to the file.
  *
- * @shipworthy/openapi-typescript@0.0.1:<sha256 of the schema contents>
+ * @shipworthy/openapi-typescript@0.0.1:<sha256 of the schema contents and case setting>
  */
 ```
 
-The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers the document text, not its location. Reading the same document from stdin, from another path, or from a URL gives the same stamp.
+The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers the document text and includes the camelCase setting when enabled. It does not depend on the document's location, so reading the same document from stdin, another path, or a URL gives the same stamp when the setting matches.
 
 `generate zod` and `generate tanstack-query` both need `types.ts`:
 
-- The command regenerates `types.ts` if the file is missing or its stamp differs from the current one. A stamp changes when the schema contents or the `@shipworthy/openapi-typescript` version change.
+- The command regenerates `types.ts` if the file is missing or its stamp differs from the current one. A stamp changes when the schema contents, `--camel-case`, or the `@shipworthy/openapi-typescript` version change.
+- A camelCase `types.ts` header records its field casing so `generate zod` can refuse to replace it, even after the schema changes.
 - TypeScript flags on either command are passed to the TypeScript generator. Nondefault flags refresh `types.ts` even when its input stamp matches. Pass the same flags to each command that may write it.
 - `--force` always regenerates `types.ts` with the TypeScript flags on that command.
 - The main output (`client.ts`, the Zod file) is always overwritten.
@@ -438,7 +459,7 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
   - `openapi generate tanstack-query <input> -o <dir> --name <name> [--force]`: writes `<dir>/<name>/client.ts` and `<dir>/<name>/types.ts`.
   - `openapi generate standard-schema <input> [-o file]`.
 - Each `generate` subcommand needs its optional peer package installed: `@shipworthy/openapi-typescript` (used by typescript, zod, and tanstack-query), `@shipworthy/openapi-zod`, `@shipworthy/openapi-tanstack-query`, and `@shipworthy/openapi-standard-schema`.
-- `types.ts` is regenerated when its header stamp (`pkg@version:sha256(schema)`) changes, nondefault TypeScript flags are passed, or `--force` is set.
+- `types.ts` is regenerated when its header stamp changes, nondefault TypeScript flags are passed, or `--force` is set. The stamp includes the schema and `--camel-case` setting.
 - Do not edit generated files by hand. Re-run the command instead.
 - The only programmatic export is `openapi`, an `effect/cli` `Command`.
 

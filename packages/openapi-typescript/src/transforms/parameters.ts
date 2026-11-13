@@ -1,8 +1,9 @@
 import type { ParameterLocation, ParsedParameter } from "@shipworthy/openapi-transformer";
 import { Array, Effect } from "effect";
 import ts from "#compiler";
-import type { TypegenContext } from "../context.ts";
-import type { TypegenError } from "../errors.ts";
+import { TypegenContext } from "../context.ts";
+import { TypegenError } from "../errors.ts";
+import { collidingProperties, propertyName } from "@shipworthy/openapi-transformer";
 import {
   addJSDocComment,
   annotationsOf,
@@ -24,23 +25,37 @@ export const transformParameters = Effect.fnUntraced(function* (
   parameters: readonly ParsedParameter[],
   path: string,
 ): Effect.fn.Return<ts.PropertySignature, TypegenError, TypegenContext> {
+  const ctx = yield* TypegenContext;
+
   const byLocation = yield* Effect.forEach(
     locations,
     Effect.fnUntraced(function* (location) {
       let allOptional = true;
+      const located = Array.filter(parameters, (parameter) => parameter.in === location);
+
+      const collision = collidingProperties(
+        Array.map(located, (parameter) => parameter.name),
+        ctx.camelCase,
+      );
+
+      if (collision) {
+        return yield* new TypegenError({
+          message: `${path}: ${collision[0]} and ${collision[1]} both become ${propertyName(collision[0], true)} in ${location} parameters`,
+        });
+      }
 
       const members = yield* Effect.forEach(
-        Array.filter(parameters, (parameter) => parameter.in === location),
+        located,
         Effect.fnUntraced(function* (parameter) {
           const optional = location !== "path" && !parameter.required;
           allOptional &&= optional;
 
           const property = ts.factory.createPropertySignature(
             /* modifiers     */ undefined,
-            /* name          */ tsPropertyIndex(parameter.name),
+            /* name          */ tsPropertyIndex(propertyName(parameter.name, ctx.camelCase)),
             /* questionToken */ optional ? QUESTION_TOKEN : undefined,
             /* type          */ parameter.reference
-              ? yield* refType(parameter.reference.$ref, parameter)
+              ? yield* refType(parameter.reference.$ref, parameter, { camelCase: ctx.camelCase })
               : yield* transformParameter(
                   parameter,
                   createRef([path, "parameters", location, parameter.name]),

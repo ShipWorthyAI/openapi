@@ -32,7 +32,12 @@ const ensureTypescript = Effect.fn("ensureTypescript")(function* (target: Ensure
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const typesPath = path.join(target.directory, "types.ts");
-  const generator = yield* generatorStamp(typescriptSpecifier, target.source);
+
+  const generator = yield* generatorStamp(
+    typescriptSpecifier,
+    target.source,
+    target.typeFlags.camelCase,
+  );
 
   const nonDefaultFlags = Array.some(
     Record.toEntries(defaultTypeFlags),

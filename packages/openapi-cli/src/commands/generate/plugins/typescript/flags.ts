@@ -6,6 +6,7 @@ function flag(name: string, description: string) {
 
 export interface TypeFlags {
   readonly arrayLength: boolean;
+  readonly camelCase: boolean;
   readonly conditionalEnums: boolean;
   readonly dedupeEnums: boolean;
   readonly enum: boolean;
@@ -17,6 +18,7 @@ export interface TypeFlags {
 
 export const defaultTypeFlags: TypeFlags = {
   arrayLength: true,
+  camelCase: false,
   conditionalEnums: false,
   dedupeEnums: false,
   enum: false,
@@ -27,6 +29,7 @@ export const defaultTypeFlags: TypeFlags = {
 };
 
 export const typeFlags = {
+  camelCase: flag("camel-case", "Use camelCase for snake_case schema fields and parameters."),
   enum: flag("enum", "Export true TS enums instead of unions."),
   enumValues: flag("enum-values", "Export enum values as arrays."),
   conditionalEnums: flag(
@@ -53,6 +56,7 @@ export const typeFlags = {
 export function pluginOptions(flags: TypeFlags & { readonly silent?: boolean }) {
   return {
     arrayLength: flags.arrayLength,
+    camelCase: flags.camelCase,
     conditionalEnums: flags.conditionalEnums,
     dedupeEnums: flags.dedupeEnums,
     enum: flags.enum,

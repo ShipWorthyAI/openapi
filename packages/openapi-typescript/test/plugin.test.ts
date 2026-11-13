@@ -369,6 +369,135 @@ describe("typescript plugin", () => {
       expect(printed).toContain("When: Date;");
     }),
   );
+
+  it.effect("camelizes declared fields and parameters while preserving wire paths and names", () =>
+    Effect.gen(function* () {
+      const printed = yield* run(
+        document({
+          paths: {
+            "/pets/{pet_id}": {
+              get: {
+                operationId: "get_pet",
+                parameters: [
+                  { name: "pet_id", in: "path", required: true, schema: { type: "string" } },
+                  { name: "include_owner", in: "query", schema: { type: "boolean" } },
+                ],
+                responses: {
+                  "200": {
+                    description: "OK",
+                    content: {
+                      "application/json": { schema: { $ref: "#/components/schemas/Pet" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          components: {
+            schemas: {
+              Pet: {
+                type: "object",
+                required: ["pet_id"],
+                properties: {
+                  pet_id: { type: "string" },
+                  owner_info: {
+                    type: "object",
+                    properties: { first_name: { type: "string" } },
+                  },
+                  owner_alias: { $ref: "#/components/schemas/Pet/properties/owner_info" },
+                },
+              },
+              RequiredOwner: {
+                required: ["owner_info"],
+                allOf: [{ $ref: "#/components/schemas/Pet" }],
+              },
+            },
+          },
+        }),
+        { camelCase: true },
+      );
+
+      expect(printed).toContain('"/pets/{pet_id}"');
+      expect(printed).toContain("get_pet:");
+      expect(printed).toContain("petId: string;");
+      expect(printed).toContain("includeOwner?: boolean;");
+      expect(printed).toContain("ownerInfo?: {");
+      expect(printed).toContain('ownerAlias?: components["schemas"]["Pet"]["ownerInfo"];');
+      expect(printed).toContain("firstName?: string;");
+      expect(printed).toContain('WithRequired<components["schemas"]["Pet"], "ownerInfo">');
+      expect(printed).not.toContain("pet_id: string;");
+    }),
+  );
+
+  it.effect("rejects field names that collide after camelization", () =>
+    Effect.gen(function* () {
+      const model = document({
+        components: {
+          schemas: {
+            Pet: {
+              type: "object",
+              properties: { pet_id: { type: "string" }, petId: { type: "string" } },
+            },
+          },
+        },
+      });
+
+      const error = yield* Effect.flip(run(model, { camelCase: true }));
+
+      expect(error._tag).toBe("TypegenError");
+      expect(error.message).toContain("pet_id and petId both become petId");
+    }),
+  );
+
+  it.effect("rejects names that collide across allOf branches", () =>
+    Effect.gen(function* () {
+      const model = document({
+        components: {
+          schemas: {
+            Hotel: {
+              allOf: [
+                { type: "object", properties: { hotel_id: { type: "string" } } },
+                { type: "object", properties: { hotelId: { type: "string" } } },
+              ],
+            },
+          },
+        },
+      });
+
+      const error = yield* Effect.flip(run(model, { camelCase: true }));
+      expect(error.message).toContain("hotel_id and hotelId both become hotelId");
+    }),
+  );
+
+  it.effect("rejects conflicting nested names shared by composed branches", () =>
+    Effect.gen(function* () {
+      const model = document({
+        components: {
+          schemas: {
+            Pet: {
+              oneOf: [
+                {
+                  type: "object",
+                  properties: {
+                    payload: { type: "object", properties: { pet_id: { type: "string" } } },
+                  },
+                },
+                {
+                  type: "object",
+                  properties: {
+                    payload: { type: "object", properties: { petId: { type: "string" } } },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      const error = yield* Effect.flip(run(model, { camelCase: true }));
+      expect(error.message).toContain("pet_id and petId both become petId");
+    }),
+  );
 });
 
 describe("generating from a raw document", () => {

@@ -1,0 +1,31 @@
+{
+  "name": "@shipworthy/example-snake-to-camel-case",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "bun run generate:hotels && bun run generate:reservations && bun run generate:zod",
+    "generate:hotels": "openapi generate tanstack-query ./openapi.yaml -o src/generated --name hotels --camel-case",
+    "generate:reservations": "openapi generate tanstack-query ./openapi.json -o src/generated --name reservations --camel-case --wire-types",
+    "generate:zod": "openapi generate zod ./openapi.json -o src/generated/reservations/validators/zod-schema.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@shipworthy/openapi-tanstack-query": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@shipworthy/openapi-cli": "workspace:*",
+    "@shipworthy/openapi-typescript": "workspace:*",
+    "@shipworthy/openapi-zod": "workspace:*",
+    "@shipworthy/typescript-config": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@types/node": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

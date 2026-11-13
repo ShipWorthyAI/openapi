@@ -101,6 +101,123 @@ describe("client", () => {
     expect(metadata[0]?.options.baseUrl).toBe("https://api.test");
   });
 
+  it("runs input and result hooks around serialization and preserves caller values", async () => {
+    const events: string[] = [];
+    const response = Response.json({ ok: true });
+    const bodySerializer = vi.fn((body: unknown) => JSON.stringify(body));
+
+    const fetch = vi.fn(async (request: Request) => {
+      events.push("fetch");
+      expect(request.url).toBe("https://api.test/items/wire?tags=wire");
+      expect(request.headers.get("X-Token")).toBe("token");
+      expect(await request.json()).toEqual({ name: "wire" });
+      return response;
+    });
+
+    const client = createClient<BodyPaths>({
+      baseUrl: "https://api.test",
+      fetch,
+      bodySerializer,
+      pathSerializer(path, params) {
+        expect(params).toEqual({ id: "wire" });
+        return path.replace("{id}", String(params.id));
+      },
+      querySerializer(query) {
+        expect(query).toEqual({ tags: ["wire"] });
+        return "tags=wire";
+      },
+    });
+
+    const middleware: Middleware = {
+      onRequestInit({ method, schemaPath, input, headers }) {
+        events.push("init");
+        expect(method).toBe("POST");
+        expect(schemaPath).toBe("/items/{id}");
+        expect(headers.get("X-Token")).toBe("token");
+
+        return {
+          params: {
+            ...input.params,
+            path: { id: "wire" },
+            query: { tags: ["wire"] },
+          },
+          body: { name: "wire" },
+        };
+      },
+      onRequest() {
+        events.push("request");
+      },
+      onResponse() {
+        events.push("response");
+      },
+      onResult({ result }) {
+        events.push("result");
+        expect(result.response).toBe(response);
+        expect(result.data).toEqual({ ok: true });
+        return { data: { ok: false } };
+      },
+    };
+
+    client.use(middleware);
+
+    const input = {
+      params: {
+        path: { id: "app" },
+        query: { tags: ["app"] },
+        header: { "X-Token": "token" },
+      },
+      body: { name: "app" },
+    };
+
+    const result = await client.POST("/items/{id}", input);
+
+    expect(result).toEqual({ data: { ok: false }, response });
+
+    expect(input).toEqual({
+      params: {
+        path: { id: "app" },
+        query: { tags: ["app"] },
+        header: { "X-Token": "token" },
+      },
+      body: { name: "app" },
+    });
+
+    expect(bodySerializer).toHaveBeenCalledWith({ name: "wire" }, expect.any(Headers));
+    expect(events).toEqual(["init", "request", "fetch", "response", "result"]);
+  });
+
+  it.each(["synthetic", "recovered"] as const)(
+    "runs result hooks for %s responses without replacing the Response",
+    async (source) => {
+      const response = Response.json({ ok: true });
+      const onResponse = vi.fn();
+
+      const onResult = vi.fn(({ result }: { result: { data?: unknown; response: Response } }) => {
+        expect(result.response).toBe(response);
+        return { data: { ok: false } };
+      });
+
+      const client = createClient<TestPaths>({
+        baseUrl: "https://api.test",
+        fetch: async () => {
+          if (source === "recovered") throw new Error("network");
+          throw new Error("fetch should be skipped");
+        },
+      });
+
+      client.use({
+        onRequest: source === "synthetic" ? () => response : () => undefined,
+        onError: source === "recovered" ? () => response : () => undefined,
+        onResponse,
+        onResult,
+      });
+
+      expect(await client.GET("/session")).toEqual({ data: { ok: false }, response });
+      expect(onResponse).toHaveBeenCalledTimes(source === "recovered" ? 1 : 0);
+      expect(onResult).toHaveBeenCalledOnce();
+    },
+  );
+
   it("short-circuits a synthetic request response before fetch and response hooks", async () => {
     const response = Response.json({ ok: true });
     const skipped = vi.fn();
@@ -122,7 +239,7 @@ describe("client", () => {
       const response = Response.json({ ok: true });
       const events: string[] = [];
 
-      const middleware: Required<Middleware> = {
+      const middleware: Required<Pick<Middleware, "onRequest" | "onError" | "onResponse">> = {
         onRequest({ request }) {
           expect(this).toBe(middleware);
           events.push("request");
@@ -654,9 +771,11 @@ describe("client", () => {
   });
 
   it.each([
+    ["onRequestInit", "onRequestInit: must return request input when modifying it"],
     ["onRequest", "onRequest: must return new Request() or Response() when modifying the request"],
     ["onResponse", "onResponse: must return new Response() when modifying the response"],
     ["onError", "onError: must return new Response() or instance of Error"],
+    ["onResult", "onResult: must return data and/or error when modifying the result"],
   ])("preserves invalid %s return errors", async (hook, message) => {
     const client = createClient<TestPaths>({
       baseUrl: "https://api.test",

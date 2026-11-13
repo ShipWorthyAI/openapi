@@ -1,8 +1,13 @@
-import type { ParsedDiscriminator, ParsedSchema } from "@shipworthy/openapi-transformer";
+import {
+  type ParsedDiscriminator,
+  propertyName,
+  schemaPropertyCollision,
+  type ParsedSchema,
+} from "@shipworthy/openapi-transformer";
 import { Array as Arr, Effect, type JsonSchema, Predicate, Record } from "effect";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
-import type { TypegenError } from "../errors.ts";
+import { TypegenError } from "../errors.ts";
 import { parseRef } from "../lib/ref.ts";
 import {
   addJSDocComment,
@@ -30,6 +35,7 @@ import {
 } from "../lib/ts.ts";
 import {
   discriminatorOf,
+  isSchema,
   stringList,
   subschema,
   subschemaList,
@@ -50,6 +56,20 @@ export const transformSchema = Effect.fnUntraced(function* (
   fromAdditionalProperties = false,
 ): Transformed {
   const ctx = yield* TypegenContext;
+
+  if (ctx.camelCase && schema !== undefined) {
+    const collision = schemaPropertyCollision(schema, (ref) => {
+      const resolved = ctx.resolve(ref);
+      return isSchema(resolved) ? resolved : undefined;
+    });
+
+    if (collision) {
+      return yield* new TypegenError({
+        message: `${path}: ${collision[0]} and ${collision[1]} both become ${propertyName(collision[0], true)}`,
+      });
+    }
+  }
+
   const type = yield* transformComposition(schema, path, fromAdditionalProperties);
 
   return (
@@ -233,7 +253,12 @@ function transformEnum(
     // allow #/components/schemas to have simpler names
     const name = `${parseRef(path).pointer.join("/").replace("components/schemas", "")}Values`;
     const { ref, extractProperties } = enumValuesRef(path);
-    const valuesType = oapiRef(ref, undefined, { deep: true, extractProperties });
+
+    const valuesType = oapiRef(ref, undefined, {
+      deep: true,
+      extractProperties,
+      camelCase: ctx.camelCase,
+    });
 
     const enumValuesArray = tsArrayLiteralExpression(
       name,
@@ -276,7 +301,7 @@ const transformComposition = Effect.fnUntraced(function* (
   }
 
   if (Predicate.isString(schema.$ref)) {
-    return yield* refType(schema.$ref);
+    return yield* refType(schema.$ref, undefined, { camelCase: ctx.camelCase });
   }
 
   // const (valid for any type)
@@ -409,7 +434,11 @@ const collectAllOf = Effect.fnUntraced(function* (
           const validRequired = required.filter((key) => properties[key] !== undefined);
 
           if (validRequired.length) {
-            itemType = tsWithRequired(itemType, validRequired, ctx.injectFooter);
+            itemType = tsWithRequired(
+              itemType,
+              Arr.map(validRequired, (key) => propertyName(key, ctx.camelCase)),
+              ctx.injectFooter,
+            );
           }
         }
       } else if (Predicate.isObject(item)) {
@@ -427,7 +456,9 @@ const collectAllOf = Effect.fnUntraced(function* (
           discriminatorOf(item.discriminator))
         : undefined;
 
-      return discriminator ? tsOmit(itemType, [discriminator.propertyName]) : itemType;
+      return discriminator
+        ? tsOmit(itemType, [propertyName(discriminator.propertyName, ctx.camelCase)])
+        : itemType;
     }),
   );
 });
@@ -559,7 +590,9 @@ const transformCore = Effect.fnUntraced(function* (
       : ctx.discriminators.objects[path];
 
     if (discriminator) {
-      coreObjectType.unshift(createDiscriminatorProperty(discriminator, { path }));
+      coreObjectType.unshift(
+        createDiscriminatorProperty(discriminator, { path, camelCase: ctx.camelCase }),
+      );
     }
   }
 
@@ -691,7 +724,9 @@ const transformProperty = Effect.fnUntraced(function* (
   let optional = stringList(schema.required)?.includes(key) ? undefined : QUESTION_TOKEN;
 
   let type =
-    $ref !== undefined ? yield* refType($ref) : yield* transformSchema(value, propertyPath);
+    $ref !== undefined
+      ? yield* refType($ref, undefined, { camelCase: ctx.camelCase })
+      : yield* transformSchema(value, propertyPath);
 
   if (object) {
     const result = ctx.transform?.(object, { path, schema, ctx });
@@ -710,7 +745,7 @@ const transformProperty = Effect.fnUntraced(function* (
     /* modifiers     */ tsModifiers({
       readonly: !ctx.readWriteMarkers && readOnly,
     }),
-    /* name          */ tsPropertyIndex(key),
+    /* name          */ tsPropertyIndex(propertyName(key, ctx.camelCase)),
     /* questionToken */ optional,
     /* type          */ type,
   );

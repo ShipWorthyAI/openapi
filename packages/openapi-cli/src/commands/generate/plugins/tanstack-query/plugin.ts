@@ -7,6 +7,7 @@ import { force } from "../../force.ts";
 import { ClientName, pascalCase, writeGenerated } from "../../files.ts";
 import { fileHeader, generatorStamp } from "../../stamp.ts";
 import { typeFlags, type TypeFlags } from "../typescript/flags.ts";
+import { renderTypescript, typescriptSpecifier } from "../typescript/plugin.ts";
 
 export const dependencies = ["typescript"] as const;
 
@@ -18,8 +19,15 @@ const run = Effect.fn("run")(function* (
     readonly output: string;
     readonly name: string;
     readonly force: boolean;
+    readonly wireTypes: boolean;
   } & TypeFlags,
 ) {
+  if (flags.wireTypes && !flags.camelCase) {
+    return yield* new CliError.UserError({
+      cause: "--wire-types requires --camel-case.",
+    });
+  }
+
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
 
@@ -36,7 +44,11 @@ const run = Effect.fn("run")(function* (
       specifier,
       exportName: "tanstackQuery",
       source: flags.input,
-      pluginOptions: { prefix: pascalCase(flags.name), name: flags.name },
+      pluginOptions: {
+        prefix: pascalCase(flags.name),
+        name: flags.name,
+        camelCase: flags.camelCase,
+      },
     }),
   );
 
@@ -44,7 +56,22 @@ const run = Effect.fn("run")(function* (
     return yield* new CliError.UserError({ cause: decoded.failure });
   }
 
-  const header = fileHeader(yield* generatorStamp(specifier, flags.input));
+  const header = fileHeader(yield* generatorStamp(specifier, flags.input, flags.camelCase));
+
+  if (flags.wireTypes) {
+    const wirePath = path.resolve(flags.output, flags.name, "wire-types.ts");
+
+    yield* renderTypescript({
+      source: flags.input,
+      generator: yield* generatorStamp(typescriptSpecifier, flags.input),
+      outputPath: wirePath,
+      flags: { ...flags, camelCase: false },
+      check: false,
+      label: flags.input.href,
+      outputLabel: wirePath,
+      started,
+    });
+  }
 
   yield* writeGenerated(flags.output, flags.name, { "client.ts": `${header}${decoded.success}` });
 }, Effect.mapError(asCliError));
@@ -67,6 +94,12 @@ export const tanstackQuery = Command.make(
       Flag.withSchema(ClientName),
     ),
     force,
+    wireTypes: Flag.Boolean("wire-types").pipe(
+      Flag.withDescription(
+        "Also write wire-types.ts with API field names (requires --camel-case).",
+      ),
+      Flag.withDefault(false),
+    ),
     ...typeFlags,
   },
   run,

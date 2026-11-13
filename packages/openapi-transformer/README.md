@@ -90,6 +90,7 @@ The package has a single entry point, `@shipworthy/openapi-transformer`. It expo
 | `ParsedService` and the other `Parsed*` names                              | `Schema` + type         | The model. See [Model](#model).                                        |
 | `HttpMethodName`, `ParamStyle`, `ParameterLocation`, `SecurityDeclaration` | `Schema` + literal type | Enumerations used in the model.                                        |
 | `httpMethods`, `parameterLocations`                                        | `readonly` tuple        | The lowercase method keys and the parameter locations, in model order. |
+| `propertyName`, `collidingProperties`, `schemaPropertyCollision`           | functions               | Shared field naming and collision checks for generators.               |
 
 Each `Parsed*` name is exported both as a value (an Effect `Schema`) and as a type (`typeof X.Type`). Use `import type { ParsedOperation }` when you only need the type.
 

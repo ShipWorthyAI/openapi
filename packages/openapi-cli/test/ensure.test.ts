@@ -141,6 +141,50 @@ test("zod preserves forwarded TypeScript flags when refreshing types.ts", (conte
 test("tanstack-query preserves forwarded TypeScript flags when refreshing types.ts", (context) =>
   verifyForwardedTypeFlags(context, "tanstack-query"));
 
+test("zod rejects --camel-case when validators would keep API field names", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+
+  const error = await cli.fails(
+    "generate",
+    "zod",
+    "a.json",
+    "-o",
+    "out/pets/zod-schema.ts",
+    "--camel-case",
+  );
+
+  expect(error).toContain("--camel-case is not supported by generate zod");
+});
+
+test("zod refuses to replace camelCase types used by a generated client", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  await cli.generate("a.json", "--camel-case");
+  const before = cli.types();
+  const clientPath = join(cli.dir, "out/pets/client.ts");
+  const client = readFileSync(clientPath, "utf8");
+
+  const zod = () => cli.fails("generate", "zod", "a.json", "-o", "out/pets/zod-schema.ts");
+  expect(await zod()).toContain("Cannot generate Zod validators beside camelCase");
+  expect(cli.types()).toBe(before);
+  expect(readFileSync(clientPath, "utf8")).toBe(client);
+  expect(existsSync(join(cli.dir, "out/pets/zod-schema.ts"))).toBe(false);
+
+  writeFileSync(join(cli.dir, "a.json"), spec("Updated pets"));
+  expect(await zod()).toContain("Cannot generate Zod validators beside camelCase");
+  expect(cli.types()).toBe(before);
+
+  writeFileSync(join(cli.dir, "a.json"), spec("Pets"));
+
+  writeFileSync(
+    join(cli.dir, "out/pets/types.ts"),
+    before.replace(" * Field casing: camelCase\n", ""),
+  );
+
+  expect(await zod()).toContain("Cannot generate Zod validators beside camelCase");
+});
+
 test("zod reports the version resolved from its output directory", async (context) => {
   const { expect } = context;
   const cli = setup(context);
@@ -160,6 +204,84 @@ test("zod reports the version resolved from its output directory", async (contex
   expect(error).toContain("out/pets/node_modules/zod/package.json");
   expect(error).toContain("require zod@4.6.5");
   expect(existsSync(join(cli.dir, "out/pets/zod-schema.ts"))).toBe(false);
+});
+
+test("switching --camel-case regenerates matching types and client output", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+
+  writeFileSync(
+    join(cli.dir, "a.json"),
+    JSON.stringify({
+      openapi: "3.1.0",
+      info: { title: "Pets", version: "1" },
+      paths: {
+        "/pets": {
+          get: {
+            operationId: "listPets",
+            responses: {
+              "200": {
+                description: "OK",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: { pet_id: { type: "string" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  );
+
+  await cli.generate("a.json");
+  const defaultStamp = cli.stamp();
+  expect(cli.types()).toContain("pet_id?: string;");
+  cli.mark();
+
+  await cli.generate("a.json", "--camel-case");
+  expect(cli.types()).toContain("petId?: string;");
+  expect(cli.isMarked()).toBe(false);
+  expect(cli.stamp()).not.toBe(defaultStamp);
+
+  expect(readFileSync(join(cli.dir, "out/pets/client.ts"), "utf8")).toContain(
+    "createApiClient<paths>({ ...options, caseMapping })",
+  );
+
+  await cli.generate("a.json", "--camel-case", "--wire-types");
+  const wire = readFileSync(join(cli.dir, "out/pets/wire-types.ts"), "utf8");
+  expect(wire).toContain("pet_id?: string;");
+  expect(wire).not.toContain("petId?: string;");
+  expect(stampLine.exec(wire)?.[1]).toBe(defaultStamp);
+  expect(existsSync(join(cli.dir, "out/pets/wire.ts"))).toBe(false);
+
+  await cli.generate("a.json");
+  expect(cli.types()).toContain("pet_id?: string;");
+  expect(cli.stamp()).toBe(defaultStamp);
+});
+
+test("--wire-types requires --camel-case", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+
+  const error = await cli.fails(
+    "generate",
+    "tanstack-query",
+    "a.json",
+    "-o",
+    "out",
+    "--name",
+    "pets",
+    "--wire-types",
+  );
+
+  expect(error).toContain("--wire-types requires --camel-case");
+
+  expect(existsSync(join(cli.dir, "out/pets/types.ts"))).toBe(false);
 });
 
 test("typescript and standard-schema outputs carry a stamped header", async (context) => {

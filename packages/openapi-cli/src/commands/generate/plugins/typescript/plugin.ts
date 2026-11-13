@@ -58,7 +58,8 @@ export const renderTypescript = Effect.fn("renderTypescript")(function* (options
   const body = (nodes as readonly unknown[]).map((node) => types.astToString([node])).join("\n");
 
   const printed = yield* Effect.tryPromise({
-    try: () => types.formatTypeScript(`${fileHeader(options.generator)}${body}`),
+    try: () =>
+      types.formatTypeScript(`${fileHeader(options.generator, options.flags.camelCase)}${body}`),
     catch: (cause) => new CliError.UserError({ cause }),
   });
 
@@ -93,7 +94,7 @@ const run = Effect.fn("run")(function* (
 
   yield* renderTypescript({
     source,
-    generator: yield* generatorStamp(typescriptSpecifier, source),
+    generator: yield* generatorStamp(typescriptSpecifier, source, flags.camelCase),
     outputPath: output === undefined ? undefined : path.resolve(output),
     flags,
     check: flags.check,

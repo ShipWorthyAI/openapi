@@ -10,6 +10,7 @@ import {
   Result,
 } from "effect";
 import ts from "#compiler";
+import { propertyName } from "@shipworthy/openapi-transformer";
 import { escapePointer, parseRef } from "./ref.ts";
 import { discriminatorOf, stringList } from "./schema.ts";
 import { tsLiteral, tsModifiers, tsPropertyIndex } from "./ts.ts";
@@ -52,7 +53,11 @@ const DEBUG_GROUPS: Record<string, ((text: string) => string) | undefined> = {
 /** Given a discriminator object, get the property name */
 export function createDiscriminatorProperty(
   discriminator: ParsedDiscriminator,
-  { path, readonly = false }: { path: string; readonly?: boolean },
+  {
+    path,
+    readonly = false,
+    camelCase = false,
+  }: { path: string; readonly?: boolean; camelCase?: boolean },
 ): ts.TypeElement {
   // get the inferred propertyName value from the last section of the path (as the spec suggests to do)
   let value = parseRef(path).pointer.pop();
@@ -75,7 +80,7 @@ export function createDiscriminatorProperty(
     /* modifiers     */ tsModifiers({
       readonly,
     }),
-    /* name          */ tsPropertyIndex(discriminator.propertyName),
+    /* name          */ tsPropertyIndex(propertyName(discriminator.propertyName, camelCase)),
     /* questionToken */ undefined,
     /* type          */ tsLiteral(value),
   );

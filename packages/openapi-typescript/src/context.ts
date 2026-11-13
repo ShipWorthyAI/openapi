@@ -21,6 +21,7 @@ function hook<F extends (...args: never[]) => unknown>() {
 /** The options the plugin accepts. See `OpenAPITSOptions` for what each one does. */
 const PluginOptions = Schema.Struct({
   arrayLength: flag(true),
+  camelCase: flag(false),
   transform: hook<NonNullable<OpenAPITSOptions["transform"]>>(),
   postTransform: hook<NonNullable<OpenAPITSOptions["postTransform"]>>(),
   transformProperty: hook<NonNullable<OpenAPITSOptions["transformProperty"]>>(),

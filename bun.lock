@@ -103,6 +103,25 @@
         "react": "^18.0.0 || ^19.0.0",
       },
     },
+    "examples/snakeToCamelCase": {
+      "name": "@shipworthy/example-snake-to-camel-case",
+      "version": "0.0.0",
+      "dependencies": {
+        "@shipworthy/openapi-tanstack-query": "workspace:*",
+        "zod": "4.6.5",
+      },
+      "devDependencies": {
+        "@shipworthy/openapi-cli": "workspace:*",
+        "@shipworthy/openapi-typescript": "workspace:*",
+        "@shipworthy/openapi-zod": "workspace:*",
+        "@shipworthy/typescript-config": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/node": "catalog:",
+        "react": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "packages/openapi-cli": {
       "name": "@shipworthy/openapi-cli",
       "version": "0.0.2",
@@ -244,6 +263,7 @@
       "devDependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
+        "@shipworthy/openapi-typescript": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
@@ -255,12 +275,14 @@
       "peerDependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
+        "@shipworthy/openapi-typescript": "workspace:*",
         "@tanstack/react-query": "^5.59.0",
         "react": "^18.0.0 || ^19.0.0",
       },
       "optionalPeers": [
         "@shipworthy/openapi-generator",
         "@shipworthy/openapi-transformer",
+        "@shipworthy/openapi-typescript",
       ],
     },
     "packages/openapi-transformer": {
@@ -644,6 +666,8 @@
     "@shipworthy/example-sdk-hotels": ["@shipworthy/example-sdk-hotels@workspace:examples/sdk-hotels"],
 
     "@shipworthy/example-sdk-reservations": ["@shipworthy/example-sdk-reservations@workspace:examples/sdk-reservations"],
+
+    "@shipworthy/example-snake-to-camel-case": ["@shipworthy/example-snake-to-camel-case@workspace:examples/snakeToCamelCase"],
 
     "@shipworthy/openapi-cli": ["@shipworthy/openapi-cli@workspace:packages/openapi-cli"],
 

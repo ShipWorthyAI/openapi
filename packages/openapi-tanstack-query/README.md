@@ -4,8 +4,8 @@ Typed [TanStack Query](https://tanstack.com/query) options, keys, and mutations
 for every operation in an OpenAPI 3.x document. Use it in a React (or React
 Native) app that already uses `@tanstack/react-query`. The package is a thin
 adapter over [`@shipworthy/openapi-fetch`](../openapi-fetch). Types come from
-`@shipworthy/openapi-typescript`. Code generation only writes a small `client.ts`
-that maps each `operationId` to `[METHOD, path]`. You then pass the returned
+`@shipworthy/openapi-typescript`. Code generation writes a `client.ts` with
+operation routes and, when requested, schema-based field mappings. You then pass the returned
 options to TanStack's own hooks (`useQuery`, `useMutation`, `useInfiniteQuery`,
 `useSuspenseQuery`, `queryClient.fetchQuery`, and so on). The package has no
 hooks or React provider of its own.
@@ -31,26 +31,26 @@ hooks or React provider of its own.
 bun add @shipworthy/openapi-tanstack-query @tanstack/react-query react
 ```
 
-Add the code generators as dev dependencies. `@shipworthy/openapi-generator`
-and `@shipworthy/openapi-transformer` are optional peer dependencies that only
-the `./generator` entry point needs. The CLI installs both. The TypeScript generator bundles TypeScript 7's AST
-modules, so your project can keep its own TypeScript version:
+Add the code generators as dev dependencies. `@shipworthy/openapi-typescript` supplies
+the schema-based case mapping used by `./generator` and generates `types.ts`.
+The TypeScript generator bundles TypeScript 7's AST modules, so your
+project can keep its own TypeScript version:
 
 ```sh
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 ```
 
-| Requirement          | Value                                                                                                                                                     |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peer dependencies    | `@tanstack/react-query` `^5.59.0`, `react` `^18.0.0 \|\| ^19.0.0`                                                                                         |
-| Optional peers       | `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`, needed only for `./generator` (the CLI and programmatic generation)                |
-| Runtime dependencies | `@shipworthy/openapi-fetch` and `effect` (installed automatically; only `./generator` imports `effect`)                                                   |
-| Module format        | `.` ships ESM and CommonJS, each with matching declarations (`.d.ts` and `.d.cts`). `./generator` is ESM only.                                            |
-| Entry points         | `.` (runtime) and `./generator` (generator plugin), compiled JavaScript with declarations in `dist/`. A `react-native` field points at `./dist/index.js`. |
-| Runtime              | Any environment with `fetch`, `Request`, and `Response`, or pass your own `fetch`. No TypeScript transpilation of `node_modules` is needed.               |
-| TypeScript           | Declarations type-check with TypeScript `5.0` and later, using `NodeNext` (CommonJS or ESM) or `bundler` module resolution.                               |
-| CLI runtime          | The `openapi` binary from `@shipworthy/openapi-cli` runs on **Node.js** `>=22.19.0` or **Bun** (`bunx --bun @shipworthy/openapi-cli`).                    |
-| OpenAPI versions     | 3.0.x and 3.1.x. 3.0 documents are upgraded to 3.1 internally. Swagger 2.x is rejected.                                                                   |
+| Requirement          | Value                                                                                                                                                                         |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Peer dependencies    | `@tanstack/react-query` `^5.59.0`, `react` `^18.0.0 \|\| ^19.0.0`                                                                                                             |
+| Optional peers       | `@shipworthy/openapi-typescript`, `@shipworthy/openapi-generator`, and `@shipworthy/openapi-transformer`, needed only for `./generator` (the CLI and programmatic generation) |
+| Runtime dependencies | `@shipworthy/openapi-fetch` and `effect` (installed automatically; only `./generator` imports `effect`)                                                                       |
+| Module format        | `.` ships ESM and CommonJS, each with matching declarations (`.d.ts` and `.d.cts`). `./generator` is ESM only.                                                                |
+| Entry points         | `.` (runtime) and `./generator` (generator plugin), compiled JavaScript with declarations in `dist/`. A `react-native` field points at `./dist/index.js`.                     |
+| Runtime              | Any environment with `fetch`, `Request`, and `Response`, or pass your own `fetch`. No TypeScript transpilation of `node_modules` is needed.                                   |
+| TypeScript           | Declarations type-check with TypeScript `5.0` and later, using `NodeNext` (CommonJS or ESM) or `bundler` module resolution.                                                   |
+| CLI runtime          | The `openapi` binary from `@shipworthy/openapi-cli` runs on **Node.js** `>=22.19.0` or **Bun** (`bunx --bun @shipworthy/openapi-cli`).                                        |
+| OpenAPI versions     | 3.0.x and 3.1.x. 3.0 documents are upgraded to 3.1 internally. Swagger 2.x is rejected.                                                                                       |
 
 The runtime entry point declares no Node.js `engines` range. The CLI runtime requirement applies to code generation.
 
@@ -110,6 +110,40 @@ function Hotels() {
 Inputs, response data, and error types are all inferred from the OpenAPI
 document. You do not write type arguments.
 
+### camelCase app fields
+
+Add `--camel-case` when the API uses snake_case fields and the app should use camelCase:
+
+```sh
+openapi generate tanstack-query ./openapi.json -o src/generated --name hotels --camel-case
+```
+
+With this flag, `types.ts` uses names such as `minStars` and `hotelId`. The generated
+`createHotelsApiClient` converts typed path, query, header, and cookie parameters and JSON
+request bodies to the names declared in OpenAPI. It converts JSON success and error bodies
+back to camelCase before returning data or placing it in the TanStack Query cache:
+
+```ts
+const hotels = useQuery(hotelsApi.getHotels.queryOptions({ input: { query: { minStars: 5 } } }));
+// The request sends ?min_stars=5. A response field hotel_id is exposed as hotelId.
+```
+
+Direct calls through the generated client use the same conversion. Dictionary keys declared by
+`additionalProperties` or `patternProperties` keep their spelling, while declared fields inside
+their values are converted. Operation IDs, URLs, enum values, and the raw `Response` retain their
+API spelling. Generation fails when distinct wire fields would share a camelCase name within
+an object, including nested fields combined by `allOf`, `anyOf`, or `oneOf`. Conversion applies
+to `application/json` and `+json` bodies.
+
+Use `--wire-types` with `--camel-case` to write `wire-types.ts` alongside `types.ts`. The wire file
+has the API's field names and the same other TypeScript generation settings. For example, import
+`components` from `./generated/hotels/wire-types` to type a raw `Response` fixture or a custom `fetch`
+wrapper. `types.ts` remains the app-facing camelCase contract.
+
+JSON Pointer strings such as `errors[].pointer: "/slot_id"` keep their API spelling. Undeclared
+fields also keep their API spelling. When a response status has no matching schema and no
+`default` response in the OpenAPI document, its error body is returned without conversion.
+
 ## Generated output
 
 `openapi generate tanstack-query <input> -o <dir> --name <name>` writes the
@@ -118,6 +152,7 @@ following into `<dir>/<name>/`:
 - `types.ts`: `paths`, `components`, `operations`, and `webhooks` types from
   `@shipworthy/openapi-typescript`. This file is regenerated only when it is
   missing or stale (see [`--force`](#cli-openapi-generate-tanstack-query)).
+- `wire-types.ts`: optional API-facing types when both `--camel-case` and `--wire-types` are set.
 - `client.ts`: overwritten on every successful run. For `--name my-pets`
   (prefix `MyPets`), it contains:
 
@@ -186,10 +221,12 @@ openapi generate tanstack-query [flags] <input>
 | `--output`, `-o` | string  | none    | Directory that will contain `<name>/client.ts`.                                                                                                                            |
 | `--name`         | string  | none    | Client name. It sets the output subdirectory, the PascalCase export prefix, and the default cache-key prefix. It must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. |
 | `--force`        | boolean | `false` | Regenerate `types.ts` even when its stamp matches.                                                                                                                         |
+| `--camel-case`   | boolean | `false` | Use camelCase in `types.ts` and convert declared parameter and JSON body fields in the generated client.                                                                   |
+| `--wire-types`   | boolean | `false` | Also write `wire-types.ts` with API field names. Requires `--camel-case`.                                                                                                  |
 
 `types.ts` is regenerated when it is missing, or when the
 `@shipworthy/openapi-typescript@<version>:<sha256>` stamp in its header no
-longer matches. The hash covers the schema contents, not the schema's location,
+longer matches. The hash covers the schema contents and the `--camel-case` setting, not the schema's location,
 so moving the file does not trigger a rebuild.
 
 Example `package.json` script:
@@ -233,6 +270,11 @@ type ApiClient<Paths extends {} = {}> = Client<Paths>; // @shipworthy/openapi-fe
 
 This function creates an `@shipworthy/openapi-fetch` client.
 
+With `--camel-case`, the generated factory passes `caseMapping` to
+`createApiClient<Paths>(options)`. The underlying fetch client installs the casing middleware.
+`@shipworthy/openapi-typescript` builds the mapping from the OpenAPI schema. Use the generated
+factory so runtime values match `types.ts`.
+
 - **`baseUrl`** (required): the root URL for all requests. A trailing slash is
   removed.
 - **`authToken`** (optional): a token string, or a sync or async getter.
@@ -247,6 +289,8 @@ This function creates an `@shipworthy/openapi-fetch` client.
   through, including `fetch`, `Request`, `headers`, `querySerializer`,
   `bodySerializer`, `pathSerializer`, `requestInitExt`, and standard
   `RequestInit` fields such as `credentials`.
+- **`caseMapping`** (optional): a generated `CaseMapping`. When provided,
+  the underlying fetch client installs the casing middleware.
 
 The returned client is a full `openapi-fetch` client. You can call it directly
 (`client.GET("/hotels", { params: { query } })`) or add middleware with
@@ -485,12 +529,12 @@ import {
 } from "@shipworthy/openapi-tanstack-query/generator";
 ```
 
-| Export                               | Signature / description                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tanstackQuery`                      | `Generator<string, TanstackGenerationError>` (from `@shipworthy/openapi-generator`) with `id: "tanstack-query"`. `generate(model, options)` returns `Effect<string, TanstackGenerationError>`, which is the `client.ts` source with no header comment. Options: `prefix?: string` (export prefix, default `""`) and `name?: string` (cache-key prefix, default `prefix`). Other option shapes fail with `TanstackGenerationError`. |
-| `operationRoutes(model)`             | `Effect<Record<string, OperationRoute>, TanstackGenerationError>`. Maps each `operationId` to `[METHOD, path]`. Fails on a missing, duplicate, or reserved (`__proto__`, `constructor`, `prototype`) `operationId`.                                                                                                                                                                                                                |
-| `clientSource(prefix, name, routes)` | `string`. Prints `client.ts` source for the given export prefix, cache-key prefix, and routes.                                                                                                                                                                                                                                                                                                                                     |
-| `TanstackGenerationError`            | Effect `Schema.TaggedError` with `_tag: "TanstackGenerationError"` and `message: string`.                                                                                                                                                                                                                                                                                                                                          |
+| Export                               | Signature / description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tanstackQuery`                      | `Generator<string, TanstackGenerationError>` (from `@shipworthy/openapi-generator`) with `id: "tanstack-query"`. `generate(model, options)` returns `Effect<string, TanstackGenerationError>`, which is the `client.ts` source with no header comment. Options: `prefix?: string` (export prefix, default `""`), `name?: string` (cache-key prefix, default `prefix`), and `camelCase?: boolean` (default `false`). Other option shapes fail with `TanstackGenerationError`. |
+| `operationRoutes(model)`             | `Effect<Record<string, OperationRoute>, TanstackGenerationError>`. Maps each `operationId` to `[METHOD, path]`. Fails on a missing, duplicate, or reserved (`__proto__`, `constructor`, `prototype`) `operationId`.                                                                                                                                                                                                                                                          |
+| `clientSource(prefix, name, routes)` | `string`. Prints `client.ts` source for the given export prefix, cache-key prefix, and routes.                                                                                                                                                                                                                                                                                                                                                                               |
+| `TanstackGenerationError`            | Effect `Schema.TaggedError` with `_tag: "TanstackGenerationError"` and `message: string`.                                                                                                                                                                                                                                                                                                                                                                                    |
 
 Programmatic generation with `@shipworthy/openapi-generator`, which is what
 the CLI does:
@@ -545,7 +589,7 @@ Generated files use extensionless `./types` imports and expect TypeScript `modul
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `<METHOD> <path>: Missing operationId` / `Duplicate operationId: …`  | Add unique `operationId`s to the OpenAPI document.                                                                  |
 | `--name must start with a letter …`                                  | Use letters and digits, with single `-` or `_` separators, such as `hotels` or `sdk-core`.                          |
-| `types.ts` was not regenerated after editing generator settings      | It is regenerated only when the schema hash or generator version changes. Pass `--force`.                           |
+| `types.ts` was not regenerated after editing generator settings      | It is regenerated when the schema, `--camel-case`, or generator version changes. Pass `--force` for other settings. |
 | CLI cannot load `@shipworthy/openapi-tanstack-query/generator`       | Install this package, `@shipworthy/openapi-typescript`, and `@shipworthy/openapi-generator` in the project.         |
 | `openapi` fails to start on an older Node.js                         | The CLI needs Node.js `>=22.19.0`. Upgrade Node.js, or run it with `bunx --bun @shipworthy/openapi-cli`.            |
 | `error instanceof Error` is false in `onError`                       | This is expected for HTTP errors: the error is the parsed error body. See [errors](#requests-responses-and-errors). |

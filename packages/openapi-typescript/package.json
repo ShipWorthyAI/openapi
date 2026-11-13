@@ -28,7 +28,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./compiler": "./src/compiler.ts"
+    "./compiler": "./src/compiler.ts",
+    "./case-mapping": "./src/generation/casing/index.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -47,6 +48,10 @@
       "./compiler": {
         "types": "./dist/compiler.d.ts",
         "default": "./dist/compiler.js"
+      },
+      "./case-mapping": {
+        "types": "./dist/case-mapping.d.ts",
+        "default": "./dist/case-mapping.js"
       },
       "./package.json": "./package.json"
     },

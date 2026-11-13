@@ -12,6 +12,7 @@ import type {
   SuccessResponse,
   Writable,
 } from "./helpers.ts";
+import type { CaseMapping } from "./middleware/transform-casing.ts";
 
 /** Options for each client instance */
 export interface ClientOptions extends Omit<RequestInit, "headers"> {
@@ -27,6 +28,8 @@ export interface ClientOptions extends Omit<RequestInit, "headers"> {
   bodySerializer?: BodySerializer<unknown>;
   /** global pathSerializer */
   pathSerializer?: PathSerializer;
+  /** schema-based field mapping applied to every request and parsed result */
+  caseMapping?: CaseMapping;
   headers?: HeadersOptions;
   /** RequestInit extension object to pass as 2nd argument to fetch when supported (defaults to undefined) */
   requestInitExt?: Record<string, unknown>;
@@ -150,9 +153,30 @@ export type MergedOptions<T = unknown> = {
 
 export interface MiddlewareRequestParams {
   query?: Record<string, unknown>;
-  header?: Record<string, unknown>;
+  header?: HeadersOptions;
   path?: Record<string, unknown>;
   cookie?: Record<string, unknown>;
+}
+
+export interface MiddlewareRequestInput {
+  readonly params: MiddlewareRequestParams;
+  readonly body: unknown;
+}
+
+export interface MiddlewareRequestInitParams {
+  readonly schemaPath: string;
+  readonly method: string;
+  readonly input: MiddlewareRequestInput;
+  /** Client, request, and parameter headers merged before serialization. */
+  readonly headers: Headers;
+  readonly id: string;
+  readonly options: MergedOptions;
+}
+
+export interface MiddlewareResult {
+  readonly data?: unknown;
+  readonly error?: unknown;
+  readonly response: Response;
 }
 
 export interface MiddlewareCallbackParams {
@@ -168,6 +192,16 @@ export interface MiddlewareCallbackParams {
   readonly options: MergedOptions;
 }
 
+export interface MiddlewareResultParams extends MiddlewareCallbackParams {
+  /** The method requested through the client, before HTTP middleware can replace the Request. */
+  readonly method: string;
+  readonly result: MiddlewareResult;
+}
+
+type MiddlewareOnRequestInit = (
+  options: MiddlewareRequestInitParams,
+) => void | MiddlewareRequestInput | Promise<MiddlewareRequestInput | void>;
+
 type MiddlewareOnRequest = (
   options: MiddlewareCallbackParams,
 ) => void | Request | Response | undefined | Promise<Request | Response | undefined | void>;
@@ -180,22 +214,29 @@ type MiddlewareOnError = (
   options: MiddlewareCallbackParams & { error: unknown },
 ) => void | Response | Error | Promise<void | Response | Error>;
 
-export type Middleware =
-  | {
-      onRequest: MiddlewareOnRequest;
-      onResponse?: MiddlewareOnResponse;
-      onError?: MiddlewareOnError;
-    }
-  | {
-      onRequest?: MiddlewareOnRequest;
-      onResponse: MiddlewareOnResponse;
-      onError?: MiddlewareOnError;
-    }
-  | {
-      onRequest?: MiddlewareOnRequest;
-      onResponse?: MiddlewareOnResponse;
-      onError: MiddlewareOnError;
-    };
+type MiddlewareOnResult = (
+  options: MiddlewareResultParams,
+) =>
+  | void
+  | Partial<Pick<MiddlewareResult, "data" | "error">>
+  | Promise<Partial<Pick<MiddlewareResult, "data" | "error">> | void>;
+
+interface MiddlewareHooks {
+  onRequestInit?: MiddlewareOnRequestInit;
+  onRequest?: MiddlewareOnRequest;
+  onResponse?: MiddlewareOnResponse;
+  onError?: MiddlewareOnError;
+  onResult?: MiddlewareOnResult;
+}
+
+export type Middleware = MiddlewareHooks &
+  (
+    | { onRequestInit: MiddlewareOnRequestInit }
+    | { onRequest: MiddlewareOnRequest }
+    | { onResponse: MiddlewareOnResponse }
+    | { onError: MiddlewareOnError }
+    | { onResult: MiddlewareOnResult }
+  );
 
 /** This type helper makes the 2nd function param required if params/requestBody are required; otherwise, optional */
 export type MaybeOptionalInit<Params, Location extends keyof Params> =

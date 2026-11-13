@@ -1,7 +1,7 @@
 ---
 openapi: 3.0.1
 info:
-  title: inKind Internal API (Rails↔Go seam)
+  title: Example Internal API (Rails↔Go seam)
   version: v1
   description: |
     Read and command surface the Go partner service calls on the Rails monolith.
@@ -4723,7 +4723,7 @@ paths:
                             - partner_api
                             description: Which strategy answered. existing_connection
                               means a restaurant already live with us, and the partner-portal
-                              route treats it as proof the inKind tender exists.
+                              route treats it as proof the platform tender exists.
                   timed_out:
                     type: boolean
                     description: The walk gave up on its budget. Not a miss — poll
@@ -5276,7 +5276,7 @@ paths:
         `partner_admin_permission`.
 
         `permissions` is empty for two unrelated populations, and neither means "no access".
-        An inKind admin reads every project through the admin bypass, which is not a slug. A
+        A platform admin reads every project through the admin bypass, which is not a slug. A
         subscriber manager reaches a project through an `is_subscriber_manager` brand
         ownership, holding no portal slug at all — the legacy subscriber-portal users.
 
@@ -5332,7 +5332,7 @@ paths:
                         permissions:
                           type: array
                           description: Portal slugs held on this project. Empty for
-                            an inKind admin and for a subscriber manager.
+                            a platform admin and for a subscriber manager.
                           items:
                             type: string
                   is_admin:
@@ -5391,7 +5391,7 @@ paths:
       - Internal — Command seam
       description: |
         Posts a **real payment on the operator's real check**, settling its balance against
-        the restaurant's own inKind tender. A duplicate is a second settled payment on a
+        the restaurant's own platform tender. A duplicate is a second settled payment on a
         ticket a server may act on, and the restaurant eats it.
 
         The whole of `SelfServe::ToastTestPayment#call` is behind this one request rather
@@ -5419,7 +5419,7 @@ paths:
         |---|---|---|
         | `check_not_found` | `true` | the lookup found no open check |
         | `already_paid` | `true` | balance was already zero |
-        | `no_tender_guid` | `true` | no inKind tender resolvable |
+        | `no_tender_guid` | `true` | no platform tender resolvable |
         | `amount_changed` | `true` | refused against the acknowledged amount |
         | `toast_rejected` | `true` | Toast returned a `4xx` — refused outright |
         | `toast_indeterminate` | `false` | a `5xx`, a gateway error or an unexpected `2xx` — **may have landed** |
@@ -5622,7 +5622,7 @@ paths:
 
         ## What `found` means, and what it does not
 
-        `found: true` means a payment against the restaurant's inKind tender is on the
+        `found: true` means a payment against the restaurant's platform tender is on the
         check. **It does not mean the payment settled** — a `VOIDED` or `DENIED` payment is
         still found, because it reached the check and posting another one is still wrong.
         `validated` is the separate question of whether it settled.
@@ -5780,7 +5780,7 @@ paths:
                 tender_guid:
                   type: string
                   nullable: true
-                  description: The restaurant's inKind tender, used to recover a payment
+                  description: The restaurant's platform tender, used to recover a payment
                     GUID Toast did not hand back.
                 amount:
                   type: number
@@ -5828,20 +5828,20 @@ paths:
         not read portal slugs at all.
 
         `marketing` is the one to read carefully. `SubscriberReportsController` gates twice and
-        both must pass. `set_project` admits three ways: an inKind admin, a holder of
+        both must pass. `set_project` admits three ways: a platform admin, a holder of
         partner_admin/operations/marketing on the project, or — its Path 2 — an
         `is_subscriber_manager` brand ownership on a brand in the project, which is how legacy
         subscriber-portal users get in holding no portal slug. `set_accessible_brands` then
         requires that same subscriber-manager brand ownership, with no admin bypass. Passing the
         second gate therefore satisfies the first via Path 2, so the capability tracks brand
-        ownership alone: no portal slug admits on its own, and a partner admin and an inKind
+        ownership alone: no portal slug admits on its own, and a partner admin and a platform
         admin both get `false` here without one.
 
         **Every key is always present, explicitly `true` or `false`.** An omitted key means the
         contract broke, not that access was refused.
 
-        `is_inkind_admin` and `permission_slugs` are for support triage. Do not gate on them —
-        an inKind admin already passes every capability but marketing, and reading the slug list
+        `is_platform_admin` and `permission_slugs` are for support triage. Do not gate on them —
+        a platform admin already passes every capability but marketing, and reading the slug list
         re-creates the drift this endpoint exists to end.
 
         A project the caller's user cannot reach returns 200 with every capability false rather
@@ -5871,7 +5871,7 @@ paths:
                 - slug
                 - name
                 - capabilities
-                - is_inkind_admin
+                - is_platform_admin
                 - permission_slugs
                 properties:
                   project_id:
@@ -5907,15 +5907,15 @@ paths:
                         type: boolean
                       funding:
                         type: boolean
-                  is_inkind_admin:
+                  is_platform_admin:
                     type: boolean
-                    description: Diagnostic. An inKind admin passes every capability
+                    description: Diagnostic. A platform admin passes every capability
                       except marketing, so this adds no authorization signal. Gate
                       on capabilities instead.
                   permission_slugs:
                     type: array
                     description: Diagnostic. Portal slugs held on THIS project, sorted.
-                      Empty for an inKind admin with no ownership, and for a subscriber
+                      Empty for a platform admin with no ownership, and for a subscriber
                       manager holding no portal slug.
                     items:
                       type: string
@@ -6338,7 +6338,7 @@ paths:
 
         Membership is an `is_subscriber_manager` brand ownership on a brand in this project.
         No portal permission slug substitutes for one, `partner_marketing_permission`
-        included, and there is no inKind admin bypass. It is the same set the access route
+        included, and there is no platform admin bypass. It is the same set the access route
         reports as the `marketing` capability, read from the same policy method, so a caller
         cleared to open the page and the rows it is then served cannot describe different
         brands.
@@ -6455,7 +6455,7 @@ paths:
         per-location control can be added later without a rewrite, and the project-level
         verdict is "any location", not "every location".
 
-        Reaching it takes `partner_admin` on the project, with the inKind admin bypass. That
+        Reaching it takes `partner_admin` on the project, with the platform admin bypass. That
         is the rule the partner-facing page applies, and the access route reports it as the
         `review_engine` capability — not as `marketing`, which this path prefix's other
         routes take and which turns on a brand ownership instead.
@@ -6666,7 +6666,7 @@ paths:
         read would have the caller fetch a roster first, call once per brand, and rebuild
         this payload out of the pieces.
 
-        Reaching it takes `partner_admin` on the project, with the inKind admin bypass. That
+        Reaching it takes `partner_admin` on the project, with the platform admin bypass. That
         is the rule the partner-facing page applies, and the access route reports it as the
         `operations` capability.
 
@@ -9336,10 +9336,10 @@ paths:
               schema:
                 type: object
                 required:
-                - inkind_monthly_spending
+                - platform_monthly_spending
                 additionalProperties: false
                 properties:
-                  inkind_monthly_spending:
+                  platform_monthly_spending:
                     type: integer
                     format: int64
                     minimum: 0
@@ -9794,12 +9794,12 @@ paths:
       - Internal — Read seam
       description: |
         The alternate payment types Toast has published for one restaurant, and whether
-        inKind is one of them. Serves the polled status check, GUID confirmation, and the
-        operator's explicit re-check.
+        the platform tender is one of them. Serves the polled status check, GUID confirmation,
+        and the operator's explicit re-check.
 
-        **`inkind_tender_found` is computed here, not by the caller.** The rule strips
+        **`platform_tender_found` is computed here, not by the caller.** The rule strips
         whitespace before a case-insensitive substring match, so an operator who named the
-        tender "In Kind" is a match. Two implementations of that would disagree.
+        tender "Platform Tender" is a match. Two implementations of that would disagree.
 
         **`tender_types` is the monolith's stored shape verbatim** — already capped at 50
         entries and reduced to `{name, guid}` — so the caller writes it into its blob
@@ -9855,7 +9855,7 @@ paths:
           re-checks only.
       responses:
         '200':
-          description: The published tender types, and whether inKind is among them
+          description: The published tender types, and whether the platform tender is among them
           headers:
             Cache-Control:
               schema:
@@ -9873,7 +9873,7 @@ paths:
                     required:
                     - guid
                     - tender_types
-                    - inkind_tender_found
+                    - platform_tender_found
                     properties:
                       guid:
                         type: string
@@ -9888,7 +9888,7 @@ paths:
                             guid:
                               type: string
                               nullable: true
-                      inkind_tender_found:
+                      platform_tender_found:
                         type: boolean
         '400':
           description: The guid is missing, not a string, or not a UUID
@@ -10396,8 +10396,8 @@ paths:
 
         **The account is created at most once, and that is enforced under the prospect's row
         lock.** A second Express account for one operator splits their payouts across two, and
-        only one of them is the account inKind pays into. So a repeat — including a retry of a
-        `502` — reuses the id rather than creating another. The id is also persisted *before*
+        only one of them is the account the platform pays into. So a repeat — including a retry
+        of a `502` — reuses the id rather than creating another. The id is also persisted *before*
         the link is minted and kept even if minting fails, because the account exists at Stripe
         either way and forgetting it here is what would create the second one.
 
@@ -12085,7 +12085,7 @@ paths:
                   maxLength: 255
         required: true
 servers:
-- url: https://api.staging.inkind-staging.com
+- url: https://api.staging.example.com
   description: Staging
 - url: http://localhost:3000
   description: Local development

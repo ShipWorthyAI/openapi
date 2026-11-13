@@ -69,14 +69,15 @@ be0a225b577c94c250a7bf076a405e51094a859bf2522e77663000bd8a48e247  openapi/nuitee
 501406e9952d65a7278048f3fcced3afd91cd1f9155275704eea893c18ea2a97  openapi/nuitee/hotel-data.json
 ```
 
-The Core input is the complete generated `swagger/internal_v1/swagger.yaml` snapshot used
+The Core input began as the complete generated `swagger/internal_v1/swagger.yaml` snapshot used
 by Hotels' payment integration, rather than its already filtered output. Hotels records the
-source as Core commit `0ca834249d81f66ae4fa9559cf4d1aa051ec03dc`; the copied document matches
-its recorded SHA-256:
+source as Core commit `0ca834249d81f66ae4fa9559cf4d1aa051ec03dc`. Brand-specific names and
+URLs were replaced in the checked-in example. Its SHA-256 is:
 
 ```text
-41806ab0e01d6cb0cb2b4e48c4c410e911034835e3d4222c0d2756ed98428d9c  openapi/core/openapi.yaml
+bf674442546aea8da1d4b9aa3716664ca9ebc5625b8a9cf6a0ca3fea7d576fdf  openapi/core/openapi.yaml
 ```
 
-The input snapshots retain their original bytes. Update the snapshots and their hashes
-together, then regenerate and verify the selected contracts.
+The Nuitee input snapshots retain their original bytes. When refreshing the Core example,
+replace brand-specific names and URLs again, update its hash, then regenerate and verify the
+selected contracts.

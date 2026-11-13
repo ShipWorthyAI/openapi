@@ -51,6 +51,44 @@ test("uses default array-length inference and ApiPaths, with optional root alias
   expect(arrays).toContain("tags?: string[];");
 });
 
+test("--camel-case changes generated field and parameter names", async (context) => {
+  const { expect } = context;
+  const cli = workspace(context);
+
+  writeFileSync(
+    join(cli.dir, "source.json"),
+    JSON.stringify({
+      openapi: "3.1.0",
+      info: { title: "Pets", version: "1" },
+      paths: {
+        "/pets/{pet_id}": {
+          get: {
+            operationId: "getPet",
+            parameters: [
+              { name: "pet_id", in: "path", required: true, schema: { type: "string" } },
+            ],
+            responses: { "200": { description: "OK" } },
+          },
+        },
+      },
+      components: {
+        schemas: {
+          Pet: { type: "object", properties: { first_name: { type: "string" } } },
+        },
+      },
+    }),
+  );
+
+  const raw = await cli.ok("generate", "typescript", "source.json");
+  const camel = await cli.ok("generate", "typescript", "source.json", "--camel-case");
+
+  expect(raw).toContain("first_name?: string;");
+  expect(raw).toContain("pet_id: string;");
+  expect(camel).toContain("firstName?: string;");
+  expect(camel).toContain("petId: string;");
+  expect(camel).toContain('"/pets/{pet_id}"');
+});
+
 test("generates TypeScript from an overlaid document without changing the source", async (context) => {
   const { expect } = context;
   const cli = workspace(context);

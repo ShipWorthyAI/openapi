@@ -14,12 +14,14 @@ To generate the `paths` type, install the CLI and its TypeScript generator as de
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 ```
 
-These packages are build-time tooling; the fetch client has no runtime or peer dependencies.
+These packages are build-time tooling. The fetch package has no runtime or peer dependencies.
 
 Requirements:
 
-- **No dependencies or peer dependencies.**
-- **ESM and CommonJS.** Published packages contain compiled JavaScript in both formats with matching `.d.ts` and `.d.cts` declarations in `dist/`; no TypeScript transpilation of `node_modules` is needed. Declarations type-check with TypeScript 5.0 and later.
+- **No runtime or peer dependencies.** Compile optional case mappings with `@shipworthy/openapi-typescript` at build time.
+- **ESM and CommonJS.** Both runtime entries contain both formats with matching `.d.ts` and
+  `.d.cts` declarations in `dist/`; no TypeScript transpilation of `node_modules` is needed.
+  Declarations type-check with TypeScript 5.0 and later.
 - **No Node.js engine requirement for the client.** The code-generation CLI needs Node.js `>=22.19.0`, or Bun with `bunx --bun`.
 - **Fetch API globals.** The client uses `fetch`, `Request`, `Response`, `Headers`, `FormData`, and `URLSearchParams` from `globalThis`, so it runs in browsers, Bun, Deno, and Node.js 18+. To use a different implementation, pass `fetch` and/or `Request` to `createClient`.
 - **TypeScript** with `strict` (or at least `strictNullChecks`) is recommended. Required/optional inference for `params` and `body` depends on it.
@@ -85,7 +87,7 @@ Each call returns `Promise<FetchResponse>`, a discriminated union:
 
 ## API reference
 
-The package's single entry point (`@shipworthy/openapi-fetch`) provides these exports.
+The main entry point (`@shipworthy/openapi-fetch`) provides these exports.
 
 ### `createClient<Paths, Media>(options?)` (default and named export)
 
@@ -111,16 +113,17 @@ function createClient<Paths extends {}, Media extends MediaType = MediaType>(
 | `querySerializer` | `QuerySerializer \| QuerySerializerOptions` | form/explode for arrays, deepObject/explode for objects | Global query string serialization (see [Query serialization](#query-serialization)).                                                                                                                     |
 | `bodySerializer`  | `BodySerializer`                            | `defaultBodySerializer`                                 | Global request body serializer.                                                                                                                                                                          |
 | `pathSerializer`  | `PathSerializer`                            | `defaultPathSerializer`                                 | Global path template serializer.                                                                                                                                                                         |
+| `caseMapping`     | `CaseMapping`                               | none                                                    | Installs schema-based casing middleware for every request and parsed result.                                                                                                                             |
 | `requestInitExt`  | `Record<string, unknown>`                   | `undefined`                                             | Passed as the second argument to `fetch`. It is only used on Node.js 18+ with undici (detected through `process.versions.undici`) and ignored elsewhere, including Bun. Example: an undici `dispatcher`. |
 
 #### `Client<Paths, Media>`
 
-| Member                                                                          | Description                                                                                                                                                                                            |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET(url, init?)`, `PUT`, `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PATCH`, `TRACE` | Call an endpoint. `url` must be a path in `Paths` that defines that method. Use the template form, such as `"/pets/{petId}"`, not a pre-filled URL.                                                    |
-| `request(method, url, init?)`                                                   | Same as above with a lowercase `HttpMethod` (`"get"`, `"post"`, ...). The method is uppercased at runtime.                                                                                             |
-| `use(...middleware)`                                                            | Register client-level middleware. Falsy entries are skipped. Throws `Error("Middleware must be an object with one of `onRequest()`, `onResponse() or `onError()`")` for anything else that is invalid. |
-| `eject(...middleware)`                                                          | Unregister middleware by reference.                                                                                                                                                                    |
+| Member                                                                          | Description                                                                                                                                         |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET(url, init?)`, `PUT`, `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PATCH`, `TRACE` | Call an endpoint. `url` must be a path in `Paths` that defines that method. Use the template form, such as `"/pets/{petId}"`, not a pre-filled URL. |
+| `request(method, url, init?)`                                                   | Same as above with a lowercase `HttpMethod` (`"get"`, `"post"`, ...). The method is uppercased at runtime.                                          |
+| `use(...middleware)`                                                            | Register client-level middleware. Falsy entries are skipped. Invalid objects throw `Error("Middleware must be an object with a supported hook")`.   |
+| `eject(...middleware)`                                                          | Unregister middleware by reference.                                                                                                                 |
 
 The `init` argument is required when the operation has required parameters or a required body. Otherwise it is optional.
 
@@ -209,7 +212,8 @@ client.use(auth);
 // later: client.eject(auth);
 ```
 
-A `Middleware` is an object with at least one of `onRequest`, `onResponse`, or `onError`. Each hook receives `MiddlewareCallbackParams`:
+A `Middleware` has at least one of `onRequestInit`, `onRequest`, `onError`, `onResponse`, or
+`onResult`. The existing HTTP hooks receive `MiddlewareCallbackParams`:
 
 | Field        | Description                                                                                                   |
 | ------------ | ------------------------------------------------------------------------------------------------------------- |
@@ -223,6 +227,10 @@ A `Middleware` is an object with at least one of `onRequest`, `onResponse`, or `
 
 The order of the hooks and their valid return values:
 
+- **`onRequestInit`** runs before path, query, header, cookie, and body serialization, in
+  registration order. It receives `method`, `schemaPath`, `{ params, body }` as `input`, and
+  `headers` merged from client, request, and parameter headers. Return a complete replacement
+  `{ params, body }`, or `undefined` to keep the input. Custom serializers receive the result.
 - **`onRequest`** runs in registration order, client-level first and then per-request `middleware`.
   - Return a `Request` to replace the request.
   - Return a `Response` to skip `fetch`, the remaining `onRequest` hooks, and **all** `onResponse` hooks. The returned `Response` is used as-is: no `onResponse` hook runs for it, including hooks registered before the one that returned it. This matches upstream openapi-fetch.
@@ -237,6 +245,56 @@ The order of the hooks and their valid return values:
   - Return a `Response` to replace it.
   - Return `undefined` to keep it.
   - Any other truthy value throws `Error("onResponse: must return new Response() when modifying the response")`.
+- **`onResult`** runs after response parsing, in reverse order. It receives the parsed `result`,
+  original `method` and `schemaPath`, and the final `Response`. Return a `data` and/or `error`
+  update, or `undefined` to keep the parsed values. It also runs for a synthetic `Response`
+  returned by `onRequest`, a response recovered by `onError`, and empty bodies. It cannot replace
+  `result.response`.
+
+### Schema-based case mapping
+
+Pass a `caseMapping` to `createClient` to convert app-facing names in typed path, query,
+header, and cookie parameters and JSON request bodies to the names declared by OpenAPI. It
+converts parsed JSON success and error bodies back before returning `data` or `error`. The raw
+`Response` and dictionary keys retain their wire spelling. Other response parsing modes leave
+successful data unchanged.
+
+Only fields declared by the selected schema are renamed. Undeclared fields keep their API
+spelling, and an error response with no matching status schema or `default` response is returned
+without conversion. String values that happen to name fields also keep their API spelling, for
+example a JSON Pointer such as `errors[].pointer: "/slot_id"`.
+
+```ts
+import createClient from "@shipworthy/openapi-fetch";
+import { caseMapping } from "./generated/case-mapping";
+import type { paths } from "./generated/types";
+
+const client = createClient<paths>({ baseUrl: "https://api.example.com", caseMapping });
+```
+
+For manual registration, import `createCaseMappingMiddleware` from
+`@shipworthy/openapi-fetch/middleware/transform-casing` and call
+`client.use(createCaseMappingMiddleware(caseMapping))`.
+
+The mapping must come from the same OpenAPI document and camelCase naming rule as `paths`.
+At build time, `buildCaseMapping(parsedService)` from
+`@shipworthy/openapi-typescript/case-mapping` returns an
+`Effect<CaseMapping, CaseMappingGenerationError>`. Include the resulting plain object in
+generated code and pass it to the client:
+
+```ts
+import { buildCaseMapping } from "@shipworthy/openapi-typescript/case-mapping";
+import { decode } from "@shipworthy/openapi-transformer";
+import { Effect } from "effect";
+
+const caseMapping = await Effect.runPromise(
+  decode(document).pipe(Effect.flatMap(buildCaseMapping)),
+);
+```
+
+`openapi generate tanstack-query --camel-case` generates the matching types and embeds this
+mapping automatically. Standalone `openapi generate typescript --camel-case` generates types
+only; it does not install runtime conversion.
 
 ### Headers
 
@@ -482,20 +540,21 @@ function removeTrailingSlash(url: string): string; // removes one trailing "/"
 
 Client and request types:
 
-| Type                                                                                                    | Purpose                                               |
-| ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `Client<Paths, Media>`                                                                                  | Return type of `createClient`.                        |
-| `ClientOptions`                                                                                         | Options for `createClient`.                           |
-| `PathBasedClient<Paths, Media>`, `ClientForPath<PathInfo, Media>`                                       | Path-based client shapes.                             |
-| `ClientMethod`, `ClientRequestMethod`                                                                   | Signatures of `GET`/`POST`/... and of `request`.      |
-| `FetchOptions<Op>`, `RequestOptions<Op>`, `MaybeOptionalInit<PathItem, Method>`                         | Shape of the `init` argument for an operation.        |
-| `ParamsOption<Op>`, `RequestBodyOption<Op>`, `DefaultParamsOption`                                      | The `params` and `body` parts of `init`.              |
-| `FetchResponse<Op, Init, Media>`                                                                        | The `{ data, error, response }` union.                |
-| `ParseAs`, `ParseAsResponse<T, Options>`                                                                | `parseAs` values and the resulting `data` type.       |
-| `HeadersOptions`, `QuerySerializer<T>`, `QuerySerializerOptions`, `BodySerializer<T>`, `PathSerializer` | Option types.                                         |
-| `Middleware`, `MiddlewareCallbackParams`, `MiddlewareRequestParams`, `MergedOptions`                    | Middleware types.                                     |
-| `ClientPathsWithMethod<Client, Method>`                                                                 | The paths of a client instance that support `Method`. |
-| `MethodResponse<Client, Method, Path, Options?>`                                                        | The non-nullable `data` type for a call.              |
+| Type                                                                                                                                                                                        | Purpose                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `Client<Paths, Media>`                                                                                                                                                                      | Return type of `createClient`.                            |
+| `ClientOptions`                                                                                                                                                                             | Options for `createClient`.                               |
+| `PathBasedClient<Paths, Media>`, `ClientForPath<PathInfo, Media>`                                                                                                                           | Path-based client shapes.                                 |
+| `ClientMethod`, `ClientRequestMethod`                                                                                                                                                       | Signatures of `GET`/`POST`/... and of `request`.          |
+| `FetchOptions<Op>`, `RequestOptions<Op>`, `MaybeOptionalInit<PathItem, Method>`                                                                                                             | Shape of the `init` argument for an operation.            |
+| `ParamsOption<Op>`, `RequestBodyOption<Op>`, `DefaultParamsOption`                                                                                                                          | The `params` and `body` parts of `init`.                  |
+| `FetchResponse<Op, Init, Media>`                                                                                                                                                            | The `{ data, error, response }` union.                    |
+| `ParseAs`, `ParseAsResponse<T, Options>`                                                                                                                                                    | `parseAs` values and the resulting `data` type.           |
+| `HeadersOptions`, `QuerySerializer<T>`, `QuerySerializerOptions`, `BodySerializer<T>`, `PathSerializer`                                                                                     | Option types.                                             |
+| `Middleware`, `MiddlewareCallbackParams`, `MiddlewareRequestInitParams`, `MiddlewareRequestInput`, `MiddlewareRequestParams`, `MiddlewareResult`, `MiddlewareResultParams`, `MergedOptions` | Middleware types.                                         |
+| `CaseMapping` (from `./middleware/transform-casing`)                                                                                                                                        | Schema mapping accepted by `createCaseMappingMiddleware`. |
+| `ClientPathsWithMethod<Client, Method>`                                                                                                                                                     | The paths of a client instance that support `Method`.     |
+| `MethodResponse<Client, Method, Path, Options?>`                                                                                                                                            | The non-nullable `data` type for a call.                  |
 
 Schema helpers:
 
@@ -567,7 +626,8 @@ Without the flag, the types are unchanged.
   - Query arrays repeat the key (`a=1&a=2`), and query objects use `deepObject` (`o[x]=1`).
 - Header precedence: client `headers` < request `headers` < `params.header`. `null` deletes a header. `headers` accepts a plain object, a `Headers` instance, or `[name, value]` tuples.
 - `params.cookie` is sent as a `Cookie` header (form/explode, URI-encoded), appended to any existing `Cookie` header.
-- Middleware: `client.use({ onRequest, onResponse, onError })`. `onRequest` runs in order; `onResponse` and `onError` run in reverse.
+- Middleware: `client.use({ onRequestInit, onRequest, onError, onResponse, onResult })`.
+  Input and request hooks run in order; error, response, and parsed-result hooks run in reverse.
 - Path-based alternative: `createPathBasedClient<paths>(opts)["/pets/{id}"].GET(init)`.
 - Response data is not validated at runtime.
 

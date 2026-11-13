@@ -1,12 +1,13 @@
 import { generate as transform } from "@shipworthy/openapi-generator";
-import { Clock, Effect, Path, Result, Schema } from "effect";
+import { Clock, Effect, FileSystem, Option, Path, Result, Schema } from "effect";
 import { Argument, CliError, Command, Flag } from "effect/cli";
 import { asCliError, schemaSource } from "../../../input.ts";
 import { ensureDependencies } from "../../ensure.ts";
 import { force } from "../../force.ts";
 import { publish } from "../../publish.ts";
-import { fileHeader, generatorStamp } from "../../stamp.ts";
+import { fileHeader, generatorStamp, hasCamelCaseHeader, readStamp } from "../../stamp.ts";
 import { typeFlags, type TypeFlags } from "../typescript/flags.ts";
+import { typescriptSpecifier } from "../typescript/plugin.ts";
 
 export const dependencies = ["typescript"] as const;
 
@@ -19,9 +20,33 @@ const run = Effect.fn("run")(function* (
     readonly force: boolean;
   } & TypeFlags,
 ) {
+  if (flags.camelCase) {
+    return yield* new CliError.UserError({
+      cause:
+        "--camel-case is not supported by generate zod because its validators use API field names.",
+    });
+  }
+
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
+  const fs = yield* FileSystem.FileSystem;
   const outputPath = path.resolve(flags.output);
+  const typesPath = path.join(path.dirname(outputPath), "types.ts");
+  const existing = yield* fs.readFileString(typesPath).pipe(Effect.option);
+
+  if (Option.isSome(existing)) {
+    const camelCase = hasCamelCaseHeader(existing.value);
+
+    const camelCaseStamp = camelCase
+      ? undefined
+      : yield* generatorStamp(typescriptSpecifier, flags.input, true);
+
+    if (camelCase || readStamp(existing.value) === camelCaseStamp?.stamp) {
+      return yield* new CliError.UserError({
+        cause: `Cannot generate Zod validators beside camelCase ${typesPath}. Use a separate output directory so Zod can write wire types.`,
+      });
+    }
+  }
 
   yield* ensureDependencies(dependencies, {
     source: flags.input,
