@@ -1,6 +1,9 @@
 import { Schema } from "effect";
 
-export class OverlayError extends Schema.TaggedError<OverlayError>()("OverlayError", {
+export class OverlayError extends Schema.TaggedError<
+  OverlayError,
+  { readonly brand: unique symbol }
+>()("OverlayError", {
   message: Schema.String,
   action: Schema.optionalKey(Schema.Int),
   target: Schema.optionalKey(Schema.String),

@@ -5,59 +5,71 @@ const failureFields = {
   source: Schema.String,
 };
 
-export class ParserFailure extends Schema.TaggedError<ParserFailure>()("ParserFailure", {
+export class ParserFailure extends Schema.TaggedError<
+  ParserFailure,
+  { readonly brand: unique symbol }
+>()("ParserFailure", {
   ...failureFields,
   cause: Schema.optionalKey(Schema.Defect()),
 }) {}
 
-export class ResolverFailure extends Schema.TaggedError<ResolverFailure>()("ResolverFailure", {
+export class ResolverFailure extends Schema.TaggedError<
+  ResolverFailure,
+  { readonly brand: unique symbol }
+>()("ResolverFailure", {
   ...failureFields,
   ioErrorCode: Schema.optionalKey(Schema.String),
   cause: Schema.optionalKey(Schema.Defect()),
 }) {}
 
-export class UnmatchedParserFailure extends Schema.TaggedError<UnmatchedParserFailure>()(
-  "UnmatchedParserFailure",
-  failureFields,
-) {}
+export class UnmatchedParserFailure extends Schema.TaggedError<
+  UnmatchedParserFailure,
+  { readonly brand: unique symbol }
+>()("UnmatchedParserFailure", failureFields) {}
 
-export class UnmatchedResolverFailure extends Schema.TaggedError<UnmatchedResolverFailure>()(
-  "UnmatchedResolverFailure",
-  failureFields,
-) {}
+export class UnmatchedResolverFailure extends Schema.TaggedError<
+  UnmatchedResolverFailure,
+  { readonly brand: unique symbol }
+>()("UnmatchedResolverFailure", failureFields) {}
 
-export class MissingPointerFailure extends Schema.TaggedError<MissingPointerFailure>()(
-  "MissingPointerFailure",
-  {
-    ...failureFields,
-    token: Schema.String,
-    targetRef: Schema.String,
-    targetFound: Schema.String,
-    parentPath: Schema.String,
-  },
-) {}
+export class MissingPointerFailure extends Schema.TaggedError<
+  MissingPointerFailure,
+  { readonly brand: unique symbol }
+>()("MissingPointerFailure", {
+  ...failureFields,
+  token: Schema.String,
+  targetRef: Schema.String,
+  targetFound: Schema.String,
+  parentPath: Schema.String,
+}) {}
 
-export class InvalidPointerFailure extends Schema.TaggedError<InvalidPointerFailure>()(
-  "InvalidPointerFailure",
-  {
-    ...failureFields,
-    pointer: Schema.String,
-  },
-) {}
+export class InvalidPointerFailure extends Schema.TaggedError<
+  InvalidPointerFailure,
+  { readonly brand: unique symbol }
+>()("InvalidPointerFailure", {
+  ...failureFields,
+  pointer: Schema.String,
+}) {}
 
-export class CircularAliasFailure extends Schema.TaggedError<CircularAliasFailure>()(
-  "CircularAliasFailure",
-  {
-    message: Schema.String,
-    definition: Schema.String,
-  },
-) {}
+export class CircularAliasFailure extends Schema.TaggedError<
+  CircularAliasFailure,
+  { readonly brand: unique symbol }
+>()("CircularAliasFailure", {
+  message: Schema.String,
+  definition: Schema.String,
+}) {}
 
-export class BundleFailure extends Schema.TaggedError<BundleFailure>()("BundleFailure", {
+export class BundleFailure extends Schema.TaggedError<
+  BundleFailure,
+  { readonly brand: unique symbol }
+>()("BundleFailure", {
   message: Schema.String,
 }) {}
 
-export class TimeoutFailure extends Schema.TaggedError<TimeoutFailure>()("TimeoutFailure", {
+export class TimeoutFailure extends Schema.TaggedError<
+  TimeoutFailure,
+  { readonly brand: unique symbol }
+>()("TimeoutFailure", {
   message: Schema.String,
   timeout: Schema.Finite,
 }) {}
@@ -74,7 +86,10 @@ const leafFailure = Schema.Union([
   TimeoutFailure,
 ]);
 
-export class GroupFailure extends Schema.TaggedError<GroupFailure>()("GroupFailure", {
+export class GroupFailure extends Schema.TaggedError<
+  GroupFailure,
+  { readonly brand: unique symbol }
+>()("GroupFailure", {
   source: Schema.String,
   message: Schema.String,
   errors: Schema.Array(leafFailure),
@@ -181,24 +196,33 @@ export function syncFailure(cause: unknown): TaggedFailure {
   });
 }
 
-export class EmptySource extends Schema.TaggedError<EmptySource>()("EmptySource", {
+export class EmptySource extends Schema.TaggedError<
+  EmptySource,
+  { readonly brand: unique symbol }
+>()("EmptySource", {
   message: Schema.String,
 }) {}
 
-export class InvalidSource extends Schema.TaggedError<InvalidSource>()("InvalidSource", {
+export class InvalidSource extends Schema.TaggedError<
+  InvalidSource,
+  { readonly brand: unique symbol }
+>()("InvalidSource", {
   message: Schema.String,
 }) {}
 
-export class UnsupportedVersion extends Schema.TaggedError<UnsupportedVersion>()(
-  "UnsupportedVersion",
+export class UnsupportedVersion extends Schema.TaggedError<
+  UnsupportedVersion,
+  { readonly brand: unique symbol }
+>()("UnsupportedVersion", {
+  message: Schema.String,
+}) {}
+
+export class ParseError extends Schema.TaggedError<ParseError, { readonly brand: unique symbol }>()(
+  "ParseError",
   {
     message: Schema.String,
+    cause: Schema.Defect(),
   },
 ) {}
-
-export class ParseError extends Schema.TaggedError<ParseError>()("ParseError", {
-  message: Schema.String,
-  cause: Schema.Defect(),
-}) {}
 
 export type LoadError = EmptySource | InvalidSource | UnsupportedVersion | ParseError;

@@ -3,7 +3,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Array, Effect, Option, Predicate, Schema } from "effect";
 import { ZodGenerationError } from "./errors.ts";
 
-const requiredVersion = "4.6.5";
+const requiredVersion = "4.6.7";
 
 const PackageJson = Schema.Struct({
   version: Schema.String,

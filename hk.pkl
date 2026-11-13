@@ -1,0 +1,27 @@
+amends "package://github.com/jdx/hk/releases/download/v2.12.0/hk@2.12.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.12.0/hk@2.12.0#/Builtins.pkl"
+
+local generated = List(
+  "bun.lock",
+  "**/dist/**",
+  "examples/*/src/generated/**",
+  "examples/overlays/generated/**",
+  "examples/overlays/openapi/**",
+  "examples/sdk-reservations/openapi/v1/openapi.json",
+  "examples/snakeToCamelCase/openapi.json",
+)
+
+steps {
+  ["trailing_whitespace"] = (Builtins.trailing_whitespace) { exclude = generated }
+  ["newlines"] = (Builtins.newlines) { exclude = generated }
+  ["mixed_line_ending"] = (Builtins.mixed_line_ending) { exclude = generated }
+  ["check_merge_conflict"] = Builtins.check_merge_conflict
+  ["check_case_conflict"] = Builtins.check_case_conflict
+  ["check_added_large_files"] = Builtins.check_added_large_files
+  ["detect_private_key"] = Builtins.detect_private_key
+  ["mise"] = Builtins.mise
+  ["ox_lint"] = Builtins.ox_lint
+  ["oxfmt"] = (Builtins.oxfmt) {
+    exclude = List("**/pnpm-lock.yaml", "**/package-lock.json") + generated
+  }
+}

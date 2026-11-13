@@ -1,4 +1,4 @@
-import { Effect, Predicate } from "effect";
+import { Effect, Predicate, Schema } from "effect";
 import { ParseError, ParserFailure } from "./errors.ts";
 import type { EffectPlugin, FileInfo, Options, ParserPlugin } from "./plugins.ts";
 import { promisePlugin } from "./plugins.ts";
@@ -11,9 +11,10 @@ function decodeData(data: Uint8Array | string | undefined): string {
   return text.replace(/^\uFEFF/, "");
 }
 
-function parseJsonText(text: string): unknown {
-  if (text.trim().length === 0) return null;
-  return JSON.parse(text);
+const decodeJsonText = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown));
+
+function parseJsonText(text: string) {
+  return text.trim().length === 0 ? Effect.succeed(null) : decodeJsonText(text);
 }
 
 export const parseText = Effect.fnUntraced(function* (source: string | Uint8Array) {
@@ -22,9 +23,7 @@ export const parseText = Effect.fnUntraced(function* (source: string | Uint8Arra
   const yaml = () => Effect.try({ try: () => parseYamlDocument(text), catch: parseFailure });
 
   if (first === "{" || first === "[") {
-    return yield* Effect.try({ try: () => parseJsonText(text), catch: parseFailure }).pipe(
-      Effect.catch(yaml),
-    );
+    return yield* parseJsonText(text).pipe(Effect.catch(yaml));
   }
 
   return yield* yaml();
@@ -54,21 +53,13 @@ function jsonParser(): EffectPlugin<unknown> {
     order: 100,
     can: (file) => extensionOf(file.url) === ".json" || extensionOf(file.url) === "",
     run(file) {
-      return Effect.try({
-        try: () => parseJson(file),
-        catch: (cause) =>
-          new ParserFailure({
-            message: cause instanceof Error ? cause.message : "Parser Error",
-            source: file.url,
-            cause,
-          }),
-      });
+      return parseJsonText(decodeData(file.data)).pipe(
+        Effect.mapError(
+          (cause) => new ParserFailure({ message: cause.message, source: file.url, cause }),
+        ),
+      );
     },
   };
-}
-
-function parseJson(file: FileInfo): unknown {
-  return parseJsonText(decodeData(file.data));
 }
 
 function yamlParser(): EffectPlugin<unknown> {

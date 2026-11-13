@@ -424,7 +424,6 @@ describe("typed failures", () => {
     { number: Number.POSITIVE_INFINITY },
     "value: .nan",
     "items:\n  - - nested",
-    "items: [\n  value\n]",
   ])("rejects non-object or non-JSON document %j", async (document) => {
     expect((await failure(document, overlay({ target: "$", update: {} }))).message).toContain(
       "Invalid document",

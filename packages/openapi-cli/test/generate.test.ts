@@ -587,6 +587,6 @@ test("zod reports the version resolved from its output directory", async (contex
   const error = await cli.fails("generate", "zod", "-i", "a.json", "-o", "out/pets");
   expect(error).toContain("Found zod@3.25.76");
   expect(error).toContain("out/pets/node_modules/zod/package.json");
-  expect(error).toContain("require zod@4.6.5");
+  expect(error).toContain("require zod@4.6.7");
   expect(cli.files("out/pets")).toEqual(["node_modules"]);
 });

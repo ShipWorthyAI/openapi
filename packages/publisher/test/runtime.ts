@@ -1,8 +1,11 @@
 import { NodeServices } from "@effect/platform-node";
-import { Effect, ManagedRuntime, Stream } from "effect";
+import { Effect, Layer, ManagedRuntime, Stream } from "effect";
+import { Digest } from "effect/crypto";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
-export const runtime = ManagedRuntime.make(NodeServices.layer);
+export const runtime = ManagedRuntime.make(
+  Layer.mergeAll(NodeServices.layer, Digest.layerWebCrypto),
+);
 
 export const execute = Effect.fnUntraced(function* (command: ChildProcess.Command) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;

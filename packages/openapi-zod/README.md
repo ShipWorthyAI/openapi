@@ -11,16 +11,16 @@ bun add -d @shipworthy/openapi-zod @shipworthy/openapi-cli
 The generator checks schemas with `zod`, and the generated file imports it. It is a required peer dependency of this package, so install this exact version in the package that owns the generated file:
 
 ```sh
-bun add zod@4.6.5
+bun add zod@4.6.7
 ```
 
 Requirements:
 
-- **Zod 4.6.5.** The generated code calls `z.fromJSONSchema` and `z.compile`. `fromJSONSchema` is experimental in Zod, so the package pins `zod@4.6.5`. Use the same version in your app.
+- **Zod 4.6.7.** The generated code calls `z.fromJSONSchema` and `z.compile`. `fromJSONSchema` is experimental in Zod, so the package pins `zod@4.6.7`. Use the same version in your app.
 - **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
-- **Peer dependency.** `zod` `4.6.5`. npm 7+ installs peers automatically, but install it explicitly as shown above.
-- **Workspace resolution.** The CLI looks for an installed Zod from the output directory upward. If none is installed there, it uses the generator's installation; Bun's global auto-install cache does not count as an installed package. A different installed version fails with the found version and resolved path before schema compilation. Install `zod@4.6.5` in the package that will import the generated file.
+- **Peer dependency.** `zod` `4.6.7`. npm 7+ installs peers automatically, but install it explicitly as shown above.
+- **Workspace resolution.** The CLI looks for an installed Zod from the output directory upward. If none is installed there, it uses the generator's installation; Bun's global auto-install cache does not count as an installed package. A different installed version fails with the found version and resolved path before schema compilation. Install `zod@4.6.7` in the package that will import the generated file.
 - **Installed dependencies.** The package installs `effect`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@shipworthy/openapi-typescript`.
 
 Install `@shipworthy/openapi-cli` only if you use the CLI. For programmatic examples, also install the packages you import directly (`@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@effect/platform-node` as needed).
@@ -352,7 +352,7 @@ Not generated:
 - **`Cannot find module './types'` or type errors in the generated file.** The Zod module imports `./types`. Generate it with the CLI, which writes `types.ts` next to `zod-schema.ts` on every run.
 - **`Unsupported keyword discriminator`.** Upgrade from 0.0.1; discriminators on `oneOf`/`anyOf` and `allOf` inheritance are supported. A discriminated union branch must be a component schema `$ref`.
 - **`Missing operationId`.** Every operation needs an `operationId`, even operations with no request body.
-- **Wrong Zod version.** Install `zod@4.6.5` in the package that owns the generated file. The error reports the version and path found from the output location.
+- **Wrong Zod version.** Install `zod@4.6.7` in the package that owns the generated file. The error reports the version and path found from the output location.
 
 ## Key facts (for AI agents)
 
@@ -361,12 +361,12 @@ Not generated:
 - Exports from generated file: `<ComponentName>` for each `components.schemas` entry, and `<operationId>RequestBody` for each operation with a single `application/json` request body. Nothing for responses or parameters.
 - Each export is `z.compile(z.fromJSONSchema(...)) as z.ZodType<T>`, where `T` comes from `./types`. Use `.parse` / `.safeParse`.
 - `default` values are stripped. Parsing never injects defaults.
-- Runtime dependency of generated code: `zod@4.6.5` (pinned).
+- Runtime dependency of generated code: `zod@4.6.7` (pinned).
 - Package exports: `zod` (generator plugin), `zodSources`, `operationRoutes`, `ZodGenerationError`, and the types `ZodSource`, `OperationRoute`, `HttpMethod`. All functions return Effect 4 values.
 - Library option `camelCase: true` (on `zod.generate` and `zodSources`) renames snake_case properties so validators match a camelCase `types.ts`. The CLI flag `--camel-case` sets it and generates the matching `types.ts`. Enum/const values and `patternProperties` keys keep API spelling. Name collisions fail generation.
 - Generation is all-or-nothing. Unsupported keywords fail with a JSON-pointer message, and the CLI then writes neither `zod-schema.ts` nor `types.ts`.
 - Every operation needs a unique `operationId`. Component names must be valid JS identifiers.
-- The package ships compiled ESM JavaScript with `.d.ts` declarations (no CommonJS build). Peer dependency `zod@4.6.5`.
+- The package ships compiled ESM JavaScript with `.d.ts` declarations (no CommonJS build). Peer dependency `zod@4.6.7`.
 
 ## License
 

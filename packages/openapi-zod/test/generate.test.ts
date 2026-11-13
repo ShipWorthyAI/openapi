@@ -552,7 +552,7 @@ void test("generation resolves Zod from the output package before the generator"
 
     assert.throws(
       () => Effect.runSync(wrong),
-      /#: Found zod@3\.25\.76 at .*sdk-wrong\/node_modules\/zod\/package\.json \(resolved from .*validators\.ts\); require zod@4\.6\.5/,
+      /#: Found zod@3\.25\.76 at .*sdk-wrong\/node_modules\/zod\/package\.json \(resolved from .*validators\.ts\); require zod@4\.6\.7/,
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -584,7 +584,7 @@ void test("an import-only Zod at the output location cannot be bypassed", async 
 
     assert.throws(
       () => Effect.runSync(generated),
-      /#: Found zod@3\.25\.76 at .*sdk\/node_modules\/zod\/package\.json .*require zod@4\.6\.5/,
+      /#: Found zod@3\.25\.76 at .*sdk\/node_modules\/zod\/package\.json .*require zod@4\.6\.7/,
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -603,7 +603,7 @@ void test("a malformed Zod import entry fails in the typed error channel", async
       resolve(packageDirectory, "package.json"),
       JSON.stringify({
         name: "zod",
-        version: "4.6.5",
+        version: "4.6.7",
         type: "module",
         exports: { ".": { import: "./%2F" } },
       }),

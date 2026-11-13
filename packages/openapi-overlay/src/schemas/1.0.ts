@@ -1,8 +1,6 @@
 // Generated from schemas/v1.0/schema.yaml (sha256: 209a9755d58f96b5d80bf5a3ed4f6f2b9e77550fa27849cd67bd50bc3eabfa83).
 // Run bun run generate:schemas to regenerate. Do not edit by hand.
 
-/* oxlint-disable effecttsgo/schema-number -- Effect's JSON Schema importer emits Schema.Number with an isFinite check. */
-
 import { Schema } from "effect";
 
 export const OverlayInfo = Schema.StructWithRest(
@@ -13,7 +11,7 @@ export const OverlayInfo = Schema.StructWithRest(
     Schema.Union([
       Schema.Literals(["title", "version"]),
       Schema.String.check(
-        Schema.isPattern(new RegExp("^x-", "u")).annotate({
+        Schema.isPattern(new globalThis.RegExp("^x-", "u")).annotate({
           expected: "a string matching the RegExp ^x-",
         }),
       ),
@@ -29,7 +27,7 @@ export type OverlayInfo = typeof OverlayInfo.Type;
 export const OverlayAction = Schema.StructWithRest(
   Schema.Struct({
     target: Schema.String.check(
-      Schema.isPattern(new RegExp("^\\$", "u")).annotate({
+      Schema.isPattern(new globalThis.RegExp("^\\$", "u")).annotate({
         expected: "a string matching the RegExp ^\\$",
       }),
     ),
@@ -40,7 +38,7 @@ export const OverlayAction = Schema.StructWithRest(
         Schema.Boolean,
         Schema.Record(Schema.String, Schema.Json.annotate({ expected: "JSON value" })),
         Schema.Array(Schema.Json.annotate({ expected: "JSON value" })),
-        Schema.Number.check(Schema.isFinite().annotate({ expected: "a finite number" })),
+        Schema.Finite,
         Schema.Null,
       ]),
     ),
@@ -52,7 +50,7 @@ export const OverlayAction = Schema.StructWithRest(
     Schema.Union([
       Schema.Literals(["target", "description", "update", "remove"]),
       Schema.String.check(
-        Schema.isPattern(new RegExp("^x-", "u")).annotate({
+        Schema.isPattern(new globalThis.RegExp("^x-", "u")).annotate({
           expected: "a string matching the RegExp ^x-",
         }),
       ),
@@ -68,7 +66,7 @@ export type OverlayAction = typeof OverlayAction.Type;
 export const Overlay = Schema.StructWithRest(
   Schema.Struct({
     overlay: Schema.String.check(
-      Schema.isPattern(new RegExp("^1\\.0\\.\\d+$", "u")).annotate({
+      Schema.isPattern(new globalThis.RegExp("^1\\.0\\.\\d+$", "u")).annotate({
         expected: "a string matching the RegExp ^1\\.0\\.\\d+$",
       }),
     ),
@@ -86,7 +84,7 @@ export const Overlay = Schema.StructWithRest(
       Schema.Union([
         Schema.Literals(["overlay", "info", "extends", "actions"]),
         Schema.String.check(
-          Schema.isPattern(new RegExp("^x-", "u")).annotate({
+          Schema.isPattern(new globalThis.RegExp("^x-", "u")).annotate({
             expected: "a string matching the RegExp ^x-",
           }),
         ),

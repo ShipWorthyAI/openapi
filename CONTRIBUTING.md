@@ -6,11 +6,15 @@ Use the tool versions configured in [mise.toml](./mise.toml). From a clone of th
 install dependencies at the root:
 
 ```sh
+mise install
 bun install --frozen-lockfile
+hk install --mise
 ```
 
-The install's `prepare` script installs Lefthook Git hooks and applies the Effect TypeScript
-tooling patch. The pre-commit hook runs the repository checks.
+The install's `prepare` script applies the Effect TypeScript tooling patch. `hk install --mise`
+installs the [hk](https://hk.jdx.dev) Git hooks configured in [hk.pkl](./hk.pkl). The pre-commit
+hook lints, formats, and fixes staged files. Run the same steps manually with `hk check` or
+`hk fix`, or across the repository with `hk check --all`.
 
 ## Development workflow
 

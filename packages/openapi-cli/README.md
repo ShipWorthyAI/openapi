@@ -33,7 +33,7 @@ The generated files import packages at runtime, so your application needs those 
 | Generated file               | Imports                                                                                                                                       |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `types.ts` (TypeScript)      | nothing (types only)                                                                                                                          |
-| `zod-schema.ts` (Zod)        | `zod` (v4; the generator is built against `zod@4.6.5`) and `./types`                                                                          |
+| `zod-schema.ts` (Zod)        | `zod` (v4; the generator is built against `zod@4.6.7`) and `./types`                                                                          |
 | `standard-schema.ts`         | `effect` (`4.0.0`)                                                                                                                            |
 | `client.ts` (TanStack Query) | `@shipworthy/openapi-tanstack-query` (a runtime dependency), which peers on `@tanstack/react-query@^5.104.1` and `react@^18.0.0 \|\| ^19.0.0` |
 
@@ -349,7 +349,7 @@ openapi generate typescript -i types.openapi.json -o src/generated
 
 #### `zod` output (`zod-schema.ts`)
 
-The file imports `zod` and `type { components, operations } from "./types"`. It exports one validator per component schema, typed as `z.ZodType<components["schemas"][Name]>`, plus `<operationId>RequestBody` validators for request bodies. During generation, Zod is resolved from the output directory and must be `zod@4.6.5`.
+The file imports `zod` and `type { components, operations } from "./types"`. It exports one validator per component schema, typed as `z.ZodType<components["schemas"][Name]>`, plus `<operationId>RequestBody` validators for request bodies. During generation, Zod is resolved from the output directory and must be `zod@4.6.7`.
 
 ```ts
 import { Pet } from "./generated/pets/zod-schema";

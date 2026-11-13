@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
-import { Cause, Console, Effect, Option } from "effect";
+import { Cause, Console, Effect, Layer, Option } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
+import { Digest } from "effect/crypto";
 import { packRelease, verifyRelease } from "./release.ts";
 
 const pack = Command.make(
@@ -26,6 +27,6 @@ Command.make("release-artifacts").pipe(
   Command.withSubcommands([pack, verify]),
   Command.run({ version: "0.0.0" }),
   Effect.tapCause((cause) => Console.error(Cause.pretty(cause))),
-  Effect.provide(NodeServices.layer),
+  Effect.provide(Layer.mergeAll(NodeServices.layer, Digest.layerWebCrypto)),
   NodeRuntime.runMain({ disableErrorReporting: true }),
 );

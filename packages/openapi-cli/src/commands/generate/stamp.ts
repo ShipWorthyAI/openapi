@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
-import { Crypto, Effect, FileSystem, Option, Path, Schema } from "effect";
+import { Effect, FileSystem, Option, Path, Schema } from "effect";
 import { CliError } from "effect/cli";
+import { Digest } from "effect/crypto";
 
 const PackageJson = Schema.Struct({ name: Schema.String, version: Schema.String });
 
@@ -63,7 +64,6 @@ const generatorPackage = Effect.fn("generatorPackage")(function* (specifier: str
 });
 
 const sha256 = Effect.fn("sha256")(function* (text: string) {
-  const crypto = yield* Crypto.Crypto;
-  const digest = yield* crypto.digest("SHA-256", new TextEncoder().encode(text));
-  return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const digest = yield* Digest.Digest;
+  return yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(text));
 });

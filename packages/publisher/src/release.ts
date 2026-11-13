@@ -2,7 +2,6 @@ import {
   Array,
   Config,
   Console,
-  Crypto,
   Effect,
   FileSystem,
   Path,
@@ -12,6 +11,7 @@ import {
   Schema,
   Stream,
 } from "effect";
+import { Digest } from "effect/crypto";
 import { Base64 } from "effect/encoding";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
@@ -78,9 +78,12 @@ const Verification = Schema.Struct({ planIntegrity: Schema.String });
 const Json = Schema.fromJsonString(Schema.JsonObject, { space: 2 });
 const registryFields = new Set(["access", "registry", "tag", "provenance"]);
 
-class ReleaseError extends Schema.TaggedError<ReleaseError>()("ReleaseError", {
-  message: Schema.String,
-}) {}
+class ReleaseError extends Schema.TaggedError<ReleaseError, { readonly brand: unique symbol }>()(
+  "ReleaseError",
+  {
+    message: Schema.String,
+  },
+) {}
 
 const readJson = Effect.fn("release.readJson")(function* (file: string) {
   const fs = yield* FileSystem.FileSystem;
@@ -137,10 +140,10 @@ const inside = Effect.fnUntraced(function* (directory: string, relative: string)
 
 const integrity = Effect.fn("release.integrity")(function* (file: string) {
   const fs = yield* FileSystem.FileSystem;
-  const crypto = yield* Crypto.Crypto;
+  const digest = yield* Digest.Digest;
 
   return yield* fs.readFile(file).pipe(
-    Effect.flatMap((bytes) => crypto.digest("SHA-256", bytes)),
+    Effect.flatMap((bytes) => digest.digest(Digest.sha256, bytes)),
     Effect.map((hash) => `sha256-${Base64.encode(hash)}`),
   );
 });
@@ -537,17 +540,15 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
         ),
       );
 
-      yield* fs.writeFileString(
-        path.join(consumer, "consumer.ts"),
-        Array.join(
-          Array.map(
-            specifiers,
-            (specifier, index) =>
-              `import * as entry${index} from ${JSON.stringify(specifier)};\nvoid entry${index};`,
+      const imports = yield* Effect.forEach(specifiers, (specifier, index) =>
+        Schema.encodeEffect(Schema.fromJsonString(Schema.String))(specifier).pipe(
+          Effect.map(
+            (literal) => `import * as entry${index} from ${literal};\nvoid entry${index};`,
           ),
-          "\n",
         ),
       );
+
+      yield* fs.writeFileString(path.join(consumer, "consumer.ts"), Array.join(imports, "\n"));
 
       const environmentPath = yield* Config.String("PATH");
 

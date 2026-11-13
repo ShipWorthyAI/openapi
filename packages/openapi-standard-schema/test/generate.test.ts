@@ -240,7 +240,7 @@ it.effect("converts nullable strings", () =>
 it.effect("applies string patterns", () =>
   Effect.gen(function* () {
     const source = yield* sourceFor("3.1.0", { Code: { type: "string", pattern: "^a+$" } });
-    assert.match(source, /Schema\.isPattern\(new RegExp\("\^a\+\$", "u"\)\)/);
+    assert.match(source, /Schema\.isPattern\(new globalThis\.RegExp\("\^a\+\$", "u"\)\)/);
 
     const loaded = yield* Effect.tryPromise(() => load(source));
 

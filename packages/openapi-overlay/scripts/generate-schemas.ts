@@ -1,14 +1,36 @@
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { JsonSchema, Predicate, Schema, SchemaRepresentation } from "effect";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import {
+  Array,
+  Cause,
+  Console,
+  Effect,
+  FileSystem,
+  JsonSchema,
+  Layer,
+  Order,
+  Path,
+  pipe,
+  Predicate,
+  Schema,
+  SchemaRepresentation,
+} from "effect";
+import { Command, Flag } from "effect/cli";
+import { Digest } from "effect/crypto";
 import * as Yaml from "effect/encoding/Yaml";
 import { format } from "oxfmt";
 
-const schemaDirectory = new URL("../schemas/", import.meta.url);
-const outputDirectory = new URL("../src/schemas/", import.meta.url);
-const check = process.argv.includes("--check");
+class GenerateSchemasError extends Schema.TaggedError<
+  GenerateSchemasError,
+  { readonly brand: unique symbol }
+>()("GenerateSchemasError", {
+  message: Schema.String,
+  cause: Schema.optionalKey(Schema.Defect()),
+}) {}
 
+const publicNames = new Set(["OverlayInfo", "OverlayAction"]);
+
+// Runs inside SchemaRepresentation's synchronous `onEnter` hook, so it can only report failure by
+// throwing. `importSchema` turns the exception into a GenerateSchemasError.
 function normalize(
   schema: JsonSchema.JsonSchema,
   definitions: JsonSchema.Definitions,
@@ -37,7 +59,9 @@ function normalize(
     schema.anyOf !== undefined ||
     schema.oneOf !== undefined
   ) {
-    throw new Error("Cannot normalize unevaluatedProperties without changing validation semantics");
+    throw new GenerateSchemasError({
+      message: "Cannot normalize unevaluatedProperties without changing validation semantics",
+    });
   }
 
   // These Overlay objects evaluate declared properties plus unconstrained extension patterns.
@@ -56,17 +80,36 @@ function normalize(
   };
 }
 
-async function generate(source: string, version: string): Promise<string> {
-  const input = Yaml.parse(source);
+const importSchema = Effect.fnUntraced(function* (source: string) {
+  const input = yield* Effect.try({
+    try: () => Yaml.parse(source),
+    catch: (cause) => new GenerateSchemasError({ message: "Cannot parse schema.yaml", cause }),
+  });
 
-  const document = JsonSchema.fromSchemaDraft2020_12(
-    Schema.decodeUnknownSync(Schema.JsonObject)(input),
+  const json = yield* Schema.decodeUnknownEffect(Schema.JsonObject)(input).pipe(
+    Effect.mapError(
+      (cause) => new GenerateSchemasError({ message: "schema.yaml is not a JSON object", cause }),
+    ),
   );
 
-  const imported = SchemaRepresentation.fromJsonSchemaDocument(document, {
-    patterns: "apply",
-    onEnter: (schema) => normalize(schema, document.definitions),
+  return yield* Effect.try({
+    try: () => {
+      const document = JsonSchema.fromSchemaDraft2020_12(json);
+
+      return SchemaRepresentation.fromJsonSchemaDocument(document, {
+        patterns: "apply",
+        onEnter: (schema) => normalize(schema, document.definitions),
+      });
+    },
+    catch: (cause) =>
+      cause instanceof GenerateSchemasError
+        ? cause
+        : new GenerateSchemasError({ message: "Cannot import the Overlay JSON Schema", cause }),
   });
+});
+
+const generate = Effect.fn("generate")(function* (source: string, version: string) {
+  const imported = yield* importSchema(source);
 
   const representation = SchemaRepresentation.toRepresentation(imported.ast, {
     referencePolicy: ({ identifier }) => {
@@ -81,55 +124,99 @@ async function generate(source: string, version: string): Promise<string> {
   );
 
   if (Object.keys(code.references.recursives).length !== 0 || code.artifacts.length !== 0) {
-    throw new Error(
-      "Overlay schema generation needs support for recursive references or code artifacts",
-    );
+    return yield* new GenerateSchemasError({
+      message: "Overlay schema generation needs support for recursive references or code artifacts",
+    });
   }
 
   const root = code.codes[0];
 
-  if (root === undefined) throw new Error("Missing generated Overlay schema");
-  const publicNames = new Set(["OverlayInfo", "OverlayAction"]);
+  if (root === undefined) {
+    return yield* new GenerateSchemasError({ message: "Missing generated Overlay schema" });
+  }
 
-  const declarations = code.references.nonRecursives.map(({ $ref, code: body }) => {
+  const declarations = Array.map(code.references.nonRecursives, ({ $ref, code: body }) => {
     const prefix = publicNames.has($ref) ? "export " : "";
 
     return `${prefix}const ${$ref} = ${body.runtime};\n\n${prefix}type ${$ref} = typeof ${$ref}.Type;`;
   });
 
-  const digest = createHash("sha256").update(source).digest("hex");
+  const digest = yield* Digest.Digest;
+  const hash = yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(source));
 
-  const output = [
-    `// Generated from schemas/v${version}/schema.yaml (sha256: ${digest}).\n// Run bun run generate:schemas to regenerate. Do not edit by hand.`,
-    "/* oxlint-disable effecttsgo/schema-number -- Effect's JSON Schema importer emits Schema.Number with an isFinite check. */",
-    'import { Schema } from "effect";',
-    ...declarations,
-    `export const Overlay = ${root.runtime};`,
-    "export type Overlay = typeof Overlay.Type;",
-  ].join("\n\n");
+  const output = Array.join(
+    [
+      `// Generated from schemas/v${version}/schema.yaml (sha256: ${hash}).\n// Run bun run generate:schemas to regenerate. Do not edit by hand.`,
+      'import { Schema } from "effect";',
+      ...declarations,
+      `export const Overlay = ${root.runtime};`,
+      "export type Overlay = typeof Overlay.Type;",
+    ],
+    "\n\n",
+  );
 
-  const formatted = await format(`${version}.ts`, output, { printWidth: 100 });
+  const formatted = yield* Effect.tryPromise({
+    try: () => format(`${version}.ts`, output, { printWidth: 100 }),
+    catch: (cause) => new GenerateSchemasError({ message: "Cannot format generated code", cause }),
+  });
 
-  if (formatted.errors.length !== 0) throw new Error(JSON.stringify(formatted.errors));
-  return formatted.code;
-}
-
-const versions = readdirSync(schemaDirectory, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && /^v\d+\.\d+$/.test(entry.name))
-  .map((entry) => entry.name.slice(1))
-  .sort();
-
-for (const version of versions) {
-  const source = readFileSync(new URL(`v${version}/schema.yaml`, schemaDirectory), "utf8");
-  const output = new URL(`${version}.ts`, outputDirectory);
-  const code = await generate(source, version);
-
-  if (check) {
-    if (!existsSync(output) || readFileSync(output, "utf8") !== code) {
-      throw new Error(`${fileURLToPath(output)} is out of date. Run bun run generate:schemas.`);
-    }
-  } else {
-    mkdirSync(outputDirectory, { recursive: true });
-    writeFileSync(output, code);
+  if (formatted.errors.length !== 0) {
+    return yield* new GenerateSchemasError({
+      message: "Generated code has formatting errors",
+      cause: formatted.errors,
+    });
   }
-}
+
+  return formatted.code;
+});
+
+const run = Effect.fn("generateSchemas")(function* ({ check }: { readonly check: boolean }) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const schemaDirectory = path.join(import.meta.dirname, "../schemas");
+  const outputDirectory = path.join(import.meta.dirname, "../src/schemas");
+
+  const versions = pipe(
+    yield* fs.readDirectoryEntries(schemaDirectory),
+    Array.filter((entry) => entry.type === "Directory" && /^v\d+\.\d+$/.test(entry.name)),
+    Array.map((entry) => entry.name.slice(1)),
+    Array.sort(Order.String),
+  );
+
+  yield* Effect.forEach(
+    versions,
+    Effect.fnUntraced(function* (version) {
+      const source = yield* fs.readFileString(
+        path.join(schemaDirectory, `v${version}`, "schema.yaml"),
+      );
+
+      const output = path.join(outputDirectory, `${version}.ts`);
+      const code = yield* generate(source, version);
+
+      if (!check) {
+        yield* fs.makeDirectory(outputDirectory, { recursive: true });
+        return yield* fs.writeFileString(output, code);
+      }
+
+      const current = (yield* fs.exists(output)) ? yield* fs.readFileString(output) : undefined;
+
+      if (current !== code) {
+        return yield* new GenerateSchemasError({
+          message: `${output} is out of date. Run bun run generate:schemas.`,
+        });
+      }
+    }),
+    { discard: true },
+  );
+});
+
+Command.make(
+  "generate-schemas",
+  { check: Flag.Boolean("check").pipe(Flag.withDefault(false)) },
+  run,
+).pipe(
+  Command.run({ version: "0.0.0" }),
+  Effect.tapCause((cause) => Console.error(Cause.pretty(cause))),
+  Effect.provide(Layer.mergeAll(NodeServices.layer, Digest.layerWebCrypto)),
+  NodeRuntime.runMain({ disableErrorReporting: true }),
+);

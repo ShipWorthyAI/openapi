@@ -15,5 +15,3 @@ runs:
 
     - shell: bash
       run: bun install --frozen-lockfile
-      env:
-        LEFTHOOK: "0"

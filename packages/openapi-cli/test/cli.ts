@@ -19,6 +19,7 @@ import {
   Stream,
 } from "effect";
 import { Command } from "effect/cli";
+import { Digest } from "effect/crypto";
 import { FetchHttpClient } from "effect/http";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { afterAll, type TestContext } from "vitest";
@@ -26,7 +27,11 @@ import { openapi } from "../src/cli.ts";
 import { version } from "../src/version.ts";
 
 const bin = new URL("../src/bin.ts", import.meta.url).pathname;
-const runtime = ManagedRuntime.make(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer));
+
+const runtime = ManagedRuntime.make(
+  Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer, Digest.layerWebCrypto),
+);
+
 const decoder = new TextDecoder();
 afterAll(() => runtime.dispose());
 

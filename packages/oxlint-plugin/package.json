@@ -13,7 +13,7 @@
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
-    "@oxlint/plugins": "1.87.0",
+    "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "vitest": "catalog:"

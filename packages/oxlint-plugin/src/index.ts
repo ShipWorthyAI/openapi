@@ -91,9 +91,8 @@ const plugin = {
           YieldExpression(node: ESTree.YieldExpression) {
             if (!node.delegate) return;
 
-            const ancestors = Array.unfold<ESTree.Node | null, ESTree.Node>(
-              node.parent,
-              (parent) => (parent === null ? Option.none() : Option.some([parent, parent.parent])),
+            const ancestors = Array.unfold<ESTree.Node | null, ESTree.Node>(node.parent, (parent) =>
+              parent === null ? Option.none() : Option.some([parent, parent.parent]),
             );
 
             const functionIndex = Array.findFirstIndex(
