@@ -891,10 +891,8 @@ function __openapiDiscriminatorIssues(
     const parsed = schema.safeParse(input);
     if (parsed.success) return parsed.data;
 
-    const tag =
-      typeof input === "object" && input !== null && propertyName in input
-        ? input[propertyName]
-        : undefined;
+    const tag: unknown =
+      typeof input === "object" && input !== null ? Reflect.get(input, propertyName) : undefined;
     const index = typeof tag === "string" ? branchIndices.get(tag) : undefined;
 
     for (const issue of parsed.error.issues) {
@@ -907,9 +905,9 @@ function __openapiDiscriminatorIssues(
           : undefined;
 
       if (selected && selected.length > 0) {
-        for (const detail of selected) context.addIssue(detail);
+        for (const detail of selected) context.addIssue({ ...detail });
       } else {
-        context.addIssue(issue);
+        context.addIssue({ ...issue });
       }
     }
 

@@ -77,6 +77,34 @@ const snakeSchema = {
   },
 };
 
+/** A mapped `oneOf` discriminator, which makes the generator emit its issue-reporting helper. */
+const discriminatorSchema = {
+  openapi: "3.1.0",
+  info: { title: "Fixture", version: "1" },
+  paths: {},
+  components: {
+    schemas: {
+      Cat: {
+        type: "object",
+        required: ["kind", "lives"],
+        properties: { kind: { type: "string" }, lives: { type: "integer" } },
+      },
+      Dog: {
+        type: "object",
+        required: ["kind", "breed"],
+        properties: { kind: { type: "string" }, breed: { type: "string" } },
+      },
+      Pet: {
+        oneOf: [{ $ref: "#/components/schemas/Cat" }, { $ref: "#/components/schemas/Dog" }],
+        discriminator: {
+          propertyName: "kind",
+          mapping: { cat: "#/components/schemas/Cat", dog: "#/components/schemas/Dog" },
+        },
+      },
+    },
+  },
+};
+
 /** Generates `plugins` for `spec` into `<directory>/fixture`, then type-checks `consumer`. */
 async function generateAndTypeCheck(
   spec: object,
@@ -190,6 +218,22 @@ void test("CLI writes camelCase Zod validators that parse into camelCase types",
       });
       void input;
       void body;
+    `,
+  );
+});
+
+void test("CLI writes a discriminator helper that type-checks in strict mode", async () => {
+  await generateAndTypeCheck(
+    discriminatorSchema,
+    [],
+    ({ schemas }) => {
+      assert.match(schemas, /function __openapiDiscriminatorIssues\(/);
+    },
+    `
+      import { Pet } from "./fixture/zod-schema";
+      import type { components } from "./fixture/types";
+      const pet: components["schemas"]["Pet"] = Pet.parse({ kind: "cat", lives: 9 });
+      void pet;
     `,
   );
 });
