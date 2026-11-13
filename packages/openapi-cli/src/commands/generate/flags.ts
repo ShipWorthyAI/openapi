@@ -16,20 +16,11 @@ export interface TypeFlags {
   readonly rootTypes: boolean;
 }
 
-export const defaultTypeFlags: TypeFlags = {
-  arrayLength: true,
-  camelCase: false,
-  conditionalEnums: false,
-  dedupeEnums: false,
-  enum: false,
-  enumValues: false,
-  exportType: false,
-  readWriteMarkers: false,
-  rootTypes: false,
-};
-
 export const typeFlags = {
-  camelCase: flag("camel-case", "Use camelCase for snake_case schema fields and parameters."),
+  camelCase: flag(
+    "camel-case",
+    "Use camelCase for snake_case schema fields and parameters in every generated file.",
+  ),
   enum: flag("enum", "Export true TS enums instead of unions."),
   enumValues: flag("enum-values", "Export enum values as arrays."),
   conditionalEnums: flag(
@@ -53,7 +44,8 @@ export const typeFlags = {
   ),
 };
 
-export function pluginOptions(flags: TypeFlags & { readonly silent?: boolean }) {
+/** Options for the `typescript` plugin. */
+export function pluginOptions(flags: TypeFlags, silent: boolean) {
   return {
     arrayLength: flags.arrayLength,
     camelCase: flags.camelCase,
@@ -64,6 +56,6 @@ export function pluginOptions(flags: TypeFlags & { readonly silent?: boolean }) 
     exportType: flags.exportType,
     readWriteMarkers: flags.readWriteMarkers,
     rootTypes: flags.rootTypes,
-    silent: flags.silent ?? false,
+    silent,
   };
 }

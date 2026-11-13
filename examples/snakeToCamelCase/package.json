@@ -7,10 +7,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "bun run generate:hotels && bun run generate:reservations && bun run generate:zod",
-    "generate:hotels": "openapi generate tanstack-query ./openapi.yaml -o src/generated --name hotels --camel-case",
-    "generate:reservations": "openapi generate tanstack-query ./openapi.json -o src/generated --name reservations --camel-case --wire-types",
-    "generate:zod": "openapi generate zod ./openapi.json -o src/generated/reservations/validators/zod-schema.ts",
+    "generate": "bun run generate:hotels && bun run generate:reservations",
+    "generate:hotels": "openapi generate tanstack-query -i ./openapi.yaml -o src/generated/hotels --camel-case",
+    "generate:reservations": "openapi generate zod tanstack-query -i ./openapi.json -o src/generated/reservations --camel-case --wire-types",
     "test": "vitest run"
   },
   "dependencies": {

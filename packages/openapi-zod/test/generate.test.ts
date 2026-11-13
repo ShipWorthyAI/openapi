@@ -3,10 +3,11 @@ import { NodeServices } from "@effect/platform-node";
 import { generate, ModuleLoader } from "@shipworthy/openapi-generator";
 import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
+import { astToString, typescript } from "@shipworthy/openapi-typescript";
 import { operationRoutes, zod, zodSources, ZodGenerationError, type ZodSource } from "../src/index";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { dirname, resolve } from "node:path";
@@ -414,12 +415,74 @@ void test("discriminator mapping makes overlapping oneOf branches exclusive", as
   }
 });
 
+/** snake_case fields, a mapped `oneOf` discriminator over `allOf` branches, and a JSON body. */
+const discriminatedPets = {
+  openapi: "3.1.0",
+  info: { title: "Pets", version: "1" },
+  paths: {
+    "/pets": {
+      post: {
+        operationId: "createPet",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/Pet" } } },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Pet" } } },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      Pet: {
+        oneOf: [{ $ref: "#/components/schemas/Cat" }, { $ref: "#/components/schemas/Dog" }],
+        discriminator: {
+          propertyName: "pet_type",
+          mapping: { cat: "#/components/schemas/Cat", dog: "#/components/schemas/Dog" },
+        },
+      },
+      PetBase: {
+        type: "object",
+        required: ["pet_type"],
+        properties: { pet_type: { type: "string" }, pet_name: { type: "string" } },
+      },
+      Cat: {
+        allOf: [
+          { $ref: "#/components/schemas/PetBase" },
+          { type: "object", properties: { whisker_count: { type: "integer" } } },
+        ],
+      },
+      Dog: {
+        type: "object",
+        required: ["pet_type"],
+        properties: { pet_type: { type: "string" }, bark_volume: { type: "integer" } },
+      },
+    },
+  },
+};
+
+void test("generation does not modify the model it is given", async () => {
+  const model = Effect.runSync(decode(discriminatedPets));
+  const snapshot = structuredClone(model);
+
+  for (const camelCase of [false, true]) {
+    const generated = zod.generate(model, { camelCase });
+    if (Effect.isEffect(generated)) await Effect.runPromise(generated);
+  }
+
+  assert.deepStrictEqual(model, snapshot);
+});
+
 void test("generation falls back to its own Zod when output has no installed package", async () => {
   const directory = await mkdtemp(resolve(tmpdir(), "openapi-zod-resolution-"));
 
   try {
     const spec = resolve(directory, "openapi.json");
-    const output = resolve(directory, "out/schema.ts");
+    const output = resolve(directory, "out/zod-schema.ts");
     await writeFile(spec, JSON.stringify(document));
 
     execFileSync(
@@ -428,9 +491,10 @@ void test("generation falls back to its own Zod when output has no installed pac
         resolve(import.meta.dirname, "../../openapi-cli/src/bin.ts"),
         "generate",
         "zod",
+        "-i",
         spec,
         "-o",
-        output,
+        resolve(directory, "out"),
       ],
       { cwd: resolve(import.meta.dirname, "../../.."), encoding: "utf8" },
     );
@@ -1236,5 +1300,487 @@ void test("generation and route effects can be rerun without retaining traversal
     assert.throws(() => generated.schemas.Nothing.parse(42));
   } finally {
     await generated.dispose();
+  }
+});
+
+const snakeCaseDocument = {
+  openapi: "3.1.0",
+  info: { title: "Reservations", version: "1" },
+  paths: {
+    "/reservations": {
+      post: {
+        operationId: "createReservation",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["guest_name", "check_in"],
+                properties: {
+                  guest_name: { type: "string" },
+                  check_in: { type: "string", format: "date" },
+                  room: { $ref: "#/components/schemas/Room" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Reservation" } },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      Address: {
+        type: "object",
+        required: ["street_line"],
+        properties: { street_line: { type: "string" }, postal_code: { type: "string" } },
+      },
+      Guest: {
+        type: "object",
+        required: ["first_name", "home_address"],
+        properties: {
+          first_name: { type: "string" },
+          home_address: { $ref: "#/components/schemas/Address" },
+          past_stays: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["hotel_id"],
+              properties: { hotel_id: { type: "string" } },
+            },
+          },
+        },
+      },
+      Room: {
+        type: "object",
+        required: ["room_number"],
+        properties: {
+          room_number: { type: "integer" },
+          status: { type: "string", enum: ["in_progress", "checked_out"] },
+          kind_code: { const: "suite_room" },
+          amenities: {
+            type: "object",
+            patternProperties: { "^extra_[a-z]+$": { type: "string" } },
+          },
+        },
+      },
+      Reservation: {
+        allOf: [
+          { $ref: "#/components/schemas/Guest" },
+          {
+            type: "object",
+            required: ["reservation_id"],
+            properties: { reservation_id: { type: "string" } },
+          },
+        ],
+      },
+      Payment: {
+        oneOf: [
+          { $ref: "#/components/schemas/Card" },
+          { $ref: "#/components/schemas/BankTransfer" },
+        ],
+        discriminator: {
+          propertyName: "payment_method",
+          mapping: {
+            credit_card: "#/components/schemas/Card",
+            bank_transfer: "#/components/schemas/BankTransfer",
+          },
+        },
+      },
+      Card: {
+        type: "object",
+        required: ["payment_method", "card_last4"],
+        properties: { payment_method: { type: "string" }, card_last4: { type: "string" } },
+      },
+      BankTransfer: {
+        type: "object",
+        required: ["payment_method", "iban_number"],
+        properties: { payment_method: { type: "string" }, iban_number: { type: "string" } },
+      },
+    },
+  },
+};
+
+function generateZod(
+  model: Parameters<typeof zod.generate>[0],
+  options: Parameters<typeof zod.generate>[1],
+) {
+  const generated = zod.generate(model, options);
+  return Effect.isEffect(generated) ? generated : Effect.succeed(generated);
+}
+
+function camelCaseSourceFor(schema: Parameters<typeof decode>[0]) {
+  return Effect.runSync(generateZod(Effect.runSync(decode(schema)), { camelCase: true }));
+}
+
+function camelCaseFailureFor(schema: Parameters<typeof decode>[0]) {
+  return Effect.runSync(
+    Effect.flip(generateZod(Effect.runSync(decode(schema)), { camelCase: true })),
+  );
+}
+
+void test("camelCase renames snake_case fields in component and request body validators", async () => {
+  const model = Effect.runSync(decode(snakeCaseDocument));
+  const original = structuredClone(model);
+  const source = Effect.runSync(generateZod(model, { camelCase: true }));
+  assert.deepEqual(model, original);
+
+  for (const name of [
+    "firstName",
+    "homeAddress",
+    "pastStays",
+    "hotelId",
+    "streetLine",
+    "postalCode",
+    "roomNumber",
+    "kindCode",
+    "reservationId",
+    "paymentMethod",
+    "cardLast4",
+    "ibanNumber",
+    "guestName",
+    "checkIn",
+  ]) {
+    assert.match(source, new RegExp(`"${name}"`), name);
+  }
+
+  for (const name of [
+    "first_name",
+    "home_address",
+    "past_stays",
+    "hotel_id",
+    "street_line",
+    "postal_code",
+    "room_number",
+    "kind_code",
+    "reservation_id",
+    "payment_method",
+    "card_last4",
+    "iban_number",
+    "guest_name",
+    "check_in",
+  ]) {
+    assert.doesNotMatch(source, new RegExp(`"${name}"`), name);
+  }
+
+  assert.match(source, /\)\), "paymentMethod", 2, new Map<string, number>/);
+  assert.match(source, /import type \{ components, operations \} from "\.\/types";/);
+  assert.match(source, /as z\.ZodType<components\["schemas"\]\["Guest"\]>;/);
+
+  const generated = await loadGenerated(source);
+
+  try {
+    const guest = {
+      firstName: "Ada",
+      homeAddress: { streetLine: "1 Main St", postalCode: "12345" },
+      pastStays: [{ hotelId: "h1" }],
+    };
+
+    assert.deepEqual(generated.schemas.Guest.parse(guest), guest);
+
+    assert.throws(() =>
+      generated.schemas.Guest.parse({
+        first_name: "Ada",
+        homeAddress: { streetLine: "1 Main St" },
+      }),
+    );
+
+    assert.throws(() =>
+      generated.schemas.Guest.parse({ firstName: "Ada", homeAddress: { street_line: "x" } }),
+    );
+
+    assert.throws(() =>
+      generated.schemas.Guest.parse({ ...guest, pastStays: [{ hotel_id: "h1" }] }),
+    );
+
+    assert.deepEqual(generated.schemas.Reservation.parse({ ...guest, reservationId: "r1" }), {
+      ...guest,
+      reservationId: "r1",
+    });
+
+    assert.throws(() => generated.schemas.Reservation.parse({ ...guest, reservation_id: "r1" }));
+
+    const card = { paymentMethod: "credit_card", cardLast4: "4242" };
+    assert.deepEqual(generated.schemas.Payment.parse(card), card);
+    assert.deepEqual(generated.schemas.Card.parse(card), card);
+
+    assert.deepEqual(
+      generated.schemas.Payment.parse({ paymentMethod: "bank_transfer", ibanNumber: "DE00" }),
+      { paymentMethod: "bank_transfer", ibanNumber: "DE00" },
+    );
+
+    assert.throws(() =>
+      generated.schemas.Payment.parse({ payment_method: "credit_card", cardLast4: "4242" }),
+    );
+
+    assert.throws(() =>
+      generated.schemas.Payment.parse({ paymentMethod: "bank_transfer", cardLast4: "4242" }),
+    );
+
+    const missingIban = generated.schemas.Payment.safeParse({ paymentMethod: "bank_transfer" });
+    assert.equal(missingIban.success, false);
+
+    if (!missingIban.success)
+      assert.deepEqual(
+        missingIban.error.issues.map((issue: ZodIssue) => issue.path),
+        [["ibanNumber"]],
+      );
+
+    const body = { guestName: "Ada", checkIn: "2026-01-01", room: { roomNumber: 101 } };
+    assert.deepEqual(generated.schemas.createReservationRequestBody.parse(body), body);
+
+    assert.throws(() =>
+      generated.schemas.createReservationRequestBody.parse({
+        guest_name: "Ada",
+        checkIn: "2026-01-01",
+      }),
+    );
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("camelCase keeps enum and const values and patternProperties keys", async () => {
+  const source = camelCaseSourceFor(snakeCaseDocument);
+  assert.match(source, /"in_progress"/);
+  assert.match(source, /"checked_out"/);
+  assert.match(source, /"suite_room"/);
+  assert.match(source, /"\^extra_\[a-z\]\+\$"/);
+  assert.match(source, /"credit_card"/);
+
+  const generated = await loadGenerated(source);
+
+  try {
+    const room = {
+      roomNumber: 101,
+      status: "in_progress",
+      kindCode: "suite_room",
+      amenities: { extra_wifi: "yes" },
+    };
+
+    assert.deepEqual(generated.schemas.Room.parse(room), room);
+    assert.throws(() => generated.schemas.Room.parse({ roomNumber: 101, status: "inProgress" }));
+    assert.throws(() => generated.schemas.Room.parse({ roomNumber: 101, kindCode: "suiteRoom" }));
+
+    // The pattern still matches the API spelling, so only the snake_case key is checked.
+    assert.throws(() =>
+      generated.schemas.Room.parse({ roomNumber: 101, amenities: { extra_wifi: 1 } }),
+    );
+
+    assert.deepEqual(
+      generated.schemas.Room.parse({ roomNumber: 101, amenities: { extraWifi: 1 } }),
+      { roomNumber: 101, amenities: { extraWifi: 1 } },
+    );
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("camelCase rejects two fields that become the same name", () => {
+  const direct = camelCaseFailureFor({
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        User: {
+          type: "object",
+          properties: { user_id: { type: "string" }, userId: { type: "string" } },
+        },
+      },
+    },
+  });
+
+  assert.ok(direct instanceof ZodGenerationError);
+
+  assert.match(
+    direct.message,
+    /^#\/components\/schemas\/User: user_id and userId both become userId$/,
+  );
+
+  const inherited = camelCaseFailureFor({
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        Base: { type: "object", properties: { user_id: { type: "string" } } },
+        Child: {
+          allOf: [
+            { $ref: "#/components/schemas/Base" },
+            { type: "object", properties: { userId: { type: "string" } } },
+          ],
+        },
+      },
+    },
+  });
+
+  assert.ok(inherited instanceof ZodGenerationError);
+
+  assert.match(
+    inherited.message,
+    /^#\/components\/schemas\/Child: user_id and userId both become userId$/,
+  );
+
+  const body = camelCaseFailureFor({
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {
+      "/users": {
+        post: {
+          operationId: "createUser",
+          requestBody: {
+            content: {
+              "application/json": {
+                schema: {
+                  allOf: [
+                    { $ref: "#/components/schemas/Base" },
+                    { type: "object", properties: { userId: { type: "string" } } },
+                  ],
+                },
+              },
+            },
+          },
+          responses: { "204": { description: "Created" } },
+        },
+      },
+    },
+    components: {
+      schemas: { Base: { type: "object", properties: { user_id: { type: "string" } } } },
+    },
+  });
+
+  assert.ok(body instanceof ZodGenerationError);
+  assert.match(body.message, /^POST \/users: user_id and userId both become userId$/);
+
+  const snakeOnly = sourceFor({
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        User: {
+          type: "object",
+          properties: { user_id: { type: "string" }, userId: { type: "string" } },
+        },
+      },
+    },
+  });
+
+  assert.match(snakeOnly, /"user_id"/);
+});
+
+void test("camelCase false or omitted leaves generation unchanged", () => {
+  const model = Effect.runSync(decode(snakeCaseDocument));
+  const routes = Effect.runSync(operationRoutes(model));
+  const omitted = Effect.runSync(generateZod(model, {}));
+
+  assert.equal(Effect.runSync(generateZod(model, { camelCase: false })), omitted);
+  assert.equal(Effect.runSync(zodSources(model, routes)), omitted);
+  assert.equal(Effect.runSync(zodSources(model, routes, { camelCase: false })), omitted);
+  assert.match(omitted, /"first_name"/);
+  assert.match(omitted, /"payment_method"/);
+  assert.doesNotMatch(omitted, /"firstName"/);
+  assert.notEqual(Effect.runSync(generateZod(model, { camelCase: true })), omitted);
+});
+
+void test("invalid generator options fail in the typed error channel", () => {
+  const model = Effect.runSync(decode(document));
+
+  for (const options of [{ camelCase: "yes" }, { outputPath: 1 }]) {
+    const failure = Effect.runSync(Effect.flip(generateZod(model, options)));
+    assert.ok(failure instanceof ZodGenerationError);
+    assert.equal(failure.message, "#: Invalid generator options");
+  }
+
+  assert.equal(
+    Effect.runSync(generateZod(model, { unknown: 1 })),
+    Effect.runSync(generateZod(model, {})),
+  );
+});
+
+void test("camelCase validators type-check against camelCase types", async () => {
+  const {
+    Payment: _payment,
+    Card: _card,
+    BankTransfer: _bank,
+    ...schemas
+  } = snakeCaseDocument.components.schemas;
+
+  const model = Effect.runSync(decode({ ...snakeCaseDocument, components: { schemas } }));
+  const typed = typescript.generate(model, { camelCase: true, silent: true });
+  const nodes = Effect.isEffect(typed) ? Effect.runSync(typed) : typed;
+  const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
+
+  try {
+    const outputPath = resolve(directory, "zod-schema.ts");
+
+    await writeFile(
+      resolve(directory, "types.ts"),
+      nodes.map((node) => astToString([node])).join("\n"),
+    );
+
+    await writeFile(
+      outputPath,
+      await Effect.runPromise(generateZod(model, { camelCase: true, outputPath })),
+    );
+
+    await writeFile(
+      resolve(directory, "consumer.ts"),
+      `
+      import { Guest, Reservation, Room, createReservationRequestBody } from "./zod-schema";
+      import type { components, operations } from "./types";
+      type Body = operations["createReservation"]["requestBody"]["content"]["application/json"];
+      const guestInput: components["schemas"]["Guest"] = {
+        firstName: "Ada",
+        homeAddress: { streetLine: "1 Main St", postalCode: "12345" },
+        pastStays: [{ hotelId: "h1" }],
+      };
+      const guest: components["schemas"]["Guest"] = Guest.parse(guestInput);
+      const reservation: components["schemas"]["Reservation"] = Reservation.parse({
+        ...guestInput,
+        reservationId: "r1",
+      });
+      const room: components["schemas"]["Room"] = Room.parse({ roomNumber: 1, status: "in_progress" });
+      const bodyInput: Body = { guestName: "Ada", checkIn: "2026-01-01", room: { roomNumber: 1 } };
+      const body: Body = createReservationRequestBody.parse(bodyInput);
+      const names: string[] = [guest.homeAddress.streetLine, reservation.reservationId, body.guestName];
+      void room;
+      void names;
+    `,
+    );
+
+    const compiler = [
+      resolve(import.meta.dirname, "../node_modules/typescript/bin/tsc"),
+      resolve(import.meta.dirname, "../../../node_modules/typescript/bin/tsc"),
+    ].find((path) => existsSync(path));
+
+    assert.ok(compiler);
+
+    execFileSync(process.execPath, [
+      compiler,
+      "--ignoreConfig",
+      "--noEmit",
+      "--strict",
+      "--skipLibCheck",
+      "--target",
+      "ES2022",
+      "--module",
+      "ESNext",
+      "--moduleResolution",
+      "bundler",
+      resolve(directory, "consumer.ts"),
+    ]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

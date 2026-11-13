@@ -1,5 +1,11 @@
 import type { Generator } from "@shipworthy/openapi-generator";
-import { ParsedSchema, type ParsedService } from "@shipworthy/openapi-transformer";
+import {
+  camelCaseSchema,
+  ParsedSchema,
+  propertyName,
+  schemaPropertyCollision,
+  type ParsedService,
+} from "@shipworthy/openapi-transformer";
 import {
   Array,
   Effect,
@@ -14,6 +20,7 @@ import {
   Result,
   Schema,
   SchemaRepresentation,
+  Struct,
 } from "effect";
 import { SchemaGenerationError } from "./errors.ts";
 
@@ -23,11 +30,20 @@ const identifierPattern = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 
 type Pool = Record<string, JsonSchema.JsonSchema>;
 
+const GeneratorOptions = Schema.Struct({ camelCase: Schema.optionalKey(Schema.Boolean) });
+
 export const standardSchema: Generator<string, SchemaGenerationError> = {
   id: "standard-schema",
   generate: Effect.fnUntraced(function* (
-    model: ParsedService,
+    input: ParsedService,
+    options: Readonly<Record<string, unknown>>,
   ): Effect.fn.Return<string, SchemaGenerationError> {
+    const { camelCase } = yield* Schema.decodeEffect(GeneratorOptions)(options).pipe(
+      Effect.mapError(() => new SchemaGenerationError({ message: "#: Invalid generator options" })),
+    );
+
+    const model = camelCase ? yield* camelCaseModel(input) : input;
+
     return yield* pipe(
       Record.keys(model.components.schemas),
       Array.match({
@@ -44,6 +60,59 @@ export const standardSchema: Generator<string, SchemaGenerationError> = {
     );
   }),
 };
+
+/**
+ * A copy of the model whose component and root `$defs` schemas use camelCase property names.
+ * Fails when two wire names at one object level would become the same name.
+ */
+const camelCaseModel = Effect.fnUntraced(function* (
+  model: ParsedService,
+): Effect.fn.Return<ParsedService, SchemaGenerationError> {
+  const prefix = "#/components/schemas/";
+
+  const resolve = (ref: string): ParsedSchema | undefined => {
+    const path = JsonPointer.parseUriFragment(ref);
+    const name = path?.[2];
+
+    return path?.length === 3 &&
+      path[0] === "components" &&
+      path[1] === "schemas" &&
+      name !== undefined &&
+      Object.hasOwn(model.components.schemas, name)
+      ? model.components.schemas[name]
+      : undefined;
+  };
+
+  const roots = [
+    ...Array.map(
+      Record.toEntries(model.components.schemas),
+      ([name, schema]) => [`${prefix}${name}`, schema] as const,
+    ),
+    ...Array.map(
+      Record.toEntries(model.$defs),
+      ([name, schema]) => [`#/$defs/${name}`, schema] as const,
+    ),
+  ];
+
+  yield* Effect.forEach(
+    roots,
+    Effect.fnUntraced(function* ([path, schema]) {
+      const collision = schemaPropertyCollision(schema, resolve);
+      if (!collision) return;
+      const [a, b] = collision;
+
+      return yield* new SchemaGenerationError({
+        message: `${path}: ${a} and ${b} both become ${propertyName(a, true)}`,
+      });
+    }),
+    sequential,
+  );
+
+  return Struct.evolve(model, {
+    components: Struct.evolve({ schemas: Record.map(camelCaseSchema) }),
+    $defs: Record.map(camelCaseSchema),
+  });
+});
 
 const importSchemas = Effect.fnUntraced(function* (
   document: JsonSchema.MultiDocument<"draft-2020-12">,

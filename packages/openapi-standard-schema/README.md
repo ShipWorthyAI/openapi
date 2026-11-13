@@ -49,8 +49,10 @@ components:
 Generate the validators:
 
 ```sh
-openapi generate standard-schema ./openapi.yaml -o ./src/generated/standard-schema.ts
+openapi generate standard-schema -i ./openapi.yaml -o ./src/generated
 ```
+
+This writes `src/generated/standard-schema.ts`.
 
 Use them:
 
@@ -72,15 +74,17 @@ Pet["~standard"].vendor; // "effect"
 ## CLI: `openapi generate standard-schema`
 
 ```
-openapi generate standard-schema [flags] <input>
+openapi generate standard-schema [-i <input>] [-o <dir>] [--camel-case] [--check]
 ```
 
-| Argument / flag  | Description                                                   |
-| ---------------- | ------------------------------------------------------------- |
-| `<input>`        | Required. Path or URL of the OpenAPI document (JSON or YAML). |
-| `--output`, `-o` | Output file. When omitted, the code is written to stdout.     |
+| Flag             | Description                                                                                                      |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `--input`, `-i`  | Path or URL of the OpenAPI document (JSON or YAML). When omitted, the document is read from stdin.               |
+| `--output`, `-o` | Output directory. The plugin writes `standard-schema.ts` inside it. When omitted, the code is written to stdout. |
+| `--camel-case`   | Rename snake_case property names to camelCase in the exported types and validators. Sets `camelCase: true`.      |
+| `--check`        | Write nothing; exit 1 when `standard-schema.ts` in the output directory differs or is missing. Requires `-o`.    |
 
-With `-o`, the CLI creates any missing parent directories, overwrites the file, and logs `<input> → <output> [<elapsed>]`. The output starts with this header:
+This plugin does not need `types.ts`. With `-o`, the CLI creates any missing directories, overwrites the file, and logs `<input> → <output>/standard-schema.ts [<elapsed>]`. The output starts with this header:
 
 ```ts
 /**
@@ -91,15 +95,19 @@ With `-o`, the CLI creates any missing parent directories, overwrites the file, 
  */
 ```
 
-The example SDKs in this repository run it as a `generate` script:
+With `--camel-case`, a `Field casing: camelCase` line follows the stamp, and the hash also covers the casing setting.
+
+A typical `package.json` script:
 
 ```json
 {
   "scripts": {
-    "generate": "openapi generate standard-schema openapi.yaml -o src/generated/core/standard-schema.ts"
+    "generate": "openapi generate standard-schema -i openapi.yaml -o src/generated/core"
   }
 }
 ```
+
+The `standard-schema` plugin can be combined with other plugins in one run, for example `openapi generate tanstack-query zod standard-schema -i openapi.yaml -o src/generated/core`. See the [CLI reference](../openapi-cli/README.md#openapi-generate-plugins) for every flag.
 
 ## API
 
@@ -119,7 +127,8 @@ const standardSchema: Generator<string, SchemaGenerationError>;
 ```
 
 - `model` is a `ParsedService` from `@shipworthy/openapi-transformer`.
-- `options` is accepted for compatibility with the `Generator` interface. This generator reads no options, so pass `{}`.
+- `options` is `{ camelCase?: boolean }`. Pass `{}` for the defaults. Unknown keys are ignored. An option of the wrong type fails with `SchemaGenerationError` (`#: Invalid generator options`).
+- `camelCase: true` renames lower snake_case property names (`first_name` becomes `firstName`) in every component schema and in top-level `$defs`. The rename covers `properties` keys, `required` entries, `dependentRequired`, and the discriminator `propertyName`, at every depth. The exported types and validators then use camelCase fields. `enum` and `const` values, `patternProperties` keys, and `$ref`s keep the API spelling. Names that are not lower snake_case, such as `_private` or `UPPER_CASE`, are unchanged. If two names at one object level would become the same name, including names merged through `allOf`, `anyOf`, `oneOf`, or a `$ref`, generation fails with `<path>: user_id and userId both become userId`. The default is `false`.
 - On success, the Effect yields the TypeScript module source as a string. If the document has no component schemas, the string is empty (`""`).
 - On failure, the Effect fails with `SchemaGenerationError`.
 
@@ -191,7 +200,7 @@ class SchemaGenerationError extends Schema.TaggedError<SchemaGenerationError>()(
 ) {}
 ```
 
-`standardSchema.generate` raises this error when a component schema is neither an object nor a boolean, and when Effect cannot convert or render a schema. In the second case, `message` is copied from the underlying error and `cause` holds that error. Handle it with `Effect.catchTag("SchemaGenerationError", …)`. When the plugin runs through `@shipworthy/openapi-generator`'s `generate`, the error is wrapped in a `TransformError` that has the same `message`.
+`standardSchema.generate` raises this error for invalid options, for a camelCase name collision, when a component schema is neither an object nor a boolean, and when Effect cannot convert or render a schema. In the second case, `message` is copied from the underlying error and `cause` holds that error. Handle it with `Effect.catchTag("SchemaGenerationError", …)`. When the plugin runs through `@shipworthy/openapi-generator`'s `generate`, the error is wrapped in a `TransformError` that has the same `message`.
 
 ## Generated output
 
@@ -221,7 +230,7 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 - An empty `components.schemas` gives an empty output string, not a module with zero exports.
 - Validators are not wired into any HTTP client. Call them where a payload should be checked.
 - Objects accept extra JSON-valued properties unless the schema sets `additionalProperties: false`.
-- The generator has no options.
+- The only generator option is `camelCase`.
 
 ## Troubleshooting
 
@@ -233,8 +242,8 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 ## Key facts (for AI agents)
 
 - Package: `@shipworthy/openapi-standard-schema`, ESM-only compiled JavaScript with `.d.ts` declarations. Node.js `>=22.19.0` or Bun. Depends on `effect@^4`. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
-- CLI: `openapi generate standard-schema <input> [-o <file>]` (from `@shipworthy/openapi-cli`, runs on Node.js or Bun). Without `-o`, output goes to stdout.
-- `standardSchema.generate(model: ParsedService, {})` returns `Effect<string, SchemaGenerationError>`. The string is a TS module, or `""` when there are no component schemas.
+- CLI: `openapi generate standard-schema [-i <input>] [-o <dir>] [--camel-case]` (from `@shipworthy/openapi-cli`, runs on Node.js or Bun) writes `<dir>/standard-schema.ts`. Without `-i`, it reads stdin; without `-o`, output goes to stdout. It can run in one command with other plugins.
+- `standardSchema.generate(model: ParsedService, { camelCase?: boolean })` returns `Effect<string, SchemaGenerationError>`. The string is a TS module, or `""` when there are no component schemas.
 - Output: for each `components.schemas` entry `Name`, `export type Name` and `export const Name = Schema.toStandardSchemaV1(...)`. Validate with `Name["~standard"].validate(value)`, which is synchronous and returns `{ value }` or `{ issues }`. `vendor` is `"effect"`.
 - The generated code needs `effect` (`^4.0.0`) at runtime.
 - Input: OpenAPI 3.0/3.1 through the CLI or `@shipworthy/openapi-generator`. 3.0 is upgraded to 3.1.

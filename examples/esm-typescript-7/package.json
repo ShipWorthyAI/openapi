@@ -4,7 +4,7 @@
   "description": "An ESM app on TypeScript 7 with bundler resolution and the current TanStack Query.",
   "type": "module",
   "scripts": {
-    "verify": "openapi generate tanstack-query openapi.json -o src/generated --name pets && tsc -p tsconfig.json && node runtime.js"
+    "verify": "openapi generate tanstack-query -i openapi.json -o src/generated/pets && tsc -p tsconfig.json && node runtime.js"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query": "*",

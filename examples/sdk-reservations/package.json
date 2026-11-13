@@ -9,9 +9,7 @@
     "./zod-schema": "./src/generated/reservations/zod-schema.ts"
   },
   "scripts": {
-    "generate": "bun run generate:tanstack-query && bun run generate:zod",
-    "generate:tanstack-query": "openapi generate tanstack-query ./openapi/v1/openapi.json -o src/generated --name reservations --force",
-    "generate:zod": "openapi generate zod ./openapi/v1/openapi.json -o src/generated/reservations/zod-schema.ts"
+    "generate": "openapi generate tanstack-query zod -i ./openapi/v1/openapi.json -o src/generated/reservations"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query": "workspace:*",

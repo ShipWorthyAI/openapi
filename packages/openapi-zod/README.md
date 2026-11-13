@@ -20,7 +20,7 @@ Requirements:
 - **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
 - **Peer dependency.** `zod` `4.6.5`. npm 7+ installs peers automatically, but install it explicitly as shown above.
-- **Workspace resolution.** The CLI looks for an installed Zod from the output file's directory upward. If none is installed there, it uses the generator's installation; Bun's global auto-install cache does not count as an installed package. A different installed version fails with the found version and resolved path before schema compilation. Install `zod@4.6.5` in the package that will import the generated file.
+- **Workspace resolution.** The CLI looks for an installed Zod from the output directory upward. If none is installed there, it uses the generator's installation; Bun's global auto-install cache does not count as an installed package. A different installed version fails with the found version and resolved path before schema compilation. Install `zod@4.6.5` in the package that will import the generated file.
 - **Installed dependencies.** The package installs `effect`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@shipworthy/openapi-typescript`.
 
 Install `@shipworthy/openapi-cli` only if you use the CLI. For programmatic examples, also install the packages you import directly (`@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@effect/platform-node` as needed).
@@ -79,13 +79,12 @@ Run the `openapi` commands below in a package script, or use `bunx --bun @shipwo
 Generate:
 
 ```sh
-bunx --bun @shipworthy/openapi-cli generate zod ./openapi.json -o ./src/generated/hotels/zod-schema.ts
+bunx --bun @shipworthy/openapi-cli generate zod -i ./openapi.json -o ./src/generated/hotels
 ```
 
 ```text
-openapi generate typescript 0.0.1
-file:///…/openapi.json → /…/src/generated/hotels/types.ts [49ms]
-file:///…/openapi.json → /…/src/generated/hotels/zod-schema.ts [71ms]
+file:///…/openapi.json → ./src/generated/hotels/types.ts […]
+file:///…/openapi.json → ./src/generated/hotels/zod-schema.ts […]
 ```
 
 Use:
@@ -102,25 +101,26 @@ result.success; // false: name has minLength 1
 
 ## CLI: `openapi generate zod`
 
-The command comes from `@shipworthy/openapi-cli`.
+The command comes from `@shipworthy/openapi-cli`. The `zod` plugin writes `zod-schema.ts` and the `types.ts` it imports into the output directory:
 
 ```text
-openapi generate zod [flags] <input>
+openapi generate zod [-i <input>] -o <dir> [--camel-case] [--wire-types] [--check] [TypeScript flags]
 ```
 
-| Argument / flag  | Type    | Default  | Description                                                                                                                          |
+| Flag             | Type    | Default  | Description                                                                                                                          |
 | ---------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `<input>`        | string  | required | OpenAPI schema file path or URL (`http:`, `https:`, `file:`). JSON or YAML. Globs (`*`) are rejected with `Globbing is unsupported.` |
-| `--output`, `-o` | string  | required | Output file for the Zod module. `types.ts` is written to the same directory.                                                         |
-| `--force`        | boolean | `false`  | Regenerate `types.ts` even when its stamp matches.                                                                                   |
+| `--input`, `-i`  | string  | stdin    | OpenAPI schema file path or URL (`http:`, `https:`, `file:`). JSON or YAML. Globs (`*`) are rejected with `Globbing is unsupported.` |
+| `--output`, `-o` | string  | required | Output directory. Receives `zod-schema.ts` and `types.ts`. Required because the run writes two files.                                |
+| `--camel-case`   | boolean | `false`  | Generate camelCase `types.ts` and camelCase validators. See [camelCase](#camelcase).                                                 |
+| `--check`        | boolean | `false`  | Write nothing; exit 1 when `zod-schema.ts` or `types.ts` differs from the generated output or is missing.                            |
 
-`generate zod` also accepts every TypeScript generator flag, including `--no-array-length`, `--enum`, and `--root-types`. Pass the same flags you use for `openapi generate typescript` when `types.ts` needs refreshing.
+The TypeScript generator flags, such as `--no-array-length`, `--enum`, and `--root-types`, apply to `types.ts`. The `zod` plugin can be combined with other plugins in one run, for example `openapi generate zod tanstack-query -i openapi.json -o src/generated/hotels`, which writes one shared `types.ts`. See the [CLI reference](../openapi-cli/README.md#openapi-generate-plugins) for every flag, including `--wire-types`.
 
 What the command does:
 
-1. **Ensures `types.ts`.** It looks for `types.ts` next to the output file. If that file is missing, its header stamp differs from the input, custom TypeScript flags are passed, or `--force` is set, it runs the TypeScript generator with the flags passed to `generate zod` and writes `types.ts`.
-2. **Generates the Zod module.** It loads, bundles, and validates the input. Bundling resolves external `$ref`s and upgrades OpenAPI 3.0 documents to 3.1. It then runs the `zod` generator.
-3. **Writes the output.** It prepends a header and creates parent directories as needed. An existing output file is overwritten.
+1. **Loads the input.** It loads, bundles, and validates the input once. Bundling resolves external `$ref`s and upgrades OpenAPI 3.0 documents to 3.1.
+2. **Generates `types.ts` and the Zod module.** It runs the TypeScript generator with the TypeScript flags and the `zod` generator. Both files are regenerated on every run.
+3. **Writes the output.** Only after both files were generated, it prepends a header to each and writes them, creating the output directory as needed. Existing files are overwritten.
 
 Generated file header:
 
@@ -133,9 +133,9 @@ Generated file header:
  */
 ```
 
-The stamp line is `<package>@<version>:<sha256 of the input file contents>`.
+The stamp line is `<package>@<version>:<sha256 of the input file contents>`. With `--camel-case`, a `Field casing: camelCase` line follows the stamp, and the hash also covers the casing setting.
 
-On failure the command prints `ERROR` and the message, then exits with code 1. The Zod file is not written. `types.ts` is generated first, so it can already exist when the Zod step fails. Example:
+On failure the command prints `ERROR` and the message, then exits with code 1. Neither `zod-schema.ts` nor `types.ts` is written. Example:
 
 ```text
 ERROR
@@ -147,7 +147,7 @@ A typical `package.json` script:
 ```json
 {
   "scripts": {
-    "generate": "openapi generate zod openapi.json -o src/generated/hotels/zod-schema.ts"
+    "generate": "openapi generate zod -i openapi.json -o src/generated/hotels"
   }
 }
 ```
@@ -175,7 +175,12 @@ const zod: Generator<ZodSource, ZodGenerationError>;
 // { id: "zod", generate(model: ParsedService, options): Effect<ZodSource, ZodGenerationError> }
 ```
 
-The generator plugin. `Generator` is from `@shipworthy/openapi-generator`. `generate` accepts `options.outputPath` to resolve Zod from the generated file's location, then runs `operationRoutes(model)` followed by `zodSources(model, routes, options)`. Without `outputPath`, it resolves Zod from the generator's installation. The CLI loads this export by name (`exportName: "zod"`).
+The generator plugin. `Generator` is from `@shipworthy/openapi-generator`. `generate` accepts these options:
+
+- `outputPath?: string`: resolve Zod from the generated file's location. Without it, Zod is resolved from the generator's installation.
+- `camelCase?: boolean`: rename snake_case properties to camelCase. See [camelCase](#camelcase). Default `false`.
+
+It then runs `operationRoutes(model)` followed by `zodSources(model, routes, options)`. Options of the wrong type fail with `ZodGenerationError` (`#: Invalid generator options`). Unknown option keys are ignored. The CLI loads this export by name (`exportName: "zod"`).
 
 The usual way to run it from code is `generate` from `@shipworthy/openapi-generator`. That function reads the source, bundles external refs, upgrades 3.0 to 3.1, and decodes the model:
 
@@ -220,11 +225,21 @@ Write `source` next to a `types.ts` generated by `@shipworthy/openapi-typescript
 const zodSources: (
   document: ParsedService,
   routes: Record<string, OperationRoute>,
-  options?: { outputPath?: string },
+  options?: { readonly outputPath?: string; readonly camelCase?: boolean },
 ) => Effect<ZodSource, ZodGenerationError>;
 ```
 
 Turns a parsed OpenAPI 3.1 model into Zod module source. `routes` selects which operations can produce a `<operationId>RequestBody` validator. An operation whose `operationId` is not a key of `routes` is skipped. Build the table with `operationRoutes`. Set `options.outputPath` to resolve Zod from the generated file's location; without it, generation uses the generator's own Zod. It fails with `ZodGenerationError` for anything listed under [Limitations](#limitations). Returns `""` when there are no component schemas and no JSON request bodies.
+
+#### camelCase
+
+Set `camelCase: true` when the validators sit next to a `types.ts` that `@shipworthy/openapi-typescript` generated with `camelCase: true`. The validators then accept and return the camelCase shapes those types declare. The CLI flag `--camel-case` sets this option and generates the matching camelCase `types.ts` in the same run.
+
+- Renamed: lower snake_case names (`first_name`, `address_line_2`) in `properties` keys, `required` entries, `dependentRequired`, and the discriminator `propertyName`. This applies at every depth, in component schemas and request bodies alike. Other names, such as `already_Camel`, `_private`, or `UPPER_CASE`, keep their spelling.
+- Kept: `enum` and `const` values, discriminator mapping values, `patternProperties` keys, and `$ref`s keep the API spelling. A `patternProperties` pattern therefore still matches the API's snake_case keys.
+- Collisions: when two names at one object level become the same name, including names merged through `allOf`, `anyOf`, `oneOf`, or a `$ref`, generation fails before any output is produced. The message is `<path>: user_id and userId both become userId`, where `<path>` is the component pointer (`#/components/schemas/User`) or the operation (`POST /users`).
+
+The validators check camelCase objects. Convert wire payloads to camelCase before you parse them with the same mapping the client uses. The generated module still imports `./types` and casts each export to `components["schemas"][Name]` or the operation's request body type.
 
 ### `operationRoutes(model)`
 
@@ -323,6 +338,7 @@ Generation fails with `ZodGenerationError` when it finds any of the following:
 | Any operation without `operationId`; duplicate ids; ids `__proto__`/`constructor`/`prototype`   | `Missing operationId` / `Duplicate operationId` / `Unsupported operationId`    |
 | Component name that is not a valid JS identifier, is a reserved word, or is `z` / `definitions` | `<name>: Cannot emit this name as a schema export`                             |
 | Component name equal to some `<operationId>RequestBody`                                         | `<name>: Duplicate schema export`                                              |
+| With `camelCase: true`, two property names that become the same camelCase name                  | `<path>: <a> and <b> both become <camelName>`                                  |
 | Zod cannot convert the schema                                                                   | `<ExportName>: <Zod error message>`                                            |
 
 Not generated:
@@ -333,8 +349,7 @@ Not generated:
 
 ## Troubleshooting
 
-- **`Cannot find module './types'` or type errors in the generated file.** The Zod module imports `./types`. Generate it with the CLI, which writes `types.ts`, or run `openapi generate typescript` into the same directory.
-- **`types.ts` looks stale or was generated with other flags.** Pass the same TypeScript flags to `generate zod`, such as `--no-array-length`. Custom flags refresh `types.ts` even when its input stamp matches. `--force` refreshes it with the flags on that command.
+- **`Cannot find module './types'` or type errors in the generated file.** The Zod module imports `./types`. Generate it with the CLI, which writes `types.ts` next to `zod-schema.ts` on every run.
 - **`Unsupported keyword discriminator`.** Upgrade from 0.0.1; discriminators on `oneOf`/`anyOf` and `allOf` inheritance are supported. A discriminated union branch must be a component schema `$ref`.
 - **`Missing operationId`.** Every operation needs an `operationId`, even operations with no request body.
 - **Wrong Zod version.** Install `zod@4.6.5` in the package that owns the generated file. The error reports the version and path found from the output location.
@@ -342,13 +357,14 @@ Not generated:
 ## Key facts (for AI agents)
 
 - Purpose: OpenAPI 3.1 document → one TypeScript module of Zod 4 validators. 3.0 input is upgraded only when run through the CLI or `generate()`.
-- Run: `openapi generate zod <input> -o <dir>/<file>.ts [--force] [TypeScript flags]` (CLI from `@shipworthy/openapi-cli`, runs on Node.js `>=22.19.0` or Bun). It also writes `<dir>/types.ts` when that file is missing, stale, or custom TypeScript flags are passed.
+- Run: `openapi generate zod -i <input> -o <dir> [--camel-case] [TypeScript flags]` (CLI from `@shipworthy/openapi-cli`, runs on Node.js `>=22.19.0` or Bun). It writes `<dir>/zod-schema.ts` and `<dir>/types.ts` on every run. Combine it with other plugins in one run, e.g. `openapi generate zod tanstack-query -i <input> -o <dir>`.
 - Exports from generated file: `<ComponentName>` for each `components.schemas` entry, and `<operationId>RequestBody` for each operation with a single `application/json` request body. Nothing for responses or parameters.
 - Each export is `z.compile(z.fromJSONSchema(...)) as z.ZodType<T>`, where `T` comes from `./types`. Use `.parse` / `.safeParse`.
 - `default` values are stripped. Parsing never injects defaults.
 - Runtime dependency of generated code: `zod@4.6.5` (pinned).
 - Package exports: `zod` (generator plugin), `zodSources`, `operationRoutes`, `ZodGenerationError`, and the types `ZodSource`, `OperationRoute`, `HttpMethod`. All functions return Effect 4 values.
-- Generation is all-or-nothing for the Zod file. Unsupported keywords fail with a JSON-pointer message, but the CLI may already have written `types.ts`.
+- Library option `camelCase: true` (on `zod.generate` and `zodSources`) renames snake_case properties so validators match a camelCase `types.ts`. The CLI flag `--camel-case` sets it and generates the matching `types.ts`. Enum/const values and `patternProperties` keys keep API spelling. Name collisions fail generation.
+- Generation is all-or-nothing. Unsupported keywords fail with a JSON-pointer message, and the CLI then writes neither `zod-schema.ts` nor `types.ts`.
 - Every operation needs a unique `operationId`. Component names must be valid JS identifiers.
 - The package ships compiled ESM JavaScript with `.d.ts` declarations (no CommonJS build). Peer dependency `zod@4.6.5`.
 

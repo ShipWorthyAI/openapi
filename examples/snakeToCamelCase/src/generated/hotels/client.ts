@@ -3,6 +3,7 @@
  * Do not make direct changes to the file.
  *
  * @shipworthy/openapi-tanstack-query@0.0.2:05dc7d43923f01eaf3d30d9fb25b3b721e7d8ed128b05b88aa1d3a01f3537bab
+ * Field casing: camelCase
  */
 
 import { createApiClient, createTanstackQueryUtils, type ApiClientOptions, type TanstackQueryUtilsOptions } from "@shipworthy/openapi-tanstack-query";

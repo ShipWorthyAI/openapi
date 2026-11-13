@@ -13,23 +13,6 @@ export interface GenerateOptions {
   readonly pluginOptions?: Readonly<Record<string, unknown>>;
 }
 
-type GenerateServices = FileSystem.FileSystem | Path.Path | HttpClient.HttpClient;
-
-export const generate = Effect.fn("generate")(function* (
-  options: GenerateOptions,
-): Effect.fn.Return<unknown, GenerateError, GenerateServices> {
-  const document = yield* bundleDocument(options.source, { cwd: options.cwd }).pipe(
-    Effect.mapError((cause) => new ResolveError({ message: cause.message, cause })),
-  );
-
-  const model = yield* decode(document).pipe(
-    Effect.mapError((cause) => new TransformError({ message: cause.message, cause })),
-  );
-
-  const plugin = yield* importPlugin(options.specifier, options.exportName);
-  return yield* render(plugin, model, options.pluginOptions ?? {});
-});
-
 function failureMessage(cause: unknown): string {
   return Predicate.isError(cause) ? cause.message : String(cause);
 }
@@ -55,6 +38,54 @@ const render = Effect.fnUntraced(function* (
   if (!isPluginEffect(value)) return value;
 
   return yield* Effect.mapError(value, pluginFailure);
+});
+
+export type GenerateServices = FileSystem.FileSystem | Path.Path | HttpClient.HttpClient;
+
+export interface LoadServiceOptions {
+  readonly cwd?: URL | string;
+}
+
+/** Bundle `source` and decode it into the model every generator consumes. */
+export const loadService = Effect.fn("loadService")(function* (
+  source: unknown,
+  options?: LoadServiceOptions,
+): Effect.fn.Return<ParsedService, ResolveError | TransformError, GenerateServices> {
+  const document = yield* bundleDocument(source, { cwd: options?.cwd }).pipe(
+    Effect.mapError((cause) => new ResolveError({ message: cause.message, cause })),
+  );
+
+  return yield* decode(document).pipe(
+    Effect.mapError((cause) => new TransformError({ message: cause.message, cause })),
+  );
+});
+
+export interface RunPluginOptions {
+  readonly specifier: string;
+  readonly exportName: string;
+  readonly model: ParsedService;
+  readonly pluginOptions?: Readonly<Record<string, unknown>>;
+}
+
+/** Import one generator plugin and run it against an already loaded model. */
+export const runPlugin = Effect.fn("runPlugin")(function* (
+  options: RunPluginOptions,
+): Effect.fn.Return<unknown, TransformError | MissingPlugin | InvalidPlugin> {
+  const plugin = yield* importPlugin(options.specifier, options.exportName);
+  return yield* render(plugin, options.model, options.pluginOptions ?? {});
+});
+
+export const generate = Effect.fn("generate")(function* (
+  options: GenerateOptions,
+): Effect.fn.Return<unknown, GenerateError, GenerateServices> {
+  const model = yield* loadService(options.source, { cwd: options.cwd });
+
+  return yield* runPlugin({
+    specifier: options.specifier,
+    exportName: options.exportName,
+    model,
+    pluginOptions: options.pluginOptions,
+  });
 });
 
 export type GenerateError = ResolveError | TransformError | MissingPlugin | InvalidPlugin;

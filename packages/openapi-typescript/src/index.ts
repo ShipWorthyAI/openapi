@@ -18,9 +18,11 @@ export type { OpenAPITSOptions, TransformNodeOptions, TransformObject } from "./
 export const typescript: Generator<ts.Node[], TypegenError> = {
   id: "typescript",
   generate: Effect.fnUntraced(function* (
-    model: ParsedService,
+    input: ParsedService,
     raw: Readonly<Record<string, unknown>>,
   ): Effect.fn.Return<ts.Node[], TypegenError> {
+    // Discriminator enum patching edits this working copy, never the caller's model.
+    const model = structuredClone(input);
     const ctx = yield* makeTypegenContext(model, raw);
     const transformT = performance.now();
 

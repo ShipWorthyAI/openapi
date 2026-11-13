@@ -11,10 +11,7 @@
   },
   "scripts": {
     "bundle": "openapi bundle ./openapi/v1/openapi.yaml ./openapi/v1/bundled.openapi.json",
-    "generate": "bun run generate:tanstack-query && bun run generate:zod && bun run generate:standard-schema",
-    "generate:tanstack-query": "openapi generate tanstack-query ./openapi/v1/bundled.openapi.json -o src/generated --name hotels --force",
-    "generate:zod": "openapi generate zod ./openapi/v1/bundled.openapi.json -o src/generated/hotels/zod-schema.ts",
-    "generate:standard-schema": "openapi generate standard-schema ./openapi/v1/bundled.openapi.json -o src/generated/hotels/standard-schema.ts"
+    "generate": "openapi generate tanstack-query zod standard-schema -i ./openapi/v1/bundled.openapi.json -o src/generated/hotels"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query": "workspace:*",

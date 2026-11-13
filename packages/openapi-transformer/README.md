@@ -91,6 +91,7 @@ The package has a single entry point, `@shipworthy/openapi-transformer`. It expo
 | `HttpMethodName`, `ParamStyle`, `ParameterLocation`, `SecurityDeclaration` | `Schema` + literal type | Enumerations used in the model.                                        |
 | `httpMethods`, `parameterLocations`                                        | `readonly` tuple        | The lowercase method keys and the parameter locations, in model order. |
 | `propertyName`, `collidingProperties`, `schemaPropertyCollision`           | functions               | Shared field naming and collision checks for generators.               |
+| `camelCaseSchema`                                                          | function                | Rename snake_case property names throughout a schema tree.             |
 
 Each `Parsed*` name is exported both as a value (an Effect `Schema`) and as a type (`typeof X.Type`). Use `import type { ParsedOperation }` when you only need the type.
 
@@ -180,6 +181,20 @@ import { Schema } from "effect";
 const check = Schema.toStandardSchemaV1(ParsedService);
 check["~standard"].validate(model); // { value } or { issues }
 ```
+
+### `camelCaseSchema(schema)`
+
+```ts
+const camelCaseSchema: (schema: ParsedSchema) => ParsedSchema;
+```
+
+Returns a copy of a schema tree in which lower snake_case property names become camelCase, using `propertyName(name, true)`. Names that are not lower snake_case, such as `already_Camel`, `_private`, `UPPER_CASE`, or `a`, are unchanged. The input is not modified, and booleans are returned as they are.
+
+- Renamed: keys of `properties` and `dependentSchemas`, string entries of `required`, keys and value entries of `dependentRequired`, and `discriminator.propertyName`. `discriminator.mapping` is unchanged.
+- Recursed into: `properties`, `patternProperties`, `dependentSchemas`, `$defs`, `additionalProperties`, `unevaluatedProperties`, `items`, `unevaluatedItems`, `contains`, `propertyNames`, `not`, `if`, `then`, `else`, `allOf`, `anyOf`, `oneOf`, and `prefixItems`. A value that is not an object or a boolean is left as it is.
+- Unchanged: `patternProperties` keys, `$ref`, `enum`, `const`, `default`, `example`, `examples`, `x-*` extensions, and every other keyword.
+
+It does not resolve `$ref`s and does not detect collisions. Call `schemaPropertyCollision(schema, resolve)` first and fail on its result.
 
 ## Model
 

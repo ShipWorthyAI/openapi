@@ -44,11 +44,11 @@ React Native environment, or server runtime. The Node.js requirement above appli
 ### 1. Generate the `paths` type
 
 ```sh
-bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/api.ts
+bunx --bun @shipworthy/openapi-cli generate typescript -i ./openapi.yaml -o ./src/generated
 ```
 
-The input can be a local JSON or YAML file or a URL. If you omit the input, the CLI reads the
-schema from stdin. If you omit `-o`, it writes to stdout. The output exports `interface paths`,
+This writes `src/generated/types.ts`. The input can be a local JSON or YAML file or a URL. If
+you omit `-i`, the CLI reads the schema from stdin. If you omit `-o`, it writes to stdout. The output exports `interface paths`,
 along with `components`, `operations`, and related types.
 
 ### 2. Wrap your app in `ApiClientProvider`
@@ -72,7 +72,7 @@ provider.
 
 ```tsx
 import { useApiClientQuery } from "@shipworthy/openapi-react-query";
-import type { paths } from "./generated/api";
+import type { paths } from "./generated/types";
 
 function PetList() {
   const useQuery = useApiClientQuery<paths>(); // bind the schema once
@@ -377,7 +377,7 @@ This client is separate from the one `ApiClientProvider` creates, and the hooks 
 
 ```ts
 import { createApiClient } from "@shipworthy/openapi-react-query";
-import type { paths } from "./generated/api";
+import type { paths } from "./generated/types";
 
 const api = createApiClient<paths>("https://api.example.com", process.env.API_TOKEN);
 const { data, error, response } = await api.GET("/pets", { params: { query: { limit: 10 } } });
@@ -438,8 +438,9 @@ query, whatever its `init`.
 - Import everything from `@shipworthy/openapi-react-query`. There are no subpath exports and
   no CLI in this package.
 - Generate the `paths` type with
-  `openapi generate typescript <schema> -o <file>.ts` (`@shipworthy/openapi-cli` +
-  `@shipworthy/openapi-typescript`). Import it as `import type { paths } from "<file>"`.
+  `openapi generate typescript -i <schema> -o <dir>` (`@shipworthy/openapi-cli` +
+  `@shipworthy/openapi-typescript`), which writes `<dir>/types.ts`. Import it as
+  `import type { paths } from "<dir>/types"`.
 - Mount `<ApiClientProvider baseUrl="…">` once. It already includes `QueryClientProvider`.
 - The hook factories are curried. Call `useApiClientQuery<paths>()` first, and then call the
   returned hook as `hook(path, method?, init, options?, queryClient?)`. Never call

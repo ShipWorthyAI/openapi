@@ -83,6 +83,10 @@ The package has a single entry point, `@shipworthy/openapi-generator`. It export
 | Export                                                             | Kind                           | Purpose                                                                  |
 | ------------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------ |
 | `generate`                                                         | function returning an `Effect` | Runs the full pipeline: load, bundle, decode, import the plugin, render. |
+| `loadService`                                                      | function returning an `Effect` | Loads, bundles, and decodes a document into a `ParsedService` once.      |
+| `runPlugin`                                                        | function returning an `Effect` | Imports one plugin and runs it against an already loaded model.          |
+| `LoadServiceOptions`, `RunPluginOptions`                           | types                          | Options for `loadService` and `runPlugin`.                               |
+| `GenerateServices`                                                 | type                           | The services `generate` and `loadService` require.                       |
 | `GenerateOptions`                                                  | type                           | Options for `generate`.                                                  |
 | `GenerateError`                                                    | type                           | Union of every error `generate` can fail with.                           |
 | `Generator<A, E>`                                                  | type                           | The interface a plugin export implements.                                |
@@ -127,6 +131,8 @@ interface GenerateOptions {
 
 The source object you pass is not mutated. Object input is also not serialized, so values such as `bigint` extensions reach the model unchanged.
 
+`generate(options)` is exactly `loadService(options.source, { cwd: options.cwd })` followed by `runPlugin({ specifier, exportName, model, pluginOptions })`. To run several plugins on one document, call those two functions yourself so the document is loaded only once.
+
 #### Example: running a published plugin with options
 
 ```ts
@@ -143,6 +149,70 @@ const nodes = await Effect.runPromise(
     pluginOptions: {/* options defined by @shipworthy/openapi-typescript */},
   }).pipe(Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer))),
 );
+```
+
+### `loadService(source, options?)`
+
+```ts
+function loadService(
+  source: unknown,
+  options?: LoadServiceOptions,
+): Effect.Effect<
+  ParsedService,
+  ResolveError | TransformError,
+  FileSystem.FileSystem | Path.Path | HttpClient.HttpClient
+>;
+
+interface LoadServiceOptions {
+  readonly cwd?: URL | string;
+}
+```
+
+Runs steps 1 and 2 of `generate`: loads and bundles `source` (see [Sources](#sources)), then decodes it into the `ParsedService` model that every generator consumes. `cwd` has the same meaning as in `generate`.
+
+**Errors:** `ResolveError` when the source can't be loaded, parsed, bundled, or validated. `TransformError` when the bundled document can't be decoded.
+
+### `runPlugin(options)`
+
+```ts
+function runPlugin(
+  options: RunPluginOptions,
+): Effect.Effect<unknown, TransformError | MissingPlugin | InvalidPlugin>;
+
+interface RunPluginOptions {
+  readonly specifier: string;
+  readonly exportName: string;
+  readonly model: ParsedService;
+  readonly pluginOptions?: Readonly<Record<string, unknown>>;
+}
+```
+
+Runs steps 3 and 4 of `generate` against a model you already have: imports the plugin with `importPlugin(specifier, exportName)` and returns the result of `plugin.generate(model, pluginOptions ?? {})`. `specifier`, `exportName`, and `pluginOptions` mean the same as in `generate`. The model is passed to the plugin as is, so several plugins can share one `loadService` result. The bundled generators leave the model unmodified, so sharing it, including across concurrent `runPlugin` calls, is safe. `runPlugin` needs no platform services.
+
+**Errors:** `MissingPlugin` or `InvalidPlugin` when the plugin can't be imported. `TransformError` when the plugin throws or its returned `Effect` fails.
+
+#### Example: load once, run several plugins
+
+```ts
+import { NodeServices } from "@effect/platform-node";
+import { loadService, runPlugin } from "@shipworthy/openapi-generator";
+import { Effect, Layer } from "effect";
+import { FetchHttpClient } from "effect/http";
+
+const program = Effect.gen(function* () {
+  const model = yield* loadService("./openapi.yaml");
+
+  return yield* Effect.forEach(
+    [
+      { specifier: "@shipworthy/openapi-typescript", exportName: "typescript" },
+      { specifier: "@shipworthy/openapi-zod", exportName: "zod" },
+    ],
+    (plugin) => runPlugin({ ...plugin, model }),
+    { concurrency: "unbounded" },
+  );
+}).pipe(Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)));
+
+const [typescriptNodes, zodSource] = await Effect.runPromise(program);
 ```
 
 ### Sources
@@ -264,13 +334,13 @@ Defects, such as an `Effect.die` inside a plugin's effect, aren't converted to `
 
 ## Related packages
 
-| Package                           | Relation                                                                                                  |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `@shipworthy/openapi-cli`         | The `openapi generate …` commands, which call `generate`.                                                 |
-| `@shipworthy/openapi-parser`      | Loads and bundles the source (step 1).                                                                    |
-| `@shipworthy/openapi-transformer` | Defines `ParsedService` and decodes into it (step 2). Import model types from it when you write a plugin. |
-| `@shipworthy/openapi-typescript`  | Plugin, export `typescript`.                                                                              |
-| `@shipworthy/openapi-zod`         | Plugin, export `zod`.                                                                                     |
+| Package                           | Relation                                                                                                              |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `@shipworthy/openapi-cli`         | The `openapi generate` command, which loads the document once with `loadService` and calls `runPlugin` for each file. |
+| `@shipworthy/openapi-parser`      | Loads and bundles the source (step 1).                                                                                |
+| `@shipworthy/openapi-transformer` | Defines `ParsedService` and decodes into it (step 2). Import model types from it when you write a plugin.             |
+| `@shipworthy/openapi-typescript`  | Plugin, export `typescript`.                                                                                          |
+| `@shipworthy/openapi-zod`         | Plugin, export `zod`.                                                                                                 |
 
 ## Troubleshooting
 
@@ -282,8 +352,9 @@ Defects, such as an `Effect.die` inside a plugin's effect, aren't converted to `
 
 ## Key facts (for AI agents)
 
-- Entry point: `import { generate, importPlugin, ModuleLoader, ResolveError, TransformError, MissingPlugin, InvalidPlugin, type Generator, type GenerateOptions, type GenerateError } from "@shipworthy/openapi-generator"`.
+- Entry point: `import { generate, loadService, runPlugin, importPlugin, ModuleLoader, ResolveError, TransformError, MissingPlugin, InvalidPlugin, type Generator, type GenerateOptions, type GenerateError } from "@shipworthy/openapi-generator"`.
 - `generate({ specifier, exportName, source, cwd?, pluginOptions? })` returns `Effect<unknown, GenerateError, FileSystem | Path | HttpClient>`. It's not a Promise. Run it with `Effect.runPromise` after providing `NodeServices.layer` (or `BunServices.layer`) and `FetchHttpClient.layer`.
+- `generate` is `loadService` followed by `runPlugin`. To run several plugins, call `loadService(source, { cwd? })` once (returns `Effect<ParsedService, ResolveError | TransformError, FileSystem | Path | HttpClient>`), then `runPlugin({ specifier, exportName, model, pluginOptions? })` per plugin (returns `Effect<unknown, TransformError | MissingPlugin | InvalidPlugin>`, no service requirements), for example with `Effect.forEach(..., { concurrency: "unbounded" })`.
 - Depends on `effect` `^4.0.0`. ESM only, compiled JavaScript. Runs on Node.js `>=22.19.0` or Bun.
 - Pipeline: bundle (`ResolveError`), then decode to `ParsedService` (`TransformError`), then import the plugin (`MissingPlugin` / `InvalidPlugin`), then `plugin.generate(model, pluginOptions ?? {})` (plugin failures become `TransformError`).
 - File-path strings are parsed as YAML text. Pass `URL` objects for files. Strings starting with `http(s)://` or `file://` are fetched or read.

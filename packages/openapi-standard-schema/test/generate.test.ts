@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { standardSchema } from "../src/index";
+import { SchemaGenerationError, standardSchema } from "../src/index";
 
 function document(
   openapi: string,
@@ -320,5 +320,199 @@ it.effect("keeps synchronous schema evaluation failures in the generation error 
     assert.equal(error._tag, "SchemaGenerationError");
     assert.ok(error.cause instanceof Error);
     assert.equal(error.message, error.cause.message);
+  }),
+);
+
+function modelFor(schemas: Record<string, unknown>, defs?: Record<string, unknown>) {
+  return Schema.decodeUnknownEffect(ParsedServiceFromParsedOpenApi)(
+    document("3.1.0", schemas, defs),
+  );
+}
+
+function generateWith(schemas: Record<string, unknown>, options: Record<string, unknown>) {
+  return modelFor(schemas).pipe(
+    Effect.flatMap((model) => {
+      const generated = standardSchema.generate(model, options);
+      return Effect.isEffect(generated) ? generated : Effect.succeed(generated);
+    }),
+  );
+}
+
+const snakeCaseSchemas = {
+  Address: {
+    type: "object",
+    required: ["street_line"],
+    properties: { street_line: { type: "string" }, postal_code: { type: "string" } },
+  },
+  Guest: {
+    type: "object",
+    required: ["first_name", "home_address"],
+    properties: {
+      first_name: { type: "string" },
+      home_address: { $ref: "#/components/schemas/Address" },
+      past_stays: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["hotel_id"],
+          properties: { hotel_id: { type: "string" } },
+        },
+      },
+      stay_status: { type: "string", enum: ["in_progress", "checked_out"] },
+    },
+  },
+  Reservation: {
+    allOf: [
+      { $ref: "#/components/schemas/Guest" },
+      {
+        type: "object",
+        required: ["reservation_id"],
+        properties: { reservation_id: { type: "string" } },
+      },
+    ],
+  },
+};
+
+const snakeNames = [
+  "street_line",
+  "postal_code",
+  "first_name",
+  "home_address",
+  "past_stays",
+  "hotel_id",
+  "stay_status",
+  "reservation_id",
+];
+
+const camelNames = [
+  "streetLine",
+  "postalCode",
+  "firstName",
+  "homeAddress",
+  "pastStays",
+  "hotelId",
+  "stayStatus",
+  "reservationId",
+];
+
+it.effect("camelCase renames snake_case fields in types and validators", () =>
+  Effect.gen(function* () {
+    const model = yield* modelFor(snakeCaseSchemas);
+    const before = structuredClone(model);
+    const generated = standardSchema.generate(model, { camelCase: true });
+    const source = Effect.isEffect(generated) ? yield* generated : generated;
+    assert.deepEqual(model, before);
+
+    for (const name of camelNames) assert.match(source, new RegExp(`"${name}"`), name);
+    for (const name of snakeNames) assert.doesNotMatch(source, new RegExp(`"${name}"`), name);
+
+    assert.match(source, /"in_progress"/);
+    assert.match(source, /"checked_out"/);
+    assert.match(source, /export type Guest = /);
+
+    const loaded = yield* Effect.tryPromise(() => load(source));
+
+    try {
+      const guest = {
+        firstName: "Ada",
+        homeAddress: { streetLine: "1 Main St", postalCode: "12345" },
+        pastStays: [{ hotelId: "h1" }],
+        stayStatus: "in_progress",
+      };
+
+      assert.deepEqual(validate(loaded.module.Guest!, guest).value, guest);
+
+      assert.deepEqual(
+        validate(loaded.module.Reservation!, { ...guest, reservationId: "r1" }).value,
+        { ...guest, reservationId: "r1" },
+      );
+
+      assert.ok(
+        validate(loaded.module.Guest!, {
+          first_name: "Ada",
+          homeAddress: { streetLine: "1 Main St" },
+        }).issues,
+      );
+
+      assert.ok(
+        validate(loaded.module.Guest!, { ...guest, homeAddress: { street_line: "x" } }).issues,
+      );
+
+      assert.ok(
+        validate(loaded.module.Guest!, { ...guest, pastStays: [{ hotel_id: "h1" }] }).issues,
+      );
+
+      assert.ok(validate(loaded.module.Guest!, { ...guest, stayStatus: "inProgress" }).issues);
+      assert.ok(validate(loaded.module.Reservation!, { ...guest, reservation_id: "r1" }).issues);
+    } finally {
+      yield* Effect.tryPromise(() => loaded.dispose());
+    }
+  }),
+);
+
+it.effect("camelCase false or omitted leaves generation unchanged", () =>
+  Effect.gen(function* () {
+    const omitted = yield* generateWith(snakeCaseSchemas, {});
+    assert.equal(yield* generateWith(snakeCaseSchemas, { camelCase: false }), omitted);
+    for (const name of snakeNames) assert.match(omitted, new RegExp(`"${name}"`), name);
+    assert.doesNotMatch(omitted, /"firstName"/);
+  }),
+);
+
+it.effect("camelCase rejects two fields that become the same name", () =>
+  Effect.gen(function* () {
+    const direct = yield* Effect.flip(
+      generateWith(
+        {
+          User: {
+            type: "object",
+            properties: { user_id: { type: "string" }, userId: { type: "string" } },
+          },
+        },
+        { camelCase: true },
+      ),
+    );
+
+    assert.ok(direct instanceof SchemaGenerationError);
+
+    assert.equal(
+      direct.message,
+      "#/components/schemas/User: user_id and userId both become userId",
+    );
+
+    const inherited = yield* Effect.flip(
+      generateWith(
+        {
+          Base: { type: "object", properties: { user_id: { type: "string" } } },
+          Child: {
+            allOf: [
+              { $ref: "#/components/schemas/Base" },
+              { type: "object", properties: { userId: { type: "string" } } },
+            ],
+          },
+        },
+        { camelCase: true },
+      ),
+    );
+
+    assert.ok(inherited instanceof SchemaGenerationError);
+
+    assert.equal(
+      inherited.message,
+      "#/components/schemas/Child: user_id and userId both become userId",
+    );
+  }),
+);
+
+it.effect("invalid generator options fail in the typed error channel", () =>
+  Effect.gen(function* () {
+    const error = yield* Effect.flip(generateWith(snakeCaseSchemas, { camelCase: "yes" }));
+    assert.ok(error instanceof SchemaGenerationError);
+    assert.equal(error.message, "#: Invalid generator options");
+
+    assert.equal(
+      yield* generateWith(snakeCaseSchemas, { unknown: 1 }),
+      yield* generateWith(snakeCaseSchemas, {}),
+    );
   }),
 );

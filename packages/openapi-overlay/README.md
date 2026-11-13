@@ -140,7 +140,7 @@ TypeScript types, runtime validators, and clients:
 
 ```sh
 openapi overlay openapi.yaml --overlay types.overlay.yaml -o types.openapi.json
-openapi generate typescript types.openapi.json -o schema.ts
+openapi generate typescript -i types.openapi.json -o src/generated
 ```
 
 The examples below assume the named schemas and paths exist. Target an existing parent to add

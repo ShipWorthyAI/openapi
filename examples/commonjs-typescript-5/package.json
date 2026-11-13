@@ -3,7 +3,7 @@
   "private": true,
   "description": "A React Native style app: CommonJS, TypeScript 5.0 pinned by an npm override, NodeNext resolution, TanStack Query 5.59, and npm's legacy peer dependency handling.",
   "scripts": {
-    "verify": "openapi generate tanstack-query openapi.json -o src/generated --name pets && tsc -p tsconfig.json && tsc -p tsconfig.bundler.json && node runtime.cjs"
+    "verify": "openapi generate tanstack-query -i openapi.json -o src/generated/pets && tsc -p tsconfig.json && tsc -p tsconfig.bundler.json && node runtime.cjs"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query": "*",

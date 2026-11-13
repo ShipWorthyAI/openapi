@@ -1,6 +1,6 @@
 # @shipworthy/openapi-cli
 
-`@shipworthy/openapi-cli` installs the `openapi` command. It bundles, overlays, and lints OpenAPI 3.x documents and generates code from them: TypeScript types, Zod validators, Standard Schema validators, and typed TanStack Query clients. Use it in a build step or `generate` script that keeps generated API code in sync with a local or remote OpenAPI document. Each generator is a separate optional package (`@shipworthy/openapi-typescript`, `@shipworthy/openapi-zod`, `@shipworthy/openapi-standard-schema`, `@shipworthy/openapi-tanstack-query`). The CLI loads a generator only when you run its command, so install just the ones you use.
+`@shipworthy/openapi-cli` installs the `openapi` command. It bundles, overlays, and lints OpenAPI 3.x documents and generates code from them: TypeScript types, Zod validators, Standard Schema validators, and typed TanStack Query clients. Use it in a build step or `generate` script that keeps generated API code in sync with a local or remote OpenAPI document. Each generator is a separate optional package (`@shipworthy/openapi-typescript`, `@shipworthy/openapi-zod`, `@shipworthy/openapi-standard-schema`, `@shipworthy/openapi-tanstack-query`). One `openapi generate` run can select several generator plugins and writes one file per plugin into an output directory. The CLI loads a generator only when a run selects its plugin, so install just the ones you use.
 
 ## Requirements
 
@@ -18,23 +18,23 @@ bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 
 ### Optional peer dependencies (generators)
 
-Install the generator package for each `generate` subcommand you use, at the same version as the CLI:
+Install the generator package for each `generate` plugin you use, at the same version as the CLI:
 
-| Command                            | Requires                                                                  | Notes                                                       |
-| ---------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `openapi generate typescript`      | `@shipworthy/openapi-typescript`                                          |                                                             |
-| `openapi generate zod`             | `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`            | Also writes `types.ts`.                                     |
-| `openapi generate tanstack-query`  | `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript` | Also writes `types.ts`.                                     |
-| `openapi generate standard-schema` | `@shipworthy/openapi-standard-schema`                                     |                                                             |
-| `openapi lint`                     | nothing extra                                                             | Bundled through `@shipworthy/openapi-validator` (Spectral). |
+| Plugin / command  | Requires                                                                  | Notes                                                       |
+| ----------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `typescript`      | `@shipworthy/openapi-typescript`                                          | Writes `types.ts`.                                          |
+| `zod`             | `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`            | Writes `zod-schema.ts`; also needs `types.ts`.              |
+| `tanstack-query`  | `@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript` | Writes `client.ts`; also needs `types.ts`.                  |
+| `standard-schema` | `@shipworthy/openapi-standard-schema`                                     | Writes `standard-schema.ts`.                                |
+| `openapi lint`    | nothing extra                                                             | Bundled through `@shipworthy/openapi-validator` (Spectral). |
 
 The generated files import packages at runtime, so your application needs those packages too:
 
 | Generated file               | Imports                                                                                                                                       |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `types.ts` (TypeScript)      | nothing (types only)                                                                                                                          |
-| Zod output                   | `zod` (v4; the generator is built against `zod@4.6.5`) and `./types`                                                                          |
-| Standard Schema output       | `effect` (`4.0.0`)                                                                                                                            |
+| `zod-schema.ts` (Zod)        | `zod` (v4; the generator is built against `zod@4.6.5`) and `./types`                                                                          |
+| `standard-schema.ts`         | `effect` (`4.0.0`)                                                                                                                            |
 | `client.ts` (TanStack Query) | `@shipworthy/openapi-tanstack-query` (a runtime dependency), which peers on `@tanstack/react-query@^5.104.1` and `react@^18.0.0 \|\| ^19.0.0` |
 
 ## Quick start
@@ -44,8 +44,10 @@ Run the `openapi` commands below in a package script, or use `bunx --bun @shipwo
 ```sh
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
 bunx --bun @shipworthy/openapi-cli lint ./openapi.yaml
-bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/types.ts
+bunx --bun @shipworthy/openapi-cli generate typescript -i ./openapi.yaml -o ./src/generated
 ```
+
+The `generate` command writes `src/generated/types.ts`.
 
 Given this `openapi.yaml`:
 
@@ -106,12 +108,12 @@ A typical `package.json` script that generates a full SDK (from the repository's
 ```json
 {
   "scripts": {
-    "generate": "openapi generate tanstack-query openapi.json -o src/generated --name hotels && openapi generate zod openapi.json -o src/generated/hotels/zod-schema.ts && openapi generate standard-schema openapi.json -o src/generated/hotels/standard-schema.ts"
+    "generate": "openapi generate tanstack-query zod standard-schema -i openapi.json -o src/generated/hotels"
   }
 }
 ```
 
-That script produces `src/generated/hotels/{types.ts,client.ts,zod-schema.ts,standard-schema.ts}`.
+That script produces `src/generated/hotels/{types.ts,client.ts,zod-schema.ts,standard-schema.ts}`. The client name `hotels` comes from the output directory.
 
 ## Commands
 
@@ -121,13 +123,13 @@ openapi <subcommand> [flags]
 SUBCOMMANDS
   bundle      Bundle an OpenAPI document
   overlay     Apply an OpenAPI Overlay
-  generate    Run a generator plugin
+  generate    Generate types, validators, and clients
   lint        Lint an OpenAPI schema
 ```
 
 ### Input argument (all commands)
 
-Every command takes a positional `<input>`:
+`bundle`, `overlay`, and `lint` take a positional `<input>`. `generate` takes the input with `-i`/`--input` and reads the document from stdin when the flag is omitted. In both forms the input is:
 
 - A local path, relative to the current directory, e.g. `./openapi.yaml`.
 - An `http:`, `https:`, or `file:` URL. Remote documents are fetched over HTTP, and the response must have a 2xx status.
@@ -226,22 +228,48 @@ ERROR
   Every operation must have unique "operationId". at #/paths//b/get/operationId
 ```
 
-### `openapi generate typescript [<input>]`
+### `openapi generate <plugins...>`
 
-Converts an OpenAPI document to TypeScript types (`paths`, `webhooks`, `components`, `operations`, …) and formats the result. Requires `@shipworthy/openapi-typescript`.
+Runs one or more generator plugins against one OpenAPI document and writes one file per plugin into an output directory.
 
-```sh
-openapi generate typescript ./openapi.yaml -o ./schema.ts
-openapi generate typescript https://example.com/openapi.json > schema.ts
-cat openapi.yaml | openapi generate typescript -o ./schema.ts
-openapi generate typescript ./openapi.yaml -o ./schema.ts --check   # CI drift check
+```text
+openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--check] [type flags]
 ```
 
-| Argument / flag  | Type        | Default | Description                                                                                                                                                                           |
-| ---------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<input>`        | path or URL | stdin   | Optional. Reads the document from stdin when omitted.                                                                                                                                 |
-| `--output`, `-o` | file path   | stdout  | Output file. Parent directories are created. Writes to stdout when omitted.                                                                                                           |
-| `--check`        | boolean     | `false` | Writes nothing. Compares the generated output with the existing `--output` file and exits `1` with `Generated types are not up-to-date!` when they differ. Use it together with `-o`. |
+```sh
+openapi generate zod tanstack-query -i ./openapi.json -o src/generated/reservations --camel-case --wire-types
+# writes src/generated/reservations/{client.ts,types.ts,wire-types.ts,zod-schema.ts}
+
+openapi generate typescript -i ./openapi.yaml -o ./src/generated            # writes src/generated/types.ts
+openapi generate typescript -i https://example.com/openapi.json > schema.ts # one file, printed to stdout
+cat openapi.yaml | openapi generate standard-schema > schemas.ts            # reads stdin
+openapi generate typescript zod -i ./openapi.yaml -o ./src/generated --check # CI drift check
+```
+
+#### Plugins
+
+Pass at least one plugin. Each plugin writes one file with a fixed name:
+
+| Plugin            | Package (optional peer)               | File                 | Also needs `types.ts` |
+| ----------------- | ------------------------------------- | -------------------- | --------------------- |
+| `typescript`      | `@shipworthy/openapi-typescript`      | `types.ts`           | (it is `types.ts`)    |
+| `zod`             | `@shipworthy/openapi-zod`             | `zod-schema.ts`      | yes                   |
+| `tanstack-query`  | `@shipworthy/openapi-tanstack-query`  | `client.ts`          | yes                   |
+| `standard-schema` | `@shipworthy/openapi-standard-schema` | `standard-schema.ts` | no                    |
+
+`zod` and `tanstack-query` import their types from `./types`, so they also require `@shipworthy/openapi-typescript` to be installed. The order of plugins does not matter, and a plugin listed twice runs once. Any order produces identical files.
+
+#### Options
+
+| Flag             | Type                                 | Default                            | Description                                                                                                                                                                                                                                   |
+| ---------------- | ------------------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--input`, `-i`  | path or `http:`/`https:`/`file:` URL | stdin                              | OpenAPI document (JSON or YAML). Reads the document from stdin when omitted. An input containing `*` fails with `Globbing is unsupported.`                                                                                                    |
+| `--output`, `-o` | directory                            | stdout                             | Directory that receives the files. It is created recursively. When omitted, the run must produce exactly one file, which is written to stdout.                                                                                                |
+| `--name`         | string                               | basename of the output directory   | Used only by `tanstack-query`: the PascalCase prefix of generated exports and the query-key prefix. Must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. Ignored when `tanstack-query` is not selected. See [Client name](#client-name). |
+| `--camel-case`   | boolean                              | `false`                            | Spell snake_case field and parameter names in camelCase in every generated file. See [camelCase and wire types](#camelcase-and-wire-types).                                                                                                   |
+| `--wire-types`   | boolean                              | `false`                            | Also write `wire-types.ts`: the same types as `types.ts` with the API's field names. Requires `--camel-case` and a plugin that writes `types.ts`.                                                                                             |
+| `--check`        | boolean                              | `false`                            | Writes nothing. Compares every generated file with the existing file in `--output` and exits `1` when any differs or is missing. Requires `--output`.                                                                                         |
+| type flags       | boolean                              | `false` (`--array-length`: `true`) | See the next table. They apply to `types.ts` and `wire-types.ts` and are ignored when neither is generated.                                                                                                                                   |
 
 Type-generation flags. All are boolean and default to `false` except `--array-length`, which
 defaults to `true`:
@@ -254,14 +282,61 @@ defaults to `true`:
 | `--dedupe-enums`       | Dedupe enum types when `--enum` is set.                                                                                                                       |
 | `--export-type`, `-t`  | Export top-level type aliases instead of interfaces.                                                                                                          |
 | `--array-length`       | Generate tuples using array `minItems` / `maxItems`. Enabled by default; disable with `--array-length=false` or `--no-array-length`.                          |
-| `--camel-case`         | Spell snake_case schema fields and parameter names in camelCase.                                                                                              |
+| `--camel-case`         | Spell snake_case schema fields and parameter names in camelCase. Applies to every generated file, not only `types.ts`.                                        |
 | `--root-types`         | Export component and operation aliases at the root level. Schema aliases have no prefix; operation aliases uppercase the first character of the operation ID. |
 | `--read-write-markers` | Generate `$Read`/`$Write` markers for `readOnly`/`writeOnly` properties.                                                                                      |
 
-The output always includes an `ApiPaths` enum with route values. Paths retain their literal
-OpenAPI templates, such as `/pets/{id}`.
+#### Which files are written
 
-With `-o`, the command logs `<input> → <output> [<elapsed>]` when it finishes.
+A run writes:
+
+- `types.ts` when `typescript`, `zod`, or `tanstack-query` is selected. It is generated once and shared by `zod-schema.ts` and `client.ts`.
+- `zod-schema.ts`, `client.ts`, and `standard-schema.ts` for each selected plugin.
+- `wire-types.ts` when `--wire-types` is set.
+
+File names are fixed and `-o` is always a directory. An `--output` that ends in `.ts`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs`, or `.json` is rejected. Every run regenerates and overwrites every file it writes.
+
+#### Client name
+
+`tanstack-query` needs a client name. Without `--name`, it is the basename of the output directory: `-o src/generated/hotels` gives `hotels`. The name in PascalCase is the prefix of the generated exports, and a `-` or `_` marks a word boundary: `-o src/generated/my-pets` gives `createMyPetsApiClient`. The raw name is the default query-key prefix.
+
+When the basename does not match the name pattern, the run fails with `Cannot derive a client name from the output directory "<basename>". Pass --name.`
+
+#### camelCase and wire types
+
+`--camel-case` applies to every generated file:
+
+- `types.ts` spells snake_case schema fields and parameter names in camelCase.
+- `client.ts` converts declared parameter and JSON body fields between camelCase and the API's names at runtime.
+- `zod-schema.ts` validators accept and return the camelCase shapes declared in `types.ts`.
+- `standard-schema.ts` exports camelCase types and validators.
+
+Enum and const values keep the API's spelling. When two property names at one object level become the same camelCase name, generation fails with a message such as `#/components/schemas/User: user_id and userId both become userId`, and nothing is written.
+
+`--wire-types` also writes `wire-types.ts`: the same types as `types.ts`, with the API's field names. Import its `operations` or `components` types when a custom `fetch` or mock `Response` handles the API's snake_case payload before client conversion. It requires `--camel-case` and at least one of `typescript`, `zod`, or `tanstack-query`.
+
+#### stdin and stdout
+
+- Without `-i`, the document is read from stdin. Invalid invocations fail before stdin is read.
+- Without `-o`, the run must produce exactly one file. Only that file is written to stdout, with no log output, and the `typescript` plugin's warnings are suppressed. A run that would produce more than one file (for example `zod`, which also needs `types.ts`) fails with `--output is required when generating more than one file.`
+
+#### CI drift check (`--check`)
+
+`--check` writes nothing. It generates every file the run would write and compares each one with the existing file in `--output`. When any file differs or is missing, it exits `1` with `Generated files are not up-to-date: <file names>`, listing the file names sorted and separated by `, `. A file that cannot be read counts as out of date. When every file matches, `--check` prints nothing and exits `0`. `--check` requires `--output`.
+
+#### How a run executes
+
+The document is read and parsed once, however many plugins run. All files are then rendered concurrently from that document. Nothing is written unless every file was generated successfully; if any generator fails, the output directory is left untouched. Invalid invocations fail before the input is read. With `-o`, after all files are written, the command logs one line per file, sorted by file name:
+
+```text
+<input URL or stdin> → <output>/<file> [<elapsed>]
+```
+
+The input is shown as a URL (`file:///…` for local paths) or as `stdin`, and the output directory as you typed it, without trailing slashes. Every line of one run shows the same elapsed time.
+
+#### `typescript` output (`types.ts`)
+
+Converts the OpenAPI document to TypeScript types (`paths`, `webhooks`, `components`, `operations`, …) and formats the result. The output always includes an `ApiPaths` enum with route values. Paths retain their literal OpenAPI templates, such as `/pets/{id}`.
 
 Use an overlay before generation to require properties, allow additional keys, remove
 deprecated members, or declare path parameters. See the
@@ -269,34 +344,12 @@ deprecated members, or declare path parameters. See the
 
 ```sh
 openapi overlay openapi.yaml --overlay types.overlay.yaml -o types.openapi.json
-openapi generate typescript types.openapi.json -o schema.ts
+openapi generate typescript -i types.openapi.json -o src/generated
 ```
 
-### `openapi generate zod <input> -o <file>`
+#### `zod` output (`zod-schema.ts`)
 
-Generates Zod validators. Requires `@shipworthy/openapi-zod` and `@shipworthy/openapi-typescript`.
-
-```sh
-openapi generate zod ./openapi.yaml -o ./src/generated/hotels/zod-schema.ts
-# writes src/generated/hotels/zod-schema.ts and src/generated/hotels/types.ts
-```
-
-| Argument / flag  | Type        | Default    | Description                                               |
-| ---------------- | ----------- | ---------- | --------------------------------------------------------- |
-| `<input>`        | path or URL | (required) | OpenAPI document.                                         |
-| `--output`, `-o` | file path   | (required) | Output file. `types.ts` is written to the same directory. |
-| `--force`        | boolean     | `false`    | Regenerate `types.ts` even when its stamp matches.        |
-
-This command accepts the TypeScript generator flags listed above except `--camel-case`.
-Zod validators use the API's field names, so `--camel-case` is rejected rather than generating
-types that disagree with runtime validation. For example, pass `--no-array-length` to keep array
-types when it refreshes `types.ts`. During generation, schema compilation resolves Zod from the
-output file's directory and requires `zod@4.6.5`.
-
-If a sibling `types.ts` was generated with `--camel-case`, Zod refuses to overwrite it. Generate
-Zod into a separate directory so its validators and `types.ts` both use API field names.
-
-The output imports `zod` and `type { components } from "./types"`. It exports one validator per component schema, typed as `z.ZodType<components["schemas"][Name]>`, plus `<operationId>RequestBody` validators for request bodies:
+The file imports `zod` and `type { components, operations } from "./types"`. It exports one validator per component schema, typed as `z.ZodType<components["schemas"][Name]>`, plus `<operationId>RequestBody` validators for request bodies. During generation, Zod is resolved from the output directory and must be `zod@4.6.5`.
 
 ```ts
 import { Pet } from "./generated/pets/zod-schema";
@@ -304,35 +357,17 @@ import { Pet } from "./generated/pets/zod-schema";
 const pet = Pet.parse(await response.json()); // typed as components["schemas"]["Pet"]
 ```
 
-### `openapi generate tanstack-query <input> -o <dir> --name <name>`
+With `--camel-case`, the validators check camelCase objects. Convert wire payloads to camelCase before you parse them.
 
-Generates a typed API client and TanStack Query helpers. Requires
-`@shipworthy/openapi-tanstack-query` and `@shipworthy/openapi-typescript`.
+#### `tanstack-query` output (`client.ts`)
 
-```sh
-openapi generate tanstack-query ./openapi.yaml -o ./src/generated --name hotels
-# writes src/generated/hotels/client.ts and src/generated/hotels/types.ts
-```
-
-| Argument / flag  | Type        | Default    | Description                                                                                                                                                                                                                                           |
-| ---------------- | ----------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<input>`        | path or URL | (required) | OpenAPI document.                                                                                                                                                                                                                                     |
-| `--output`, `-o` | directory   | (required) | Directory that will contain `<name>/client.ts` and `<name>/types.ts`.                                                                                                                                                                                 |
-| `--name`         | string      | (required) | Client name. Used as the output subdirectory and, in PascalCase, as the prefix of generated exports. It must start with a letter and contain only letters, numbers, and single `-` or `_` separators (`^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`). |
-| `--force`        | boolean     | `false`    | Regenerate `types.ts` even when its stamp matches.                                                                                                                                                                                                    |
-| `--camel-case`   | boolean     | `false`    | Generate camelCase types and convert declared parameter and JSON body fields in the generated client.                                                                                                                                                 |
-| `--wire-types`   | boolean     | `false`    | With `--camel-case`, also generate `wire-types.ts` with the API field names for raw fetch wrappers and response fixtures.                                                                                                                             |
-
-This command also accepts the TypeScript generator flags listed above. Pass the same flags to every command that may refresh the sibling `types.ts`.
-`--wire-types` requires `--camel-case` and uses the same TypeScript flags except casing.
-
-For `--name hotels`, `client.ts` exports:
+Generates a typed API client and TanStack Query helpers. For `-o src/generated/hotels`, `client.ts` exports:
 
 - `createHotelsApiClient(options)` and the `HotelsApiClient` type.
 - `createHotelsApiQueryUtils(client, options?)`, which returns per-operation helpers (`queryOptions`, `mutationOptions`, `infiniteOptions`) keyed by `operationId`.
 - Type re-exports `HotelsApiPaths`, `HotelsApiComponents`, and `HotelsApiOperations`.
 
-A `-` or `_` in the name marks a word boundary: `--name my-pets` gives `createMyPetsApiClient`. The command logs `Generated <path>/client.ts`. Operations need unique `operationId`s.
+Operations need unique `operationId`s.
 
 ```ts
 import { useQuery } from "@tanstack/react-query";
@@ -349,32 +384,32 @@ const hotels = useQuery(
 );
 ```
 
-Run the same command with `--camel-case` to use `minStars` in app code while sending
-`min_stars` to the API. The generated client also converts JSON request, success, and error
-bodies according to the schema.
-
-Pass `--wire-types` with `--camel-case` to generate `<name>/wire-types.ts` from the same document.
-Import its `operations` or `components` types when a custom `fetch` or mock `Response` handles
-the API's snake_case payload before client conversion.
+Add `--camel-case` to use `minStars` in app code while sending `min_stars` to the API. The
+generated client also converts JSON request, success, and error bodies according to the schema.
 
 See the `@shipworthy/openapi-tanstack-query` README for the full runtime API.
 
-### `openapi generate standard-schema <input> [-o <file>]`
+#### `standard-schema` output (`standard-schema.ts`)
 
-Generates [Standard Schema](https://standardschema.dev) validators backed by Effect `Schema`. Requires `@shipworthy/openapi-standard-schema`. This command does not write `types.ts`.
+Generates [Standard Schema](https://standardschema.dev) validators backed by Effect `Schema`. For each component schema, the output exports a type and a value with the same name, e.g. `export type Pet = …` and `export const Pet = Schema.toStandardSchemaV1(…)`. This plugin does not need `types.ts`.
 
-```sh
-openapi generate standard-schema ./openapi.yaml -o ./src/generated/schemas.ts
-```
+#### Migrating from the per-plugin subcommands
 
-| Argument / flag  | Type        | Default    | Description                                 |
-| ---------------- | ----------- | ---------- | ------------------------------------------- |
-| `<input>`        | path or URL | (required) | OpenAPI document.                           |
-| `--output`, `-o` | file path   | stdout     | Output file. Writes to stdout when omitted. |
+Earlier versions had one subcommand per generator, a positional `<input>`, an output file path for some generators, a `--force` flag, and a `types.ts` cache that skipped regeneration when its stamp matched. These are removed: the input moved to `-i`, `-o` is always a directory, file names are fixed, and every run regenerates all its files. `--check` covers every generated file.
 
-For each component schema, the output exports a type and a value with the same name, e.g. `export type Pet = …` and `export const Pet = Schema.toStandardSchemaV1(…)`.
+| Before                                                                     | Now                                                                                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `openapi generate typescript spec.yaml -o ./schema.ts`                     | `openapi generate typescript -i spec.yaml -o ./dir` (writes `./dir/types.ts`)                           |
+| `openapi generate typescript spec.yaml > schema.ts`                        | `openapi generate typescript -i spec.yaml > schema.ts`                                                  |
+| `openapi generate zod spec.yaml -o src/generated/hotels/zod-schema.ts`     | `openapi generate zod -i spec.yaml -o src/generated/hotels`                                             |
+| `openapi generate tanstack-query spec.yaml -o src/generated --name hotels` | `openapi generate tanstack-query -i spec.yaml -o src/generated/hotels`                                  |
+| `openapi generate standard-schema spec.yaml -o src/generated/schemas.ts`   | `openapi generate standard-schema -i spec.yaml -o src/generated` (writes `standard-schema.ts`)          |
+| Several `generate` commands for one SDK                                    | One command: `openapi generate tanstack-query zod standard-schema -i spec.yaml -o src/generated/hotels` |
+| `--force`                                                                  | Removed. Every run regenerates every file.                                                              |
 
-## Generated file headers and `types.ts` caching
+`--camel-case` now also applies to `zod-schema.ts` and `standard-schema.ts`, so Zod no longer needs a separate directory with API-cased types. `--wire-types` is a general flag rather than a `tanstack-query` option.
+
+## Generated file headers
 
 Every generated file starts with a stamped header:
 
@@ -383,19 +418,13 @@ Every generated file starts with a stamped header:
  * This file was auto-generated by @shipworthy/openapi-typescript.
  * Do not make direct changes to the file.
  *
- * @shipworthy/openapi-typescript@0.0.1:<sha256 of the schema contents and case setting>
+ * @shipworthy/openapi-typescript@0.0.1:<sha256>
  */
 ```
 
-The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers the document text and includes the camelCase setting when enabled. It does not depend on the document's location, so reading the same document from stdin, another path, or a URL gives the same stamp when the setting matches.
+The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers the document text. It does not depend on the document's location, so reading the same document from stdin, another path, or a URL gives the same stamp.
 
-`generate zod` and `generate tanstack-query` both need `types.ts`:
-
-- The command regenerates `types.ts` if the file is missing or its stamp differs from the current one. A stamp changes when the schema contents, `--camel-case`, or the `@shipworthy/openapi-typescript` version change.
-- A camelCase `types.ts` header records its field casing so `generate zod` can refuse to replace it, even after the schema changes.
-- TypeScript flags on either command are passed to the TypeScript generator. Nondefault flags refresh `types.ts` even when its input stamp matches. Pass the same flags to each command that may write it.
-- `--force` always regenerates `types.ts` with the TypeScript flags on that command.
-- The main output (`client.ts`, the Zod file) is always overwritten.
+Files generated with `--camel-case` add a `Field casing: camelCase` line after the stamp, and their hash covers the document text plus the casing setting, so toggling the flag changes the stamp. `wire-types.ts` never has the casing line and always uses the plain hash.
 
 ## Programmatic use
 
@@ -428,23 +457,32 @@ This uses `effect` and `@effect/platform-node` `4.0.0`. The CLI depends on both,
 
 Each failure prints an `ERROR` block to stderr and exits with `1`. Common messages:
 
-| Message                                                              | Cause                                                                    |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `Globbing is unsupported.`                                           | `<input>` contains `*`.                                                  |
-| `Missing required flag: --name` / `--output`                         | A required flag is missing.                                              |
-| `Invalid value for flag --name: … --name must start with a letter…`  | `--name` does not match the allowed pattern.                             |
-| `Install <package> to load <export>.` (or a module-resolution error) | The generator package for this command is not installed.                 |
-| `Unsupported Swagger version: 2.x. Use OpenAPI 3.x instead.`         | The input is a Swagger 2.0 document.                                     |
-| `Unsupported OpenAPI version: <v>`                                   | The `openapi` field is not a 3.x version.                                |
-| `NotFound: FileSystem.readFile (<path>)`                             | The input file does not exist.                                           |
-| `Generated types are not up-to-date!`                                | `generate typescript --check` found that the output file is out of date. |
-| `Expected an OpenAPI 3.x document`                                   | `lint` was given something other than an OpenAPI 3.x document.           |
+| Message                                                                                                                                                                                        | Cause                                                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `Globbing is unsupported.`                                                                                                                                                                     | The input contains `*`.                                                                             |
+| `Missing required argument: plugins`                                                                                                                                                           | `generate` was run without a plugin.                                                                |
+| `Unknown plugin: <value>. Available plugins: standard-schema, tanstack-query, typescript, zod.`                                                                                                | A `generate` positional is not a known plugin.                                                      |
+| `--wire-types requires --camel-case.`                                                                                                                                                          | `--wire-types` was passed without `--camel-case`.                                                   |
+| `--wire-types requires typescript, zod, or tanstack-query.`                                                                                                                                    | No selected plugin writes `types.ts`.                                                               |
+| `--check requires --output.`                                                                                                                                                                   | `--check` was passed without `-o`.                                                                  |
+| `--output is required when generating more than one file.`                                                                                                                                     | `-o` was omitted and the run would write more than one file.                                        |
+| `--output must be a directory. Each plugin writes its own file inside it.`                                                                                                                     | `-o` ends in `.ts`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs`, or `.json`.                              |
+| `Invalid value for flag --name: "<value>". Expected: Schema validation failed: --name must start with a letter and contain only letters, numbers, and single hyphen or underscore separators.` | `--name` does not match the allowed pattern.                                                        |
+| `Cannot derive a client name from the output directory "<basename>". Pass --name.`                                                                                                             | `tanstack-query` without `--name`, and the output directory's basename is not a valid name.         |
+| `Generated files are not up-to-date: <file names>`                                                                                                                                             | `generate --check` found generated files that differ from, or are missing in, the output directory. |
+| `Install <package> to load <export>.` (or a module-resolution error)                                                                                                                           | The generator package for a selected plugin is not installed.                                       |
+| `Unsupported Swagger version: 2.x. Use OpenAPI 3.x instead.`                                                                                                                                   | The input is a Swagger 2.0 document.                                                                |
+| `Unsupported OpenAPI version: <v>`                                                                                                                                                             | The `openapi` field is not a 3.x version.                                                           |
+| `NotFound: FileSystem.readFile (<path>)`                                                                                                                                                       | The input file does not exist.                                                                      |
+| `Expected an OpenAPI 3.x document`                                                                                                                                                             | `lint` was given something other than an OpenAPI 3.x document.                                      |
+
+When `generate` fails validation or any file fails to generate, nothing is written and the output directory is unchanged.
 
 ## Limitations
 
 - One input per run. Globs are not supported.
-- Only `generate typescript` reads from stdin. Only `generate typescript` and `generate standard-schema` write to stdout.
-- Only `generate typescript` supports `--check`. Only `generate zod` and `generate tanstack-query` support `--force`.
+- Only `generate` reads from stdin. It writes to stdout only when the run produces exactly one file.
+- `generate` file names are fixed; `-o` names a directory, not a file.
 - `lint` does not resolve external `$ref`s. It lints the document text exactly as given.
 - Lint rules are fixed (Spectral `oas` with the adjustments listed above). Custom rulesets are not supported.
 
@@ -454,12 +492,11 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 - Commands:
   - `openapi overlay <input> --overlay <overlay> -o <output> [--remove-unused-components]`: bundles and upgrades first, then applies actions using the declared Overlay 1.0 or 1.1 version and writes JSON. The optional flag prunes paths without operations and unreachable components after overlaying.
   - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
-  - `openapi generate typescript [<input>] [-o file] [--check] [type flags]`: reads stdin when `<input>` is omitted and writes stdout when `-o` is omitted.
-  - `openapi generate zod <input> -o <file> [--force]`: also writes `types.ts` in the same directory.
-  - `openapi generate tanstack-query <input> -o <dir> --name <name> [--force]`: writes `<dir>/<name>/client.ts` and `<dir>/<name>/types.ts`.
-  - `openapi generate standard-schema <input> [-o file]`.
-- Each `generate` subcommand needs its optional peer package installed: `@shipworthy/openapi-typescript` (used by typescript, zod, and tanstack-query), `@shipworthy/openapi-zod`, `@shipworthy/openapi-tanstack-query`, and `@shipworthy/openapi-standard-schema`.
-- `types.ts` is regenerated when its header stamp changes, nondefault TypeScript flags are passed, or `--force` is set. The stamp includes the schema and `--camel-case` setting.
+  - `openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--check] [type flags]`: one command runs any number of plugins against one document. Plugin order does not matter. Nothing is written if any file fails to generate.
+- `generate` plugin → file in the `-o` directory: `typescript` → `types.ts`, `zod` → `zod-schema.ts`, `tanstack-query` → `client.ts`, `standard-schema` → `standard-schema.ts`. `types.ts` is also written (once) when `zod` or `tanstack-query` is selected. `tanstack-query` names its exports after `--name`, which defaults to the output directory's basename.
+- `--camel-case` applies to every generated file. `--wire-types` (requires `--camel-case` and a plugin that writes `types.ts`) also writes `wire-types.ts` with the API's field names.
+- `generate` reads stdin when `-i` is omitted and writes the single generated file to stdout when `-o` is omitted. `--check` (requires `-o`) writes nothing and exits 1 when any generated file differs or is missing. Every run regenerates every file; there is no cache and no `--force`.
+- Each `generate` plugin needs its optional peer package installed: `@shipworthy/openapi-typescript` (also required by `zod` and `tanstack-query`), `@shipworthy/openapi-zod`, `@shipworthy/openapi-tanstack-query`, and `@shipworthy/openapi-standard-schema`.
 - Do not edit generated files by hand. Re-run the command instead.
 - The only programmatic export is `openapi`, an `effect/cli` `Command`.
 

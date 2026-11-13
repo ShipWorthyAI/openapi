@@ -35,9 +35,9 @@ test("uses default array-length inference and ApiPaths, with optional root alias
   );
 
   const [printed, aliases, arrays] = await Promise.all([
-    cli.ok("generate", "typescript", "source.json"),
-    cli.ok("generate", "typescript", "source.json", "--root-types"),
-    cli.ok("generate", "typescript", "source.json", "--no-array-length"),
+    cli.ok("generate", "typescript", "-i", "source.json"),
+    cli.ok("generate", "typescript", "-i", "source.json", "--root-types"),
+    cli.ok("generate", "typescript", "-i", "source.json", "--no-array-length"),
   ]);
 
   expect(printed).toContain("export enum ApiPaths");
@@ -79,8 +79,8 @@ test("--camel-case changes generated field and parameter names", async (context)
     }),
   );
 
-  const raw = await cli.ok("generate", "typescript", "source.json");
-  const camel = await cli.ok("generate", "typescript", "source.json", "--camel-case");
+  const raw = await cli.ok("generate", "typescript", "-i", "source.json");
+  const camel = await cli.ok("generate", "typescript", "-i", "source.json", "--camel-case");
 
   expect(raw).toContain("first_name?: string;");
   expect(raw).toContain("pet_id: string;");
@@ -121,7 +121,7 @@ test("generates TypeScript from an overlaid document without changing the source
 
   writeFileSync(join(cli.dir, "source.json"), JSON.stringify(source));
 
-  const original = await cli.ok("generate", "typescript", "source.json");
+  const original = await cli.ok("generate", "typescript", "-i", "source.json");
   expect(original).toContain("name?: string;");
   expect(original).toContain("legacy: string;");
   expect(original).toContain("getOldPet");
@@ -140,7 +140,7 @@ test("generates TypeScript from an overlaid document without changing the source
   );
 
   await cli.ok("overlay", "source.json", "--overlay", "overlay.json", "-o", "overlaid.json");
-  const printed = await cli.ok("generate", "typescript", "overlaid.json");
+  const printed = await cli.ok("generate", "typescript", "-i", "overlaid.json");
   expect(printed).toContain("name: string;");
   expect(printed).not.toContain("legacy");
   expect(printed).not.toContain("getOldPet");

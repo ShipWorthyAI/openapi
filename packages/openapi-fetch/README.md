@@ -31,16 +31,16 @@ Requirements:
 ### 1. Generate types
 
 ```sh
-bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/api/schema.ts
+bunx --bun @shipworthy/openapi-cli generate typescript -i ./openapi.yaml -o ./src/api
 ```
 
-The generated file exports `paths`, `components`, and `operations` interfaces. `openapi-fetch` only needs `paths`.
+This writes `src/api/types.ts`. The generated file exports `paths`, `components`, and `operations` interfaces. `openapi-fetch` only needs `paths`.
 
 ### 2. Create a client and call it
 
 ```ts
 import createClient from "@shipworthy/openapi-fetch";
-import type { paths } from "./api/schema";
+import type { paths } from "./api/types";
 
 const client = createClient<paths>({ baseUrl: "https://api.example.com/v1" });
 
@@ -173,7 +173,7 @@ import createClient, {
   createPathBasedClient,
   wrapAsPathBasedClient,
 } from "@shipworthy/openapi-fetch";
-import type { paths } from "./api/schema";
+import type { paths } from "./api/types";
 
 const api = createPathBasedClient<paths>({ baseUrl: "https://api.example.com/v1" });
 const { data, error } = await api["/pets/{petId}"].GET({ params: { path: { petId: "123" } } });
@@ -293,8 +293,8 @@ const caseMapping = await Effect.runPromise(
 ```
 
 `openapi generate tanstack-query --camel-case` generates the matching types and embeds this
-mapping automatically. Standalone `openapi generate typescript --camel-case` generates types
-only; it does not install runtime conversion.
+mapping automatically. `openapi generate typescript --camel-case` without the `tanstack-query`
+plugin generates types only; it does not install runtime conversion.
 
 ### Headers
 
@@ -616,7 +616,7 @@ Without the flag, the types are unchanged.
 ## Key facts (for AI agents)
 
 - Import: `import createClient from "@shipworthy/openapi-fetch"`, a **default** export, also available as the named export `createClient`. Compiled ESM and CommonJS with `.d.ts`/`.d.cts` declarations and no dependencies.
-- Typical setup: `createClient<paths>({ baseUrl })`, where `paths` comes from `openapi generate typescript <schema> -o schema.ts`.
+- Typical setup: `createClient<paths>({ baseUrl })`, where `paths` comes from `openapi generate typescript -i <schema> -o <dir>` (`<dir>/types.ts`).
 - Call signature: `client.GET("/template/{param}", { params: { path, query, header, cookie }, body, headers, parseAs, signal })`. Methods are uppercase: `GET PUT POST DELETE OPTIONS HEAD PATCH TRACE`. `client.request("get", path, init)` is also available.
 - Result: `{ data, error, response }`. The promise does not reject on 4XX/5XX. It rejects on network errors, invalid JSON in a successful response that has a `Content-Length`, and misbehaving middleware.
 - Default serialization:

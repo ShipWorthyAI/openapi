@@ -134,3 +134,94 @@ export function schemaPropertyCollision(
 
   return inspect([schema], extraNames);
 }
+
+const schemaMapKeywords = new Set(["properties", "patternProperties", "dependentSchemas", "$defs"]);
+
+const schemaKeywords = new Set([
+  "additionalProperties",
+  "unevaluatedProperties",
+  "items",
+  "unevaluatedItems",
+  "contains",
+  "propertyNames",
+  "not",
+  "if",
+  "then",
+  "else",
+]);
+
+const schemaListKeywords = new Set(["allOf", "anyOf", "oneOf", "prefixItems"]);
+
+/** A subschema position holds an object or a boolean; anything else is left alone. */
+function camelCaseSubschema(value: unknown): unknown {
+  return Predicate.isBoolean(value) || Predicate.isObject(value) ? camelCaseSchema(value) : value;
+}
+
+function camelCaseName(value: unknown): unknown {
+  return Predicate.isString(value) ? propertyName(value, true) : value;
+}
+
+function camelCaseNames(value: unknown): unknown {
+  return Array.isArray(value) ? Array.map(value, camelCaseName) : value;
+}
+
+function mapEntries(
+  value: unknown,
+  f: (entry: readonly [string, unknown]) => readonly [string, unknown],
+): unknown {
+  return Predicate.isObject(value)
+    ? Record.fromEntries(Array.map(Record.toEntries(value), f))
+    : value;
+}
+
+function camelCaseKeyword(keyword: string, value: unknown): unknown {
+  switch (keyword) {
+    case "properties":
+    case "dependentSchemas":
+      return mapEntries(value, ([name, part]) => [
+        propertyName(name, true),
+        camelCaseSubschema(part),
+      ]);
+    case "required":
+      return camelCaseNames(value);
+    case "dependentRequired":
+      return mapEntries(value, ([name, names]) => [
+        propertyName(name, true),
+        camelCaseNames(names),
+      ]);
+    case "discriminator":
+      return Predicate.isObject(value) && Predicate.isString(value.propertyName)
+        ? { ...value, propertyName: propertyName(value.propertyName, true) }
+        : value;
+  }
+
+  if (schemaMapKeywords.has(keyword))
+    return mapEntries(value, ([name, part]) => [name, camelCaseSubschema(part)]);
+
+  if (schemaKeywords.has(keyword)) return camelCaseSubschema(value);
+
+  if (schemaListKeywords.has(keyword))
+    return Array.isArray(value) ? Array.map(value, camelCaseSubschema) : value;
+
+  return value;
+}
+
+/**
+ * Rename snake_case property names to camelCase throughout a schema tree.
+ *
+ * Renames `properties` keys, `required` entries, `dependentRequired` keys and values,
+ * `dependentSchemas` keys, and `discriminator.propertyName` with `propertyName(name, true)`, and
+ * recurses into every subschema. Values such as `enum`, `const`, `default`, and `examples`,
+ * `patternProperties` keys, and `$ref`s keep their spelling. References are not resolved and
+ * collisions are not detected; use `schemaPropertyCollision` first. The input is not modified.
+ */
+export function camelCaseSchema(schema: ParsedSchema): ParsedSchema {
+  if (Predicate.isBoolean(schema)) return schema;
+
+  return Record.fromEntries(
+    Array.map(Record.toEntries(schema), ([keyword, value]) => [
+      keyword,
+      camelCaseKeyword(keyword, value),
+    ]),
+  );
+}

@@ -12,12 +12,10 @@ bun run --cwd examples/snakeToCamelCase generate
 bun run --cwd examples/snakeToCamelCase test
 ```
 
-The `generate` script runs `openapi generate tanstack-query` with `--camel-case` and writes
-`src/generated/hotels/{types.ts,client.ts}`. For reservations it also passes `--wire-types`,
-writing `src/generated/reservations/{types.ts,wire-types.ts,client.ts}`. It then runs
-`openapi generate zod` for reservations, writing
-`src/generated/reservations/validators/{types.ts,zod-schema.ts}`. The separate directory keeps
-Zod's wire-shaped `types.ts` from replacing the client's camelCase `types.ts`.
+The `generate` script runs `openapi generate tanstack-query -i ./openapi.yaml -o src/generated/hotels --camel-case`,
+writing `src/generated/hotels/{types.ts,client.ts}`. For reservations it runs one
+`openapi generate zod tanstack-query -i ./openapi.json -o src/generated/reservations --camel-case --wire-types`
+command, writing `src/generated/reservations/{client.ts,types.ts,wire-types.ts,zod-schema.ts}`.
 
 ## Reservation service output
 
@@ -66,20 +64,28 @@ type WireHold = WireComponents["schemas"]["ReservationHold"];
 
 Field names inside JSON Pointer string values keep API spelling, such as `/payment_source_id`.
 
-The generated Zod validators accept API-shaped payloads. The example test parses the outgoing
-`createHold` request and the raw `ReservationHold` response before the client converts the
-response to camelCase:
+The generated Zod validators in `zod-schema.ts` accept the camelCase shapes used in app code and
+are typed with the camelCase `types.ts` in the same directory. The example test parses the
+`createHold` request body before passing it to the client and parses the `ReservationHold` the
+client returns. A snake_case API payload does not pass these validators:
 
 ```ts
-import {
-  createHoldRequestBody,
-  ReservationHold,
-} from "./src/generated/reservations/validators/zod-schema";
+import { createHoldRequestBody, ReservationHold } from "./src/generated/reservations/zod-schema";
 
-const wireRequest = createHoldRequestBody.parse(await request.json());
-const wireHold = ReservationHold.parse(await response.json());
-console.log(wireRequest.project_location_id, wireHold.expires_at);
+const body = createHoldRequestBody.parse({
+  slotId: "slot_123",
+  projectLocationId: "123",
+  seating: { id: "seat_123", name: "Main room", environment: null, attributes: [] },
+  timestamp: "2026-11-13T19:00:00Z",
+  guests: 2,
+});
+const createdHold = ReservationHold.parse(
+  await hold.mutationFn({ header: { "Idempotency-Key": "example-attempt-1" }, body }),
+);
+console.log(createdHold.projectLocationId, createdHold.expiresAt);
 ```
+
+Use `wire-types.ts` to type raw API payloads.
 
 ## Small Hotels example
 

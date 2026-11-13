@@ -18,10 +18,10 @@ Lint your API document and generate TypeScript types:
 
 ```sh
 bunx --bun @shipworthy/openapi-cli lint ./openapi.yaml
-bunx --bun @shipworthy/openapi-cli generate typescript ./openapi.yaml -o ./src/generated/api.ts
+bunx --bun @shipworthy/openapi-cli generate typescript -i ./openapi.yaml -o ./src/generated
 ```
 
-The generated file exports `paths`, `components`, and `operations` types. Use them directly in
+The generated `src/generated/types.ts` exports `paths`, `components`, and `operations` types. Use them directly in
 your application, or with [`@shipworthy/openapi-fetch`](./packages/openapi-fetch/README.md) for
 typed HTTP requests.
 

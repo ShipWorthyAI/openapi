@@ -66,13 +66,14 @@ you run the CLI.
 and the CLI resolves `$ref`s:
 
 ```sh
-bunx --bun @shipworthy/openapi-cli generate tanstack-query ./openapi.json -o src/generated --name hotels
+bunx --bun @shipworthy/openapi-cli generate tanstack-query -i ./openapi.json -o src/generated/hotels
 # Or generate from a URL:
-bunx --bun @shipworthy/openapi-cli generate tanstack-query https://api.example.com/openapi.json -o src/generated --name hotels
+bunx --bun @shipworthy/openapi-cli generate tanstack-query -i https://api.example.com/openapi.json -o src/generated/hotels
 ```
 
 This writes `src/generated/hotels/types.ts` (via `@shipworthy/openapi-typescript`)
-and `src/generated/hotels/client.ts`.
+and `src/generated/hotels/client.ts`. The client name `hotels` comes from the
+output directory's name; pass `--name` to choose another.
 
 **2. Create the client and query utils once**:
 
@@ -115,7 +116,7 @@ document. You do not write type arguments.
 Add `--camel-case` when the API uses snake_case fields and the app should use camelCase:
 
 ```sh
-openapi generate tanstack-query ./openapi.json -o src/generated --name hotels --camel-case
+openapi generate tanstack-query -i ./openapi.json -o src/generated/hotels --camel-case
 ```
 
 With this flag, `types.ts` uses names such as `minStars` and `hotelId`. The generated
@@ -146,14 +147,13 @@ fields also keep their API spelling. When a response status has no matching sche
 
 ## Generated output
 
-`openapi generate tanstack-query <input> -o <dir> --name <name>` writes the
-following into `<dir>/<name>/`:
+`openapi generate tanstack-query -i <input> -o <dir>` writes the following
+into `<dir>/`. Every file is regenerated on every successful run:
 
 - `types.ts`: `paths`, `components`, `operations`, and `webhooks` types from
-  `@shipworthy/openapi-typescript`. This file is regenerated only when it is
-  missing or stale (see [`--force`](#cli-openapi-generate-tanstack-query)).
+  `@shipworthy/openapi-typescript`.
 - `wire-types.ts`: optional API-facing types when both `--camel-case` and `--wire-types` are set.
-- `client.ts`: overwritten on every successful run. For `--name my-pets`
+- `client.ts`: for `-o src/generated/my-pets` or `--name my-pets`
   (prefix `MyPets`), it contains:
 
 ```ts
@@ -197,49 +197,56 @@ export function createMyPetsApiQueryUtils(
 
 Naming rules:
 
-- `<Prefix>` is the PascalCase form of `--name`. `-` and `_` separators are
+- The client name is `--name`, or the basename of the output directory when
+  `--name` is omitted.
+- `<Prefix>` is the PascalCase form of the client name. `-` and `_` separators are
   removed and the next character is uppercased: `hotels` becomes `Hotels`, and
   `my-pets` becomes `MyPets`.
 - The generated exports are `create<Prefix>ApiClient`, `<Prefix>ApiClient`
   (type), `create<Prefix>ApiQueryUtils`, `<Prefix>ApiPaths`,
   `<Prefix>ApiComponents`, and `<Prefix>ApiOperations`.
-- The default cache-key prefix is the raw `--name` value, such as `"my-pets"`.
+- The default cache-key prefix is the raw client name, such as `"my-pets"`.
 - Each operation is available on the query utils object by its `operationId`,
   for example `hotelsApi.getHotel`.
 
 ## CLI: `openapi generate tanstack-query`
 
-The command is provided by `@shipworthy/openapi-cli`.
+The command is provided by `@shipworthy/openapi-cli`. The `tanstack-query` plugin writes
+`client.ts` and the `types.ts` it imports into the output directory:
 
 ```
-openapi generate tanstack-query [flags] <input>
+openapi generate tanstack-query [-i <input>] -o <dir> [--name <name>] [--camel-case] [--wire-types] [--check] [TypeScript flags]
 ```
 
-| Argument / flag  | Type    | Default | Description                                                                                                                                                                |
-| ---------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<input>`        | string  | none    | OpenAPI file path, or an `http:`, `https:`, or `file:` URL. Glob patterns (`*`) are rejected.                                                                              |
-| `--output`, `-o` | string  | none    | Directory that will contain `<name>/client.ts`.                                                                                                                            |
-| `--name`         | string  | none    | Client name. It sets the output subdirectory, the PascalCase export prefix, and the default cache-key prefix. It must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. |
-| `--force`        | boolean | `false` | Regenerate `types.ts` even when its stamp matches.                                                                                                                         |
-| `--camel-case`   | boolean | `false` | Use camelCase in `types.ts` and convert declared parameter and JSON body fields in the generated client.                                                                   |
-| `--wire-types`   | boolean | `false` | Also write `wire-types.ts` with API field names. Requires `--camel-case`.                                                                                                  |
+| Flag             | Type    | Default                     | Description                                                                                                                                      |
+| ---------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--input`, `-i`  | string  | stdin                       | OpenAPI file path, or an `http:`, `https:`, or `file:` URL. Glob patterns (`*`) are rejected.                                                    |
+| `--output`, `-o` | string  | required                    | Directory that receives `client.ts` and `types.ts`.                                                                                              |
+| `--name`         | string  | output directory's basename | Client name. It sets the PascalCase export prefix and the default cache-key prefix. It must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. |
+| `--camel-case`   | boolean | `false`                     | Use camelCase in `types.ts` and convert declared parameter and JSON body fields in the generated client.                                         |
+| `--wire-types`   | boolean | `false`                     | Also write `wire-types.ts` with API field names. Requires `--camel-case`.                                                                        |
+| `--check`        | boolean | `false`                     | Write nothing; exit 1 when a generated file differs from the file in the output directory or is missing.                                         |
 
-`types.ts` is regenerated when it is missing, or when the
-`@shipworthy/openapi-typescript@<version>:<sha256>` stamp in its header no
-longer matches. The hash covers the schema contents and the `--camel-case` setting, not the schema's location,
-so moving the file does not trigger a rebuild.
+When `--name` is omitted and the output directory's basename is not a valid name,
+the command fails with `Cannot derive a client name from the output directory "<basename>". Pass --name.`
+
+The `tanstack-query` plugin can be combined with other plugins in one run, for example
+`openapi generate tanstack-query zod -i openapi.json -o src/generated/hotels`, which also
+writes `zod-schema.ts` against the same `types.ts`. See the
+[CLI reference](../openapi-cli/README.md#openapi-generate-plugins) for every flag, including
+the TypeScript generation flags.
 
 Example `package.json` script:
 
 ```json
 {
   "scripts": {
-    "generate": "openapi generate tanstack-query openapi.json -o src/generated --name hotels"
+    "generate": "openapi generate tanstack-query -i openapi.json -o src/generated/hotels"
   }
 }
 ```
 
-Generation fails with exit code 1, and `client.ts` is left untouched, when:
+Generation fails with exit code 1, and no file is written, when:
 
 | Error message                          | Cause                                                    |
 | -------------------------------------- | -------------------------------------------------------- |
@@ -247,7 +254,7 @@ Generation fails with exit code 1, and `client.ts` is left untouched, when:
 | `Duplicate operationId: <id>`          | Two operations share an `operationId`.                   |
 | `Unsupported operationId: <id>`        | The id is `__proto__`, `constructor`, or `prototype`.    |
 | `Unsupported Swagger version: 2.x. …`  | The input is Swagger 2.x. Only OpenAPI 3.x is supported. |
-| `Globbing is unsupported.`             | `<input>` contains `*`.                                  |
+| `Globbing is unsupported.`             | The input contains `*`.                                  |
 
 ## Runtime API (`@shipworthy/openapi-tanstack-query`)
 
@@ -585,15 +592,15 @@ Generated files use extensionless `./types` imports and expect TypeScript `modul
 
 ## Troubleshooting
 
-| Symptom                                                              | Fix                                                                                                                 |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `<METHOD> <path>: Missing operationId` / `Duplicate operationId: …`  | Add unique `operationId`s to the OpenAPI document.                                                                  |
-| `--name must start with a letter …`                                  | Use letters and digits, with single `-` or `_` separators, such as `hotels` or `sdk-core`.                          |
-| `types.ts` was not regenerated after editing generator settings      | It is regenerated when the schema, `--camel-case`, or generator version changes. Pass `--force` for other settings. |
-| CLI cannot load `@shipworthy/openapi-tanstack-query/generator`       | Install this package, `@shipworthy/openapi-typescript`, and `@shipworthy/openapi-generator` in the project.         |
-| `openapi` fails to start on an older Node.js                         | The CLI needs Node.js `>=22.19.0`. Upgrade Node.js, or run it with `bunx --bun @shipworthy/openapi-cli`.            |
-| `error instanceof Error` is false in `onError`                       | This is expected for HTTP errors: the error is the parsed error body. See [errors](#requests-responses-and-errors). |
-| Two APIs with the same `--name` overwrite each other's cache entries | Pass a different `prefix` to `create<Prefix>ApiQueryUtils(client, { prefix })`.                                     |
+| Symptom                                                                                                     | Fix                                                                                                                 |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `<METHOD> <path>: Missing operationId` / `Duplicate operationId: …`                                         | Add unique `operationId`s to the OpenAPI document.                                                                  |
+| `Invalid value for flag --name: "…". Expected: Schema validation failed: --name must start with a letter …` | Use letters and digits, with single `-` or `_` separators, such as `hotels` or `sdk-core`.                          |
+| `Cannot derive a client name from the output directory "…". Pass --name.`                                   | Rename the output directory to a valid name, or pass `--name`.                                                      |
+| CLI cannot load `@shipworthy/openapi-tanstack-query/generator`                                              | Install this package, `@shipworthy/openapi-typescript`, and `@shipworthy/openapi-generator` in the project.         |
+| `openapi` fails to start on an older Node.js                                                                | The CLI needs Node.js `>=22.19.0`. Upgrade Node.js, or run it with `bunx --bun @shipworthy/openapi-cli`.            |
+| `error instanceof Error` is false in `onError`                                                              | This is expected for HTTP errors: the error is the parsed error body. See [errors](#requests-responses-and-errors). |
+| Two APIs with the same client name overwrite each other's cache entries                                     | Pass a different `prefix` to `create<Prefix>ApiQueryUtils(client, { prefix })`.                                     |
 
 ## Key facts (for AI agents)
 
@@ -603,11 +610,13 @@ Generated files use extensionless `./types` imports and expect TypeScript `modul
   For `./generator`, also install the optional peers
   `@shipworthy/openapi-generator` and `@shipworthy/openapi-transformer`.
 - **Generate:** run
-  `openapi generate tanstack-query <spec> -o <dir> --name <name>` from
+  `openapi generate tanstack-query -i <spec> -o <dir> [--name <name>]` from
   `@shipworthy/openapi-cli` (`bunx --bun @shipworthy/openapi-cli`). The output is
-  `<dir>/<name>/types.ts` and `<dir>/<name>/client.ts`. Do not edit generated
+  `<dir>/types.ts` and `<dir>/client.ts`, regenerated on every run. `name`
+  defaults to the basename of `<dir>`. Add other plugins to the same run, e.g.
+  `openapi generate tanstack-query zod -i <spec> -o <dir>`. Do not edit generated
   files.
-- **Generated exports** (Prefix is the PascalCase of `name`):
+- **Generated exports** (Prefix is the PascalCase of the client name):
   `create<Prefix>ApiClient`, `create<Prefix>ApiQueryUtils`,
   `<Prefix>ApiClient`, `<Prefix>ApiPaths`, `<Prefix>ApiComponents`, and
   `<Prefix>ApiOperations`.

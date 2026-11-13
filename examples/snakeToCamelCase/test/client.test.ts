@@ -3,7 +3,7 @@ import type { components as WireComponents } from "../src/generated/reservations
 import {
   createHoldRequestBody,
   ReservationHold,
-} from "../src/generated/reservations/validators/zod-schema.ts";
+} from "../src/generated/reservations/zod-schema.ts";
 import {
   createHotelsApiClient,
   createHotelsApiQueryUtils,
@@ -100,7 +100,7 @@ it("uses camelCase with the sanitized reservations OpenAPI document", async () =
       }
 
       return Response.json(
-        ReservationHold.parse({
+        {
           id: "hold_123",
           project_location_id: "123",
           provider: "opentable",
@@ -116,7 +116,7 @@ it("uses camelCase with the sanitized reservations OpenAPI document", async () =
             payment: null,
           },
           policies: { booking: [], cancellation: null },
-        } satisfies WireComponents["schemas"]["ReservationHold"]),
+        } satisfies WireComponents["schemas"]["ReservationHold"],
         { status: 201 },
       );
     },
@@ -138,21 +138,23 @@ it("uses camelCase with the sanitized reservations OpenAPI document", async () =
   expect(reservation.externalUrl).toBe("https://provider.example.test/resv_123");
   expect(reservation.cashBackPercent).toBe(30);
 
+  const holdBody = createHoldRequestBody.parse({
+    slotId: "slot_123",
+    projectLocationId: "123",
+    seating,
+    timestamp,
+    guests: 2,
+  });
+
   const hold = await reservationsApi.createHold.mutationOptions().mutationFn({
     header: { "Idempotency-Key": "example-attempt-1" },
-    body: {
-      slotId: "slot_123",
-      projectLocationId: "123",
-      seating,
-      timestamp,
-      guests: 2,
-    },
+    body: holdBody,
   });
 
   expect(requests[1]?.url).toBe("https://reservations.example.test/v1/holds");
   expect(requests[1]?.headers.get("Idempotency-Key")).toBe("example-attempt-1");
 
-  const wireBody = createHoldRequestBody.parse(await requests[1]?.json());
+  const wireBody = await requests[1]?.json();
 
   expect(wireBody).toEqual({
     slot_id: "slot_123",
@@ -162,11 +164,9 @@ it("uses camelCase with the sanitized reservations OpenAPI document", async () =
     guests: 2,
   });
 
-  expect(
-    createHoldRequestBody.safeParse({ ...wireBody, slot_id: undefined, slotId: "slot_123" })
-      .success,
-  ).toBe(false);
+  expect(createHoldRequestBody.safeParse(wireBody).success).toBe(false);
 
+  expect(ReservationHold.parse(hold)).toEqual(hold);
   expect(hold.projectLocationId).toBe("123");
   expect(hold.expiresAt).toBe("2026-11-13T19:05:00Z");
   expect(hold.slot.projectLocationId).toBe("123");

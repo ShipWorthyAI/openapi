@@ -16,9 +16,12 @@ export const zod: Generator<ZodSource, ZodGenerationError> = {
     options: Readonly<Record<string, unknown>>,
   ) {
     const parsed = yield* Schema.decodeEffect(
-      Schema.Struct({ outputPath: Schema.optionalKey(Schema.String) }),
+      Schema.Struct({
+        outputPath: Schema.optionalKey(Schema.String),
+        camelCase: Schema.optionalKey(Schema.Boolean),
+      }),
     )(options).pipe(
-      Effect.mapError(() => new ZodGenerationError({ message: "#: Invalid outputPath option" })),
+      Effect.mapError(() => new ZodGenerationError({ message: "#: Invalid generator options" })),
     );
 
     return yield* operationRoutes(model).pipe(

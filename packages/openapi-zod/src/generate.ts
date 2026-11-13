@@ -1,11 +1,33 @@
 import {
+  camelCaseSchema,
   ParsedDiscriminator,
   ParsedSchema,
+  propertyName,
+  schemaPropertyCollision,
+  type ParsedBodyMediaType,
+  type ParsedComponents,
   type ParsedHeader,
   type ParsedMediaType,
+  type ParsedOperation,
+  type ParsedOperationResponse,
+  type ParsedParameter,
+  type ParsedRequest,
+  type ParsedRequestBody,
+  type ParsedResponse,
   type ParsedService,
 } from "@shipworthy/openapi-transformer";
-import { Array, Effect, Option, Order, Predicate, Record, Schema, pipe } from "effect";
+import {
+  Array,
+  Effect,
+  Option,
+  Order,
+  Predicate,
+  Record,
+  Result,
+  Schema,
+  Struct,
+  pipe,
+} from "effect";
 import { ZodGenerationError } from "./errors.ts";
 import { assertExportName } from "./names.ts";
 import { resolveDocumentRef } from "./refs.ts";
@@ -1270,6 +1292,126 @@ const compile = Effect.fnUntraced(function* (
   return yield* source([...components, ...operations], definitions, outputPath);
 });
 
+/** The JSON request-body schema an operation exports as `<operationId>RequestBody`, if any. */
+function exportedRequestBody(
+  operation: ParsedOperation,
+  routes: Record<string, OperationRoute>,
+): ParsedSchema | undefined {
+  const id = operation.operationId;
+  if (!id || !Object.hasOwn(routes, id) || !operation.request.body) return undefined;
+  const contents = operation.request.body.contents;
+  const content = contents.length === 1 ? contents[0] : undefined;
+  return content?.mediaType === "application/json" ? content.schema : undefined;
+}
+
+/** Fail when two wire names in one exported schema become the same camelCase name. */
+const assertNoCamelCaseCollisions = Effect.fnUntraced(function* (
+  model: ParsedService,
+  routes: Record<string, OperationRoute>,
+): Effect.fn.Return<void, ZodGenerationError> {
+  const resolve = (ref: string): ParsedSchema | undefined => {
+    const name = schemaName(ref);
+
+    return name !== undefined && Object.hasOwn(model.components.schemas, name)
+      ? model.components.schemas[name]
+      : undefined;
+  };
+
+  const roots = [
+    ...Array.map(
+      Record.toEntries(model.components.schemas),
+      ([name, schema]) => [componentRef(name), schema] as const,
+    ),
+    ...Array.filterMap(model.operations, (operation) => {
+      const schema = exportedRequestBody(operation, routes);
+
+      return schema === undefined
+        ? Result.failVoid
+        : Result.succeed([`${operation.method} ${operation.path}`, schema] as const);
+    }),
+  ];
+
+  yield* Effect.forEach(
+    roots,
+    Effect.fnUntraced(function* ([path, schema]) {
+      const collision = schemaPropertyCollision(schema, resolve);
+      if (!collision) return;
+      const [a, b] = collision;
+
+      return yield* new ZodGenerationError({
+        message: `${path}: ${a} and ${b} both become ${propertyName(a, true)}`,
+      });
+    }),
+    { discard: true },
+  );
+});
+
+const withCamelCaseSchema = {
+  schema: (schema: ParsedSchema | undefined) =>
+    schema === undefined ? undefined : camelCaseSchema(schema),
+};
+
+const withCamelCaseContents = {
+  contents: Array.map((content: ParsedMediaType) => Struct.evolve(content, withCamelCaseSchema)),
+};
+
+const withCamelCaseBody = {
+  contents: Array.map((content: ParsedBodyMediaType) =>
+    Struct.evolve(content, withCamelCaseSchema),
+  ),
+};
+
+function camelCaseHeader(header: ParsedHeader): ParsedHeader {
+  return Struct.evolve(header, { ...withCamelCaseSchema, ...withCamelCaseContents });
+}
+
+function camelCaseParameter(parameter: ParsedParameter): ParsedParameter {
+  return Struct.evolve(parameter, { ...withCamelCaseSchema, ...withCamelCaseContents });
+}
+
+const withCamelCaseResponse = { ...withCamelCaseBody, headers: Array.map(camelCaseHeader) };
+
+function camelCaseRequest(request: ParsedRequest): ParsedRequest {
+  return Struct.evolve(request, {
+    path: Array.map(camelCaseParameter),
+    query: Array.map(camelCaseParameter),
+    headers: Array.map(camelCaseParameter),
+    cookie: Array.map(camelCaseParameter),
+    body: (body: ParsedRequest["body"]) =>
+      body === undefined ? undefined : Struct.evolve(body, withCamelCaseBody),
+  });
+}
+
+/**
+ * A copy of the model whose schemas use camelCase property names, so validators parse the
+ * shapes that camelCase `types.ts` declares. Every schema the generator reads is renamed,
+ * including the response and parameter schemas scanned for discriminator constraints.
+ */
+function camelCaseModel(model: ParsedService): ParsedService {
+  return Struct.evolve(model, {
+    operations: Array.map((operation: ParsedOperation) =>
+      Struct.evolve(operation, {
+        request: camelCaseRequest,
+        responses: Array.map((response: ParsedOperationResponse) =>
+          Struct.evolve(response, withCamelCaseResponse),
+        ),
+      }),
+    ),
+    components: (components: ParsedComponents) =>
+      Struct.evolve(components, {
+        schemas: Record.map(camelCaseSchema),
+        responses: Record.map((response: ParsedResponse) =>
+          Struct.evolve(response, withCamelCaseResponse),
+        ),
+        parameters: Record.map(camelCaseParameter),
+        headers: Record.map(camelCaseHeader),
+        requestBodies: Record.map((body: ParsedRequestBody) =>
+          Struct.evolve(body, withCamelCaseBody),
+        ),
+      }),
+  });
+}
+
 /**
  * Turn an OpenAPI 3.1 document into Zod source.
  *
@@ -1282,11 +1424,15 @@ const compile = Effect.fnUntraced(function* (
  * `routes` selects which operations can produce a request-body validator.
  * `operationRoutes` builds that table from the document.
  * Pass `outputPath` to validate with the Zod installation visible to the generated file.
+ * Pass `camelCase: true` to rename snake_case properties to camelCase, matching `types.ts`
+ * generated with `camelCase`. Two wire names that become the same name fail generation.
  */
 export const zodSources = Effect.fn("zodSources")(function* (
   document: ParsedService,
   routes: Record<string, OperationRoute>,
-  options: { readonly outputPath?: string } = {},
+  options: { readonly outputPath?: string; readonly camelCase?: boolean } = {},
 ): Effect.fn.Return<ZodSource, ZodGenerationError> {
-  return yield* compile(document, routes, options.outputPath);
+  if (!options.camelCase) return yield* compile(document, routes, options.outputPath);
+  yield* assertNoCamelCaseCollisions(document, routes);
+  return yield* compile(camelCaseModel(document), routes, options.outputPath);
 });
