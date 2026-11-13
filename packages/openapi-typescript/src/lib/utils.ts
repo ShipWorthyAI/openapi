@@ -1,5 +1,14 @@
 import type { ParsedDiscriminator, ParsedService } from "@shipworthy/openapi-transformer";
-import { Config, Console, Effect, type JsonSchema, Predicate } from "effect";
+import {
+  Array as EffectArray,
+  Config,
+  Console,
+  Effect,
+  type JsonSchema,
+  Predicate,
+  Record as EffectRecord,
+  Result,
+} from "effect";
 import ts from "#compiler";
 import { escapePointer, parseRef } from "./ref.ts";
 import { discriminatorOf, stringList } from "./schema.ts";
@@ -248,18 +257,66 @@ function patchDiscriminatorEnum(
   return false;
 }
 
-type InternalDiscriminatorMapping = Record<string, { inferred?: string; defined?: string[] }>;
+function discriminatorMappingRef(target: string): string {
+  if (target.startsWith("#")) return target;
+  return `#/components/schemas/${target.replaceAll("~", "~0").replaceAll("/", "~1")}`;
+}
+
+/** Values that select a referenced branch of one discriminated union. */
+export function discriminatorValues(discriminator: ParsedDiscriminator, ref: string): string[] {
+  const name = parseRef(ref).pointer.at(-1);
+  if (!name) return [];
+
+  const mapped = EffectArray.map(
+    EffectArray.filter(
+      EffectRecord.toEntries(discriminator.mapping ?? {}),
+      ([, target]) => discriminatorMappingRef(target) === ref,
+    ),
+    ([value]) => value,
+  );
+
+  if (mapped.length > 0) return mapped;
+  return Object.hasOwn(discriminator.mapping ?? {}, name) ? [] : [name];
+}
 
 /**
  * Collect the discriminators of a parsed model, keyed by JSON Pointer. Schemas a discriminator
- * maps to get its property as a single-value enum, in place.
+ * maps to get its property as an enum of all mapped values, in place.
  */
-export function scanDiscriminators(model: ParsedService, { silent = false }: { silent?: boolean }) {
+export const scanDiscriminators = Effect.fnUntraced(function* (
+  model: ParsedService,
+  { silent = false }: { silent?: boolean },
+) {
   // all discriminator objects found in the schema
   const objects: Record<string, ParsedDiscriminator> = {};
 
-  // refs of all mapped schema objects we have successfully handled to infer the discriminator enum value
-  const refsHandled: string[] = [];
+  const pendingConstraints = new Map<
+    string,
+    { values: string[]; discriminator: ParsedDiscriminator; source: string } | null
+  >();
+
+  function queueDiscriminatorValues(
+    ref: string,
+    values: string[],
+    discriminator: ParsedDiscriminator,
+    source: string,
+  ) {
+    const existing = pendingConstraints.get(ref);
+    if (existing === null) return;
+
+    if (existing) {
+      if (existing.discriminator.propertyName === discriminator.propertyName) {
+        existing.values = EffectArray.dedupe([...existing.values, ...values]);
+      } else {
+        // Each union narrows its branch locally; a shared component has no single tag property.
+        pendingConstraints.set(ref, null);
+      }
+
+      return;
+    }
+
+    pendingConstraints.set(ref, { values, discriminator, source });
+  }
 
   // perform 2 passes: first, collect all discriminator definitions and handle oneOf and mappings
   walk(model, (obj, path) => {
@@ -274,57 +331,35 @@ export function scanDiscriminators(model: ParsedService, { silent = false }: { s
 
     objects[ref] = discriminator;
 
-    // if a mapping is available we will help Typescript to infer properties by adding the discriminator enum with its single mapped value to each schema
-    // we only handle the mapping in advance for discriminator + oneOf compositions right now
-    if (!Array.isArray(obj.oneOf)) {
+    // Infer discriminator values for referenced oneOf and anyOf branches.
+    if (!Array.isArray(obj.oneOf) && !Array.isArray(obj.anyOf)) {
       return;
     }
 
-    const mapping: InternalDiscriminatorMapping = {};
+    // Include referenced branches and explicit mappings, including mapped schemas outside the union.
+    const branches = [
+      ...(Array.isArray(obj.oneOf) ? obj.oneOf : []),
+      ...(Array.isArray(obj.anyOf) ? obj.anyOf : []),
+    ];
 
-    // the mapping can be inferred from the oneOf refs next to the discriminator object
-    for (const item of obj.oneOf) {
-      if (!Predicate.isObject(item) || typeof item.$ref !== "string") {
-        continue;
-      }
+    const branchRefs = EffectArray.filterMap(branches, (item) =>
+      Predicate.isObject(item) && typeof item.$ref === "string"
+        ? Result.succeed(item.$ref)
+        : Result.failVoid,
+    );
 
-      // the name of the schema is the inferred discriminator enum value
-      const value = item.$ref.split("/").pop();
+    const mappedRefs = EffectArray.map(
+      EffectArray.filter(EffectRecord.values(discriminator.mapping ?? {}), (target) => !!target),
+      discriminatorMappingRef,
+    );
 
-      if (value) {
-        mapping[item.$ref] = { ...mapping[item.$ref], inferred: value };
-      }
-    }
+    const references = EffectArray.dedupe([...branchRefs, ...mappedRefs]);
 
-    // the mapping can be defined in the discriminator object itself
-    for (const [mappedValue, mappedRef] of Object.entries(discriminator.mapping ?? {})) {
-      if (!mappedRef) {
-        continue;
-      }
-
-      // this overrides inferred values, but we don't need them anymore as soon as we have a defined value
-      const defined = mapping[mappedRef]?.defined ?? [];
-      mapping[mappedRef] = { defined: [...defined, mappedValue] };
-    }
-
-    for (const [mappedRef, { inferred, defined }] of Object.entries(mapping)) {
-      if (refsHandled.includes(mappedRef)) {
-        continue;
-      }
-
-      // prefer defined values over automatically inferred ones
-      // the inferred enum values from the schema might not represent the actual enum values of the discriminator,
-      // so if we have defined values, use them instead
-      const mappedValues = defined ?? (inferred ? [inferred] : []);
-
-      if (mappedValues.length === 0) {
-        continue;
-      }
-
-      if (patchDiscriminatorEnum(model, mappedRef, mappedValues, discriminator, ref, silent)) {
-        refsHandled.push(mappedRef);
-      }
-    }
+    EffectArray.forEach(references, (mappedRef) => {
+      const mappedValues = discriminatorValues(discriminator, mappedRef);
+      if (mappedValues.length > 0)
+        queueDiscriminatorValues(mappedRef, mappedValues, discriminator, ref);
+    });
   });
 
   // second, collect the schema objects that inherit from discriminators
@@ -350,18 +385,13 @@ export function scanDiscriminators(model: ParsedService, { silent = false }: { s
         const ref = createRef(path);
         const mappedValues: string[] = [];
 
-        for (const [mappedValue, mappedRef] of Object.entries(parent.mapping ?? {})) {
-          if (mappedRef === ref) {
+        for (const [mappedValue, target] of Object.entries(parent.mapping ?? {})) {
+          if (discriminatorMappingRef(target) === ref) {
             mappedValues.push(mappedValue);
           }
         }
 
-        if (
-          mappedValues.length > 0 &&
-          patchDiscriminatorEnum(model, ref, mappedValues, parent, item.$ref, silent)
-        ) {
-          refsHandled.push(ref);
-        }
+        if (mappedValues.length > 0) queueDiscriminatorValues(ref, mappedValues, parent, item.$ref);
 
         objects[ref] = { ...parent };
       } else {
@@ -374,8 +404,18 @@ export function scanDiscriminators(model: ParsedService, { silent = false }: { s
     }
   });
 
+  const patchable = EffectArray.filterMap(pendingConstraints, ([ref, constraint]) =>
+    constraint === null ? Result.failVoid : Result.succeed([ref, constraint] as const),
+  );
+
+  const refsHandled = yield* Effect.forEach(patchable, ([ref, { values, discriminator, source }]) =>
+    Effect.sync(() =>
+      patchDiscriminatorEnum(model, ref, values, discriminator, source, silent) ? ref : undefined,
+    ),
+  ).pipe(Effect.map((refs) => EffectArray.filter(refs, Predicate.isNotUndefined)));
+
   return { objects, refsHandled };
-}
+});
 
 /** Walk through any JSON-serializable (i.e. non-circular) object */
 export function walk(

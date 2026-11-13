@@ -92,7 +92,7 @@ bun run examples:bundle
 bun run examples:generate
 ```
 
-Each SDK example's source document is `openapi/v1/openapi.yaml`, with relative references to individual operation and component YAML files. Bundling writes `openapi/v1/bundled.openapi.json`. Generation updates its SDK files in `src/generated`. Each SDK example has a package-level `turbo.json`: generation depends on bundling, and bundling tracks workspace tooling through the transit graph. Both tasks cache their outputs using authored contracts and tooling dependencies, excluding their own generated files from inputs. Generation reads the bundled JSON and refreshes `types.ts` first, then runs the remaining generators sequentially.
+The Core and Hotels SDK examples use `openapi/v1/openapi.yaml` with relative references to operation and component YAML files. Their bundle tasks write `openapi/v1/bundled.openapi.json`, which generation reads. The Reservations SDK example instead uses `openapi/v1/openapi.json`, a sanitized copy of the reservation service's generated OpenAPI document, and generates directly from that file. Each example updates its SDK files in `src/generated` and has a package-level `turbo.json` that tracks its source document and workspace tooling through the transit graph. Generation refreshes `types.ts` first, then runs the remaining generators sequentially.
 
 The [overlays example](examples/overlays/README.md) applies correction and selection overlays to
 copied Nuitee and Core snapshots. Its `generate` task uses the CLI with

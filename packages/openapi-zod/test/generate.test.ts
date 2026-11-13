@@ -5,12 +5,16 @@ import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { operationRoutes, zod, zodSources, ZodGenerationError, type ZodSource } from "../src/index";
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
+import type { ZodIssue } from "zod";
 
 const document = {
   openapi: "3.1.0",
@@ -276,6 +280,729 @@ void test("dependentRequired requires the dependencies only when the trigger is 
   }
 });
 
+void test("discriminator mapping makes overlapping oneOf branches exclusive", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        ProblemResponse: {
+          oneOf: [
+            { $ref: "#/components/schemas/ProblemInvalidInput" },
+            { $ref: "#/components/schemas/ProblemProviderAuthenticationRequired" },
+            { $ref: "#/components/schemas/ProblemOther" },
+          ],
+          discriminator: {
+            propertyName: "type",
+            mapping: {
+              "urn:x:invalid-input": "#/components/schemas/ProblemInvalidInput",
+              "urn:x:provider-authentication-required":
+                "#/components/schemas/ProblemProviderAuthenticationRequired",
+              "urn:x:not-found": "#/components/schemas/ProblemOther",
+              "urn:x:conflict": "#/components/schemas/ProblemOther",
+            },
+          },
+        },
+        Problem: {
+          type: "object",
+          required: ["type", "status"],
+          properties: { type: { type: "string" }, status: { type: "integer" } },
+        },
+        ProblemInvalidInput: {
+          allOf: [
+            { $ref: "#/components/schemas/Problem" },
+            {
+              type: "object",
+              required: ["type"],
+              properties: {
+                type: { type: "string", enum: ["urn:x:invalid-input"] },
+                errors: { type: "array", items: { type: "object" } },
+              },
+            },
+          ],
+        },
+        ProblemProviderAuthenticationRequired: {
+          allOf: [
+            { $ref: "#/components/schemas/Problem" },
+            {
+              type: "object",
+              required: ["type", "auth_url"],
+              properties: {
+                type: { type: "string", enum: ["urn:x:provider-authentication-required"] },
+                auth_url: { type: "string", format: "uri" },
+              },
+            },
+          ],
+        },
+        ProblemOther: {
+          allOf: [
+            { $ref: "#/components/schemas/Problem" },
+            { type: "object", additionalProperties: true },
+          ],
+        },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    const response = generated.schemas.ProblemResponse;
+
+    assert.deepEqual(response.parse({ type: "urn:x:invalid-input", status: 400, errors: [{}] }), {
+      type: "urn:x:invalid-input",
+      status: 400,
+      errors: [{}],
+    });
+
+    assert.deepEqual(
+      response.parse({
+        type: "urn:x:provider-authentication-required",
+        status: 401,
+        auth_url: "https://example.com/login",
+      }),
+      {
+        type: "urn:x:provider-authentication-required",
+        status: 401,
+        auth_url: "https://example.com/login",
+      },
+    );
+
+    assert.deepEqual(response.parse({ type: "urn:x:not-found", status: 404 }), {
+      type: "urn:x:not-found",
+      status: 404,
+    });
+
+    assert.deepEqual(response.parse({ type: "urn:x:conflict", status: 409 }), {
+      type: "urn:x:conflict",
+      status: 409,
+    });
+
+    assert.throws(() => response.parse({ type: "urn:x:unknown", status: 500 }));
+
+    const missingAuthUrl = response.safeParse({
+      type: "urn:x:provider-authentication-required",
+      status: 401,
+    });
+
+    assert.equal(missingAuthUrl.success, false);
+    if (!missingAuthUrl.success)
+      assert.deepEqual(
+        missingAuthUrl.error.issues.map((issue: ZodIssue) => issue.path),
+        [["auth_url"]],
+      );
+
+    const invalidErrors = response.safeParse({
+      type: "urn:x:invalid-input",
+      status: 400,
+      errors: [1],
+    });
+
+    assert.equal(invalidErrors.success, false);
+    if (!invalidErrors.success)
+      assert.deepEqual(
+        invalidErrors.error.issues.map((issue: ZodIssue) => issue.path),
+        [["errors", 0]],
+      );
+
+    assert.throws(() =>
+      generated.schemas.ProblemOther.parse({ type: "urn:x:invalid-input", status: 400 }),
+    );
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("generation falls back to its own Zod when output has no installed package", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "openapi-zod-resolution-"));
+
+  try {
+    const spec = resolve(directory, "openapi.json");
+    const output = resolve(directory, "out/schema.ts");
+    await writeFile(spec, JSON.stringify(document));
+
+    execFileSync(
+      process.execPath,
+      [
+        resolve(import.meta.dirname, "../../openapi-cli/src/bin.ts"),
+        "generate",
+        "zod",
+        spec,
+        "-o",
+        output,
+      ],
+      { cwd: resolve(import.meta.dirname, "../../.."), encoding: "utf8" },
+    );
+
+    assert.match(readFileSync(output, "utf8"), /export const Item/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("generation resolves Zod from the output package before the generator", async () => {
+  const directory = await mkdtemp(resolve(import.meta.dirname, ".resolution-"));
+  const generator = resolve(directory, "generator");
+  const output = resolve(directory, "sdk");
+  const outputPath = resolve(output, "validators.ts");
+  const wrongOutput = resolve(directory, "sdk-wrong");
+  const wrongOutputPath = resolve(wrongOutput, "validators.ts");
+  const realZod = dirname(createRequire(import.meta.url).resolve("zod/package.json"));
+
+  try {
+    await cp(resolve(import.meta.dirname, "../src"), resolve(generator, "src"), {
+      recursive: true,
+    });
+
+    await mkdir(resolve(generator, "node_modules/zod"), { recursive: true });
+    await mkdir(resolve(output, "node_modules"), { recursive: true });
+    await mkdir(resolve(wrongOutput, "node_modules/zod"), { recursive: true });
+
+    await writeFile(
+      resolve(generator, "node_modules/zod/package.json"),
+      JSON.stringify({ name: "zod", version: "3.25.76", main: "index.cjs" }),
+    );
+
+    await writeFile(resolve(generator, "node_modules/zod/index.cjs"), "module.exports = {};\n");
+    await symlink(realZod, resolve(output, "node_modules/zod"));
+
+    await writeFile(
+      resolve(wrongOutput, "node_modules/zod/package.json"),
+      JSON.stringify({ name: "zod", version: "3.25.76", main: "index.cjs" }),
+    );
+
+    await writeFile(resolve(wrongOutput, "node_modules/zod/index.cjs"), "module.exports = {};\n");
+
+    const copied: typeof import("../src/index.ts") = await import(
+      pathToFileURL(resolve(generator, "src/index.ts")).href
+    );
+
+    const model = Effect.runSync(decode(document));
+    const generated = copied.zod.generate(model, { outputPath });
+    const source = Effect.isEffect(generated) ? Effect.runSync(generated) : generated;
+    assert.match(source, /export const Item =/);
+
+    const wrong = copied.zod.generate(model, { outputPath: wrongOutputPath });
+    assert(Effect.isEffect(wrong));
+
+    assert.throws(
+      () => Effect.runSync(wrong),
+      /#: Found zod@3\.25\.76 at .*sdk-wrong\/node_modules\/zod\/package\.json \(resolved from .*validators\.ts\); require zod@4\.6\.5/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("an import-only Zod at the output location cannot be bypassed", async () => {
+  const directory = await mkdtemp(resolve(import.meta.dirname, ".resolution-"));
+  const outputPath = resolve(directory, "sdk/validators.ts");
+  const packageDirectory = resolve(directory, "sdk/node_modules/zod");
+
+  try {
+    await mkdir(packageDirectory, { recursive: true });
+
+    await writeFile(
+      resolve(packageDirectory, "package.json"),
+      JSON.stringify({
+        name: "zod",
+        version: "3.25.76",
+        type: "module",
+        exports: { ".": { import: "./index.js" } },
+      }),
+    );
+
+    await writeFile(resolve(packageDirectory, "index.js"), "export const marker = 123;\n");
+
+    const generated = zod.generate(Effect.runSync(decode(document)), { outputPath });
+    assert(Effect.isEffect(generated));
+
+    assert.throws(
+      () => Effect.runSync(generated),
+      /#: Found zod@3\.25\.76 at .*sdk\/node_modules\/zod\/package\.json .*require zod@4\.6\.5/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("a malformed Zod import entry fails in the typed error channel", async () => {
+  const directory = await mkdtemp(resolve(import.meta.dirname, ".resolution-"));
+  const outputPath = resolve(directory, "sdk/validators.ts");
+  const packageDirectory = resolve(directory, "sdk/node_modules/zod");
+
+  try {
+    await mkdir(packageDirectory, { recursive: true });
+
+    await writeFile(
+      resolve(packageDirectory, "package.json"),
+      JSON.stringify({
+        name: "zod",
+        version: "4.6.5",
+        type: "module",
+        exports: { ".": { import: "./%2F" } },
+      }),
+    );
+
+    const generated = zod.generate(Effect.runSync(decode(document)), { outputPath });
+    assert(Effect.isEffect(generated));
+    const error = Effect.runSync(Effect.flip(generated));
+    assert.equal(error._tag, "ZodGenerationError");
+    assert.match(error.message, /^#: Cannot resolve zod import entry/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("discriminator infers ref names without mapping and constrains anyOf", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        Result: {
+          anyOf: [{ $ref: "#/components/schemas/Good" }, { $ref: "#/components/schemas/Other" }],
+          discriminator: { propertyName: "kind" },
+        },
+        Good: { type: "object", required: ["value"], properties: { value: { type: "integer" } } },
+        Other: { type: "object", additionalProperties: true },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.Result.parse({ kind: "Good", value: 1 }), {
+      kind: "Good",
+      value: 1,
+    });
+
+    assert.deepEqual(generated.schemas.Result.parse({ kind: "Other", value: "anything" }), {
+      kind: "Other",
+      value: "anything",
+    });
+
+    assert.throws(() => generated.schemas.Result.parse({ kind: "Unknown", value: 1 }));
+    assert.throws(() => generated.schemas.Result.parse({ kind: "Good", value: "wrong" }));
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("inline request discriminators constrain exported component validators", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {
+      "/events": {
+        post: {
+          operationId: "createEvent",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/Good" },
+                    { $ref: "#/components/schemas/Other" },
+                  ],
+                  discriminator: {
+                    propertyName: "kind",
+                    mapping: {
+                      good: "#/components/schemas/Good",
+                      other: "#/components/schemas/Other",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: { "204": { description: "OK" } },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        Good: {
+          type: "object",
+          required: ["value"],
+          properties: { value: { type: "integer" } },
+        },
+        Other: { type: "object", additionalProperties: true },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.Good.parse({ kind: "good", value: 1 }), {
+      kind: "good",
+      value: 1,
+    });
+
+    assert.throws(() => generated.schemas.Good.parse({ value: 1 }));
+    assert.throws(() => generated.schemas.Good.parse({ kind: "other", value: 1 }));
+    assert.throws(() => generated.schemas.Other.parse({ kind: "good", value: 1 }));
+
+    assert.deepEqual(generated.schemas.createEventRequestBody.parse({ kind: "good", value: 1 }), {
+      kind: "good",
+      value: 1,
+    });
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("a component reused by discriminated unions accepts each mapped value", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        First: {
+          oneOf: [{ $ref: "#/components/schemas/Shared" }],
+          discriminator: {
+            propertyName: "kind",
+            mapping: { first: "#/components/schemas/Shared" },
+          },
+        },
+        Second: {
+          oneOf: [{ $ref: "#/components/schemas/Shared" }],
+          discriminator: {
+            propertyName: "kind",
+            mapping: { second: "#/components/schemas/Shared" },
+          },
+        },
+        Shared: { type: "object", additionalProperties: true },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.First.parse({ kind: "first" }), { kind: "first" });
+    assert.deepEqual(generated.schemas.Second.parse({ kind: "second" }), { kind: "second" });
+    assert.deepEqual(generated.schemas.Shared.parse({ kind: "first" }), { kind: "first" });
+    assert.deepEqual(generated.schemas.Shared.parse({ kind: "second" }), { kind: "second" });
+    assert.throws(() => generated.schemas.Shared.parse({ kind: "unknown" }));
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("a component reused under different discriminator properties keeps each union usable", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        ByKind: {
+          oneOf: [{ $ref: "#/components/schemas/Shared" }],
+          discriminator: {
+            propertyName: "kind",
+            mapping: { byKind: "#/components/schemas/Shared" },
+          },
+        },
+        ByCategory: {
+          oneOf: [{ $ref: "#/components/schemas/Shared" }],
+          discriminator: {
+            propertyName: "category",
+            mapping: { byCategory: "#/components/schemas/Shared" },
+          },
+        },
+        Shared: { type: "object", additionalProperties: true },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.ByKind.parse({ kind: "byKind" }), { kind: "byKind" });
+
+    assert.deepEqual(generated.schemas.ByCategory.parse({ category: "byCategory" }), {
+      category: "byCategory",
+    });
+
+    assert.throws(() => generated.schemas.ByKind.parse({ category: "byCategory" }));
+    assert.throws(() => generated.schemas.ByCategory.parse({ kind: "byKind" }));
+    assert.deepEqual(generated.schemas.Shared.parse({ kind: "byKind" }), { kind: "byKind" });
+
+    assert.deepEqual(generated.schemas.Shared.parse({ category: "byCategory" }), {
+      category: "byCategory",
+    });
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("an explicit mapping cannot claim another branch's implicit name", () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        Result: {
+          oneOf: [{ $ref: "#/components/schemas/Foo" }, { $ref: "#/components/schemas/Other" }],
+          discriminator: {
+            propertyName: "kind",
+            mapping: { Foo: "#/components/schemas/Other" },
+          },
+        },
+        Foo: { type: "object", additionalProperties: true },
+        Other: { type: "object", additionalProperties: true },
+      },
+    },
+  };
+
+  assert.throws(
+    () => sourceFor(schema),
+    /#\/components\/schemas\/Result\/oneOf\/0: Discriminator branch has no unique value/,
+  );
+});
+
+void test("discriminator mapping preserves an existing property constraint", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        Result: {
+          oneOf: [{ $ref: "#/components/schemas/Child" }],
+          discriminator: {
+            propertyName: "kind",
+            mapping: { bad: "#/components/schemas/Child" },
+          },
+        },
+        Child: {
+          type: "object",
+          required: ["kind"],
+          properties: { kind: { type: "string", pattern: "^ok$" } },
+        },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.throws(() => generated.schemas.Child.parse({ kind: "bad" }));
+    assert.throws(() => generated.schemas.Result.parse({ kind: "bad" }));
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("inline response discriminators constrain exported component validators", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {
+      "/events": {
+        get: {
+          operationId: "getEvent",
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/Good" },
+                      { $ref: "#/components/schemas/Other" },
+                    ],
+                    discriminator: {
+                      propertyName: "kind",
+                      mapping: {
+                        good: "#/components/schemas/Good",
+                        other: "#/components/schemas/Other",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        Good: { type: "object", properties: { kind: { type: "string" } } },
+        Other: { type: "object", additionalProperties: true },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.Good.parse({ kind: "good" }), { kind: "good" });
+    assert.throws(() => generated.schemas.Good.parse({ kind: "other" }));
+    assert.throws(() => generated.schemas.Good.parse({}));
+    assert.throws(() => generated.schemas.Other.parse({ kind: "good" }));
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("an ungenerated response can contain inline discriminator branches", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {
+      "/events": {
+        get: {
+          operationId: "getEvent",
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/Good" },
+                      {
+                        type: "object",
+                        properties: { kind: { type: "string", const: "inline" } },
+                      },
+                    ],
+                    discriminator: {
+                      propertyName: "kind",
+                      mapping: { good: "#/components/schemas/Good" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        Good: { type: "object", properties: { kind: { type: "string" } } },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.Good.parse({ kind: "good" }), { kind: "good" });
+    assert.throws(() => generated.schemas.Good.parse({ kind: "inline" }));
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("parameter discriminators constrain exported component validators", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {
+      "/events": {
+        get: {
+          operationId: "listEvents",
+          parameters: [
+            {
+              name: "filter",
+              in: "query" as const,
+              schema: {
+                oneOf: [
+                  { $ref: "#/components/schemas/Good" },
+                  { $ref: "#/components/schemas/Other" },
+                ],
+                discriminator: {
+                  propertyName: "kind",
+                  mapping: {
+                    good: "#/components/schemas/Good",
+                    other: "#/components/schemas/Other",
+                  },
+                },
+              },
+            },
+          ],
+          responses: { "200": { description: "OK" } },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        Good: { type: "object", properties: { kind: { type: "string" } } },
+        Other: { type: "object", additionalProperties: true },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.Good.parse({ kind: "good" }), { kind: "good" });
+    assert.throws(() => generated.schemas.Good.parse({ kind: "other" }));
+    assert.throws(() => generated.schemas.Other.parse({ kind: "good" }));
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("children extending a discriminator parent receive mapped or implicit values", async () => {
+  const schema = {
+    openapi: "3.1.0",
+    info: document.info,
+    paths: {},
+    components: {
+      schemas: {
+        Event: {
+          type: "object",
+          required: ["kind"],
+          properties: { kind: { type: "string" } },
+          discriminator: {
+            propertyName: "kind",
+            mapping: {
+              received: "#/components/schemas/Created",
+              accepted: "#/components/schemas/Created",
+            },
+          },
+        },
+        Created: { allOf: [{ $ref: "#/components/schemas/Event" }] },
+        Deleted: { allOf: [{ $ref: "#/components/schemas/Event" }] },
+      },
+    },
+  };
+
+  const generated = await loadGenerated(sourceFor(schema));
+
+  try {
+    assert.deepEqual(generated.schemas.Created.parse({ kind: "received" }), {
+      kind: "received",
+    });
+
+    assert.deepEqual(generated.schemas.Created.parse({ kind: "accepted" }), {
+      kind: "accepted",
+    });
+
+    assert.throws(() => generated.schemas.Created.parse({ kind: "Deleted" }));
+
+    assert.deepEqual(generated.schemas.Deleted.parse({ kind: "Deleted" }), {
+      kind: "Deleted",
+    });
+
+    assert.throws(() => generated.schemas.Deleted.parse({ kind: "other" }));
+  } finally {
+    await generated.dispose();
+  }
+});
+
 void test("external schema refs are bundled before conversion", async () => {
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
 
@@ -343,8 +1070,8 @@ void test("unsupported documents and schemas fail before files are written", () 
   assert.throws(() => sourceFor({ ...base, $defs: { Extra: { type: "string" } } }), /\$defs/);
 
   const keyword = structuredClone(document) as any;
-  keyword.components.schemas.Item.discriminator = { propertyName: "name" };
-  assert.throws(() => sourceFor(keyword), /Unsupported keyword discriminator/);
+  keyword.components.schemas.Item.if = { type: "object" };
+  assert.throws(() => sourceFor(keyword), /Unsupported keyword if/);
 
   const sibling = structuredClone(document) as any;
   sibling.components.schemas.Wrapper = { $ref: "#/components/schemas/Item", type: "object" };

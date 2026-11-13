@@ -1,10 +1,16 @@
-import { ParsedSchema, type ParsedService } from "@shipworthy/openapi-transformer";
+import {
+  ParsedDiscriminator,
+  ParsedSchema,
+  type ParsedHeader,
+  type ParsedMediaType,
+  type ParsedService,
+} from "@shipworthy/openapi-transformer";
 import { Array, Effect, Option, Order, Predicate, Record, Schema, pipe } from "effect";
-import * as z from "zod";
 import { ZodGenerationError } from "./errors.ts";
 import { assertExportName } from "./names.ts";
 import { resolveDocumentRef } from "./refs.ts";
 import type { OperationRoute } from "./routes.ts";
+import { loadZod } from "./zod.ts";
 
 type JsonSchema = Exclude<ParsedSchema, boolean>;
 
@@ -26,7 +32,7 @@ const annotations = new Set([
   "xml",
 ]);
 
-const untypedKeywords = new Set(["enum", "const", "allOf", "anyOf", "oneOf"]);
+const untypedKeywords = new Set(["enum", "const", "allOf", "anyOf", "oneOf", "discriminator"]);
 
 const keywords = new Set<string>([
   "$ref",
@@ -39,6 +45,7 @@ const keywords = new Set<string>([
   "not",
   "required",
   "dependentRequired",
+  "discriminator",
   "minProperties",
   "maxProperties",
   "prefixItems",
@@ -72,7 +79,214 @@ interface SchemaExport {
   /** TypeScript type that the validator parses to. */
   type: string;
   expression?: string;
+  discriminatorDiagnostics?: DiscriminatorDiagnostics;
 }
+
+interface DiscriminatorDiagnostics {
+  readonly propertyName: string;
+  readonly branchCount: number;
+  readonly branchIndices: readonly (readonly [string, number])[];
+}
+
+interface DiscriminatorConstraint {
+  readonly propertyName: string;
+  readonly values: readonly string[];
+}
+
+type DiscriminatorConstraints = Map<string, DiscriminatorConstraint | null>;
+
+const discriminatorOf = Effect.fnUntraced(function* (value: unknown, path: string) {
+  if (value === undefined) return undefined;
+
+  return yield* Schema.decodeUnknownEffect(ParsedDiscriminator)(value).pipe(
+    Effect.mapError(
+      () => new ZodGenerationError({ message: `${path}: Unsupported discriminator` }),
+    ),
+  );
+});
+
+function schemaName(ref: string): string | undefined {
+  const prefix = "#/components/schemas/";
+  if (!ref.startsWith(prefix)) return undefined;
+  const token = ref.slice(prefix.length);
+  if (!token || token.includes("/")) return undefined;
+  return token.replaceAll("~1", "/").replaceAll("~0", "~");
+}
+
+function componentRef(name: string): string {
+  return `#/components/schemas/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`;
+}
+
+function discriminatorValues(discriminator: ParsedDiscriminator, ref: string): readonly string[] {
+  const name = schemaName(ref);
+  if (name === undefined) return [];
+
+  const mapped = pipe(
+    Record.toEntries(discriminator.mapping ?? {}),
+    Array.filter(([, target]) => target === ref || target === name),
+    Array.map(([value]) => value),
+  );
+
+  if (mapped.length > 0) return mapped;
+  return Object.hasOwn(discriminator.mapping ?? {}, name) ? [] : [name];
+}
+
+const branchValues = Effect.fnUntraced(function* (
+  discriminator: ParsedDiscriminator,
+  ref: string,
+  path: string,
+): Effect.fn.Return<readonly string[], ZodGenerationError> {
+  const values = discriminatorValues(discriminator, ref);
+  if (values.length === 0)
+    return yield* new ZodGenerationError({
+      message: `${path}: Discriminator branch has no unique value`,
+    });
+  return values;
+});
+
+const discriminatorDiagnostics = Effect.fnUntraced(function* (
+  schema: ParsedSchema,
+  path: string,
+): Effect.fn.Return<DiscriminatorDiagnostics | undefined, ZodGenerationError> {
+  if (typeof schema === "boolean") return;
+  const discriminator = yield* discriminatorOf(schema.discriminator, path);
+  if (!discriminator) return;
+
+  const key =
+    schema.oneOf !== undefined && schema.anyOf === undefined
+      ? "oneOf"
+      : schema.anyOf !== undefined && schema.oneOf === undefined
+        ? "anyOf"
+        : undefined;
+
+  if (!key) return;
+
+  const parts = yield* schemaList(schema[key], path, key);
+
+  const branchIndices = yield* Effect.forEach(
+    parts,
+    Effect.fnUntraced(function* (part, index) {
+      const ref = Predicate.isObject(part) ? part.$ref : undefined;
+      const branchPath = `${path}/${key}/${index}`;
+      if (!Predicate.isString(ref) || schemaName(ref) === undefined)
+        return yield* new ZodGenerationError({
+          message: `${branchPath}: Discriminator branch requires a component schema reference`,
+        });
+
+      const values = yield* branchValues(discriminator, ref, branchPath);
+      return Array.map(values, (value) => [value, index] as const);
+    }),
+  );
+
+  return {
+    propertyName: discriminator.propertyName,
+    branchCount: parts.length,
+    branchIndices: Array.flatten(branchIndices),
+  };
+});
+
+const addDiscriminatorConstraint = Effect.fnUntraced(function* (
+  constraints: DiscriminatorConstraints,
+  ref: string,
+  propertyName: string,
+  values: readonly string[],
+): Effect.fn.Return<void> {
+  yield* Effect.sync(() => {
+    const existing = constraints.get(ref);
+    if (existing === null) return;
+
+    if (existing && existing.propertyName !== propertyName) {
+      constraints.set(ref, null);
+      return;
+    }
+
+    constraints.set(ref, {
+      propertyName,
+      values: existing ? Array.dedupe([...existing.values, ...values]) : values,
+    });
+  });
+});
+
+function discriminatorValue(values: readonly string[]): ParsedSchema {
+  return { type: "string", enum: [...values] };
+}
+
+function discriminatorConstraint(propertyName: string, values: readonly string[]): JsonSchema {
+  return {
+    type: "object",
+    required: [propertyName],
+    properties: { [propertyName]: discriminatorValue(values) },
+  };
+}
+
+const discriminatorBranch = Effect.fnUntraced(function* (
+  part: ParsedSchema,
+  discriminator: ParsedDiscriminator,
+  path: string,
+): Effect.fn.Return<ParsedSchema, ZodGenerationError> {
+  const ref = Predicate.isObject(part) ? part.$ref : undefined;
+  if (!Predicate.isString(ref) || schemaName(ref) === undefined)
+    return yield* new ZodGenerationError({
+      message: `${path}: Discriminator branch requires a component schema reference`,
+    });
+
+  const values = yield* branchValues(discriminator, ref, path);
+
+  return {
+    allOf: [part, discriminatorConstraint(discriminator.propertyName, values)],
+  };
+});
+
+const constrainComponent = Effect.fnUntraced(function* (
+  schema: ParsedSchema,
+  constraint: DiscriminatorConstraint | null | undefined,
+  path: string,
+): Effect.fn.Return<ParsedSchema, ZodGenerationError> {
+  if (!constraint) return schema;
+  if (typeof schema === "boolean")
+    return yield* new ZodGenerationError({ message: `${path}: Unsupported discriminator target` });
+
+  if (schema.allOf) {
+    return {
+      ...schema,
+      allOf: [
+        ...(yield* schemaList(schema.allOf, path, "allOf")),
+        discriminatorConstraint(constraint.propertyName, constraint.values),
+      ],
+    };
+  }
+
+  if (schema.type !== "object")
+    return yield* new ZodGenerationError({ message: `${path}: Unsupported discriminator target` });
+
+  const properties = schema.properties
+    ? yield* schemaMap(schema.properties, path, "properties")
+    : {};
+
+  if (properties[constraint.propertyName] !== undefined) {
+    return {
+      ...schema,
+      allOf: [discriminatorConstraint(constraint.propertyName, constraint.values)],
+    };
+  }
+
+  const required = schema.required
+    ? yield* Schema.decodeUnknownEffect(Schema.Array(Schema.String))(schema.required).pipe(
+        Effect.mapError(
+          () => new ZodGenerationError({ message: `${path}: Unsupported required constraint` }),
+        ),
+      )
+    : [];
+
+  return {
+    ...schema,
+    required: Array.dedupe([...required, constraint.propertyName]),
+    properties: {
+      ...properties,
+      [constraint.propertyName]: discriminatorValue(constraint.values),
+    },
+  };
+});
 
 function isAnnotation(key: string): boolean {
   return annotations.has(key) || key.startsWith("x-");
@@ -113,6 +327,294 @@ const schemaList = Effect.fnUntraced(function* (value: unknown, path: string, ke
       Effect.forEach(values, (part, index) => asSchema(part, `${path}/${keyword}/${index}`)),
     ),
   );
+});
+
+const scanDiscriminatorSchema = Effect.fnUntraced(function* (
+  schema: ParsedSchema,
+  path: string,
+  constraints: DiscriminatorConstraints,
+  strict = true,
+): Effect.fn.Return<void, ZodGenerationError> {
+  if (typeof schema === "boolean") return;
+
+  const discriminator = strict
+    ? yield* discriminatorOf(schema.discriminator, path)
+    : yield* discriminatorOf(schema.discriminator, path).pipe(
+        Effect.orElseSucceed(() => undefined),
+      );
+
+  if (discriminator) {
+    yield* Effect.forEach(
+      ["oneOf", "anyOf"] as const,
+      Effect.fnUntraced(function* (key) {
+        if (!schema[key]) return;
+
+        const parts = strict
+          ? yield* schemaList(schema[key], path, key)
+          : yield* schemaList(schema[key], path, key).pipe(Effect.orElseSucceed(() => []));
+
+        yield* Effect.forEach(
+          parts,
+          Effect.fnUntraced(function* (part, index) {
+            const ref = Predicate.isObject(part) ? part.$ref : undefined;
+            const branchPath = `${path}/${key}/${index}`;
+
+            if (!Predicate.isString(ref) || schemaName(ref) === undefined) {
+              if (strict)
+                return yield* new ZodGenerationError({
+                  message: `${branchPath}: Discriminator branch requires a component schema reference`,
+                });
+              return;
+            }
+
+            const values = strict
+              ? yield* branchValues(discriminator, ref, branchPath)
+              : discriminatorValues(discriminator, ref);
+
+            if (values.length === 0) return;
+
+            yield* addDiscriminatorConstraint(constraints, ref, discriminator.propertyName, values);
+          }),
+          { discard: true },
+        );
+      }),
+      { discard: true },
+    );
+
+    if (schema.oneOf || schema.anyOf) {
+      yield* Effect.forEach(
+        Record.values(discriminator.mapping ?? {}),
+        Effect.fnUntraced(function* (target) {
+          const ref = target.startsWith("#") ? target : componentRef(target);
+          if (schemaName(ref) === undefined) return;
+
+          yield* addDiscriminatorConstraint(
+            constraints,
+            ref,
+            discriminator.propertyName,
+            discriminatorValues(discriminator, ref),
+          );
+        }),
+        { discard: true },
+      );
+    }
+  }
+
+  yield* Effect.forEach(
+    schemaMaps,
+    Effect.fnUntraced(function* (key) {
+      if (!schema[key]) return;
+
+      const values: Record<string, ParsedSchema> = strict
+        ? yield* schemaMap(schema[key], path, key)
+        : yield* schemaMap(schema[key], path, key).pipe(Effect.orElseSucceed(() => ({})));
+
+      yield* Effect.forEach(
+        Record.toEntries(values),
+        ([name, part]) =>
+          scanDiscriminatorSchema(part, `${path}/${key}/${name}`, constraints, strict),
+        { discard: true },
+      );
+    }),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    [...compositions, "prefixItems"] as const,
+    Effect.fnUntraced(function* (key) {
+      if (!schema[key]) return;
+
+      const parts = strict
+        ? yield* schemaList(schema[key], path, key)
+        : yield* schemaList(schema[key], path, key).pipe(Effect.orElseSucceed(() => []));
+
+      yield* Effect.forEach(
+        parts,
+        (part, index) =>
+          scanDiscriminatorSchema(part, `${path}/${key}/${index}`, constraints, strict),
+        { discard: true },
+      );
+    }),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    [...schemaFields, "not"] as const,
+    Effect.fnUntraced(function* (key) {
+      if (schema[key] === undefined) return;
+      if (Array.isArray(schema[key])) return;
+
+      const part = strict
+        ? yield* asSchema(schema[key], `${path}/${key}`)
+        : yield* asSchema(schema[key], `${path}/${key}`).pipe(
+            Effect.orElseSucceed(() => undefined),
+          );
+
+      if (part === undefined) return;
+      yield* scanDiscriminatorSchema(part, `${path}/${key}`, constraints, strict);
+    }),
+    { discard: true },
+  );
+});
+
+const scanContentSchemas = Effect.fnUntraced(function* (
+  contents: readonly ParsedMediaType[],
+  path: string,
+  constraints: DiscriminatorConstraints,
+  strict = false,
+): Effect.fn.Return<void, ZodGenerationError> {
+  yield* Effect.forEach(
+    contents,
+    (content) =>
+      content.schema === undefined
+        ? Effect.void
+        : scanDiscriminatorSchema(
+            content.schema,
+            `${path}/${content.mediaType}`,
+            constraints,
+            strict,
+          ),
+    { discard: true },
+  );
+});
+
+const scanHeaderSchemas = Effect.fnUntraced(function* (
+  header: ParsedHeader,
+  path: string,
+  constraints: DiscriminatorConstraints,
+): Effect.fn.Return<void, ZodGenerationError> {
+  if (header.schema !== undefined)
+    yield* scanDiscriminatorSchema(header.schema, `${path}/schema`, constraints, false);
+
+  yield* scanContentSchemas(header.contents, `${path}/content`, constraints);
+});
+
+const scanDiscriminatorConstraints = Effect.fnUntraced(function* (
+  model: ParsedService,
+): Effect.fn.Return<ReadonlyMap<string, DiscriminatorConstraint | null>, ZodGenerationError> {
+  const constraints: DiscriminatorConstraints = new Map();
+
+  yield* Effect.forEach(
+    Record.toEntries(model.components.schemas),
+    ([name, schema]) => scanDiscriminatorSchema(schema, componentRef(name), constraints),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    model.operations,
+    Effect.fnUntraced(function* (operation) {
+      const location = `${operation.method} ${operation.path}`;
+
+      yield* Effect.forEach(
+        [
+          ...operation.request.path,
+          ...operation.request.query,
+          ...operation.request.headers,
+          ...operation.request.cookie,
+        ],
+        (parameter) =>
+          scanHeaderSchemas(parameter, `${location}/parameters/${parameter.name}`, constraints),
+        { discard: true },
+      );
+
+      if (operation.request.body)
+        yield* scanContentSchemas(
+          operation.request.body.contents,
+          `${location}/requestBody`,
+          constraints,
+          true,
+        );
+
+      yield* Effect.forEach(
+        operation.responses,
+        Effect.fnUntraced(function* (response) {
+          const responsePath = `${location}/responses/${response.code}`;
+          yield* scanContentSchemas(response.contents, `${responsePath}/content`, constraints);
+
+          yield* Effect.forEach(
+            response.headers,
+            (header) =>
+              scanHeaderSchemas(header, `${responsePath}/headers/${header.name}`, constraints),
+            { discard: true },
+          );
+        }),
+        { discard: true },
+      );
+    }),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    Record.toEntries(model.components.requestBodies),
+    ([name, body]) =>
+      scanContentSchemas(body.contents, `#/components/requestBodies/${name}`, constraints),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    Record.toEntries(model.components.responses),
+    Effect.fnUntraced(function* ([name, response]) {
+      const responsePath = `#/components/responses/${name}`;
+      yield* scanContentSchemas(response.contents, `${responsePath}/content`, constraints);
+
+      yield* Effect.forEach(
+        response.headers,
+        (header) =>
+          scanHeaderSchemas(header, `${responsePath}/headers/${header.name}`, constraints),
+        { discard: true },
+      );
+    }),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    Record.toEntries(model.components.parameters),
+    ([name, parameter]) =>
+      scanHeaderSchemas(parameter, `#/components/parameters/${name}`, constraints),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    Record.toEntries(model.components.headers),
+    ([name, header]) => scanHeaderSchemas(header, `#/components/headers/${name}`, constraints),
+    { discard: true },
+  );
+
+  yield* Effect.forEach(
+    Record.toEntries(model.components.schemas),
+    Effect.fnUntraced(function* ([name, schema]) {
+      if (typeof schema === "boolean" || !schema.allOf) return;
+      const path = componentRef(name);
+      const parts = yield* schemaList(schema.allOf, path, "allOf");
+
+      yield* Effect.forEach(
+        parts,
+        Effect.fnUntraced(function* (part) {
+          const ref = Predicate.isObject(part) ? part.$ref : undefined;
+          if (!Predicate.isString(ref) || schemaName(ref) === undefined) return;
+
+          const parent = yield* resolveDocumentRef(model, ref).pipe(
+            Effect.flatMap((value) => asSchema(value, ref)),
+          );
+
+          const discriminator =
+            typeof parent === "boolean"
+              ? undefined
+              : yield* discriminatorOf(parent.discriminator, ref);
+
+          if (!discriminator) return;
+
+          const values = yield* branchValues(discriminator, path, path);
+
+          yield* addDiscriminatorConstraint(constraints, path, discriminator.propertyName, values);
+        }),
+        { discard: true },
+      );
+    }),
+    { discard: true },
+  );
+
+  return constraints;
 });
 
 function definitionSchema(schema: ParsedSchema): JsonSchema {
@@ -228,6 +730,24 @@ const normalize = Effect.fnUntraced(function* (
 
   const result: JsonSchema = { ...schema };
   delete result.default;
+  delete result.discriminator;
+
+  const discriminator = yield* discriminatorOf(schema.discriminator, path);
+
+  if (discriminator) {
+    yield* Effect.forEach(
+      ["oneOf", "anyOf"] as const,
+      Effect.fnUntraced(function* (key) {
+        if (!result[key]) return;
+        const parts = yield* schemaList(result[key], path, key);
+
+        result[key] = yield* Effect.forEach(parts, (part, index) =>
+          discriminatorBranch(part, discriminator, `${path}/${key}/${index}`),
+        );
+      }),
+      { discard: true },
+    );
+  }
 
   const properties = {
     ...inherited,
@@ -493,7 +1013,11 @@ const visit = Effect.fnUntraced(function* (
   );
 });
 
-const compileExport = Effect.fnUntraced(function* (name: string, root: ParsedSchema) {
+const compileExport = Effect.fnUntraced(function* (
+  z: typeof import("zod"),
+  name: string,
+  root: ParsedSchema,
+) {
   return yield* Effect.try({
     try: () => {
       z.compile(z.fromJSONSchema(root));
@@ -505,6 +1029,42 @@ const compileExport = Effect.fnUntraced(function* (name: string, root: ParsedSch
       }),
   });
 });
+
+const discriminatorIssueHelper = `function __openapiDiscriminatorIssues(
+  schema: z.ZodType,
+  propertyName: string,
+  branchCount: number,
+  branchIndices: ReadonlyMap<string, number>,
+) {
+  return z.unknown().transform((input, context) => {
+    const parsed = schema.safeParse(input);
+    if (parsed.success) return parsed.data;
+
+    const tag =
+      typeof input === "object" && input !== null && propertyName in input
+        ? input[propertyName]
+        : undefined;
+    const index = typeof tag === "string" ? branchIndices.get(tag) : undefined;
+
+    for (const issue of parsed.error.issues) {
+      const selected =
+        index !== undefined &&
+        issue.code === "invalid_union" &&
+        issue.path.length === 0 &&
+        issue.errors.length === branchCount
+          ? issue.errors[index]
+          : undefined;
+
+      if (selected && selected.length > 0) {
+        for (const detail of selected) context.addIssue(detail);
+      } else {
+        context.addIssue(issue);
+      }
+    }
+
+    return z.NEVER;
+  });
+}`;
 
 function renderSource(
   entries: readonly SchemaExport[],
@@ -548,19 +1108,33 @@ function renderSource(
     );
   }
 
+  if (Array.some(entries, (entry) => entry.discriminatorDiagnostics !== undefined))
+    blocks.push(discriminatorIssueHelper);
+
   return `${Array.join([...blocks, ...exports], "\n\n")}\n`;
 }
 
 const source = Effect.fnUntraced(function* (
   entries: readonly SchemaExport[],
   definitions: ReadonlyMap<string, JsonSchema>,
+  outputPath?: string,
 ): Effect.fn.Return<ZodSource, ZodGenerationError> {
   const seen = new Set<string>();
+
+  const hasDiscriminatorDiagnostics = Array.some(
+    entries,
+    (entry) => entry.discriminatorDiagnostics !== undefined,
+  );
 
   yield* Effect.forEach(
     entries,
     Effect.fnUntraced(function* ({ name }) {
-      yield* assertExportName(name, ["z", "definitions"]);
+      yield* assertExportName(name, [
+        "z",
+        "definitions",
+        ...(hasDiscriminatorDiagnostics ? ["__openapiDiscriminatorIssues"] : []),
+      ]);
+
       if (seen.has(name))
         return yield* new ZodGenerationError({ message: `${name}: Duplicate schema export` });
       seen.add(name);
@@ -568,9 +1142,12 @@ const source = Effect.fnUntraced(function* (
     { discard: true },
   );
 
+  if (entries.length === 0) return "";
+  const z = yield* loadZod(outputPath);
+
   return yield* Effect.forEach(
     entries,
-    Effect.fnUntraced(function* ({ name, schema, type, expression }) {
+    Effect.fnUntraced(function* ({ name, schema, type, expression, discriminatorDiagnostics }) {
       const needed = new Set<string>();
       yield* visit(schema, needed, definitions);
       const names = Array.sort(needed, Order.String);
@@ -592,9 +1169,22 @@ const source = Effect.fnUntraced(function* (
           ? schema
           : { ...schema, ...(names.length > 0 ? { $defs: defs } : {}) };
 
-      yield* compileExport(name, root);
+      yield* compileExport(z, name, root);
       const argument = schemaLiteral(schema, names, expression);
-      return `export const ${name} = z.compile(z.fromJSONSchema(${argument})) as z.ZodType<${type}>;`;
+      const compiled = `z.compile(z.fromJSONSchema(${argument}))`;
+
+      let validator = compiled;
+
+      if (discriminatorDiagnostics) {
+        const { propertyName, branchIndices } = yield* Effect.all({
+          propertyName: encodeJson(discriminatorDiagnostics.propertyName),
+          branchIndices: encodeJson(discriminatorDiagnostics.branchIndices),
+        });
+
+        validator = `__openapiDiscriminatorIssues(${compiled}, ${propertyName}, ${discriminatorDiagnostics.branchCount}, new Map<string, number>(${branchIndices}))`;
+      }
+
+      return `export const ${name} = ${validator} as z.ZodType<${type}>;`;
     }),
   ).pipe(Effect.map((exports) => renderSource(entries, definitions, exports)));
 });
@@ -602,6 +1192,7 @@ const source = Effect.fnUntraced(function* (
 const compile = Effect.fnUntraced(function* (
   model: ParsedService,
   routes: Record<string, OperationRoute>,
+  outputPath?: string,
 ): Effect.fn.Return<ZodSource, ZodGenerationError> {
   if (!model.openapi.startsWith("3.1."))
     return yield* new ZodGenerationError({ message: "Zod generation requires OpenAPI 3.1" });
@@ -612,20 +1203,28 @@ const compile = Effect.fnUntraced(function* (
     });
   }
 
-  const definitions = yield* Effect.forEach(
-    Record.toEntries(model.components.schemas),
-    ([name, schema]) =>
-      normalize(model, schema, `#/components/schemas/${name}`).pipe(
-        Effect.map((normalized) => [name, normalized] as const),
-      ),
-  ).pipe(Effect.map((entries) => new Map(entries)));
+  const constraints = yield* scanDiscriminatorConstraints(model);
 
-  const components = Array.map(Array.fromIterable(definitions), ([name, schema]): SchemaExport => ({
+  const prepared = yield* Effect.forEach(
+    Record.toEntries(model.components.schemas),
+    Effect.fnUntraced(function* ([name, schema]) {
+      const path = componentRef(name);
+      const constrained = yield* constrainComponent(schema, constraints.get(path), path);
+      const normalized = yield* normalize(model, constrained, path);
+      const diagnostics = yield* discriminatorDiagnostics(schema, path);
+      return [name, normalized, diagnostics] as const;
+    }),
+  );
+
+  const definitions = new Map(Array.map(prepared, ([name, schema]) => [name, schema] as const));
+
+  const components = Array.map(prepared, ([name, schema, diagnostics]): SchemaExport => ({
     name,
     schema,
     types: "components",
     type: `components["schemas"][${JSON.stringify(name)}]`,
     expression: `definitions.${name}`,
+    discriminatorDiagnostics: diagnostics,
   }));
 
   const operations = yield* Effect.forEach(
@@ -663,11 +1262,12 @@ const compile = Effect.fnUntraced(function* (
         types: "operations",
         type: `NonNullable<operations[${idLiteral}]["requestBody"]>["content"]["application/json"]`,
         schema: yield* normalize(model, content.value.schema, location),
+        discriminatorDiagnostics: yield* discriminatorDiagnostics(content.value.schema, location),
       };
     }),
   ).pipe(Effect.map(Array.filter(Predicate.isNotUndefined)));
 
-  return yield* source([...components, ...operations], definitions);
+  return yield* source([...components, ...operations], definitions, outputPath);
 });
 
 /**
@@ -681,10 +1281,12 @@ const compile = Effect.fnUntraced(function* (
  *
  * `routes` selects which operations can produce a request-body validator.
  * `operationRoutes` builds that table from the document.
+ * Pass `outputPath` to validate with the Zod installation visible to the generated file.
  */
 export const zodSources = Effect.fn("zodSources")(function* (
   document: ParsedService,
   routes: Record<string, OperationRoute>,
+  options: { readonly outputPath?: string } = {},
 ): Effect.fn.Return<ZodSource, ZodGenerationError> {
-  return yield* compile(document, routes);
+  return yield* compile(document, routes, options.outputPath);
 });

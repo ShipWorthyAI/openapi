@@ -1,0 +1,1690 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Reservations API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://reservations.localhost",
+      "description": "Local"
+    },
+    {
+      "url": "https://reservations.staging.example.com",
+      "description": "Staging"
+    },
+    {
+      "url": "https://reservations.example.com",
+      "description": "Production"
+    }
+  ],
+  "paths": {
+    "/v1/availability": {
+      "get": {
+        "operationId": "getAvailability",
+        "summary": "Find availability",
+        "description": "Returns available reservation slots around the requested timestamp, excluding past slots. When exactly one project location is requested, results also include every remaining slot on the restaurant's local date of the requested timestamp. Slots with a \"payment\" object require a credit card on file before booking. Results may include adjacent dates and may be partial when availability cannot be retrieved for every requested venue. Results are grouped by project location, and locations without available slots are omitted.",
+        "tags": [
+          "Make Reservations"
+        ],
+        "parameters": [
+          {
+            "name": "project_location_ids",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "description": "Find availability at these Core project locations",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$"
+              },
+              "examples": [
+                [
+                  "10967"
+                ]
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Center of the availability interval. Defaults to the request time.",
+              "format": "date-time",
+              "examples": [
+                "2026-09-27T18:00:00-05:00"
+              ]
+            }
+          },
+          {
+            "name": "guests",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "description": "Number of guests in the party",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available reservation slots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReservationSlotGroup"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/holds": {
+      "post": {
+        "operationId": "createHold",
+        "summary": "Hold a reservation slot",
+        "description": "The slot must have been returned by availability for the venue. Slots with payment requirements can be held.",
+        "tags": [
+          "Make Reservations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/ReservationProviderToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_id",
+                  "project_location_id",
+                  "seating",
+                  "timestamp",
+                  "guests"
+                ],
+                "properties": {
+                  "slot_id": {
+                    "type": "string",
+                    "description": "Opaque reservation slot identifier with the slot_ prefix"
+                  },
+                  "project_location_id": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]*$",
+                    "description": "Core project location ID"
+                  },
+                  "seating": {
+                    "$ref": "#/components/schemas/ReservationSeating"
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp of the reservation slot"
+                  },
+                  "guests": {
+                    "type": "integer",
+                    "description": "Number of guests in the party",
+                    "minimum": 1,
+                    "maximum": 20,
+                    "default": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hold created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationHold"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/holds/{hold_id}": {
+      "delete": {
+        "operationId": "removeHold",
+        "summary": "Remove a hold on a reservation slot",
+        "description": "Removes a hold owned by the authenticated caller. Removing an already released or expired hold succeeds. A hold already used to book a reservation cannot be removed. Unknown holds and holds belonging to another caller return 404. Once removal starts, the hold cannot be used to book a reservation. If removal fails, retry it with a new idempotency key.",
+        "tags": [
+          "Make Reservations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HoldId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Hold removed"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/reservations": {
+      "post": {
+        "operationId": "createReservation",
+        "summary": "Create a reservation",
+        "description": "Creates a reservation from a hold. When state is EXTERNAL_BOOKING_REQUIRED, complete booking at external_url and supply the resulting external_id to updateReservation to confirm the same reservation.",
+        "tags": [
+          "Make Reservations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/ReservationProviderToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "hold_id",
+                  "slot_id",
+                  "project_location_id",
+                  "guest"
+                ],
+                "properties": {
+                  "hold_id": {
+                    "type": "string",
+                    "description": "Opaque hold identifier with the hold_ prefix"
+                  },
+                  "slot_id": {
+                    "type": "string",
+                    "description": "Opaque reservation slot identifier with the slot_ prefix"
+                  },
+                  "project_location_id": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]*$",
+                    "description": "Core project location ID"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "User written notes for the reservation"
+                  },
+                  "guest": {
+                    "$ref": "#/components/schemas/ReservationGuest"
+                  },
+                  "marketing": {
+                    "$ref": "#/components/schemas/Marketing"
+                  },
+                  "payment_source_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Stripe source ID for the user's chosen payment method."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reservation created. The request succeeded; status and state describe the reservation's lifecycle independently of the HTTP response status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      },
+      "get": {
+        "operationId": "getReservations",
+        "summary": "List reservations",
+        "description": "Pending and confirmed reservations whose time has not passed come first, soonest first, followed by all other reservations, most recent first. Pending reservations in EXTERNAL_BOOKING_REQUIRED state are omitted.",
+        "tags": [
+          "Manage Reservations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reservation list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReservationSummary"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Opaque cursor for the next page, or null at the end."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/reservations/{reservation_id}": {
+      "get": {
+        "operationId": "getReservation",
+        "summary": "Get a reservation",
+        "tags": [
+          "Manage Reservations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          },
+          {
+            "$ref": "#/components/parameters/ReservationProviderToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reservation details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProviderAuthenticationRequired"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateReservation",
+        "summary": "Modify a reservation",
+        "description": "Supply external_id to confirm a reservation in EXTERNAL_BOOKING_REQUIRED state after completing booking at its external_url. The booking is verified before the same reservation is confirmed. Supply a new hold_id to change the reservation to the held slot. The hold must belong to the caller and the same venue as the reservation. Its party size is used unless guests is supplied, in which case it must match. Without a hold, omitted fields remain unchanged. An expired or already used hold cannot be used again. payment_source_id may only be supplied with hold_id and is required when the held slot requires payment. Some changes create a replacement reservation. In that case the response has a new id and original_id identifies the previous reservation. The replacement is confirmed before the previous reservation is cancelled. Cancellation of the previous reservation may finish after the response; retrieve that reservation to check its current status.",
+        "tags": [
+          "Manage Reservations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/ReservationProviderToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "dependentRequired": {
+                  "payment_source_id": [
+                    "hold_id"
+                  ]
+                },
+                "properties": {
+                  "external_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Booking reference returned after completing booking at external_url for a reservation in EXTERNAL_BOOKING_REQUIRED state. Repeating verification of the same already associated booking is idempotent; changing the associated booking identity is not accepted."
+                  },
+                  "hold_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Identifier of the new reservation hold returned by createHold."
+                  },
+                  "payment_source_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Saved payment source selected for the held slot. Only accepted with hold_id and required when the held slot requires payment."
+                  },
+                  "guests": {
+                    "type": "integer",
+                    "description": "Number of guests in the party",
+                    "minimum": 1,
+                    "maximum": 20
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "User written notes for the reservation"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Modified reservation or newly confirmed replacement reservation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelReservation",
+        "summary": "Cancel a reservation",
+        "description": "Cancels an established reservation. A pending reservation in EXTERNAL_BOOKING_REQUIRED state is deleted and returns no content.",
+        "tags": [
+          "Manage Reservations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/ReservationProviderToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancellation accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Pending reservation deleted"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/webhooks/providers/{provider}": {
+      "post": {
+        "operationId": "ingestProviderWebhook",
+        "summary": "Reservation Webhooks",
+        "description": "Submit a signed reservation event with a unique event ID. Repeated event IDs are accepted idempotently.",
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProviderPath"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventId"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookSignature"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean"
+                    },
+                    "event_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ReservationSlotGroup": {
+        "type": "object",
+        "required": [
+          "project_location_id",
+          "slots"
+        ],
+        "properties": {
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationSlot"
+            }
+          }
+        }
+      },
+      "ReservationSeating": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "environment",
+          "attributes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque seating option identifier with the seat_ prefix"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The name of the seating"
+          },
+          "environment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The environment of the seating"
+          },
+          "attributes": {
+            "type": "array",
+            "maxItems": 1,
+            "items": {
+              "type": "string"
+            },
+            "description": "Attributes of the selected seating option."
+          }
+        }
+      },
+      "ReservationHold": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_location_id",
+          "provider",
+          "slot",
+          "status",
+          "expires_at",
+          "policies"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opaque identifier with the hold_ prefix"
+          },
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ReservationProvider"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "released",
+              "consumed"
+            ]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The instant at which the hold expires."
+          },
+          "slot": {
+            "$ref": "#/components/schemas/ReservationSlot"
+          },
+          "policies": {
+            "$ref": "#/components/schemas/ReservationPolicies"
+          },
+          "cash_back_percent": {
+            "readOnly": true,
+            "description": "Cashback percentage captured for this reservation in increments of 5, such as 30 for 30%. Null when no cashback was captured.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "multipleOf": 5,
+                "minimum": 0,
+                "maximum": 100
+              }
+            ]
+          }
+        }
+      },
+      "ReservationGuest": {
+        "type": "object",
+        "description": "Contact details for the reservation guest.",
+        "required": [
+          "first_name",
+          "last_name",
+          "email",
+          "phone"
+        ],
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "examples": [
+              "Chris"
+            ]
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "examples": [
+              "Lott"
+            ]
+          },
+          "email": {
+            "type": "string",
+            "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+            "examples": [
+              "guest@example.com"
+            ]
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[+()0-9][0-9 ()-]{6,24}$",
+            "description": "Phone number including its country calling code when outside the local numbering plan.",
+            "examples": [
+              "+15125550100"
+            ]
+          }
+        },
+        "examples": [
+          {
+            "first_name": "Chris",
+            "last_name": "Lott",
+            "email": "guest@example.com",
+            "phone": "+15125550100"
+          }
+        ]
+      },
+      "Marketing": {
+        "type": "object",
+        "description": "Guest communication preferences for this reservation. Omitted preferences are not sent to the restaurant.",
+        "properties": {
+          "email_opt_in": {
+            "type": "boolean",
+            "description": "Whether the guest agrees to receive email marketing from the restaurant."
+          },
+          "sms_opt_in": {
+            "type": "boolean",
+            "description": "Whether the guest agrees to receive SMS notifications about the reservation."
+          }
+        }
+      },
+      "Reservation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReservationSummary"
+          },
+          {
+            "type": "object",
+            "required": [
+              "slot_id",
+              "external_url",
+              "notes",
+              "payment",
+              "policies"
+            ],
+            "properties": {
+              "marketing": {
+                "$ref": "#/components/schemas/Marketing"
+              },
+              "policies": {
+                "$ref": "#/components/schemas/ReservationPolicies"
+              },
+              "cancellation_deadline": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Latest instant at which the guest can cancel without losing the reservation's payment. Omitted when the restaurant has no deadline or it is unknown."
+              },
+              "payment": {
+                "description": "Payment requirements captured from the reserved slot. Null when the slot has no payment requirements.",
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReservationPaymentConfirmation"
+                  }
+                ]
+              },
+              "slot_id": {
+                "type": "string",
+                "description": "Opaque reservation slot identifier with the slot_ prefix"
+              },
+              "external_url": {
+                "type": "string",
+                "description": "URL to the reservation on the provider's website"
+              },
+              "notes": {
+                "type": "string",
+                "description": "User written notes for the reservation"
+              }
+            }
+          }
+        ]
+      },
+      "ReservationSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_location_id",
+          "provider",
+          "status",
+          "state",
+          "timestamp",
+          "guests",
+          "seating"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opaque identifier with the resv_ prefix"
+          },
+          "original_id": {
+            "type": "string",
+            "minLength": 1,
+            "readOnly": true,
+            "description": "Identifier of the reservation this reservation replaces. Omitted for reservations that are not replacements."
+          },
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ReservationProvider"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReservationStatus"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ReservationState"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the reservation slot"
+          },
+          "guests": {
+            "type": "integer",
+            "description": "Number of guests in the party",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 1
+          },
+          "seating": {
+            "$ref": "#/components/schemas/ReservationSeating"
+          },
+          "cash_back_percent": {
+            "readOnly": true,
+            "description": "Cashback percentage captured for this reservation in increments of 5, such as 30 for 30%. Null when no cashback was captured.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "multipleOf": 5,
+                "minimum": 0,
+                "maximum": 100
+              }
+            ]
+          }
+        }
+      },
+      "ReservationSlot": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_location_id",
+          "provider",
+          "guests",
+          "timestamp",
+          "seating",
+          "payment"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opaque reservation slot identifier with the slot_ prefix"
+          },
+          "project_location_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Core project location ID"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ReservationProvider"
+          },
+          "guests": {
+            "type": "integer",
+            "description": "Number of guests in the party",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the reservation slot"
+          },
+          "seating": {
+            "$ref": "#/components/schemas/ReservationSeating"
+          },
+          "payment": {
+            "description": "Payment requirements for the slot. Null when the total amount is zero and no credit card is required.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReservationPayment"
+              }
+            ]
+          }
+        }
+      },
+      "ReservationProvider": {
+        "type": "string",
+        "enum": [
+          "opentable",
+          "sevenrooms",
+          "resy"
+        ]
+      },
+      "ReservationPolicies": {
+        "type": "object",
+        "description": "Restaurant policies for the reservation's date, time and party size.",
+        "required": [
+          "booking",
+          "cancellation"
+        ],
+        "properties": {
+          "booking": {
+            "type": "array",
+            "description": "Restaurant booking policies, such as grace periods and table time limits, to show the guest. Empty when the restaurant has none or they are temporarily unavailable.",
+            "items": {
+              "$ref": "#/components/schemas/ReservationPolicy"
+            }
+          },
+          "cancellation": {
+            "description": "Cancellation terms for the reservation's payment. Null when the restaurant has no day-based cancellation cutoff or the terms are temporarily unavailable.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReservationCancellationPolicy"
+              }
+            ]
+          }
+        }
+      },
+      "ReservationPaymentConfirmation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReservationPayment"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "payment_source_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Stripe source ID for the user's chosen payment method, when supplied."
+              }
+            }
+          }
+        ]
+      },
+      "ReservationStatus": {
+        "type": "string",
+        "description": "Broad reservation lifecycle category. Confirmed means an established booking, including one awaiting guest confirmation or currently in service. Completed means service has finished. Failed includes no-show and refused-entry outcomes. This value does not indicate whether an API request succeeded; inspect state for the specific lifecycle stage or outcome.",
+        "enum": [
+          "pending",
+          "confirmed",
+          "cancelled",
+          "completed",
+          "failed"
+        ]
+      },
+      "ReservationState": {
+        "type": "string",
+        "description": "Specific reservation lifecycle stage or outcome. EXTERNAL_BOOKING_REQUIRED means booking must be completed at the reservation's external_url. PENDING is held or unreconciled; BOOKED is an established booking awaiting guest confirmation; CONTACTED and NO_ANSWER describe attempts to contact the guest; CONFIRMED means the guest has confirmed. ARRIVED includes partial arrival or seating. ORDER_PLACED includes meal courses. CHECK_DROPPED and CHECK_PAID describe the check. COMPLETE means service has finished. GUEST_CANCELLED and VENUE_CANCELLED identify cancellation attribution. NO_SHOW and NO_ENTRY describe unsuccessful attendance. An unrecognized lifecycle observation is classified as PENDING, BOOKED, or CONFIRMED from the available evidence.",
+        "enum": [
+          "PENDING",
+          "EXTERNAL_BOOKING_REQUIRED",
+          "BOOKED",
+          "CONTACTED",
+          "NO_ANSWER",
+          "CONFIRMED",
+          "ARRIVED",
+          "GUEST_CANCELLED",
+          "VENUE_CANCELLED",
+          "NO_SHOW",
+          "NO_ENTRY",
+          "ORDER_PLACED",
+          "CHECK_DROPPED",
+          "CHECK_PAID",
+          "COMPLETE"
+        ]
+      },
+      "ReservationPayment": {
+        "type": "object",
+        "description": "Credit card or payment requirement. The total amount is zero when no deposit is required.",
+        "required": [
+          "description",
+          "type",
+          "per",
+          "total"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "The description of the payment"
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of payment",
+            "default": "deposit",
+            "enum": [
+              "deposit",
+              "hold"
+            ]
+          },
+          "per": {
+            "type": "string",
+            "description": "Charged per guest or reservation",
+            "default": "reservation",
+            "enum": [
+              "guest",
+              "reservation"
+            ]
+          },
+          "total": {
+            "$ref": "#/components/schemas/Money"
+          }
+        }
+      },
+      "ReservationPolicy": {
+        "type": "object",
+        "required": [
+          "type",
+          "message",
+          "language"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Policy category, such as General."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Policy text to show the guest, as plain text with paragraphs separated by line breaks."
+          },
+          "language": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "IETF BCP 47 language tag of the message, such as en-US. Null when unknown."
+          }
+        }
+      },
+      "ReservationCancellationPolicy": {
+        "type": "object",
+        "required": [
+          "cutoff_days_before",
+          "charge"
+        ],
+        "properties": {
+          "cutoff_days_before": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of days before the reservation date by which the guest must cancel to avoid being charged the reservation's payment."
+          },
+          "charge": {
+            "description": "Amount charged to the guest's card for cancelling after the cutoff or not showing up. Null when the reservation's payment is a deposit, which is kept instead, or the amount is unknown.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Money"
+              }
+            ]
+          }
+        }
+      },
+      "Money": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Amount in the currency’s minor units."
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "The currency code (ISO 4217)"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ]
+      },
+      "ProblemResponse": {
+        "description": "A Problem whose type selects its shape: invalid-input can name the invalid request fields, and provider-authentication-required carries the URL to sign in.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ProblemInvalidInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProblemProviderAuthenticationRequired"
+          },
+          {
+            "$ref": "#/components/schemas/ProblemOther"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "urn:example:reservations:auth-failed": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:unauthorized": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:forbidden": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:booking-disabled": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:conflict": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:hold-unavailable": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:idempotency-conflict": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:idempotency-key-required": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:invalid-cursor": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:invalid-json": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:invalid-query-encoding": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:invalid-request-body": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:invalid-webhook-body": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:invalid-webhook-signature": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:not-found": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:not-supported": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:payment-authentication-required": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:payment-declined": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:payment-required": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:payment-unavailable": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:provider-unavailable": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:provider-authentication-required": "#/components/schemas/ProblemProviderAuthenticationRequired",
+            "urn:example:reservations:rate-limited": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:request-pending": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:reservation-not-active": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:reservation-replacement-in-progress": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:reservation-overlap": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:cancellation-cutoff": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:modification-cutoff": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:slot-unavailable": "#/components/schemas/ProblemOther",
+            "urn:example:reservations:invalid-input": "#/components/schemas/ProblemInvalidInput",
+            "urn:example:reservations:internal-server-error": "#/components/schemas/ProblemOther"
+          }
+        }
+      },
+      "ProblemInvalidInput": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Problem"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "urn:example:reservations:invalid-input"
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "description": "The invalid request fields, when the service knows them.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "pointer",
+                    "detail"
+                  ],
+                  "properties": {
+                    "pointer": {
+                      "type": "string",
+                      "description": "JSON Pointer (RFC 6901) to the invalid field in the request body, such as /guest/email."
+                    },
+                    "detail": {
+                      "type": "string",
+                      "description": "Why the field is invalid, written to show the guest."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ProblemProviderAuthenticationRequired": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Problem"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "auth_url"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "urn:example:reservations:provider-authentication-required"
+                ]
+              },
+              "auth_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "URL to sign in. Complete sign-in and retry the request."
+              }
+            }
+          }
+        ]
+      },
+      "ProblemOther": {
+        "description": "A problem whose type has no extension members.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Problem"
+          },
+          {
+            "type": "object",
+            "additionalProperties": true
+          }
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "description": "An HTTP problem response as defined by [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html).",
+        "additionalProperties": true,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ProblemType"
+          },
+          "title": {
+            "type": "string",
+            "description": "A short, human-readable summary of the problem type."
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599,
+            "description": "The HTTP status code generated by the origin server for this occurrence of the problem."
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "A URI reference that identifies the specific occurrence of the problem."
+          }
+        }
+      },
+      "ProblemType": {
+        "type": "string",
+        "format": "uri-reference",
+        "description": "A URI reference identifying the problem.",
+        "enum": [
+          "urn:example:reservations:auth-failed",
+          "urn:example:reservations:unauthorized",
+          "urn:example:reservations:forbidden",
+          "urn:example:reservations:booking-disabled",
+          "urn:example:reservations:conflict",
+          "urn:example:reservations:hold-unavailable",
+          "urn:example:reservations:idempotency-conflict",
+          "urn:example:reservations:idempotency-key-required",
+          "urn:example:reservations:invalid-cursor",
+          "urn:example:reservations:invalid-json",
+          "urn:example:reservations:invalid-query-encoding",
+          "urn:example:reservations:invalid-request-body",
+          "urn:example:reservations:invalid-webhook-body",
+          "urn:example:reservations:invalid-webhook-signature",
+          "urn:example:reservations:not-found",
+          "urn:example:reservations:not-supported",
+          "urn:example:reservations:payment-authentication-required",
+          "urn:example:reservations:payment-declined",
+          "urn:example:reservations:payment-required",
+          "urn:example:reservations:payment-unavailable",
+          "urn:example:reservations:provider-unavailable",
+          "urn:example:reservations:provider-authentication-required",
+          "urn:example:reservations:rate-limited",
+          "urn:example:reservations:request-pending",
+          "urn:example:reservations:reservation-not-active",
+          "urn:example:reservations:reservation-replacement-in-progress",
+          "urn:example:reservations:reservation-overlap",
+          "urn:example:reservations:cancellation-cutoff",
+          "urn:example:reservations:modification-cutoff",
+          "urn:example:reservations:slot-unavailable",
+          "urn:example:reservations:invalid-input",
+          "urn:example:reservations:internal-server-error"
+        ]
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed request syntax or invalid parameters.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "A valid access token is required.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The authenticated actor is not permitted to perform this action.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "The request limit was exceeded.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An unexpected error occurred.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The request conflicts with the current resource state or an idempotency key.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemResponse"
+            },
+            "examples": {
+              "providerAuthenticationRequired": {
+                "value": {
+                  "type": "urn:example:reservations:provider-authentication-required",
+                  "title": "Provider authentication required",
+                  "status": 409,
+                  "detail": "Sign in to the reservation provider to continue.",
+                  "auth_url": "https://provider.example/sign-in"
+                }
+              }
+            }
+          }
+        }
+      },
+      "UnprocessableContent": {
+        "description": "The request is well-formed but semantically invalid.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemResponse"
+            }
+          }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "The service is temporarily unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested resource was not found.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "ProviderAuthenticationRequired": {
+        "description": "Sign in at auth_url and retry the request. A returned customer session token can be supplied with X-Reservation-Provider-Token.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemProviderAuthenticationRequired"
+            },
+            "example": {
+              "type": "urn:example:reservations:provider-authentication-required",
+              "title": "Provider authentication required",
+              "status": 409,
+              "detail": "Sign in to the reservation provider to continue.",
+              "auth_url": "https://provider.example/sign-in"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "name": "Idempotency-Key",
+        "in": "header"
+      },
+      "ReservationProviderToken": {
+        "description": "Customer session token for the reservation provider. Does not replace the example bearer token. A usable previously verified provider session may be used when this header is omitted.",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": "X-Reservation-Provider-Token",
+        "in": "header"
+      },
+      "HoldId": {
+        "description": "Opaque hold identifier with the hold_ prefix",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "name": "hold_id",
+        "in": "path"
+      },
+      "Cursor": {
+        "description": "Opaque cursor returned by the previous reservations page for this user.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "name": "cursor",
+        "in": "query"
+      },
+      "Limit": {
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "name": "limit",
+        "in": "query"
+      },
+      "ReservationId": {
+        "description": "Opaque reservation identifier with the resv_ prefix",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "name": "reservation_id",
+        "in": "path"
+      },
+      "ProviderPath": {
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/ReservationProvider"
+        },
+        "name": "provider",
+        "in": "path"
+      },
+      "WebhookEventId": {
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "name": "x-provider-event-id",
+        "in": "header"
+      },
+      "WebhookSignature": {
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "name": "x-webhook-signature",
+        "in": "header"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authenticate customer requests with an OIDC JWT in the Authorization header using the Bearer scheme."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Make Reservations",
+      "description": "Find availability, hold a slot, and create a reservation."
+    },
+    {
+      "name": "Manage Reservations",
+      "description": "List, retrieve, modify, and cancel reservations."
+    },
+    {
+      "name": "Webhooks",
+      "description": "Authenticated provider event receipts."
+    }
+  ]
+}

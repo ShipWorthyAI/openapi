@@ -6,7 +6,7 @@ Example SDK with Reservations types and operation-based TanStack Query utilities
 bunx turbo run generate
 ```
 
-`openapi/v1/openapi.yaml` is the source document, with relative references to the YAML files in `openapi/v1`. `bundle` writes `openapi/v1/bundled.openapi.json`. The generation commands read `openapi/v1/bundled.openapi.json` and write `src/generated/reservations/client.ts`, `types.ts`, `zod-schema.ts`, and `standard-schema.ts`. Zod validators are exported from `@shipworthy/example-sdk-reservations/zod-schema`, and Standard Schema validators from `@shipworthy/example-sdk-reservations/standard-schema`.
+`openapi/v1/openapi.json` is a sanitized copy of the reservation service's generated OpenAPI 3.1 document. The generation commands read it directly and write `src/generated/reservations/client.ts`, `types.ts`, and `zod-schema.ts`. Zod validators are exported from `@shipworthy/example-sdk-reservations/zod-schema`.
 
 ```ts
 import {

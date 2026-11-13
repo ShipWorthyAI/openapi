@@ -6,17 +6,20 @@ import { ensureDependencies } from "../../ensure.ts";
 import { force } from "../../force.ts";
 import { ClientName, pascalCase, writeGenerated } from "../../files.ts";
 import { fileHeader, generatorStamp } from "../../stamp.ts";
+import { typeFlags, type TypeFlags } from "../typescript/flags.ts";
 
 export const dependencies = ["typescript"] as const;
 
 const specifier = "@shipworthy/openapi-tanstack-query/generator";
 
-const run = Effect.fn("run")(function* (flags: {
-  readonly input: URL;
-  readonly output: string;
-  readonly name: string;
-  readonly force: boolean;
-}) {
+const run = Effect.fn("run")(function* (
+  flags: {
+    readonly input: URL;
+    readonly output: string;
+    readonly name: string;
+    readonly force: boolean;
+  } & TypeFlags,
+) {
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
 
@@ -25,6 +28,7 @@ const run = Effect.fn("run")(function* (flags: {
     directory: path.resolve(flags.output, flags.name),
     started,
     force: flags.force,
+    typeFlags: flags,
   });
 
   const decoded = Schema.decodeUnknownResult(Schema.String)(
@@ -63,6 +67,7 @@ export const tanstackQuery = Command.make(
       Flag.withSchema(ClientName),
     ),
     force,
+    ...typeFlags,
   },
   run,
 ).pipe(

@@ -7,6 +7,7 @@ export default defineConfig({
     "dist",
     "bun.lock",
     "examples/*/src/generated",
+    "examples/sdk-reservations/openapi/v1/openapi.json",
     "examples/overlays/openapi",
     "examples/overlays/generated",
   ],

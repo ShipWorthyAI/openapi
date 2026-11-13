@@ -152,6 +152,110 @@ describe("typescript plugin", () => {
     }),
   );
 
+  it.effect("narrows anyOf components with discriminator values", () =>
+    Effect.gen(function* () {
+      const printed = yield* run(
+        document({
+          components: {
+            schemas: {
+              Result: {
+                anyOf: [
+                  { $ref: "#/components/schemas/Good" },
+                  { $ref: "#/components/schemas/Other" },
+                ],
+                discriminator: {
+                  propertyName: "kind",
+                  mapping: { good: "Good" },
+                },
+              },
+              Good: { type: "object", properties: { value: { type: "integer" } } },
+              Other: { type: "object", additionalProperties: true },
+            },
+          },
+        }),
+      );
+
+      expect(printed).toContain('kind: "good";');
+      expect(printed).toContain('kind: "Other";');
+    }),
+  );
+
+  it.effect("combines discriminator values when unions share a component", () =>
+    Effect.gen(function* () {
+      const printed = yield* run(
+        document({
+          components: {
+            schemas: {
+              First: {
+                oneOf: [{ $ref: "#/components/schemas/Shared" }],
+                discriminator: {
+                  propertyName: "kind",
+                  mapping: { first: "#/components/schemas/Shared" },
+                },
+              },
+              Second: {
+                oneOf: [{ $ref: "#/components/schemas/Shared" }],
+                discriminator: {
+                  propertyName: "kind",
+                  mapping: { second: "#/components/schemas/Shared" },
+                },
+              },
+              Shared: { type: "object", additionalProperties: true },
+            },
+          },
+        }),
+      );
+
+      expect(printed).toContain('kind: "first" | "second";');
+
+      expect(printed).toMatch(
+        /First: components\["schemas"\]\["Shared"\] & \{[^}]*kind: "first";/s,
+      );
+
+      expect(printed).toMatch(
+        /Second: components\["schemas"\]\["Shared"\] & \{[^}]*kind: "second";/s,
+      );
+    }),
+  );
+
+  it.effect("narrows each union when a component uses different discriminator properties", () =>
+    Effect.gen(function* () {
+      const printed = yield* run(
+        document({
+          components: {
+            schemas: {
+              ByKind: {
+                oneOf: [{ $ref: "#/components/schemas/Shared" }],
+                discriminator: {
+                  propertyName: "kind",
+                  mapping: { byKind: "#/components/schemas/Shared" },
+                },
+              },
+              ByCategory: {
+                oneOf: [{ $ref: "#/components/schemas/Shared" }],
+                discriminator: {
+                  propertyName: "category",
+                  mapping: { byCategory: "#/components/schemas/Shared" },
+                },
+              },
+              Shared: { type: "object", additionalProperties: true },
+            },
+          },
+        }),
+      );
+
+      expect(printed).toMatch(
+        /ByKind: components\["schemas"\]\["Shared"\] & \{[^}]*kind: "byKind";/s,
+      );
+
+      expect(printed).toMatch(
+        /ByCategory: components\["schemas"\]\["Shared"\] & \{[^}]*category: "byCategory";/s,
+      );
+
+      expect(printed).toMatch(/Shared: \{\s*\[key: string\]: unknown;\s*\};/);
+    }),
+  );
+
   it.effect("exports component and operation aliases with rootTypes", () =>
     Effect.gen(function* () {
       const model = document({

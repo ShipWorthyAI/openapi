@@ -8,7 +8,7 @@ Generate [Zod 4](https://zod.dev) validators from an OpenAPI 3.1 document. Every
 bun add -d @shipworthy/openapi-zod @shipworthy/openapi-cli
 ```
 
-The generator and generated file both import `zod`. It is a required peer dependency of this package, so install this exact version as your app's runtime dependency:
+The generator checks schemas with `zod`, and the generated file imports it. It is a required peer dependency of this package, so install this exact version in the package that owns the generated file:
 
 ```sh
 bun add zod@4.6.5
@@ -19,7 +19,8 @@ Requirements:
 - **Zod 4.6.5.** The generated code calls `z.fromJSONSchema` and `z.compile`. `fromJSONSchema` is experimental in Zod, so the package pins `zod@4.6.5`. Use the same version in your app.
 - **Node.js `>=22.19.0` or Bun.** The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed. The `openapi` CLI runs on Node.js or Bun (`bunx --bun @shipworthy/openapi-cli ...`).
 - **ESM only.** The package sets `"type": "module"` and has a single `.` export. There is no CommonJS build.
-- **Peer dependency.** `zod` `4.6.5`, shared by the generator and your app. npm 7+ installs peers automatically, but install it explicitly as shown above.
+- **Peer dependency.** `zod` `4.6.5`. npm 7+ installs peers automatically, but install it explicitly as shown above.
+- **Workspace resolution.** The CLI looks for an installed Zod from the output file's directory upward. If none is installed there, it uses the generator's installation; Bun's global auto-install cache does not count as an installed package. A different installed version fails with the found version and resolved path before schema compilation. Install `zod@4.6.5` in the package that will import the generated file.
 - **Installed dependencies.** The package installs `effect`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@shipworthy/openapi-typescript`.
 
 Install `@shipworthy/openapi-cli` only if you use the CLI. For programmatic examples, also install the packages you import directly (`@shipworthy/openapi-generator`, `@shipworthy/openapi-transformer`, and `@effect/platform-node` as needed).
@@ -113,9 +114,11 @@ openapi generate zod [flags] <input>
 | `--output`, `-o` | string  | required | Output file for the Zod module. `types.ts` is written to the same directory.                                                         |
 | `--force`        | boolean | `false`  | Regenerate `types.ts` even when its stamp matches.                                                                                   |
 
+`generate zod` also accepts every TypeScript generator flag, including `--no-array-length`, `--enum`, and `--root-types`. Pass the same flags you use for `openapi generate typescript` when `types.ts` needs refreshing.
+
 What the command does:
 
-1. **Ensures `types.ts`.** It looks for `types.ts` next to the output file. If that file is missing, or its header stamp is not `@shipworthy/openapi-typescript@<version>:<sha256 of the input>`, it runs the TypeScript generator with default flags and writes `types.ts`. With `--force` it always rewrites `types.ts`.
+1. **Ensures `types.ts`.** It looks for `types.ts` next to the output file. If that file is missing, its header stamp differs from the input, custom TypeScript flags are passed, or `--force` is set, it runs the TypeScript generator with the flags passed to `generate zod` and writes `types.ts`.
 2. **Generates the Zod module.** It loads, bundles, and validates the input. Bundling resolves external `$ref`s and upgrades OpenAPI 3.0 documents to 3.1. It then runs the `zod` generator.
 3. **Writes the output.** It prepends a header and creates parent directories as needed. An existing output file is overwritten.
 
@@ -136,7 +139,7 @@ On failure the command prints `ERROR` and the message, then exits with code 1. T
 
 ```text
 ERROR
-  #/components/schemas/Guest/properties/name: Unsupported keyword discriminator
+  #/components/schemas/Guest/properties/name: Unsupported keyword if
 ```
 
 A typical `package.json` script:
@@ -172,7 +175,7 @@ const zod: Generator<ZodSource, ZodGenerationError>;
 // { id: "zod", generate(model: ParsedService, options): Effect<ZodSource, ZodGenerationError> }
 ```
 
-The generator plugin. `Generator` is from `@shipworthy/openapi-generator`. `generate` ignores `options` and runs `operationRoutes(model)` followed by `zodSources(model, routes)`. The CLI loads this export by name (`exportName: "zod"`).
+The generator plugin. `Generator` is from `@shipworthy/openapi-generator`. `generate` accepts `options.outputPath` to resolve Zod from the generated file's location, then runs `operationRoutes(model)` followed by `zodSources(model, routes, options)`. Without `outputPath`, it resolves Zod from the generator's installation. The CLI loads this export by name (`exportName: "zod"`).
 
 The usual way to run it from code is `generate` from `@shipworthy/openapi-generator`. That function reads the source, bundles external refs, upgrades 3.0 to 3.1, and decodes the model:
 
@@ -188,6 +191,7 @@ const source = await Effect.runPromise(
     specifier: "@shipworthy/openapi-zod",
     exportName: "zod",
     source: pathToFileURL("./openapi.json"),
+    pluginOptions: { outputPath: "./src/generated/zod-schema.ts" },
   }).pipe(
     Effect.provideService(ModuleLoader, { load: (specifier) => import(specifier) }),
     Effect.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
@@ -205,21 +209,22 @@ import { zod } from "@shipworthy/openapi-zod";
 import { Effect } from "effect";
 
 const model = Effect.runSync(decode(document));
-const source = Effect.runSync(zod.generate(model, {}));
+const source = Effect.runSync(zod.generate(model, { outputPath: "./src/generated/zod-schema.ts" }));
 ```
 
 Write `source` next to a `types.ts` generated by `@shipworthy/openapi-typescript` from the same document.
 
-### `zodSources(document, routes)`
+### `zodSources(document, routes, options?)`
 
 ```ts
 const zodSources: (
   document: ParsedService,
   routes: Record<string, OperationRoute>,
+  options?: { outputPath?: string },
 ) => Effect<ZodSource, ZodGenerationError>;
 ```
 
-Turns a parsed OpenAPI 3.1 model into Zod module source. `routes` selects which operations can produce a `<operationId>RequestBody` validator. An operation whose `operationId` is not a key of `routes` is skipped. Build the table with `operationRoutes`. It fails with `ZodGenerationError` for anything listed under [Limitations](#limitations). Returns `""` when there are no component schemas and no JSON request bodies.
+Turns a parsed OpenAPI 3.1 model into Zod module source. `routes` selects which operations can produce a `<operationId>RequestBody` validator. An operation whose `operationId` is not a key of `routes` is skipped. Build the table with `operationRoutes`. Set `options.outputPath` to resolve Zod from the generated file's location; without it, generation uses the generator's own Zod. It fails with `ZodGenerationError` for anything listed under [Limitations](#limitations). Returns `""` when there are no component schemas and no JSON request bodies.
 
 ### `operationRoutes(model)`
 
@@ -280,14 +285,18 @@ with the affected export name and validation error.
 
 ## Supported schemas
 
-- **OpenAPI version.** The generator requires `openapi: 3.1.x` on the model. Through the CLI or `generate()`, 3.0 documents are upgraded to 3.1 first. The 3.0 upgrade does not remove keywords such as `discriminator`, and those still fail (see Limitations).
-- **Validation keywords:** `$ref`, `type`, `enum`, `const`, `properties`, `patternProperties`, `additionalProperties`, `propertyNames`, `required`, `minProperties`, `maxProperties`, `allOf`, `anyOf`, `oneOf`, `items`, `prefixItems`, `contains`, `minContains`, `maxContains`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `format`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`.
+- **OpenAPI version.** The generator requires `openapi: 3.1.x` on the model. Through the CLI or `generate()`, 3.0 documents are upgraded to 3.1 first.
+- **Validation keywords:** `$ref`, `type`, `enum`, `const`, `properties`, `patternProperties`, `additionalProperties`, `propertyNames`, `required`, `minProperties`, `maxProperties`, `allOf`, `anyOf`, `oneOf`, `discriminator`, `items`, `prefixItems`, `contains`, `minContains`, `maxContains`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `format`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`.
 - **Annotations, allowed and passed through:** `title`, `description`, `default` (stripped), `example`, `examples`, `deprecated`, `readOnly`, `writeOnly`, `$comment`, `externalDocs`, `xml`, and any `x-*` extension.
 - **Boolean schemas.** `true` and `false` are supported.
 - **Rewrites for Zod.** Some JSON Schema patterns are rewritten so Zod enforces them:
   - `dependentRequired` is rewritten into `allOf` branches. Example: `{ payment_source_id: ["hold_id"] }` requires `hold_id` only when `payment_source_id` is present.
   - A required-only `allOf` branch such as `{ required: ["name"] }` copies in the property schemas inherited from sibling branches, so the requirement is enforced.
   - `not: { anyOf: [{ required: ["k"] }, …] }`, when it stands alone in an object `allOf` branch, forbids those keys.
+  - A `discriminator` on `oneOf` or `anyOf` constrains each component `$ref` branch to its mapped property values. Multiple values can map to one branch. Without a mapping for a branch, its schema name is the implicit value unless that value explicitly maps to a different branch. A component reused by several unions with the same discriminator property accepts their combined mapped values. If the unions use different properties, the component alone remains general and each union branch enforces its own tag.
+  - Discriminated unions are closed: a value absent from the mapping and implicit branch names is rejected. Regenerate the SDK when the service adds a new value. For an invalid payload with a known value, the exported union validator reports the selected branch's issues directly, such as a missing `auth_url` at `path: ["auth_url"]`.
+  - Existing constraints on a discriminator property remain in effect. A mapping value that conflicts with them is rejected by the validator.
+  - When a component extends a parent with a `discriminator` through `allOf`, the child receives values mapped to it, or its schema name when no mapping entry exists. The parent remains a general validator.
 - **External refs.** External `$ref`s (local files or URLs) are bundled before conversion when you use the CLI or `generate()`.
 
 ## Limitations
@@ -300,7 +309,10 @@ Generation fails with `ZodGenerationError` when it finds any of the following:
 | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Model `openapi` not `3.1.x`                                                                     | `Zod generation requires OpenAPI 3.1`                                          |
 | `jsonSchemaDialect` set, or top-level `$defs`                                                   | `Zod generation does not support custom dialects or top-level $defs`           |
-| Any keyword not listed above, e.g. `discriminator`, `if`/`then`/`else`, `unevaluatedProperties` | `<path>: Unsupported keyword <key>`                                            |
+| Any keyword not listed above, e.g. `if`/`then`/`else`, `unevaluatedProperties`                  | `<path>: Unsupported keyword <key>`                                            |
+| A discriminated union branch without a component schema `$ref`                                  | `<path>: Discriminator branch requires a component schema reference`           |
+| An implicit branch name claimed by an explicit mapping to another branch                        | `<path>: Discriminator branch has no unique value`                             |
+| A mapped component that is neither an object nor an `allOf` schema                              | `<path>: Unsupported discriminator target`                                     |
 | `$ref` not pointing to `#/components/schemas/…`                                                 | `<path>: Unsupported schema reference <ref>`                                   |
 | Non-annotation keywords next to `$ref`                                                          | `<path>: Zod does not preserve <key> alongside $ref`                           |
 | Constraint keywords without `type` (except `enum`, `const`, `allOf`, `anyOf`, `oneOf`)          | `<path>: Constraints without a type are not supported by Zod`                  |
@@ -322,15 +334,15 @@ Not generated:
 ## Troubleshooting
 
 - **`Cannot find module './types'` or type errors in the generated file.** The Zod module imports `./types`. Generate it with the CLI, which writes `types.ts`, or run `openapi generate typescript` into the same directory.
-- **`types.ts` looks stale or was generated with other flags.** The CLI keeps an existing `types.ts` whose stamp matches the input. Pass `--force` to rewrite it with default flags.
-- **`Unsupported keyword discriminator`.** Remove `discriminator` from the schema, or express the union with `oneOf`/`anyOf` and `const` only. Zod generation does not accept the keyword.
+- **`types.ts` looks stale or was generated with other flags.** Pass the same TypeScript flags to `generate zod`, such as `--no-array-length`. Custom flags refresh `types.ts` even when its input stamp matches. `--force` refreshes it with the flags on that command.
+- **`Unsupported keyword discriminator`.** Upgrade from 0.0.1; discriminators on `oneOf`/`anyOf` and `allOf` inheritance are supported. A discriminated union branch must be a component schema `$ref`.
 - **`Missing operationId`.** Every operation needs an `operationId`, even operations with no request body.
-- **Runtime errors from `z.fromJSONSchema`/`z.compile`.** Check that your app resolves `zod@4.6.5`.
+- **Wrong Zod version.** Install `zod@4.6.5` in the package that owns the generated file. The error reports the version and path found from the output location.
 
 ## Key facts (for AI agents)
 
 - Purpose: OpenAPI 3.1 document → one TypeScript module of Zod 4 validators. 3.0 input is upgraded only when run through the CLI or `generate()`.
-- Run: `openapi generate zod <input> -o <dir>/<file>.ts [--force]` (CLI from `@shipworthy/openapi-cli`, runs on Node.js `>=22.19.0` or Bun). It also writes `<dir>/types.ts` when that file is missing or stale.
+- Run: `openapi generate zod <input> -o <dir>/<file>.ts [--force] [TypeScript flags]` (CLI from `@shipworthy/openapi-cli`, runs on Node.js `>=22.19.0` or Bun). It also writes `<dir>/types.ts` when that file is missing, stale, or custom TypeScript flags are passed.
 - Exports from generated file: `<ComponentName>` for each `components.schemas` entry, and `<operationId>RequestBody` for each operation with a single `application/json` request body. Nothing for responses or parameters.
 - Each export is `z.compile(z.fromJSONSchema(...)) as z.ZodType<T>`, where `T` comes from `./types`. Use `.parse` / `.safeParse`.
 - `default` values are stripped. Parsing never injects defaults.

@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, type TestContext } from "vitest";
 import { workspace } from "./cli.ts";
@@ -14,6 +14,24 @@ const spec = (title: string) =>
         get: {
           operationId: "listPets",
           responses: { "200": { description: "OK" } },
+        },
+      },
+    },
+  });
+
+const arraySpec = (title: string) =>
+  JSON.stringify({
+    openapi: "3.1.0",
+    info: { title, version: "1.0.0" },
+    paths: {},
+    components: {
+      schemas: {
+        Values: {
+          type: "object",
+          required: ["numbers"],
+          properties: {
+            numbers: { type: "array", items: { type: "number" }, minItems: 1, maxItems: 2 },
+          },
         },
       },
     },
@@ -87,6 +105,61 @@ test("--force regenerates types.ts when the contents match", async (context) => 
   await cli.generate("a.json", "--force");
   expect(cli.isMarked()).toBe(false);
   expect(cli.stamp()).toBe(stamp);
+});
+
+async function verifyForwardedTypeFlags(context: TestContext, generator: "zod" | "tanstack-query") {
+  const { expect } = context;
+  const cli = setup(context);
+  writeFileSync(join(cli.dir, "a.json"), arraySpec("Arrays"));
+  await cli.ok("generate", "typescript", "a.json", "-o", "out/pets/types.ts", "--no-array-length");
+  expect(cli.types()).toContain("numbers: number[];");
+
+  writeFileSync(join(cli.dir, "a.json"), arraySpec("Updated arrays"));
+
+  const args =
+    generator === "zod"
+      ? ["generate", "zod", "a.json", "-o", "out/pets/zod-schema.ts", "--no-array-length"]
+      : [
+          "generate",
+          "tanstack-query",
+          "a.json",
+          "-o",
+          "out",
+          "--name",
+          "pets",
+          "--no-array-length",
+        ];
+
+  await cli.ok(...args);
+  expect(cli.types()).toContain("numbers: number[];");
+  expect(cli.types()).not.toContain("numbers: [number");
+}
+
+test("zod preserves forwarded TypeScript flags when refreshing types.ts", (context) =>
+  verifyForwardedTypeFlags(context, "zod"));
+
+test("tanstack-query preserves forwarded TypeScript flags when refreshing types.ts", (context) =>
+  verifyForwardedTypeFlags(context, "tanstack-query"));
+
+test("zod reports the version resolved from its output directory", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  writeFileSync(join(cli.dir, "a.json"), arraySpec("Wrong Zod"));
+  const packageDirectory = join(cli.dir, "out/pets/node_modules/zod");
+  mkdirSync(packageDirectory, { recursive: true });
+
+  writeFileSync(
+    join(packageDirectory, "package.json"),
+    JSON.stringify({ name: "zod", version: "3.25.76", main: "index.cjs" }),
+  );
+
+  writeFileSync(join(packageDirectory, "index.cjs"), "module.exports = {};\n");
+
+  const error = await cli.fails("generate", "zod", "a.json", "-o", "out/pets/zod-schema.ts");
+  expect(error).toContain("Found zod@3.25.76");
+  expect(error).toContain("out/pets/node_modules/zod/package.json");
+  expect(error).toContain("require zod@4.6.5");
+  expect(existsSync(join(cli.dir, "out/pets/zod-schema.ts"))).toBe(false);
 });
 
 test("typescript and standard-schema outputs carry a stamped header", async (context) => {

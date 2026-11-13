@@ -6,16 +6,19 @@ import { ensureDependencies } from "../../ensure.ts";
 import { force } from "../../force.ts";
 import { publish } from "../../publish.ts";
 import { fileHeader, generatorStamp } from "../../stamp.ts";
+import { typeFlags, type TypeFlags } from "../typescript/flags.ts";
 
 export const dependencies = ["typescript"] as const;
 
 const specifier = "@shipworthy/openapi-zod";
 
-const run = Effect.fn("run")(function* (flags: {
-  readonly input: URL;
-  readonly output: string;
-  readonly force: boolean;
-}) {
+const run = Effect.fn("run")(function* (
+  flags: {
+    readonly input: URL;
+    readonly output: string;
+    readonly force: boolean;
+  } & TypeFlags,
+) {
   const started = yield* Clock.currentTimeMillis;
   const path = yield* Path.Path;
   const outputPath = path.resolve(flags.output);
@@ -25,6 +28,7 @@ const run = Effect.fn("run")(function* (flags: {
     directory: path.dirname(outputPath),
     started,
     force: flags.force,
+    typeFlags: flags,
   });
 
   const decoded = Schema.decodeUnknownResult(Schema.String)(
@@ -32,6 +36,7 @@ const run = Effect.fn("run")(function* (flags: {
       specifier,
       exportName: "zod",
       source: flags.input,
+      pluginOptions: { outputPath },
     }),
   );
 
@@ -63,6 +68,7 @@ export const zod = Command.make(
       Flag.withDescription("Output file. types.ts is written next to it."),
     ),
     force,
+    ...typeFlags,
   },
   run,
 ).pipe(

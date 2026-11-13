@@ -535,7 +535,7 @@ in place of `NodeServices` on Bun) and
   `requestBody` (`?: never` when there is none), and `responses`. Each response has `headers`
   (always including `[name: string]: unknown`) and `content` keyed by media type.
 - A root with no members is printed as `export type <root> = Record<string, never>`.
-- Schema mapping: `allOf` becomes an intersection, and `anyOf` and `oneOf` become unions.
+- Schema mapping: `allOf` becomes an intersection, and `anyOf` and `oneOf` become unions. A `discriminator` on either union adds required literal values to its referenced component schemas; explicit mapping values take precedence over the schema name. When several unions map to the same component under one discriminator property, its property type includes all their mapped values. Under different properties, the shared component remains general. Each union branch is narrowed to its own values.
   `const` and `enum` become literal types with an `@enum` JSDoc tag. `prefixItems` becomes a
   tuple. A list of types (`type: ["string", "null"]`) becomes a union. The `false` schema
   becomes `never`. A 3.0 `nullable: true` becomes `| null`. Optional properties use `?`, and

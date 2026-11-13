@@ -1,6 +1,6 @@
-import { Effect, FileSystem, Option, Path } from "effect";
+import { Array, Effect, FileSystem, Option, Path, Record } from "effect";
 import { CliError } from "effect/cli";
-import { defaultTypeFlags } from "./plugins/typescript/flags.ts";
+import { defaultTypeFlags, type TypeFlags } from "./plugins/typescript/flags.ts";
 import { renderTypescript, typescriptSpecifier } from "./plugins/typescript/plugin.ts";
 import { generatorStamp, readStamp } from "./stamp.ts";
 
@@ -9,6 +9,7 @@ export interface EnsureTarget {
   readonly directory: string;
   readonly started: number;
   readonly force: boolean;
+  readonly typeFlags: TypeFlags;
 }
 
 export const ensureDependencies = Effect.fn("ensureDependencies")(function* (
@@ -33,7 +34,12 @@ const ensureTypescript = Effect.fn("ensureTypescript")(function* (target: Ensure
   const typesPath = path.join(target.directory, "types.ts");
   const generator = yield* generatorStamp(typescriptSpecifier, target.source);
 
-  if (!target.force) {
+  const nonDefaultFlags = Array.some(
+    Record.toEntries(defaultTypeFlags),
+    ([name, value]) => target.typeFlags[name] !== value,
+  );
+
+  if (!target.force && !nonDefaultFlags) {
     const types = yield* fs.readFileString(typesPath).pipe(Effect.option);
     if (Option.isSome(types) && readStamp(types.value) === generator.stamp) return;
   }
@@ -42,7 +48,7 @@ const ensureTypescript = Effect.fn("ensureTypescript")(function* (target: Ensure
     source: target.source,
     generator,
     outputPath: typesPath,
-    flags: defaultTypeFlags,
+    flags: target.typeFlags,
     check: false,
     label: target.source.href,
     outputLabel: typesPath,

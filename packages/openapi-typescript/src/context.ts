@@ -46,9 +46,11 @@ export const makeTypegenContext = Effect.fnUntraced(function* (
     Effect.mapError((cause) => new TypegenError({ message: cause.message })),
   );
 
+  const discriminators = yield* scanDiscriminators(model, { silent: options.silent });
+
   return {
     ...options,
-    discriminators: scanDiscriminators(model, { silent: options.silent }),
+    discriminators,
     injectFooter: [],
     transform,
     postTransform,

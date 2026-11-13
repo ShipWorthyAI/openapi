@@ -10,7 +10,7 @@
 
 ## Installation
 
-Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect` `^4.0.0`, `@effect/platform-node` `^4.0.0`, `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
+Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect`, `@effect/platform-node`, and `@effect/platform-node-shared` pinned to `4.0.0`, plus `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
 
 ```sh
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
@@ -34,7 +34,7 @@ The generated files import packages at runtime, so your application needs those 
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `types.ts` (TypeScript)      | nothing (types only)                                                                                                                          |
 | Zod output                   | `zod` (v4; the generator is built against `zod@4.6.5`) and `./types`                                                                          |
-| Standard Schema output       | `effect` (`^4.0.0`)                                                                                                                           |
+| Standard Schema output       | `effect` (`4.0.0`)                                                                                                                            |
 | `client.ts` (TanStack Query) | `@shipworthy/openapi-tanstack-query` (a runtime dependency), which peers on `@tanstack/react-query@^5.104.1` and `react@^18.0.0 \|\| ^19.0.0` |
 
 ## Quick start
@@ -286,6 +286,8 @@ openapi generate zod ./openapi.yaml -o ./src/generated/hotels/zod-schema.ts
 | `--output`, `-o` | file path   | (required) | Output file. `types.ts` is written to the same directory. |
 | `--force`        | boolean     | `false`    | Regenerate `types.ts` even when its stamp matches.        |
 
+This command accepts the TypeScript generator flags listed above. For example, pass `--no-array-length` to keep array types when it refreshes `types.ts`. During generation, schema compilation resolves Zod from the output file's directory and requires `zod@4.6.5`.
+
 The output imports `zod` and `type { components } from "./types"`. It exports one validator per component schema, typed as `z.ZodType<components["schemas"][Name]>`, plus `<operationId>RequestBody` validators for request bodies:
 
 ```ts
@@ -309,6 +311,8 @@ openapi generate tanstack-query ./openapi.yaml -o ./src/generated --name hotels
 | `--output`, `-o` | directory   | (required) | Directory that will contain `<name>/client.ts` and `<name>/types.ts`.                                                                                                                                                                                 |
 | `--name`         | string      | (required) | Client name. Used as the output subdirectory and, in PascalCase, as the prefix of generated exports. It must start with a letter and contain only letters, numbers, and single `-` or `_` separators (`^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`). |
 | `--force`        | boolean     | `false`    | Regenerate `types.ts` even when its stamp matches.                                                                                                                                                                                                    |
+
+This command also accepts the TypeScript generator flags listed above. Pass the same flags to every command that may refresh the sibling `types.ts`.
 
 For `--name hotels`, `client.ts` exports:
 
@@ -367,9 +371,9 @@ The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers
 
 `generate zod` and `generate tanstack-query` both need `types.ts`:
 
-- The command regenerates `types.ts` only if the file is missing or its stamp differs from the current one. A stamp changes when the schema contents or the `@shipworthy/openapi-typescript` version change. Otherwise the existing `types.ts` is left as is.
-- `--force` always regenerates it.
-- These commands always write `types.ts` with the default type flags. To use custom flags (`--enum`, `--root-types`, …), run `openapi generate typescript` yourself.
+- The command regenerates `types.ts` if the file is missing or its stamp differs from the current one. A stamp changes when the schema contents or the `@shipworthy/openapi-typescript` version change.
+- TypeScript flags on either command are passed to the TypeScript generator. Nondefault flags refresh `types.ts` even when its input stamp matches. Pass the same flags to each command that may write it.
+- `--force` always regenerates `types.ts` with the TypeScript flags on that command.
 - The main output (`client.ts`, the Zod file) is always overwritten.
 
 ## Programmatic use
@@ -397,7 +401,7 @@ openapi.pipe(
 );
 ```
 
-This uses `effect` `^4.0.0` and `@effect/platform-node` `^4.0.0`. The CLI depends on both, but add them to your own `package.json` when your code imports them, using versions compatible with the CLI so they resolve to one copy. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
+This uses `effect` and `@effect/platform-node` `4.0.0`. The CLI depends on both, but add them to your own `package.json` when your code imports them, using versions compatible with the CLI so they resolve to one copy. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
 
 ## Errors and exit codes
 
@@ -434,7 +438,7 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
   - `openapi generate tanstack-query <input> -o <dir> --name <name> [--force]`: writes `<dir>/<name>/client.ts` and `<dir>/<name>/types.ts`.
   - `openapi generate standard-schema <input> [-o file]`.
 - Each `generate` subcommand needs its optional peer package installed: `@shipworthy/openapi-typescript` (used by typescript, zod, and tanstack-query), `@shipworthy/openapi-zod`, `@shipworthy/openapi-tanstack-query`, and `@shipworthy/openapi-standard-schema`.
-- `types.ts` is regenerated only when its header stamp (`pkg@version:sha256(schema)`) changes. Pass `--force` to override.
+- `types.ts` is regenerated when its header stamp (`pkg@version:sha256(schema)`) changes, nondefault TypeScript flags are passed, or `--force` is set.
 - Do not edit generated files by hand. Re-run the command instead.
 - The only programmatic export is `openapi`, an `effect/cli` `Command`.
 

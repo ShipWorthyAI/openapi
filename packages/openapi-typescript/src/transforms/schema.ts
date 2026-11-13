@@ -1,4 +1,4 @@
-import type { ParsedSchema } from "@shipworthy/openapi-transformer";
+import type { ParsedDiscriminator, ParsedSchema } from "@shipworthy/openapi-transformer";
 import { Array as Arr, Effect, type JsonSchema, Predicate, Record } from "effect";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
@@ -35,7 +35,7 @@ import {
   subschemaList,
   subschemaMap,
 } from "../lib/schema.ts";
-import { createDiscriminatorProperty, createRef } from "../lib/utils.ts";
+import { createDiscriminatorProperty, createRef, discriminatorValues } from "../lib/utils.ts";
 import type { GlobalContext, TransformObject } from "../types.ts";
 
 type Transformed = Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext>;
@@ -319,7 +319,12 @@ const transformComposition = Effect.fnUntraced(function* (
   // (TypeScript’s unions are not true XORs, so they behave closer to anyOf than oneOf)
   const anyOfType = perType
     ? []
-    : yield* collectUnion(subschemaList(schema.anyOf) ?? [], "anyOf", path);
+    : yield* collectUnion(
+        subschemaList(schema.anyOf) ?? [],
+        "anyOf",
+        path,
+        discriminatorOf(schema.discriminator),
+      );
 
   if (anyOfType.length) {
     finalType = tsUnion([...(finalType ? [finalType] : []), ...anyOfType]);
@@ -329,7 +334,7 @@ const transformComposition = Effect.fnUntraced(function* (
   const oneOf = subschemaList(schema.oneOf);
 
   const oneOfType = oneOf
-    ? yield* collectUnion(oneOf, "oneOf", path)
+    ? yield* collectUnion(oneOf, "oneOf", path, discriminatorOf(schema.discriminator))
     : schema.type === "object" && values
       ? values.map(tsLiteral)
       : [];
@@ -354,10 +359,28 @@ const collectUnion = Effect.fnUntraced(function* (
   items: readonly ParsedSchema[],
   unionKey: "anyOf" | "oneOf",
   path: string,
+  discriminator?: ParsedDiscriminator,
 ): Effect.fn.Return<ts.TypeNode[], TypegenError, TypegenContext> {
   // The index keeps generated names of nested enums unique.
-  return yield* Effect.forEach(items, (item, index) =>
-    transformSchema(item, createRef([path, unionKey, String(index)])),
+  return yield* Effect.forEach(
+    items,
+    Effect.fnUntraced(function* (item, index) {
+      const itemType = yield* transformSchema(item, createRef([path, unionKey, String(index)]));
+      const ref = Predicate.isObject(item) && Predicate.isString(item.$ref) ? item.$ref : undefined;
+      if (!discriminator || !ref) return itemType;
+
+      const values = discriminatorValues(discriminator, ref);
+      if (values.length === 0) return itemType;
+
+      const property = ts.factory.createPropertySignature(
+        undefined,
+        tsPropertyIndex(discriminator.propertyName),
+        undefined,
+        tsUnion(values.map(tsLiteral)),
+      );
+
+      return tsIntersection([itemType, ts.factory.createTypeLiteralNode([property])]);
+    }),
   );
 });
 
