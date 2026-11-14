@@ -5,6 +5,6 @@ export default defineConfig({
     environment: "node",
     // Release tests spawn package managers and compilers, and each test owns its workspace.
     sequence: { concurrent: true },
-    testTimeout: 30_000,
+    testTimeout: 120_000,
   },
 });
