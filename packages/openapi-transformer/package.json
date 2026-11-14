@@ -1,6 +1,6 @@
 {
   "name": "@shipworthy/openapi-transformer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Decode a bundled OpenAPI object into the ParsedService HTTP meta model.",
   "license": "MIT",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@shipworthy/openapi-zod",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Generate Zod validators from OpenAPI 3.1 schemas.",
   "license": "MIT",
   "repository": {
