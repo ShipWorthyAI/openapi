@@ -80,7 +80,9 @@ jobs:
           name: release-${{ github.sha }}
           path: .release
           retention-days: 30
-          if-no-files-found: warn
+          # `.release` is a dot-directory, which upload-artifact skips unless hidden files are included.
+          include-hidden-files: true
+          if-no-files-found: error
 
   publish:
     needs: pack
