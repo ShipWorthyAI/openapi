@@ -32,6 +32,7 @@ export type {
   MiddlewareRequestParams,
   MiddlewareResult,
   MiddlewareResultParams,
+  MiddlewareRetryOptions,
   ParamsOption,
   ParseAs,
   ParseAsResponse,

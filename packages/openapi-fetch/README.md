@@ -249,7 +249,22 @@ The order of the hooks and their valid return values:
   original `method` and `schemaPath`, and the final `Response`. Return a `data` and/or `error`
   update, or `undefined` to keep the parsed values. It also runs for a synthetic `Response`
   returned by `onRequest`, a response recovered by `onError`, and empty bodies. It cannot replace
-  `result.response`.
+  `result.response`, except by retrying the call.
+  - `retry(options?)` sends the original call again and resolves with its result. Return that
+    result to replace this call's `data`, `error`, and `response`. `options.headers` override the
+    original call's headers; a `null` value removes a header.
+  - The retried call runs every middleware hook again, including this one. `attempt` is `0` for
+    the original call and goes up by one for each retry, so check it to stop retrying.
+
+```ts
+client.use({
+  async onResult({ result, attempt, retry }) {
+    if (attempt > 0 || result.response.status !== 401) return;
+
+    return retry({ headers: { Authorization: `Bearer ${await refreshToken()}` } });
+  },
+});
+```
 
 ### Schema-based case mapping
 
@@ -272,9 +287,16 @@ import type { paths } from "./generated/types";
 const client = createClient<paths>({ baseUrl: "https://api.example.com", caseMapping });
 ```
 
+The `caseMapping` option installs the conversion as the innermost middleware. It converts request
+input after every other `onRequestInit` hook and parsed results before every other `onResult`
+hook, so middleware registered with `client.use` or per request reads and writes app-facing
+names in both hooks. The HTTP hooks (`onRequest`, `onResponse`, `onError`) and a custom `fetch`
+still see the API's names.
+
 For manual registration, import `createCaseMappingMiddleware` from
 `@shipworthy/openapi-fetch/middleware/transform-casing` and call
-`client.use(createCaseMappingMiddleware(caseMapping))`.
+`client.use(createCaseMappingMiddleware(caseMapping))`. It then runs in registration order like
+any other middleware, so register it last to keep it innermost.
 
 The mapping must come from the same OpenAPI document and camelCase naming rule as `paths`.
 At build time, `buildCaseMapping(parsedService)` from
@@ -540,21 +562,21 @@ function removeTrailingSlash(url: string): string; // removes one trailing "/"
 
 Client and request types:
 
-| Type                                                                                                                                                                                        | Purpose                                                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `Client<Paths, Media>`                                                                                                                                                                      | Return type of `createClient`.                            |
-| `ClientOptions`                                                                                                                                                                             | Options for `createClient`.                               |
-| `PathBasedClient<Paths, Media>`, `ClientForPath<PathInfo, Media>`                                                                                                                           | Path-based client shapes.                                 |
-| `ClientMethod`, `ClientRequestMethod`                                                                                                                                                       | Signatures of `GET`/`POST`/... and of `request`.          |
-| `FetchOptions<Op>`, `RequestOptions<Op>`, `MaybeOptionalInit<PathItem, Method>`                                                                                                             | Shape of the `init` argument for an operation.            |
-| `ParamsOption<Op>`, `RequestBodyOption<Op>`, `DefaultParamsOption`                                                                                                                          | The `params` and `body` parts of `init`.                  |
-| `FetchResponse<Op, Init, Media>`                                                                                                                                                            | The `{ data, error, response }` union.                    |
-| `ParseAs`, `ParseAsResponse<T, Options>`                                                                                                                                                    | `parseAs` values and the resulting `data` type.           |
-| `HeadersOptions`, `QuerySerializer<T>`, `QuerySerializerOptions`, `BodySerializer<T>`, `PathSerializer`                                                                                     | Option types.                                             |
-| `Middleware`, `MiddlewareCallbackParams`, `MiddlewareRequestInitParams`, `MiddlewareRequestInput`, `MiddlewareRequestParams`, `MiddlewareResult`, `MiddlewareResultParams`, `MergedOptions` | Middleware types.                                         |
-| `CaseMapping` (from `./middleware/transform-casing`)                                                                                                                                        | Schema mapping accepted by `createCaseMappingMiddleware`. |
-| `ClientPathsWithMethod<Client, Method>`                                                                                                                                                     | The paths of a client instance that support `Method`.     |
-| `MethodResponse<Client, Method, Path, Options?>`                                                                                                                                            | The non-nullable `data` type for a call.                  |
+| Type                                                                                                                                                                                                                  | Purpose                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `Client<Paths, Media>`                                                                                                                                                                                                | Return type of `createClient`.                            |
+| `ClientOptions`                                                                                                                                                                                                       | Options for `createClient`.                               |
+| `PathBasedClient<Paths, Media>`, `ClientForPath<PathInfo, Media>`                                                                                                                                                     | Path-based client shapes.                                 |
+| `ClientMethod`, `ClientRequestMethod`                                                                                                                                                                                 | Signatures of `GET`/`POST`/... and of `request`.          |
+| `FetchOptions<Op>`, `RequestOptions<Op>`, `MaybeOptionalInit<PathItem, Method>`                                                                                                                                       | Shape of the `init` argument for an operation.            |
+| `ParamsOption<Op>`, `RequestBodyOption<Op>`, `DefaultParamsOption`                                                                                                                                                    | The `params` and `body` parts of `init`.                  |
+| `FetchResponse<Op, Init, Media>`                                                                                                                                                                                      | The `{ data, error, response }` union.                    |
+| `ParseAs`, `ParseAsResponse<T, Options>`                                                                                                                                                                              | `parseAs` values and the resulting `data` type.           |
+| `HeadersOptions`, `QuerySerializer<T>`, `QuerySerializerOptions`, `BodySerializer<T>`, `PathSerializer`                                                                                                               | Option types.                                             |
+| `Middleware`, `MiddlewareCallbackParams`, `MiddlewareRequestInitParams`, `MiddlewareRequestInput`, `MiddlewareRequestParams`, `MiddlewareResult`, `MiddlewareResultParams`, `MiddlewareRetryOptions`, `MergedOptions` | Middleware types.                                         |
+| `CaseMapping` (from `./middleware/transform-casing`)                                                                                                                                                                  | Schema mapping accepted by `createCaseMappingMiddleware`. |
+| `ClientPathsWithMethod<Client, Method>`                                                                                                                                                                               | The paths of a client instance that support `Method`.     |
+| `MethodResponse<Client, Method, Path, Options?>`                                                                                                                                                                      | The non-nullable `data` type for a call.                  |
 
 Schema helpers:
 

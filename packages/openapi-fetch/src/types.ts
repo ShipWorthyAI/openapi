@@ -192,10 +192,22 @@ export interface MiddlewareCallbackParams {
   readonly options: MergedOptions;
 }
 
+export interface MiddlewareRetryOptions {
+  /** Headers for the retried call. They override the original call's headers. */
+  readonly headers?: HeadersOptions;
+}
+
 export interface MiddlewareResultParams extends MiddlewareCallbackParams {
   /** The method requested through the client, before HTTP middleware can replace the Request. */
   readonly method: string;
   readonly result: MiddlewareResult;
+  /** How many times this call has been retried: `0` for the original call. */
+  readonly attempt: number;
+  /**
+   * Send the original call again, through every middleware hook, and resolve with its result.
+   * Return that result from `onResult` to replace this call's result, response included.
+   */
+  readonly retry: (options?: MiddlewareRetryOptions) => Promise<MiddlewareResult>;
 }
 
 type MiddlewareOnRequestInit = (
@@ -219,7 +231,8 @@ type MiddlewareOnResult = (
 ) =>
   | void
   | Partial<Pick<MiddlewareResult, "data" | "error">>
-  | Promise<Partial<Pick<MiddlewareResult, "data" | "error">> | void>;
+  | MiddlewareResult
+  | Promise<Partial<Pick<MiddlewareResult, "data" | "error">> | MiddlewareResult | void>;
 
 interface MiddlewareHooks {
   onRequestInit?: MiddlewareOnRequestInit;

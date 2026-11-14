@@ -81,14 +81,28 @@ export default function createClient<Paths extends {}, Media extends MediaType =
   baseUrl = removeTrailingSlash(baseUrl);
   const globalMiddlewares: Middleware[] = [];
 
-  if (caseMapping !== undefined) {
-    globalMiddlewares.push(createCaseMappingMiddleware(caseMapping));
-  }
+  // Case mapping is the innermost middleware: it converts request input after every other
+  // onRequestInit hook and parsed results before every other onResult hook, so those hooks
+  // work with app-facing names.
+  const caseMiddleware =
+    caseMapping === undefined ? undefined : createCaseMappingMiddleware(caseMapping);
+
+  // Results returned by an onResult hook's retry(), which may replace the whole result.
+  const retriedResults = new WeakSet<object>();
+
+  const isRetriedResult = (value: object): value is MiddlewareResult => retriedResults.has(value);
 
   /**
    * Per-request fetch (keeps settings created in createClient()
    */
-  async function coreFetch(schemaPath: string, fetchOptions?: CoreFetchOptions) {
+  async function coreFetch(
+    schemaPath: string,
+    fetchOptions?: CoreFetchOptions,
+    retry: { readonly attempt: number; readonly headers: readonly HeadersOptions[] } = {
+      attempt: 0,
+      headers: [],
+    },
+  ): Promise<MiddlewareResult> {
     const {
       baseUrl: localBaseUrl,
       fetch = baseFetch,
@@ -131,7 +145,12 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       requestPathSerializer || globalPathSerializer || defaultPathSerializer;
 
     // Snapshot middleware before any hook runs so registration changes affect later requests only.
-    const finalMiddlewares = [...globalMiddlewares, ...requestMiddlewares];
+    const finalMiddlewares = [
+      ...globalMiddlewares,
+      ...requestMiddlewares,
+      ...(caseMiddleware ? [caseMiddleware] : []),
+    ];
+
     const method = String(init.method ?? "GET").toUpperCase();
     let id: string | undefined;
     let options: MergedOptions | undefined;
@@ -156,7 +175,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
             schemaPath,
             method,
             input: { params, body },
-            headers: mergeHeaders(baseHeaders, headers, params.header),
+            headers: mergeHeaders(baseHeaders, headers, params.header, ...retry.headers),
             options,
             id,
           });
@@ -188,7 +207,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
             // the result of this ALSO sets the lowest-priority content-type header. So we re-merge below,
             // setting the content-type at the very beginning to be overwritten.
             // Lastly, based on the way headers work, it's not a simple "present-or-not" check because null intentionally un-sets headers.
-            mergeHeaders(baseHeaders, headers, params.header),
+            mergeHeaders(baseHeaders, headers, params.header, ...retry.headers),
           );
 
     const finalHeaders = mergeHeaders(
@@ -203,6 +222,8 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       baseHeaders,
       headers,
       params.header,
+      // headers passed to an onResult hook's retry() override the original call's
+      ...retry.headers,
     );
 
     // cookie params are appended to any Cookie header supplied through headers
@@ -351,7 +372,7 @@ export default function createClient<Paths extends {}, Media extends MediaType =
       }
     }
 
-    const finalResponse = response as Response;
+    let finalResponse = response as Response;
     const contentLength = finalResponse.headers.get("Content-Length");
     let parsedResult: MiddlewareResult;
 
@@ -415,18 +436,34 @@ export default function createClient<Paths extends {}, Media extends MediaType =
           options: options as MergedOptions,
           id: id as string,
           result: parsedResult,
+          attempt: retry.attempt,
+          async retry(retryOptions) {
+            const retried = await coreFetch(schemaPath, fetchOptions, {
+              attempt: retry.attempt + 1,
+              headers: retryOptions?.headers
+                ? [...retry.headers, retryOptions.headers]
+                : retry.headers,
+            });
+
+            retriedResults.add(retried);
+            return retried;
+          },
         });
 
         if (update !== undefined) {
-          if (
+          if (update && typeof update === "object" && isRetriedResult(update)) {
+            // a retried call replaces the whole result, including its response
+            parsedResult = update;
+            finalResponse = parsedResult.response;
+          } else if (
             !update ||
             typeof update !== "object" ||
             Object.keys(update).some((key) => key !== "data" && key !== "error")
           ) {
             throw new Error("onResult: must return data and/or error when modifying the result");
+          } else {
+            parsedResult = { ...parsedResult, ...update, response: finalResponse };
           }
-
-          parsedResult = { ...parsedResult, ...update, response: finalResponse };
         }
       }
     }
