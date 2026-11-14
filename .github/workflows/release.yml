@@ -57,6 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     outputs:
       artifact-id: ${{ steps.artifacts.outputs.artifact-id }}
     steps:
@@ -69,6 +70,11 @@ jobs:
           artifact-ids: ${{ needs.select-mode.outputs.plan-artifact-id }}
           path: .release-plan
           merge-multiple: true
+      - name: Set up Turborepo Remote Cache
+        if: vars.TURBO_TEAM != ''
+        uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       - run: bun run check
       - run: bun run build
       - run: bun run release:pack --from-publish-plan .release-plan/publish-plan.json

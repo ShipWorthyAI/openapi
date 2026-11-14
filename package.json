@@ -46,7 +46,7 @@
     "examples:generate": "turbo run generate --filter='./examples/*'",
     "prepare": "effect-tsgo patch --oxlint",
     "changeset": "changeset",
-    "version-packages": "changeset version && bun install && bun run check",
+    "version-packages": "changeset version && bun install",
     "release": "bun run release:verify --integrity-only && changeset publish --from-pack-dir .release",
     "release:local": "bun run check && bun run build && bun run release:pack && bun run release:verify",
     "release:pack": "release-artifacts pack",
