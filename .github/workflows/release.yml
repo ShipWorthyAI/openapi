@@ -37,6 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6.1.0
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: $/.github/actions/setup
       - uses: changesets/action/version@v2.1.2
