@@ -150,3 +150,78 @@ it("leaves non-JSON success parsing alone while mapping parsed JSON errors", asy
   const failure = await client.GET("/result", { parseAs: "text" });
   expect(failure.error).toEqual({ errorCode: "invalid_guest" });
 });
+
+it("maps JSON objects parsed in another realm and leaves non-plain objects alone", async () => {
+  class Tag {
+    constructor(readonly tag_name: string) {}
+  }
+
+  const createdAt = new Date("2026-01-01T00:00:00Z");
+  const tag = new Tag("vip");
+
+  // Another realm's Object.prototype: a distinct object whose own prototype is null, as seen
+  // by `response.json()` under Jest, which runs tests in a vm context with Node's outer fetch.
+  const realmObjectPrototype: object = Object.create(null);
+
+  const fromRealm = (fields: object): object =>
+    Object.assign(Object.create(realmObjectPrototype), fields);
+
+  const body = fromRealm({
+    thing_id: "t_1",
+    guest_info: fromRealm({ first_name: "Ada" }),
+    created_at: createdAt,
+    tag,
+  });
+
+  const objectMapping = {
+    operations: {
+      "POST /things/{thing_id}": {
+        responses: {
+          "201": {
+            "application/json": {
+              properties: {
+                ...mapping.operations["POST /things/{thing_id}"].responses["201"][
+                  "application/json"
+                ].properties,
+                created_at: {
+                  name: "createdAt",
+                  schema: { properties: { time_zone: { name: "timeZone" } } },
+                },
+                tag: { name: "tag", schema: { properties: { tag_name: { name: "tagName" } } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  } satisfies CaseMapping;
+
+  const response = new Response("{}", {
+    status: 201,
+    headers: { "Content-Type": "application/json", "Content-Length": "2" },
+  });
+
+  response.json = async () => body;
+
+  const client = createClient<Paths>({
+    baseUrl: "https://api.test",
+    caseMapping: objectMapping,
+    fetch: async () => response,
+  });
+
+  const result = await client.POST("/things/{thing_id}", {
+    params: { path: { thingId: "t_1" } },
+    body: { guestInfo: { firstName: "Ada" } },
+  });
+
+  expect(result.data).toEqual({
+    thingId: "t_1",
+    guestInfo: { firstName: "Ada" },
+    createdAt,
+    tag,
+  });
+
+  const data: object = result.data ?? {};
+  expect(Reflect.get(data, "createdAt")).toBe(createdAt);
+  expect(Reflect.get(data, "tag")).toBe(tag);
+});

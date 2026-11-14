@@ -183,7 +183,7 @@ function createConverter(mapping: CaseMapping) {
 
     if (typeof value !== "object") return value;
     const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) return value;
+    if (prototype !== null && Object.getPrototypeOf(prototype) !== null) return value;
 
     const convertedNames = new Set<string>();
 
