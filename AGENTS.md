@@ -1,6 +1,7 @@
 # Rules
 
 - Work in the worktree where this thread was created. Create or switch worktrees only when the user explicitly instructs you to.
+- Commit directly on the branch checked out when the thread started, including `main`. Do not create, switch, or rename branches unless the user explicitly instructs you to.
 
 - Before making TypeScript changes, read and follow [Effect's documentation](./node_modules/effect/AGENTS.md). Read the linked examples relevant to the change.
 - Use the installed Effect v4 source and declarations as the authority for API names and signatures. Verify unfamiliar APIs in [Effect's source](./node_modules/effect/src); do not assume v3 examples or other v4 releases match the installed version.
