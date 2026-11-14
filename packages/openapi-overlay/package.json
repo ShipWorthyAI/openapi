@@ -1,6 +1,6 @@
 {
   "name": "@shipworthy/openapi-overlay",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Apply versioned OpenAPI Overlay documents with Effect.",
   "license": "MIT",
   "repository": {

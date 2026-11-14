@@ -1,5 +1,14 @@
 # @shipworthy/openapi-standard-schema
 
+## 1.0.2
+
+### Patch Changes
+
+- 85e362a: Run case mapping as the innermost fetch middleware, so `onRequestInit` and `onResult` hooks added with `client.use` or per request work with app-facing camelCase names instead of the API's. `onResult` also receives `attempt` and `retry({ headers })`: return the retried result to replace the call's `data`, `error` and `response`, for example to sign in and resend a request without reading the raw response in a custom `fetch`.
+- Updated dependencies [85e362a]
+  - @shipworthy/openapi-generator@1.0.2
+  - @shipworthy/openapi-transformer@1.0.2
+
 ## 1.0.1
 
 ### Patch Changes

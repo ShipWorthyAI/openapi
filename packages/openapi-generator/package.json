@@ -1,6 +1,6 @@
 {
   "name": "@shipworthy/openapi-generator",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Load, resolve, and parse an OpenAPI document, then run one generator plugin.",
   "license": "MIT",
   "repository": {
