@@ -10,6 +10,11 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions: {}
 
+env:
+  # Package test suites run their own tests concurrently; running every package at once
+  # oversubscribes the runner and pushes process-spawning tests past their timeouts.
+  TURBO_CONCURRENCY: 2
+
 jobs:
   select-mode:
     runs-on: ubuntu-latest

@@ -11,6 +11,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Package test suites run their own tests concurrently; running every package at once
+  # oversubscribes the runner and pushes process-spawning tests past their timeouts.
+  TURBO_CONCURRENCY: 2
+
 jobs:
   check:
     runs-on: ubuntu-latest
