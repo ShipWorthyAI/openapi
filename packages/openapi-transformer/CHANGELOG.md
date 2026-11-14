@@ -1,5 +1,13 @@
 # @shipworthy/openapi-transformer
 
+## 1.0.1
+
+### Patch Changes
+
+- 074a105: Fix `--camel-case` responses that came back still snake_case when the parsed JSON body was a plain object from another JavaScript realm, such as `response.json()` under Jest with Node's global `fetch` (for example MSW `HttpResponse.json(...)` mocks). Plain objects from any realm are now converted, while `Date`, `Map` and class instances are still left untouched.
+- Updated dependencies [074a105]
+  - @shipworthy/openapi-parser@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
