@@ -1,4 +1,4 @@
-import { applyOverlayWithWarnings } from "@shipworthy/overlay";
+import { applyOverlayWithWarnings } from "@shipworthy/openapi-overlay";
 import { bundleDocument } from "@shipworthy/openapi-parser";
 import { Console, Effect, FileSystem, Path, Schema } from "effect";
 import { Argument, Command, Flag } from "effect/cli";

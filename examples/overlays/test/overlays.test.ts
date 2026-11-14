@@ -2,7 +2,7 @@ import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { assert, it } from "@effect/vitest";
 import { bundleDocument } from "@shipworthy/openapi-parser";
 import { OpenApiHttpMethod, ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
-import { applyOverlayWithWarnings } from "@shipworthy/overlay";
+import { applyOverlayWithWarnings } from "@shipworthy/openapi-overlay";
 import { Array, Effect, FileSystem, Layer, Order, Predicate, Record, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { fileURLToPath } from "node:url";

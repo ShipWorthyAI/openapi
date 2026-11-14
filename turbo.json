@@ -22,21 +22,21 @@
       "dependsOn": ["//#lint:fix", "//#format:fix"]
     },
     "//#lint": {
-      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
+      "dependsOn": ["@shipworthy/openapi-overlay#generate:schemas"]
     },
     "//#lint:fix": {
       "cache": false,
-      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
+      "dependsOn": ["@shipworthy/openapi-overlay#generate:schemas"]
     },
     "//#format": {
-      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
+      "dependsOn": ["@shipworthy/openapi-overlay#generate:schemas"]
     },
     "//#format:fix": {
       "dependsOn": ["//#lint:fix"],
       "cache": false
     },
     "//#typecheck": {
-      "dependsOn": ["@shipworthy/overlay#generate:schemas"]
+      "dependsOn": ["@shipworthy/openapi-overlay#generate:schemas"]
     },
     "bundle": {},
     "generate": {}

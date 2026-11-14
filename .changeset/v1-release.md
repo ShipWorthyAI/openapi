@@ -10,7 +10,7 @@
 "@shipworthy/openapi-typescript": major
 "@shipworthy/openapi-validator": major
 "@shipworthy/openapi-zod": major
-"@shipworthy/overlay": major
+"@shipworthy/openapi-overlay": major
 ---
 
 First stable release.

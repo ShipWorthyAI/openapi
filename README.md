@@ -53,7 +53,7 @@ it into a shared `ParsedService` model, then passes that model to a generator pl
 
 | Package                                                                       | Use it to                                                               |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [`@shipworthy/overlay`](./packages/openapi-overlay/README.md)                 | Apply OpenAPI Overlay 1.0 and 1.1 documents with Effect.                |
+| [`@shipworthy/openapi-overlay`](./packages/openapi-overlay/README.md)         | Apply OpenAPI Overlay 1.0 and 1.1 documents with Effect.                |
 | [`@shipworthy/openapi-parser`](./packages/openapi-parser/README.md)           | Load, bundle, upgrade, and validate OpenAPI documents.                  |
 | [`@shipworthy/openapi-transformer`](./packages/openapi-transformer/README.md) | Convert a bundled OpenAPI document into the `ParsedService` HTTP model. |
 | [`@shipworthy/openapi-generator`](./packages/openapi-generator/README.md)     | Run generator plugins from code or write your own.                      |

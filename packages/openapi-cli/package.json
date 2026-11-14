@@ -40,9 +40,9 @@
     "@effect/platform-node": "catalog:",
     "@effect/platform-node-shared": "catalog:",
     "@shipworthy/openapi-generator": "workspace:*",
+    "@shipworthy/openapi-overlay": "workspace:*",
     "@shipworthy/openapi-parser": "workspace:*",
     "@shipworthy/openapi-validator": "workspace:*",
-    "@shipworthy/overlay": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

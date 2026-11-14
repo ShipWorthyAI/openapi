@@ -1,8 +1,8 @@
 import { Effect, Schema } from "effect";
 import { expect, test } from "vitest";
 import { applyOverlay, Overlay, type OverlayAction } from "../src/index.ts";
-import * as V10 from "@shipworthy/overlay/schemas/1.0";
-import * as V11 from "@shipworthy/overlay/schemas/1.1";
+import * as V10 from "@shipworthy/openapi-overlay/schemas/1.0";
+import * as V11 from "@shipworthy/openapi-overlay/schemas/1.1";
 
 function overlay(version: string, ...actions: OverlayAction[]) {
   return { overlay: version, info: { title: "Test", version: "1" }, actions };

@@ -477,7 +477,7 @@ export enum ApiPaths {
 
 ### Schema changes through overlays
 
-Use [`@shipworthy/overlay`](../openapi-overlay/README.md) to change the document before
+Use [`@shipworthy/openapi-overlay`](../openapi-overlay/README.md) to change the document before
 TypeScript generation. The generator uses explicit `required` lists; a property's `default`
 does not make it required. Deprecated members remain in the output, and missing path parameter
 declarations are not inferred from URL templates.

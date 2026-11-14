@@ -159,7 +159,7 @@ these TypeScript files by hand.
 From the repository root:
 
 ```sh
-bunx turbo run generate:schemas --filter=@shipworthy/overlay
+bunx turbo run generate:schemas --filter=@shipworthy/openapi-overlay
 bun run --cwd packages/openapi-overlay check:schemas
 ```
 
@@ -175,7 +175,7 @@ packages use this package's source. `bun run check` includes the schema check.
 Use Turbo when running build or test so these prerequisites run:
 
 ```sh
-bunx turbo run build test --filter=@shipworthy/overlay
+bunx turbo run build test --filter=@shipworthy/openapi-overlay
 ```
 
 Run `check:schemas` directly, as shown above, to check committed artifacts without regenerating.

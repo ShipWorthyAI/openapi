@@ -1,4 +1,4 @@
-# @shipworthy/overlay
+# @shipworthy/openapi-overlay
 
 Apply OpenAPI Overlay 1.0 and 1.1 documents with Effect v4. Validation schemas are generated
 from the upstream YAML schemas, and action behavior follows the declared feature version. Supports RFC 9535 JSONPath, sequential `update`, `copy`, and `remove`
@@ -7,7 +7,7 @@ actions, recursive object merges, array concatenation/appending, and primitive r
 ## Installation
 
 ```sh
-bun add @shipworthy/overlay effect@4.1.4
+bun add @shipworthy/openapi-overlay effect@4.1.4
 ```
 
 Requires Node.js 22.19.0 or later, or Bun. Ships ESM JavaScript and TypeScript declarations.
@@ -15,7 +15,7 @@ Requires Node.js 22.19.0 or later, or Bun. Ships ESM JavaScript and TypeScript d
 ## Usage
 
 ```ts
-import { applyOverlay } from "@shipworthy/overlay";
+import { applyOverlay } from "@shipworthy/openapi-overlay";
 import { Effect } from "effect";
 
 const document = {
@@ -51,7 +51,7 @@ collected in action order; subsequent actions still run against the preceding re
 `applyOverlay` returns only the document. Neither function logs warnings.
 
 ```ts
-import { applyOverlayWithWarnings } from "@shipworthy/overlay";
+import { applyOverlayWithWarnings } from "@shipworthy/openapi-overlay";
 
 const { document: updated, warnings } = await Effect.runPromise(
   applyOverlayWithWarnings(document, overlay),
@@ -235,12 +235,12 @@ schemas accept the union of supported versions. Import a particular version to v
 its documents directly:
 
 ```ts
-import { Overlay, type OverlayAction } from "@shipworthy/overlay/schemas/1.0";
-// Also available at @shipworthy/overlay/schemas/1.1.
+import { Overlay, type OverlayAction } from "@shipworthy/openapi-overlay/schemas/1.0";
+// Also available at @shipworthy/openapi-overlay/schemas/1.1.
 ```
 
 ```ts
-import { Overlay } from "@shipworthy/overlay";
+import { Overlay } from "@shipworthy/openapi-overlay";
 import { Schema } from "effect";
 
 const checked = Schema.decodeUnknownEffect(Overlay)({

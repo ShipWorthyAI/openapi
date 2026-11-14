@@ -10,7 +10,7 @@
 
 ## Installation
 
-Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect`, `@effect/platform-node`, and `@effect/platform-node-shared` pinned to `4.1.4`, plus `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
+Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect`, `@effect/platform-node`, and `@effect/platform-node-shared` pinned to `4.1.4`, plus `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/openapi-overlay`, and `@shipworthy/openapi-validator`):
 
 ```sh
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
@@ -200,7 +200,7 @@ writing output. See the overlay package's operation filtering example below.
 An existing output file is overwritten only after bundling, overlay application, and optional pruning succeed.
 Loading, invalid overlay, incompatible merge, JSONPath, pruning, and write errors exit with code `1`.
 Action errors include the one-based action number and target. See the
-[`@shipworthy/overlay` documentation](../openapi-overlay/README.md) for merge rules and errors.
+[`@shipworthy/openapi-overlay` documentation](../openapi-overlay/README.md) for merge rules and errors.
 
 ### `openapi lint [--strict] <input>`
 
