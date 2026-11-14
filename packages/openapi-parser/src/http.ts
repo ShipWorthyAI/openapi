@@ -1,7 +1,16 @@
 import type { LookupFunction } from "node:net";
 import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
 import { Agent } from "@effect/platform-node/Undici";
-import { Cause, Effect, Schedule, type Scope } from "effect";
+import {
+  Array as Arr,
+  Cause,
+  Effect,
+  pipe,
+  Record as Rec,
+  Schedule,
+  type Scope,
+  String as Str,
+} from "effect";
 import { HttpClient } from "effect/http";
 import { ResolverFailure, nodeErrorCode, timeoutFailure, type TimeoutFailure } from "./errors.ts";
 import type { EffectPlugin, HttpResolverOptions, Options } from "./plugins.ts";
@@ -163,7 +172,7 @@ const receive = Effect.fnUntraced(function* (
   if (response.status >= 300) {
     if (http.redirects !== undefined && redirects.length > http.redirects) {
       return yield* new ResolverFailure({
-        message: `Error downloading ${redirects[0]}. \nToo many redirects: \n  ${redirects.join(" \n  ")}`,
+        message: `Error downloading ${redirects[0]}. \nToo many redirects: \n  ${Arr.join(redirects, " \n  ")}`,
         source: href,
         ioErrorCode: String(response.status),
       });
@@ -203,7 +212,8 @@ function pinnedLookup(href: string, addresses: readonly ResolvedUrlAddress[]): L
     const requestedFamily =
       options.family === "IPv4" ? 4 : options.family === "IPv6" ? 6 : options.family || 0;
 
-    const candidates = addresses.filter(
+    const candidates = Arr.filter(
+      addresses,
       ({ family }) => requestedFamily === 0 || family === requestedFamily,
     );
 
@@ -224,10 +234,7 @@ function pinnedLookup(href: string, addresses: readonly ResolvedUrlAddress[]): L
 }
 
 function normalizeLookupHostname(hostname: string): string {
-  return hostname
-    .replace(/^\[|\]$/g, "")
-    .replace(/\.+$/, "")
-    .toLowerCase();
+  return pipe(hostname, Str.replace(/^\[|\]$/g, ""), Str.replace(/\.+$/, ""), Str.toLowerCase);
 }
 
 function withoutSensitiveHeaders(http: HttpResolverOptions): HttpResolverOptions {
@@ -236,7 +243,7 @@ function withoutSensitiveHeaders(http: HttpResolverOptions): HttpResolverOptions
   headers.delete("authorization");
   headers.delete("proxy-authorization");
   headers.delete("cookie");
-  return { ...http, headers: Object.fromEntries(headers.entries()) };
+  return { ...http, headers: Rec.fromEntries(headers.entries()) };
 }
 
 function resolverFailure(href: string, cause: unknown): ResolverFailure {
@@ -244,7 +251,7 @@ function resolverFailure(href: string, cause: unknown): ResolverFailure {
   const ioErrorCode = nodeErrorCode(cause);
 
   return new ResolverFailure({
-    message: message.startsWith("Error downloading")
+    message: Str.startsWith("Error downloading")(message)
       ? message
       : `Error downloading ${href}: ${message}`,
     source: href,

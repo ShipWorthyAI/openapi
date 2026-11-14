@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Record as Rec, Schema } from "effect";
 import { OpenApiEncoding } from "./encoding.ts";
 import { OpenApiExample } from "./example.ts";
 import { openApiObject } from "./object.ts";
@@ -12,7 +12,7 @@ export const OpenApiMediaType = openApiObject({
   encoding: Schema.optionalKey(Schema.Record(Schema.String, OpenApiEncoding)),
 }).check(
   Schema.makeFilter((value) =>
-    Object.hasOwn(value, "example") && value.examples !== undefined
+    Rec.has(value, "example") && value.examples !== undefined
       ? "Media type example and examples are mutually exclusive"
       : undefined,
   ),

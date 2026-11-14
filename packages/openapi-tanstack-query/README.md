@@ -546,7 +546,7 @@ import {
 Programmatic generation with `@shipworthy/openapi-generator`, which is what
 the CLI does:
 
-Install `@effect/platform-node@^4` as a dev dependency for the Node.js platform layer used in this example:
+Install `@effect/platform-node@4.1.4` as a dev dependency for the Node.js platform layer used in this example:
 
 ```ts
 import { NodeServices } from "@effect/platform-node";

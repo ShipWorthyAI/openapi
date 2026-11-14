@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { Effect, FileSystem, Option, Path, Schema } from "effect";
+import { Array, Effect, FileSystem, Option, Path, pipe, Schema, String } from "effect";
 import { CliError } from "effect/cli";
 import { Digest } from "effect/crypto";
 
@@ -39,7 +39,13 @@ ${casingLine} */
 const generatorPackage = Effect.fn("generatorPackage")(function* (specifier: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const name = specifier.split("/", specifier.startsWith("@") ? 2 : 1).join("/");
+  const segments = pipe(specifier, String.split("/"));
+
+  const name = pipe(
+    segments,
+    Array.take(pipe(specifier, String.startsWith("@")) ? 2 : 1),
+    Array.join("/"),
+  );
 
   const resolved = yield* Effect.try({
     try: () => fileURLToPath(import.meta.resolve(specifier)),

@@ -24,7 +24,7 @@ export const transformHeader = Effect.fnUntraced(function* (
     return UNKNOWN;
   }
 
-  const contents = Object.fromEntries(header.contents.map((media) => [media.mediaType, media]));
+  const contents = Record.fromIterableBy(header.contents, (media) => media.mediaType);
 
   const type = yield* Effect.forEach(
     Record.toEntries(contents),

@@ -7,7 +7,7 @@ import {
   type OpenApiSecurityRequirement,
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Array, Effect, Record } from "effect";
 import { child, resolve } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type {
@@ -77,9 +77,9 @@ export const transformSecuritySchemeMap = Effect.fnUntraced(function* (
   value: OpenApiComponents["securitySchemes"],
   at: string,
 ) {
-  return Object.fromEntries(
+  return Record.fromEntries(
     yield* Effect.forEach(
-      Object.entries(value ?? {}),
+      Record.toEntries(value ?? {}),
       Effect.fnUntraced(function* ([key, entry]) {
         return [key, yield* transformSecurityScheme(document, key, entry, child(at, key))] as const;
       }),
@@ -92,10 +92,10 @@ export const transformSecurityRequirements = (
   schemes: Readonly<Record<string, typeof ParsedSecurityScheme.Encoded>>,
 ) =>
   Effect.sync(() => {
-    return (value ?? []).map((entry) => {
+    return Array.map(value ?? [], (entry) => {
       const uses: (typeof ParsedSecurityUse.Encoded)[] = [];
 
-      for (const [key, scopes] of Object.entries(entry)) {
+      for (const [key, scopes] of Record.toEntries(entry)) {
         const scheme = schemes[key];
         if (scheme) uses.push({ scheme, scopes });
       }

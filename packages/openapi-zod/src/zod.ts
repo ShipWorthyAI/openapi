@@ -1,9 +1,25 @@
 import * as NodeModule from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { Array, Effect, Option, Predicate, Schema } from "effect";
+import { Array, Effect, Option, Predicate, Schema, String, pipe } from "effect";
 import { ZodGenerationError } from "./errors.ts";
 
-const requiredVersion = "4.6.7";
+// The generated code targets the exact zod version in this package's peerDependencies.
+const GeneratorPackageJson = Schema.Struct({
+  peerDependencies: Schema.Struct({ zod: Schema.String }),
+});
+
+const requiredZodVersion = Effect.try({
+  try: () => NodeModule.createRequire(import.meta.url)("../package.json") as unknown,
+  catch: (cause) =>
+    new ZodGenerationError({ message: "#: Cannot read the zod generator package.json", cause }),
+}).pipe(
+  Effect.flatMap(Schema.decodeUnknownEffect(GeneratorPackageJson)),
+  Effect.mapError(
+    (cause) =>
+      new ZodGenerationError({ message: "#: Cannot read the required zod version", cause }),
+  ),
+  Effect.map((manifest) => manifest.peerDependencies.zod),
+);
 
 const PackageJson = Schema.Struct({
   version: Schema.String,
@@ -93,6 +109,8 @@ export const loadZod = Effect.fnUntraced(function* (
     ),
   );
 
+  const requiredVersion = yield* requiredZodVersion;
+
   if (manifest.version !== requiredVersion)
     return yield* new ZodGenerationError({
       message: `#: Found zod@${manifest.version} at ${manifestPath} (resolved from ${outputPackage ? outputPath : import.meta.url}); require zod@${requiredVersion}`,
@@ -100,7 +118,7 @@ export const loadZod = Effect.fnUntraced(function* (
 
   const rootExport = manifest.exports?.["."];
   const importEntry = Predicate.isObject(rootExport) ? rootExport.import : undefined;
-  if (!Predicate.isString(importEntry) || !importEntry.startsWith("./"))
+  if (!Predicate.isString(importEntry) || !pipe(importEntry, String.startsWith("./")))
     return yield* new ZodGenerationError({
       message: `#: Cannot resolve zod import entry at ${manifestPath}`,
     });

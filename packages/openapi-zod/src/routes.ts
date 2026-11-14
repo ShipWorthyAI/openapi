@@ -1,5 +1,5 @@
 import type { ParsedService } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import { ZodGenerationError } from "./errors.ts";
 
 const methods = ["get", "put", "post", "delete", "options", "head", "patch", "trace"] as const;
@@ -27,7 +27,7 @@ export const operationRoutes = Effect.fnUntraced(function* (
         return yield* new ZodGenerationError({ message: `Unsupported operationId: ${id}` });
       }
 
-      if (Object.hasOwn(routes, id)) {
+      if (Record.has(routes, id)) {
         return yield* new ZodGenerationError({ message: `Duplicate operationId: ${id}` });
       }
 

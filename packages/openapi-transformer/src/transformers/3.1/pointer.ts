@@ -1,5 +1,15 @@
 import { OpenApiReference, type ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect, JsonPointer, Predicate, Schema, SchemaIssue } from "effect";
+import {
+  Array,
+  Effect,
+  JsonPointer,
+  pipe,
+  Predicate,
+  Record,
+  Schema,
+  SchemaIssue,
+  String,
+} from "effect";
 import type { ParsedRef } from "../../model/index.ts";
 
 const isReference = Schema.is(OpenApiReference);
@@ -9,9 +19,14 @@ function tokens(ref: string): readonly string[] | undefined {
   const parsed = JsonPointer.parseUriFragment(ref);
   if (parsed) return parsed;
   if (ref === "#") return [];
-  if (!ref.startsWith("#/")) return undefined;
+  if (!String.startsWith("#/")(ref)) return undefined;
 
-  return ref.slice(2).split("/").map(JsonPointer.unescapeToken);
+  return pipe(
+    ref,
+    String.slice(2),
+    String.split("/"),
+    Array.map((token) => JsonPointer.unescapeToken(token)),
+  );
 }
 
 function pointer(document: ParsedOpenApi, ref: string): unknown {
@@ -21,7 +36,7 @@ function pointer(document: ParsedOpenApi, ref: string): unknown {
 
   for (const key of path) {
     if (Array.isArray(node)) node = node[Number(key)];
-    else if (Predicate.isObject(node) && Object.hasOwn(node, key)) node = node[key];
+    else if (Predicate.isObject(node) && Record.has(node, key)) node = node[key];
     else return undefined;
   }
 
@@ -30,9 +45,10 @@ function pointer(document: ParsedOpenApi, ref: string): unknown {
 
 /** Append JSON Pointer segments to a pointer. */
 export function child(at: string, ...segments: readonly (string | number)[]): string {
-  return segments.reduce<string>(
-    (path, segment) => `${path}/${JsonPointer.escapeToken(String(segment))}`,
+  return Array.reduce(
+    segments,
     at,
+    (path, segment) => `${path}/${JsonPointer.escapeToken(`${segment}`)}`,
   );
 }
 

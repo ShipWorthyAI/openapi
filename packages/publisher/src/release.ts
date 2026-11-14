@@ -10,6 +10,7 @@ import {
   Record,
   Schema,
   Stream,
+  String,
 } from "effect";
 import { Digest } from "effect/crypto";
 import { Base64 } from "effect/encoding";
@@ -76,6 +77,7 @@ const PublishPlan = Schema.Struct({
 
 const Verification = Schema.Struct({ planIntegrity: Schema.String });
 const Json = Schema.fromJsonString(Schema.JsonObject, { space: 2 });
+const encodeJsonString = Schema.encodeEffect(Schema.fromJsonString(Schema.String));
 const registryFields = new Set(["access", "registry", "tag", "provenance"]);
 
 class ReleaseError extends Schema.TaggedError<ReleaseError, { readonly brand: unique symbol }>()(
@@ -130,7 +132,7 @@ const inside = Effect.fnUntraced(function* (directory: string, relative: string)
     !difference ||
     path.isAbsolute(relative) ||
     difference === ".." ||
-    difference.startsWith(`..${path.sep}`)
+    pipe(difference, String.startsWith(`..${path.sep}`))
   ) {
     return yield* new ReleaseError({ message: `Expected a path inside ${directory}: ${relative}` });
   }
@@ -172,9 +174,12 @@ function runtimeSpecifiers(manifest: typeof PackageManifest.Type): Array<string>
     Record.toEntries(manifest.exports),
     Array.filter(
       ([key, value]) =>
-        key.startsWith(".") && Array.some(entryPaths(value), (target) => /\.[cm]?js$/.test(target)),
+        pipe(key, String.startsWith(".")) &&
+        Array.some(entryPaths(value), (target) => /\.[cm]?js$/.test(target)),
     ),
-    Array.map(([key]) => (key === "." ? manifest.name : `${manifest.name}${key.slice(1)}`)),
+    Array.map(([key]) =>
+      key === "." ? manifest.name : `${manifest.name}${pipe(key, String.slice(1))}`,
+    ),
   );
 }
 
@@ -213,15 +218,15 @@ export const packRelease = Effect.fn("release.pack")(function* (options: {
 
   // Like the package manager, `!pattern` excludes directories that other patterns include.
   const patterns = workspace.workspaces.packages;
-  const included = Array.filter(patterns, (pattern) => !pattern.startsWith("!"));
-  const excluded = Array.filter(patterns, (pattern) => pattern.startsWith("!"));
+  const included = Array.filter(patterns, (pattern) => !pipe(pattern, String.startsWith("!")));
+  const excluded = Array.filter(patterns, String.startsWith("!"));
 
   const globManifests = (patterns: ReadonlyArray<string>) =>
     Effect.forEach(patterns, (pattern) => fs.glob(`${pattern}/package.json`, { root })).pipe(
       Effect.map((files) => pipe(files, Array.flatten, Array.dedupe)),
     );
 
-  const excludedFiles = yield* globManifests(Array.map(excluded, (pattern) => pattern.slice(1)));
+  const excludedFiles = yield* globManifests(Array.map(excluded, String.slice(1)));
 
   const manifestFiles = yield* globManifests(included).pipe(
     Effect.map(Array.filter((file) => !Array.contains(excludedFiles, file))),
@@ -313,7 +318,7 @@ export const packRelease = Effect.fn("release.pack")(function* (options: {
         );
 
         yield* writeJson(path.join(destination, "package.json"), publishedManifest(manifest));
-        const filename = `${release.name.replace(/^@/, "").replaceAll("/", "-")}-${release.version}.tgz`;
+        const filename = `${pipe(release.name, String.replace(/^@/, ""), String.replaceAll("/", "-"))}-${release.version}.tgz`;
         const tarballPath = yield* inside(path.join(packed, "packages"), filename);
 
         yield* run(
@@ -419,9 +424,13 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
       const extracted = yield* fs.makeTempDirectoryScoped({ prefix: "release-unpack-" });
       const members = yield* run(ChildProcess.make("tar", ["-tzf", archive]));
 
-      yield* Effect.forEach(members.trim().split("\n"), (member) => inside(extracted, member), {
-        discard: true,
-      });
+      yield* Effect.forEach(
+        pipe(members, String.trim, String.split("\n")),
+        (member) => inside(extracted, member),
+        {
+          discard: true,
+        },
+      );
 
       yield* run(
         ChildProcess.make("tar", ["-xzf", archive, "--strip-components", "1", "-C", extracted]),
@@ -443,7 +452,11 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
       const unresolved = pipe(
         [manifest.dependencies, manifest.optionalDependencies, manifest.peerDependencies],
         Array.flatMap((deps) => Record.values(deps ?? {})),
-        Array.some((range) => range.startsWith("workspace:") || range.startsWith("catalog:")),
+        Array.some(
+          (range) =>
+            pipe(range, String.startsWith("workspace:")) ||
+            pipe(range, String.startsWith("catalog:")),
+        ),
       );
 
       if (unresolved)
@@ -541,7 +554,7 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
       );
 
       const imports = yield* Effect.forEach(specifiers, (specifier, index) =>
-        Schema.encodeEffect(Schema.fromJsonString(Schema.String))(specifier).pipe(
+        encodeJsonString(specifier).pipe(
           Effect.map(
             (literal) => `import * as entry${index} from ${literal};\nvoid entry${index};`,
           ),
@@ -580,7 +593,7 @@ export const verifyRelease = Effect.fn("release.verify")(function* (options: {
         published,
         ({ manifest }) => {
           const bins = Predicate.isString(manifest.bin)
-            ? [manifest.name.split("/").at(-1) ?? manifest.name]
+            ? [Array.lastNonEmpty(pipe(manifest.name, String.split("/")))]
             : Record.keys(manifest.bin ?? {});
 
           return Effect.forEach(

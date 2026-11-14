@@ -1,4 +1,15 @@
-import { Array, Cache, Effect, FileSystem, Predicate, Ref, Schema } from "effect";
+import {
+  Array,
+  Cache,
+  Effect,
+  FileSystem,
+  Option,
+  Predicate,
+  Record as Rec,
+  Ref,
+  Schema,
+  String as Str,
+} from "effect";
 import type { HttpClient } from "effect/http";
 import {
   ParserFailure,
@@ -12,7 +23,7 @@ import {
 import { hoistExternalRefs } from "./hoist.ts";
 import { loadDocument, makeContext } from "./loader.ts";
 import { Options } from "./plugins.ts";
-import { cloneData, joinPointer, parsePointer } from "./pointer.ts";
+import { childAt, cloneData, joinPointer, parsePointer } from "./pointer.ts";
 import { inlineRemaining, runSchemaPipeline } from "./pipeline.ts";
 import { isOpenApi3, upgradeOpenApi3_0 } from "./upgraders/3.0-to-3.1.ts";
 import { getHash, isHttp, normalizeRef, resolveAgainst, stripHash } from "./url.ts";
@@ -200,7 +211,7 @@ const referenceKeys = new Set(["$ref", "summary", "description"]);
 function isBundledRef(record: Record<string, unknown>): boolean {
   const ref = record.$ref;
   if (typeof ref !== "string" || !isHttp(ref)) return true;
-  return Object.keys(record).every((key) => referenceKeys.has(key));
+  return Array.every(Rec.keys(record), (key) => referenceKeys.has(key));
 }
 
 function* externalRefs(node: unknown, kept: Set<string>): Generator<string> {
@@ -221,7 +232,7 @@ function* externalRefs(node: unknown, kept: Set<string>): Generator<string> {
 
     if (
       typeof record.$ref === "string" &&
-      !record.$ref.startsWith("#") &&
+      !Str.startsWith("#")(record.$ref) &&
       !kept.has(record.$ref) &&
       isBundledRef(record)
     ) {
@@ -230,7 +241,7 @@ function* externalRefs(node: unknown, kept: Set<string>): Generator<string> {
 
     if (typeof record.externalValue === "string" && !kept.has(record.externalValue))
       yield record.externalValue;
-    stack.push(...Object.values(record));
+    stack.push(...Rec.values(record));
   }
 }
 
@@ -258,7 +269,7 @@ function absolutize(
     ids.set(stripHash(next), record);
   }
 
-  if (typeof record.$ref === "string" && !record.$ref.startsWith("#")) {
+  if (typeof record.$ref === "string" && !Str.startsWith("#")(record.$ref)) {
     if (keep(record.$ref)) kept.add(record.$ref);
     else record.$ref = resolveAgainst(base, record.$ref);
   }
@@ -271,8 +282,8 @@ function absolutize(
       : undefined;
 
   if (mapping) {
-    for (const [key, value] of Object.entries(mapping)) {
-      if (typeof value !== "string" || value.startsWith("#")) continue;
+    for (const [key, value] of Rec.toEntries(mapping)) {
+      if (typeof value !== "string" || Str.startsWith("#")(value)) continue;
       if (keep(value)) kept.add(value);
       else mapping[key] = resolveAgainst(base, value);
     }
@@ -283,7 +294,7 @@ function absolutize(
     else record.externalValue = resolveAgainst(base, record.externalValue);
   }
 
-  for (const [key, value] of Object.entries(record)) {
+  for (const [key, value] of Rec.toEntries(record)) {
     if (key === "$ref" || key === "$id") continue;
     absolutize(value, next, ids, keep, kept, seen);
   }
@@ -298,7 +309,7 @@ function rewriteIdRefs(root: Record<string, unknown>, ids: Map<string, object>):
   }
 
   walkRecords(root, (record) => {
-    if (typeof record.$ref !== "string" || record.$ref.startsWith("#")) return;
+    if (typeof record.$ref !== "string" || Str.startsWith("#")(record.$ref)) return;
     const url = stripHash(record.$ref);
     const pointer = pointers.get(url);
     if (!pointer) return;
@@ -338,8 +349,8 @@ function rewriteMappings(
 
     if (!mapping) return;
 
-    for (const [key, value] of Object.entries(mapping)) {
-      if (typeof value !== "string" || value.startsWith("#")) continue;
+    for (const [key, value] of Rec.toEntries(mapping)) {
+      if (typeof value !== "string" || Str.startsWith("#")(value)) continue;
       const url = stripHash(value);
       const hash = getHash(value);
       const target = placed.get(`${url}${hash}`) ?? idPointers.get(url);
@@ -359,7 +370,7 @@ function findPointer(
   seen = new Set<object>(),
 ): string | undefined {
   if (root === target) return pointer;
-  if (typeof root !== "object" || root === null || seen.has(root)) return undefined;
+  if (!Predicate.isObjectOrArray(root) || seen.has(root)) return undefined;
   seen.add(root);
 
   if (Array.isArray(root)) {
@@ -371,7 +382,7 @@ function findPointer(
     return undefined;
   }
 
-  for (const [key, value] of Object.entries(root)) {
+  for (const [key, value] of Rec.toEntries(root)) {
     const found = findPointer(value, target, joinPointer(pointer, key), seen);
     if (found) return found;
   }
@@ -394,7 +405,7 @@ function walkRecords(
 
   const record = node as Record<string, unknown>;
   visit(record);
-  for (const value of Object.values(record)) walkRecords(value, visit, seen);
+  for (const value of Rec.values(record)) walkRecords(value, visit, seen);
 }
 
 const inlineExternalValues = Effect.fnUntraced(function* (
@@ -456,11 +467,9 @@ function valueAt(document: unknown, hash: string): unknown {
   let current = document;
 
   for (const token of tokens) {
-    if (typeof current !== "object" || current === null || !Object.hasOwn(current, token)) {
-      throw missingPointerFailure(token, hash);
-    }
-
-    current = (current as Record<string, unknown>)[token];
+    const child = childAt(current, token);
+    if (Option.isNone(child)) throw missingPointerFailure(token, hash);
+    current = child.value;
   }
 
   return current;

@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Array as Arr, Record as Rec, Schema, String as Str } from "effect";
 import { openApiMap } from "./object.ts";
 import { withReference } from "./reference.ts";
 import { OpenApiResponse } from "./response.ts";
@@ -8,7 +8,7 @@ export const OpenApiResponses = openApiMap(
   withReference(OpenApiResponse),
 ).check(
   Schema.makeFilter((value) =>
-    Object.keys(value).some((key) => !key.startsWith("x-"))
+    Arr.some(Rec.keys(value), (key) => !Str.startsWith("x-")(key))
       ? undefined
       : "Responses must contain at least one response",
   ),

@@ -15,7 +15,7 @@ import {
   OpenApiSecurityScheme,
   ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Array, Effect, JsonPointer, Predicate, Record, Schema } from "effect";
+import { Array, Effect, JsonPointer, pipe, Predicate, Record, Schema, String } from "effect";
 import { OverlayError } from "./errors.ts";
 
 const methods = OpenApiHttpMethod.literals;
@@ -58,7 +58,8 @@ function visitMap(
 ): Work {
   return Effect.forEach(
     Record.toEntries(values ?? {}),
-    ([key, value]) => (ignoreExtensions && key.startsWith("x-") ? Effect.void : visit(value)),
+    ([key, value]) =>
+      ignoreExtensions && pipe(key, String.startsWith("x-")) ? Effect.void : visit(value),
     { discard: true },
   );
 }
@@ -94,7 +95,10 @@ export const removeUnusedComponents = Effect.fnUntraced(
       ref: string,
       visit: Visit,
     ): Effect.fn.Return<void, PruneError> {
-      const tokens = ref.startsWith("#/") ? JsonPointer.parseUriFragment(ref) : undefined;
+      const tokens = pipe(ref, String.startsWith("#/"))
+        ? JsonPointer.parseUriFragment(ref)
+        : undefined;
+
       if (tokens === undefined)
         return yield* new OverlayError({
           message: `Component pruning requires bundled local JSON Pointer references: ${ref}`,
@@ -106,7 +110,7 @@ export const removeUnusedComponents = Effect.fnUntraced(
       const root: unknown = parsed;
 
       const target = Array.reduce(tokens, root, (value, token): unknown =>
-        Predicate.isObject(value) && Object.hasOwn(value, token) ? value[token] : undefined,
+        Predicate.isObject(value) && Record.has(value, token) ? value[token] : undefined,
       );
 
       if (target === undefined)
@@ -189,7 +193,7 @@ export const removeUnusedComponents = Effect.fnUntraced(
           (target) => {
             if (!Predicate.isString(target)) return Effect.void;
 
-            return Object.hasOwn(parsed.components?.schemas ?? {}, target)
+            return Record.has(parsed.components?.schemas ?? {}, target)
               ? mark("schemas", target)
               : reference(target, visitSchema);
           },
@@ -241,7 +245,8 @@ export const removeUnusedComponents = Effect.fnUntraced(
       OpenApiLink,
       Effect.fnUntraced(function* (link) {
         if (link.operationId !== undefined) linkedOperationIds.add(link.operationId);
-        if (link.operationRef?.startsWith("#")) yield* reference(link.operationRef, visitOperation);
+        if (link.operationRef !== undefined && pipe(link.operationRef, String.startsWith("#")))
+          yield* reference(link.operationRef, visitOperation);
       }),
     );
 
@@ -345,7 +350,7 @@ export const removeUnusedComponents = Effect.fnUntraced(
     const retainedPaths = yield* Effect.forEach(
       Record.toEntries(parsed.paths ?? {}),
       Effect.fnUntraced(function* ([path, value]) {
-        if (path.startsWith("x-")) return;
+        if (pipe(path, String.startsWith("x-"))) return;
         const item = yield* Schema.decodeEffect(OpenApiPathItem)(value);
         if (item.$ref !== undefined || Array.some(methods, (method) => item[method] !== undefined))
           return item;
@@ -381,7 +386,11 @@ export const removeUnusedComponents = Effect.fnUntraced(
     const maps = document.components;
     if (Predicate.isObject(maps) && !Array.isArray(maps))
       Array.forEach(Record.toEntries(maps), ([category, entries]) => {
-        if (category.startsWith("x-") || !Predicate.isObject(entries) || Array.isArray(entries))
+        if (
+          pipe(category, String.startsWith("x-")) ||
+          !Predicate.isObject(entries) ||
+          Array.isArray(entries)
+        )
           return;
 
         Array.forEach(Record.keys(entries), (name) => {

@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Record as Rec, Schema } from "effect";
 import { OpenApiHeader } from "./header.ts";
 import { openApiObject } from "./object.ts";
 
@@ -29,11 +29,11 @@ export const OpenApiParameter = openApiObject({
       return "A parameter must have exactly one of schema or content";
     }
 
-    if (value.content !== undefined && Object.keys(value.content).length !== 1) {
+    if (value.content !== undefined && Rec.size(value.content) !== 1) {
       return "Parameter content must contain exactly one media type";
     }
 
-    if (Object.hasOwn(value, "example") && value.examples !== undefined) {
+    if (Rec.has(value, "example") && value.examples !== undefined) {
       return "Parameter example and examples are mutually exclusive";
     }
 

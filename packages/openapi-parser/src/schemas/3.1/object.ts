@@ -1,4 +1,12 @@
-import { Schema } from "effect";
+import {
+  Array as Arr,
+  Formatter,
+  Option,
+  pipe,
+  Record as Rec,
+  Schema,
+  String as Str,
+} from "effect";
 
 /** Preserve extensions and unrecognized fields while validating every declared field. */
 export function openApiObject<const Fields extends Schema.Struct.Fields>(fields: Fields) {
@@ -17,9 +25,13 @@ export function openApiMap<K extends Schema.Record.Key, V extends Schema.Constra
   return Schema.StructWithRest(Schema.Record(key, value), [
     Schema.Record(Schema.String, Schema.Unknown),
   ]).check(
-    Schema.makeFilter((entries) => {
-      const invalid = Object.keys(entries).find((name) => !name.startsWith("x-") && !isKey(name));
-      return invalid === undefined ? undefined : `Unexpected key ${JSON.stringify(invalid)}`;
-    }),
+    Schema.makeFilter((entries) =>
+      pipe(
+        Rec.keys(entries),
+        Arr.findFirst((name) => !Str.startsWith("x-")(name) && !isKey(name)),
+        Option.map((invalid) => `Unexpected key ${Formatter.formatJson(invalid)}`),
+        Option.getOrUndefined,
+      ),
+    ),
   );
 }

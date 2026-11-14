@@ -7,7 +7,7 @@ import {
   type OpenApiReference,
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import { child, resolve } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type { ParsedExample } from "../../model/index.ts";
@@ -40,7 +40,7 @@ export const transformExampleList = Effect.fnUntraced(function* (
 ) {
   const examples: (typeof ParsedExample.Encoded)[] = [];
 
-  if (Object.hasOwn(value, "example")) {
+  if (Record.has<string, unknown>(value, "example")) {
     examples.push({
       id: child(at, "example"),
       key: "default",
@@ -50,7 +50,7 @@ export const transformExampleList = Effect.fnUntraced(function* (
   }
 
   const namedExamples = yield* Effect.forEach(
-    Object.entries(value.examples ?? {}),
+    Record.toEntries(value.examples ?? {}),
     ([key, entry]) => transformExample(document, key, entry, child(at, "examples", key)),
   );
 
@@ -62,9 +62,9 @@ export const transformExampleMap = Effect.fnUntraced(function* (
   value: OpenApiComponents["examples"],
   at: string,
 ) {
-  return Object.fromEntries(
+  return Record.fromEntries(
     yield* Effect.forEach(
-      Object.entries(value ?? {}),
+      Record.toEntries(value ?? {}),
       Effect.fnUntraced(function* ([key, entry]) {
         return [key, yield* transformExample(document, key, entry, child(at, key))] as const;
       }),

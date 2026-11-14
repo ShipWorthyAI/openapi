@@ -30,6 +30,7 @@ import {
   visitEachChild as visitEachChildNode,
   visitNode as visitNodeChild,
 } from "typescript/unstable/ast/visitor";
+import { Array as Arr, Formatter, Option, pipe, String as Str } from "effect";
 
 const SyntaxKind = ImportedSyntaxKind;
 type SyntaxKind = (typeof ImportedSyntaxKind)[keyof typeof ImportedSyntaxKind];
@@ -146,12 +147,12 @@ function keywordFromText(text: string): Node {
     return tsFactory.createKeywordTypeNode(SyntaxKind.BooleanKeyword);
   }
 
-  return tsFactory.createTypeReferenceNode(createIdentifier(text.trim()));
+  return tsFactory.createTypeReferenceNode(createIdentifier(Str.trim(text)));
 }
 
 function parseTemplateType(source: string): Node {
-  const body = source.slice(1, -1);
-  const pieces = body.split(/\$\{([^}]+)\}/);
+  const body = Str.slice(1, -1)(source);
+  const pieces = Str.split(body, /\$\{([^}]+)\}/);
 
   if (pieces.length === 1) {
     return tsFactory.createNoSubstitutionTemplateLiteral(body, TokenFlags.None);
@@ -220,10 +221,10 @@ function splitStatements(source: string): string[] {
     }
 
     if (character === ";" && depth === 0) {
-      const statement = current.trim();
+      const statement = Str.trim(current);
 
       if (statement) {
-        parts.push(statement.endsWith(";") ? statement : `${statement};`);
+        parts.push(Str.endsWith(";")(statement) ? statement : `${statement};`);
       }
 
       current = "";
@@ -233,7 +234,7 @@ function splitStatements(source: string): string[] {
     current += character;
   }
 
-  const tail = current.trim();
+  const tail = Str.trim(current);
 
   if (tail) {
     parts.push(tail);
@@ -243,16 +244,19 @@ function splitStatements(source: string): string[] {
 }
 
 function typeAliasFromStatement(statement: string): Node | undefined {
-  const match = statement.match(/^(export\s+)?type\s+([A-Za-z0-9_$]+)([\s\S]*?)\s*=\s*([\s\S]+)$/);
+  const found = Str.match(/^(export\s+)?type\s+([A-Za-z0-9_$]+)([\s\S]*?)\s*=\s*([\s\S]+)$/)(
+    statement,
+  );
 
-  if (!match) {
+  if (Option.isNone(found)) {
     return undefined;
   }
 
+  const match = found.value;
   const exported = Boolean(match[1]);
   const name = match[2] ?? "";
-  const parameters = (match[3] ?? "").trim();
-  const typeText = (match[4] ?? "").trim().replace(/;$/, "");
+  const parameters = Str.trim(match[3] ?? "");
+  const typeText = pipe(match[4] ?? "", Str.trim, Str.replace(/;$/, ""));
   const typeNode = tsFactory.createKeywordTypeNode(SyntaxKind.AnyKeyword);
   rawText.set(typeNode, typeText);
 
@@ -271,13 +275,13 @@ function typeAliasFromStatement(statement: string): Node | undefined {
 }
 
 function statementsFromSource(source: string): Node[] {
-  const trimmed = source.trim();
+  const trimmed = Str.trim(source);
 
   if (!trimmed) {
     return [];
   }
 
-  if (trimmed.startsWith("`") && trimmed.endsWith("`")) {
+  if (Str.startsWith("`")(trimmed) && Str.endsWith("`")(trimmed)) {
     return [
       {
         kind: SyntaxKind.ExpressionStatement,
@@ -286,7 +290,7 @@ function statementsFromSource(source: string): Node[] {
     ];
   }
 
-  return splitStatements(trimmed).map((statement) => {
+  return Arr.map(splitStatements(trimmed), (statement) => {
     const alias = typeAliasFromStatement(statement);
 
     if (alias) {
@@ -294,7 +298,7 @@ function statementsFromSource(source: string): Node[] {
     }
 
     const node = tsFactory.createNotEmittedStatement();
-    rawText.set(node, statement.endsWith(";") ? statement : `${statement};`);
+    rawText.set(node, Str.endsWith(";")(statement) ? statement : `${statement};`);
     return node;
   });
 }
@@ -337,20 +341,24 @@ function formatComments(node: Node, indent: number, removeComments: boolean): st
     return "";
   }
 
-  const pad = " ".repeat(indent);
+  const pad = Str.repeat(indent)(" ");
 
-  return comments
-    .map((comment) => {
+  return pipe(
+    comments,
+    Arr.map((comment) => {
       if (comment.kind === SyntaxKind.SingleLineCommentTrivia) {
         return `${pad}//${comment.text}`;
       }
 
-      return `${pad}/*${comment.text.replaceAll("\n", `\n${pad}`)}*/`
-        .split("\n")
-        .map((line) => line.trimEnd())
-        .join("\n");
-    })
-    .join("\n");
+      return pipe(
+        `${pad}/*${Str.replaceAll("\n", `\n${pad}`)(comment.text)}*/`,
+        Str.split("\n"),
+        Arr.map((line) => Str.trimEnd(line)),
+        Arr.join("\n"),
+      );
+    }),
+    Arr.join("\n"),
+  );
 }
 
 function printModifiers(modifiers: readonly { kind: SyntaxKind }[] | undefined): string {
@@ -358,10 +366,12 @@ function printModifiers(modifiers: readonly { kind: SyntaxKind }[] | undefined):
     return "";
   }
 
-  return `${modifiers
-    .map((modifier) => KEYWORDS[modifier.kind])
-    .filter(Boolean)
-    .join(" ")} `;
+  return `${pipe(
+    modifiers,
+    Arr.map((modifier) => KEYWORDS[modifier.kind]),
+    Arr.filter((keyword): keyword is string => Boolean(keyword)),
+    Arr.join(" "),
+  )} `;
 }
 
 function printName(name: Node | undefined): string {
@@ -374,7 +384,7 @@ function printName(name: Node | undefined): string {
   }
 
   if (name.kind === SyntaxKind.StringLiteral) {
-    return JSON.stringify((name as Identifier).text);
+    return Formatter.formatJson((name as Identifier).text);
   }
 
   if (name.kind === SyntaxKind.ComputedPropertyName) {
@@ -416,7 +426,7 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
     return keyword;
   }
 
-  const pad = " ".repeat(indent);
+  const pad = Str.repeat(indent)(" ");
   const next = indent + 2;
   const record = node as unknown as Record<string, any>;
 
@@ -434,7 +444,11 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
         return `${pad}${modifiers}enum ${name} {\n${pad}}`;
       }
 
-      const body = members.map((member) => render(member, next, removeComments)).join(",\n");
+      const body = Arr.join(
+        Arr.map(members, (member) => render(member, next, removeComments)),
+        ",\n",
+      );
+
       return `${pad}${modifiers}enum ${name} {\n${body}\n${pad}}`;
     }
 
@@ -450,7 +464,7 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
     case SyntaxKind.PropertySignature: {
       const optional = record.postfixToken || record.questionToken ? "?" : "";
       const printed = render(record.type, indent, removeComments);
-      const separator = printed.startsWith("\n") ? "" : " ";
+      const separator = Str.startsWith("\n")(printed) ? "" : " ";
       return `${pad}${printModifiers(record.modifiers)}${printName(record.name)}${optional}:${separator}${printed};`;
     }
 
@@ -462,24 +476,39 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
       return `{${printMembers(record.members, next, removeComments)}\n${pad}}`;
     case SyntaxKind.UnionType: {
       const types = [...(record.types ?? [])] as Node[];
-      const parts = types.map((type) => printUnionOperand(type, indent + 4, removeComments));
-      const laterBreaks = parts.slice(1).some((part) => part.includes("\n"));
+      const parts = Arr.map(types, (type) => printUnionOperand(type, indent + 4, removeComments));
+      const laterBreaks = Arr.some(Arr.drop(parts, 1), Str.includes("\n"));
 
-      if (broken && parts[0] && !parts[0].includes("\n") && laterBreaks) {
-        const bar = " ".repeat(indent + 2);
-        return `\n${parts.map((part) => `${bar}| ${part}`).join("\n")}`;
+      if (broken && parts[0] && !Str.includes("\n")(parts[0]) && laterBreaks) {
+        const bar = Str.repeat(indent + 2)(" ");
+
+        return `\n${Arr.join(
+          Arr.map(parts, (part) => `${bar}| ${part}`),
+          "\n",
+        )}`;
       }
 
-      return types.map((type) => printUnionOperand(type, indent, removeComments)).join(" | ");
+      return Arr.join(
+        Arr.map(types, (type) => printUnionOperand(type, indent, removeComments)),
+        " | ",
+      );
     }
 
     case SyntaxKind.IntersectionType:
-      return record.types
-        .map((type: Node) => printUnionOperand(type, indent, removeComments))
-        .join(" & ");
+      return Arr.join(
+        Arr.map<readonly Node[], string>(record.types, (type) =>
+          printUnionOperand(type, indent, removeComments),
+        ),
+        " & ",
+      );
     case SyntaxKind.TypeReference: {
       const argumentsText = record.typeArguments?.length
-        ? `<${record.typeArguments.map((type: Node) => render(type, indent, removeComments)).join(", ")}>`
+        ? `<${Arr.join(
+            Arr.map<readonly Node[], string>(record.typeArguments, (type) =>
+              render(type, indent, removeComments),
+            ),
+            ", ",
+          )}>`
         : "";
 
       return `${printName(record.typeName)}${argumentsText}`;
@@ -502,8 +531,12 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
         return `[\n${pad}]`;
       }
 
-      const printed = elements.map((element) => render(element, 0, removeComments));
-      const body = printed.map((element) => indentPrinted(element, next)).join(",\n");
+      const printed = Arr.map(elements, (element) => render(element, 0, removeComments));
+
+      const body = Arr.join(
+        Arr.map(printed, (element) => indentPrinted(element, next)),
+        ",\n",
+      );
 
       return `[\n${body}\n${pad}]`;
     }
@@ -522,7 +555,7 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
     case SyntaxKind.LiteralType:
       return render(record.literal, indent, removeComments);
     case SyntaxKind.StringLiteral:
-      return JSON.stringify(record.text);
+      return Formatter.formatJson(record.text);
     case SyntaxKind.NumericLiteral:
     case SyntaxKind.Identifier:
       return record.text;
@@ -535,13 +568,16 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
         return "[]";
       }
 
-      const printed = elements.map((element) => render(element, 0, removeComments));
+      const printed = Arr.map(elements, (element) => render(element, 0, removeComments));
 
-      if (printed.every((element) => !element.includes("\n"))) {
-        return `[${printed.join(", ")}]`;
+      if (Arr.every(printed, (element) => !Str.includes("\n")(element))) {
+        return `[${Arr.join(printed, ", ")}]`;
       }
 
-      const body = printed.map((element) => indentPrinted(element, next)).join(",\n");
+      const body = Arr.join(
+        Arr.map(printed, (element) => indentPrinted(element, next)),
+        ",\n",
+      );
 
       return `[\n${body}\n${pad}]`;
     }
@@ -556,9 +592,11 @@ function printBody(node: Node, indent: number, removeComments: boolean, broken =
         literal: { text?: string };
       }[];
 
-      const body = spans
-        .map((span) => `\${${render(span.type, 0, removeComments)}}${span.literal?.text ?? ""}`)
-        .join("");
+      const body = pipe(
+        spans,
+        Arr.map((span) => `\${${render(span.type, 0, removeComments)}}${span.literal?.text ?? ""}`),
+        Arr.join(""),
+      );
 
       return `\`${record.head?.text ?? ""}${body}\``;
     }
@@ -581,13 +619,13 @@ function containsTypeLiteral(type: Node): boolean {
   if (type.kind === SyntaxKind.TypeLiteral) return true;
   const record = type as unknown as { types?: Node[] };
   if (type.kind !== SyntaxKind.UnionType && type.kind !== SyntaxKind.IntersectionType) return false;
-  return (record.types ?? []).some((child) => containsTypeLiteral(child));
+  return Arr.some(record.types ?? [], (child) => containsTypeLiteral(child));
 }
 
 function indentPrinted(printed: string, indent: number): string {
-  const pad = " ".repeat(indent);
+  const pad = Str.repeat(indent)(" ");
 
-  if (printed.startsWith(pad) || printed.includes("\n")) {
+  if (Str.startsWith(pad)(printed) || Str.includes("\n")(printed)) {
     return printed;
   }
 
@@ -603,7 +641,10 @@ function printMembers(
     return "";
   }
 
-  return `\n${[...members].map((member) => render(member, indent, removeComments)).join("\n")}`;
+  return `\n${Arr.join(
+    Arr.map([...members], (member) => render(member, indent, removeComments)),
+    "\n",
+  )}`;
 }
 
 function makePrinter(options: PrinterOptions = {}) {
@@ -611,11 +652,12 @@ function makePrinter(options: PrinterOptions = {}) {
 
   return {
     printFile(sourceFile: { statements?: readonly Node[] }) {
-      const text = (sourceFile.statements ?? [])
-        .map((statement) => render(statement, 0, removeComments))
-        .join("\n");
+      const text = Arr.join(
+        Arr.map(sourceFile.statements ?? [], (statement) => render(statement, 0, removeComments)),
+        "\n",
+      );
 
-      return text.endsWith("\n") ? text : `${text}\n`;
+      return Str.endsWith("\n")(text) ? text : `${text}\n`;
     },
     printNode(node: Node) {
       return render(node, 0, removeComments);
@@ -627,16 +669,16 @@ function transformNodes(
   nodes: Node | readonly Node[],
   transformers: ((context: object) => (node: Node) => Node | undefined)[],
 ) {
-  const list = Array.isArray(nodes) ? [...nodes] : [nodes as Node];
+  const list = Arr.isArray<typeof nodes>(nodes) ? [...nodes] : [nodes as Node];
   let current = list;
 
   for (const transformer of transformers) {
     const visit = transformer({});
-    current = current.map((node) => visit(node) ?? node);
+    current = Arr.map(current, (node) => visit(node) ?? node);
   }
 
   return {
-    transformed: Array.isArray(nodes) ? current : current[0],
+    transformed: Arr.isArray(nodes) ? current : current[0],
     dispose() {},
   };
 }

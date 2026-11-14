@@ -4,7 +4,19 @@ import type {
   ParsedRef,
   ParsedSchema,
 } from "@shipworthy/openapi-transformer";
-import { Effect, type JsonSchema, Predicate, Schema } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Formatter,
+  type JsonSchema,
+  Option,
+  type Order,
+  pipe,
+  Predicate,
+  Record,
+  Schema,
+  String as Str,
+} from "effect";
 import ts, { type LiteralTypeNode, type TypeLiteralNode } from "#compiler";
 import { TypegenError } from "../errors.ts";
 import { propertyName } from "@shipworthy/openapi-transformer";
@@ -32,6 +44,35 @@ export const UNKNOWN = ts.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKey
 const LB_RE = /\r?\n/g;
 const COMMENT_RE = /\*\//g;
 
+/** Trim a JSDoc line and indent the lines it continues onto. */
+function commentText(text: string): string {
+  return pipe(text, Str.trim, Str.replace(LB_RE, "\n *     "));
+}
+
+/** A JSDoc tag's value: a primitive as written, anything else as indented JSON. */
+function annotationValue(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+    ? String(value)
+    : Formatter.formatJson(value, { space: 2 });
+}
+
+/**
+ * `text.replace(regExp, replacer)` for a global `regExp`: `String.replace` takes no replacer
+ * callback.
+ */
+function replaceMatches(text: string, regExp: RegExp, replacer: (match: string) => string): string {
+  const { end, out } = Arr.reduce(Str.matchAll(regExp)(text), { end: 0, out: "" }, (acc, match) => {
+    const start = match.index ?? acc.end;
+
+    return {
+      end: start + match[0].length,
+      out: acc.out + Str.slice(acc.end, start)(text) + replacer(match[0]),
+    };
+  });
+
+  return out + Str.slice(end)(text);
+}
+
 /**
  * The JSDoc fields of a parsed parameter, header, response, or other non-schema node.
  *
@@ -53,8 +94,13 @@ export function annotationsOf(
   const own = node.reference && !inherit ? {} : node;
   const summary = node.reference?.summary ?? own.summary;
   const description = node.reference?.description ?? own.description;
+
   // the `example` keyword, not a named example that happens to be called `default`
-  const example = own.examples?.find((entry) => entry.id === `${node.id}/example`);
+  const example = own.examples
+    ? Option.getOrUndefined(
+        Arr.findFirst(own.examples, (entry) => entry.id === `${node.id}/example`),
+      )
+    : undefined;
 
   return {
     ...(summary !== undefined ? { summary } : {}),
@@ -78,11 +124,11 @@ export function addJSDocComment(schema: ParsedSchema, node: ts.PropertySignature
 
   // Not JSDoc tags: [title, format]
   if (Predicate.isString(schema.title) && schema.title) {
-    output.push(schema.title.trim().replace(LB_RE, "\n *     "));
+    output.push(commentText(schema.title));
   }
 
   if (Predicate.isString(schema.summary) && schema.summary) {
-    output.push(schema.summary.trim().replace(LB_RE, "\n *     "));
+    output.push(commentText(schema.summary));
   }
 
   if (Predicate.isString(schema.format) && schema.format) {
@@ -110,18 +156,12 @@ export function addJSDocComment(schema: ParsedSchema, node: ts.PropertySignature
       continue;
     }
 
-    const serialized =
-      typeof value === "string" || typeof value === "number" || typeof value === "boolean"
-        ? String(value)
-        : JSON.stringify(value, null, 2);
-
-    output.push(`@${field} ${serialized.trim().replace(LB_RE, "\n *     ")}`);
+    output.push(`@${field} ${commentText(annotationValue(value))}`);
   }
 
-  if (Array.isArray(schema.examples)) {
+  if (Arr.isArray(schema.examples)) {
     for (const example of schema.examples) {
-      const serialized = typeof example === "object" ? JSON.stringify(example, null, 2) : example;
-      output.push(`@example ${String(serialized).trim().replace(LB_RE, "\n *     ")}`);
+      output.push(`@example ${commentText(annotationValue(example))}`);
     }
   }
 
@@ -134,8 +174,12 @@ export function addJSDocComment(schema: ParsedSchema, node: ts.PropertySignature
   if (schema.enum) {
     let type = "unknown";
 
-    if (Array.isArray(schema.type)) {
-      type = schema.type.join("|");
+    if (Arr.isArray(schema.type)) {
+      // like `Array.prototype.join`, which prints null and undefined as empty strings
+      type = Arr.join(
+        Arr.map(schema.type, (entry) => (Predicate.isNullish(entry) ? "" : annotationValue(entry))),
+        "|",
+      );
     } else if (typeof schema.type === "string") {
       type = schema.type;
     }
@@ -147,14 +191,14 @@ export function addJSDocComment(schema: ParsedSchema, node: ts.PropertySignature
 
   if (output.length) {
     // Check if any output item contains multi-line content (has internal line breaks)
-    const hasMultiLineContent = output.some((item) => item.includes("\n"));
+    const hasMultiLineContent = Arr.some(output, Str.includes("\n"));
 
     let text =
       output.length === 1 && !hasMultiLineContent
-        ? `* ${output.join("\n")} `
-        : `*\n * ${output.join("\n * ")}\n `;
+        ? `* ${Arr.join(output, "\n")} `
+        : `*\n * ${Arr.join(output, "\n * ")}\n `;
 
-    text = text.replace(COMMENT_RE, "*\\/"); // prevent inner comments from leaking
+    text = Str.replace(COMMENT_RE, "*\\/")(text); // prevent inner comments from leaking
 
     ts.addSyntheticLeadingComment(
       /* node               */ node,
@@ -166,7 +210,7 @@ export function addJSDocComment(schema: ParsedSchema, node: ts.PropertySignature
 }
 
 function addIndexedAccess(node: ts.TypeNode, ...segments: readonly string[]) {
-  return segments.reduce<ts.TypeNode>((acc, segment) => {
+  return Arr.reduce(segments, node, (acc, segment) => {
     return ts.factory.createIndexedAccessTypeNode(
       acc,
       ts.factory.createLiteralTypeNode(
@@ -175,7 +219,7 @@ function addIndexedAccess(node: ts.TypeNode, ...segments: readonly string[]) {
           : ts.factory.createStringLiteral(segment),
       ),
     );
-  }, node);
+  });
 }
 
 /**
@@ -253,14 +297,14 @@ export function oapiRef(
     ...leadingSegments,
   );
 
-  return restSegments.reduce<ts.TypeNode>((acc, segment, index, original) => {
+  return Arr.reduce(restSegments, leadingType, (acc, segment, index) => {
     // Skip `properties` items when in the middle of the pointer. Object schemas are flattened,
     // so a pointer into `properties` has to index the generated type without that segment.
     if (segment === "properties") {
       return acc;
     }
 
-    if (resolved && index === original.length - 1) {
+    if (resolved && index === restSegments.length - 1) {
       return addIndexedAccess(
         acc,
         String(resolved.in),
@@ -269,7 +313,7 @@ export function oapiRef(
     }
 
     const name =
-      original[index - 1] === "properties"
+      restSegments[index - 1] === "properties"
         ? propertyName(segment, options.camelCase ?? false)
         : segment;
 
@@ -282,7 +326,7 @@ export function oapiRef(
     }
 
     return addIndexedAccess(acc, name);
-  }, leadingType);
+  });
 }
 
 /** {@link oapiRef} as an Effect: a `$ref` that is not a JSON Pointer fails with `TypegenError`. */
@@ -318,7 +362,7 @@ export function astToString(
   );
 
   // @ts-expect-error it’s OK to overwrite statements once
-  sourceFile.statements = ts.factory.createNodeArray(Array.isArray(ast) ? ast : [ast]);
+  sourceFile.statements = ts.factory.createNodeArray(Arr.isArray(ast) ? ast : [ast]);
 
   const printer = ts.createPrinter({
     newLine: ts.NewLineKind.LineFeed,
@@ -372,6 +416,9 @@ export function tsDedupe(types: ts.TypeNode[]): ts.TypeNode[] {
 
 export const enumCache = new Map<string, ts.EnumDeclaration>();
 
+const compareMembers: Order.Order<string | number> = (left, right) =>
+  left < right ? -1 : left > right ? 1 : 0;
+
 /** Create a TS enum (with sanitized name and members) */
 export function tsEnum(
   name: string,
@@ -380,17 +427,16 @@ export function tsEnum(
   options?: { export?: boolean; shouldCache?: boolean },
 ) {
   let enumName = sanitizeMemberName(name);
-  enumName = `${enumName.charAt(0).toUpperCase()}${enumName.substring(1)}`;
+  enumName = `${Str.toUpperCase(Str.slice(0, 1)(enumName))}${Str.slice(1)(enumName)}`;
   let key = "";
 
   if (options?.shouldCache) {
-    key = `${members
-      .slice(0)
-      .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
-      .map((v, i) => {
-        return `${metadata?.[i]?.name ?? String(v)}:${metadata?.[i]?.description || ""}`;
-      })
-      .join(",")}`;
+    key = pipe(
+      members,
+      Arr.sort(compareMembers),
+      Arr.map((v, i) => `${metadata?.[i]?.name ?? String(v)}:${metadata?.[i]?.description || ""}`),
+      Arr.join(","),
+    );
 
     if (enumCache.has(key)) {
       return enumCache.get(key) as ts.EnumDeclaration;
@@ -400,7 +446,7 @@ export function tsEnum(
   const enumDeclaration = ts.factory.createEnumDeclaration(
     /* modifiers */ options ? tsModifiers({ export: options.export ?? false }) : undefined,
     /* name      */ enumName,
-    /* members   */ members.map((value, i) => tsEnumMember(value, metadata?.[i])),
+    /* members   */ Arr.map(members, (value, i) => tsEnumMember(value, metadata?.[i])),
   );
 
   if (options?.shouldCache) enumCache.set(key, enumDeclaration);
@@ -415,11 +461,12 @@ export function tsArrayLiteralExpression(
   options?: { export?: boolean; readonly?: boolean; injectFooter?: ts.Node[] },
 ) {
   let variableName = sanitizeMemberName(name);
-  variableName = `${variableName.charAt(0).toLowerCase()}${variableName.substring(1)}`;
+  variableName = `${Str.toLowerCase(Str.slice(0, 1)(variableName))}${Str.slice(1)(variableName)}`;
 
   if (
     options?.injectFooter &&
-    !options.injectFooter.some(
+    !Arr.some(
+      options.injectFooter,
       (node) => ts.isTypeAliasDeclaration(node) && node?.name?.text === "FlattenedDeepRequired",
     )
   ) {
@@ -445,7 +492,7 @@ export function tsArrayLiteralExpression(
           undefined,
           arrayType,
           ts.factory.createArrayLiteralExpression(
-            values.map((value) => {
+            Arr.map(values, (value) => {
               if (typeof value === "number") {
                 if (value < 0) {
                   return ts.factory.createPrefixUnaryExpression(
@@ -468,9 +515,9 @@ export function tsArrayLiteralExpression(
 }
 
 function sanitizeMemberName(name: string) {
-  let sanitizedName = name.replace(JS_ENUM_INVALID_CHARS_RE, (c) => {
-    const last = c.charAt(c.length - 1);
-    return JS_PROPERTY_INDEX_INVALID_CHARS_RE.test(last) ? "" : last.toUpperCase();
+  let sanitizedName = replaceMatches(name, JS_ENUM_INVALID_CHARS_RE, (c) => {
+    const last = Str.slice(-1)(c);
+    return JS_PROPERTY_INDEX_INVALID_CHARS_RE.test(last) ? "" : Str.toUpperCase(last);
   });
 
   if (Number(name[0]) >= 0) {
@@ -489,18 +536,18 @@ export function tsEnumMember(
 
   if (!JS_PROPERTY_INDEX_RE.test(name)) {
     if (Number(name[0]) >= 0) {
-      name = `Value${name}`.replace(".", "_"); // don't forged decimals;
+      name = Str.replace(".", "_")(`Value${name}`); // don't forged decimals;
     } else if (name[0] === "-") {
-      name = `ValueMinus${name.slice(1)}`;
+      name = `ValueMinus${Str.slice(1)(name)}`;
     }
 
-    const invalidCharMatch = name.match(JS_PROPERTY_INDEX_INVALID_CHARS_RE);
+    const invalidCharMatch = Str.match(JS_PROPERTY_INDEX_INVALID_CHARS_RE)(name);
 
-    if (invalidCharMatch) {
-      if (invalidCharMatch[0] === name) {
+    if (Option.isSome(invalidCharMatch)) {
+      if (invalidCharMatch.value[0] === name) {
         name = `"${name}"`;
       } else {
-        name = name.replace(JS_PROPERTY_INDEX_INVALID_CHARS_RE, (s) => {
+        name = replaceMatches(name, JS_PROPERTY_INDEX_INVALID_CHARS_RE, (s) => {
           return SPECIAL_CHARACTER_MAP[s] ?? "_";
         });
       }
@@ -523,7 +570,9 @@ export function tsEnumMember(
     member = ts.factory.createEnumMember(name, ts.factory.createStringLiteral(value));
   }
 
-  const trimmedDescription = metadata.description?.trim();
+  const trimmedDescription = Predicate.isString(metadata.description)
+    ? Str.trim(metadata.description)
+    : undefined;
 
   if (
     trimmedDescription === undefined ||
@@ -559,11 +608,11 @@ export function tsIntersection(types: ts.TypeNode[]): ts.TypeNode {
 function hasDefinedField(node: object, key: string): boolean {
   const record = node as { _data?: Record<string, unknown> } & Record<string, unknown>;
 
-  if (record._data && Object.hasOwn(record._data, key) && record._data[key] !== undefined) {
+  if (record._data && Record.has(record._data, key) && record._data[key] !== undefined) {
     return true;
   }
 
-  return Object.hasOwn(record, key) && record[key] !== undefined;
+  return Record.has(record, key) && record[key] !== undefined;
 }
 
 export function tsIsPrimitive(type: ts.TypeNode): boolean {
@@ -587,7 +636,7 @@ export function tsIsPrimitive(type: ts.TypeNode): boolean {
 export function tsLiteral(value: unknown): ts.TypeNode {
   if (typeof value === "string") {
     // workaround for UTF-8: https://github.com/microsoft/TypeScript/issues/36174
-    return ts.factory.createIdentifier(JSON.stringify(value)) as unknown as ts.TypeNode;
+    return ts.factory.createIdentifier(Formatter.formatJson(value)) as unknown as ts.TypeNode;
   }
 
   if (typeof value === "number") {
@@ -610,27 +659,23 @@ export function tsLiteral(value: unknown): ts.TypeNode {
     return NULL;
   }
 
-  if (Array.isArray(value)) {
+  if (Arr.isArray(value)) {
     if (value.length === 0) {
       return ts.factory.createArrayTypeNode(NEVER);
     }
 
-    return ts.factory.createTupleTypeNode(value.map((v: unknown) => tsLiteral(v)));
+    return ts.factory.createTupleTypeNode(Arr.map(value, (v) => tsLiteral(v)));
   }
 
-  if (typeof value === "object") {
-    const keys: ts.TypeElement[] = [];
-
-    for (const [k, v] of Object.entries(value)) {
-      keys.push(
-        ts.factory.createPropertySignature(
-          /* modifiers     */ undefined,
-          /* name          */ tsPropertyIndex(k),
-          /* questionToken */ undefined,
-          /* type          */ tsLiteral(v),
-        ),
-      );
-    }
+  if (Predicate.isObject(value)) {
+    const keys = Arr.map(Record.toEntries(value), ([k, v]) =>
+      ts.factory.createPropertySignature(
+        /* modifiers     */ undefined,
+        /* name          */ tsPropertyIndex(k),
+        /* questionToken */ undefined,
+        /* type          */ tsLiteral(v),
+      ),
+    );
 
     return keys.length ? ts.factory.createTypeLiteralNode(keys) : tsRecord(STRING, NEVER);
   }
@@ -662,7 +707,7 @@ export function tsNullable(types: ts.TypeNode[]): ts.TypeNode {
 export function tsOmit(type: ts.TypeNode, keys: string[]): ts.TypeNode {
   return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Omit"), [
     type,
-    ts.factory.createUnionTypeNode(keys.map((k) => tsLiteral(k))),
+    ts.factory.createUnionTypeNode(Arr.map(keys, (k) => tsLiteral(k))),
   ]);
 }
 
@@ -710,7 +755,8 @@ export function tsWithRequired(
 
   // inject helper, if needed
   if (
-    !injectFooter.some(
+    !Arr.some(
+      injectFooter,
       (node) => ts.isTypeAliasDeclaration(node) && node?.name?.text === "WithRequired",
     )
   ) {
@@ -725,7 +771,7 @@ export function tsWithRequired(
 
   return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("WithRequired"), [
     type,
-    tsUnion(keys.map((k) => tsLiteral(k))),
+    tsUnion(Arr.map(keys, (k) => tsLiteral(k))),
   ]);
 }
 
@@ -737,7 +783,8 @@ export function tsWithRequired(
 export function tsReadonlyArray(type: ts.TypeNode, injectFooter?: ts.Node[]): ts.TypeNode {
   if (
     injectFooter &&
-    !injectFooter.some(
+    !Arr.some(
+      injectFooter,
       (node) => ts.isTypeAliasDeclaration(node) && node?.name?.text === "ReadonlyArray",
     )
   ) {

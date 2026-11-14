@@ -1,4 +1,12 @@
-import { Predicate, Schema } from "effect";
+import {
+  Array as Arr,
+  Option,
+  pipe,
+  Predicate,
+  Record as Rec,
+  Schema,
+  String as Str,
+} from "effect";
 import { MissingPointerFailure, bundleFailure } from "./errors.ts";
 import type { BundleHooks } from "./plugins.ts";
 import { cloneData, getAt, joinPointer, parsePointer, setAt } from "./pointer.ts";
@@ -41,7 +49,7 @@ export function findExternalRef(
     if (seen.has(current.node)) continue;
     seen.add(current.node);
 
-    if (Array.isArray(current.node)) {
+    if (Arr.isArray(current.node)) {
       for (let index = current.node.length - 1; index >= 0; index--) {
         stack.push({
           node: current.node[index],
@@ -60,7 +68,7 @@ export function findExternalRef(
       current.parent &&
       current.key &&
       typeof record.$ref === "string" &&
-      !record.$ref.startsWith("#") &&
+      !Str.startsWith("#")(record.$ref) &&
       !keep(record.$ref) &&
       !abandoned.has(current.pointer)
     ) {
@@ -72,7 +80,7 @@ export function findExternalRef(
       };
     }
 
-    const keys = Object.keys(record);
+    const keys = Rec.keys(record);
 
     for (let index = keys.length - 1; index >= 0; index--) {
       const key = keys[index]!;
@@ -175,15 +183,15 @@ function rebaseInternalRefs(value: unknown, fileUrl: string, seen = new Set<obje
   if (typeof value !== "object" || value === null || seen.has(value)) return;
   seen.add(value);
 
-  if (Array.isArray(value)) {
+  if (Arr.isArray(value)) {
     for (const item of value) rebaseInternalRefs(item, fileUrl, seen);
     return;
   }
 
   const record = value as Record<string, unknown>;
-  if (typeof record.$ref === "string" && record.$ref.startsWith("#"))
+  if (typeof record.$ref === "string" && Str.startsWith("#")(record.$ref))
     record.$ref = `${fileUrl}${record.$ref}`;
-  for (const child of Object.values(record)) rebaseInternalRefs(child, fileUrl, seen);
+  for (const child of Rec.values(record)) rebaseInternalRefs(child, fileUrl, seen);
 }
 
 function collapseRefChains(root: Record<string, unknown>): void {
@@ -194,7 +202,7 @@ function collapseRefChains(root: Record<string, unknown>): void {
       if (typeof value !== "object" || value === null || seen.has(value)) return;
       seen.add(value);
 
-      if (Array.isArray(value)) {
+      if (Arr.isArray(value)) {
         for (const item of value) visit(item, seen);
         return;
       }
@@ -203,8 +211,8 @@ function collapseRefChains(root: Record<string, unknown>): void {
 
       if (
         typeof record.$ref === "string" &&
-        record.$ref.startsWith("#") &&
-        Object.keys(record).length === 1
+        Str.startsWith("#")(record.$ref) &&
+        Rec.size(record) === 1
       ) {
         try {
           const target = asRecord(getAt(root, record.$ref, record.$ref));
@@ -212,7 +220,7 @@ function collapseRefChains(root: Record<string, unknown>): void {
           if (
             target &&
             typeof target.$ref === "string" &&
-            Object.keys(target).length === 1 &&
+            Rec.size(target) === 1 &&
             target.$ref !== record.$ref
           ) {
             record.$ref = target.$ref;
@@ -223,7 +231,7 @@ function collapseRefChains(root: Record<string, unknown>): void {
         }
       }
 
-      for (const child of Object.values(record)) visit(child, seen);
+      for (const child of Rec.values(record)) visit(child, seen);
     };
 
     visit(root);
@@ -244,11 +252,11 @@ function inlineRef(found: ExternalRef, value: unknown, hooks: BundleHooks | unde
   const siblings = { ...current };
   delete siblings.$ref;
 
-  if (Object.keys(siblings).length === 0) {
+  if (Rec.isEmptyRecord(siblings)) {
     found.parent[found.key] = value;
   } else if (
     oas3DefaultRoot(found.pointer) === "#/components/schemas" ||
-    found.pointer.includes("/schema")
+    Str.includes("/schema")(found.pointer)
   ) {
     found.parent[found.key] = { allOf: [value, siblings] };
   } else if (asRecord(value)) {
@@ -271,7 +279,7 @@ function generateKey(
   if (!isOpenApiDocument(schema)) return null;
   const root = oas3DefaultRoot(pathFromRoot);
   if (!root) return null;
-  if (!isFileSystemPath(file) && !isHttp(file) && !file.includes("://")) return null;
+  if (!isFileSystemPath(file) && !isHttp(file) && !Str.includes("://")(file)) return null;
   if (hash === "#" && isUnderDirectRoot(pathFromRoot, root)) return null;
   const existing = existingComponentPointer(schema, file, hash, root);
   if (existing && existing !== pathFromRoot) return existing;
@@ -292,7 +300,7 @@ function generateKey(
 
     const filePointer = keyForFile(schema, file, root, buckets);
     if (filePointer == null) return null;
-    return keyForPointer(schema, filePointer + hash.slice(1), root, buckets);
+    return keyForPointer(schema, filePointer + Str.slice(1)(hash), root, buckets);
   }
 
   return keyForFile(schema, file, root, buckets, hash === "#" && childReservesBase);
@@ -303,7 +311,7 @@ function isOpenApiDocument(schema: object): boolean {
 }
 
 export function oas3DefaultRoot(pathFromRoot: string): string | null {
-  const path = pathFromRoot.split("/");
+  const path = Str.split(pathFromRoot, "/");
   if (canReferenceParameter(path)) return "#/components/parameters";
   if (canReferenceResponse(path)) return "#/components/responses";
   if (canReferenceRequestBody(path)) return "#/components/requestBodies";
@@ -364,7 +372,7 @@ function isUnderDirectRoot(pathFromRoot: string, root: string): boolean {
 
   return (
     pointer.length === rootTokens.length + 1 &&
-    rootTokens.every((token, index) => pointer[index] === token)
+    Arr.every(rootTokens, (token, index) => pointer[index] === token)
   );
 }
 
@@ -374,12 +382,12 @@ function isInRoot(pointer: string, root: string): boolean {
 
   return (
     pointerTokens_.length > rootTokens.length &&
-    rootTokens.every((token, index) => pointerTokens_[index] === token)
+    Arr.every(rootTokens, (token, index) => pointerTokens_[index] === token)
   );
 }
 
 function pointerTokens(pointer: string): string[] {
-  if (!pointer.startsWith("#")) return [];
+  if (!Str.startsWith("#")(pointer)) return [];
 
   try {
     return parsePointer(pointer);
@@ -397,11 +405,12 @@ function existingComponentPointer(
   const map = asRecord(valueAtSafe(schema, root));
   if (!map) return undefined;
 
-  for (const [key, child] of Object.entries(map)) {
+  for (const [key, child] of Rec.toEntries(map)) {
     const record = asRecord(child);
     if (!record || typeof record.$ref !== "string") continue;
 
-    const extras = Object.keys(record).filter(
+    const extras = Arr.filter(
+      Rec.keys(record),
       (name) => name !== "$ref" && name !== "summary" && name !== "description",
     );
 
@@ -438,19 +447,19 @@ function childReservesName(value: unknown, base: string): boolean {
     if (typeof current !== "object" || current === null || seen.has(current)) continue;
     seen.add(current);
 
-    if (Array.isArray(current)) {
+    if (Arr.isArray(current)) {
       stack.push(...current);
       continue;
     }
 
     const record = current as Record<string, unknown>;
 
-    if (typeof record.$ref === "string" && !record.$ref.startsWith("#")) {
-      const token = getHash(record.$ref).split("/").at(-1);
+    if (typeof record.$ref === "string" && !Str.startsWith("#")(record.$ref)) {
+      const token = pipe(getHash(record.$ref), Str.split("/"), Arr.lastNonEmpty);
       if (token === base) return true;
     }
 
-    stack.push(...Object.values(record));
+    stack.push(...Rec.values(record));
   }
 
   return false;
@@ -464,9 +473,8 @@ function keyForPointer(
 ): string | null {
   const names = bucket(schema, root, buckets);
   if (names.generated.has(pointer)) return names.generated.get(pointer) ?? null;
-  const fragment = `${root.slice(1)}/`;
-  const actualPath = pointer.split(fragment).slice(1);
-  const base = prettify(actualPath.join("/"));
+  const fragment = `${Str.slice(1)(root)}/`;
+  const base = prettify(pipe(pointer, Str.split(fragment), Arr.drop(1), Arr.join("/")));
   if (!base) return register(schema, root, pointer, null, buckets);
   return register(schema, root, pointer, suggest(names.taken, base), buckets);
 }
@@ -496,10 +504,10 @@ function bucket(schema: object, root: string, buckets: Map<string, NameBucket>):
   const existing = buckets.get(id);
   if (existing) return existing;
   const taken = new Set<string>();
-  const value = valueAtSafe(schema, root);
+  const value = asRecord(valueAtSafe(schema, root));
 
-  if (asRecord(value)) {
-    for (const key of Object.keys(value as object)) taken.add(key);
+  if (value) {
+    for (const key of Rec.keys(value)) taken.add(key);
   }
 
   const created = { taken, generated: new Map<string, string | null>() };
@@ -544,22 +552,32 @@ function matchingComponent(
   return undefined;
 }
 
+/**
+ * Replaces each `.` or run of slashes with `_`, uppercasing a following lowercase
+ * letter. A leading separator without a following letter is dropped.
+ */
 function prettify(key: string): string {
-  const pretty = key.replace(
-    /(?:\.|[\\/]+)([a-z])?/g,
-    (_match, letter: string | undefined, index: number) => {
-      if (letter === undefined) return index === 0 ? "" : "_";
-      return `_${letter.toUpperCase()}`;
-    },
-  );
+  let pretty = "";
+  let last = 0;
 
-  return pretty;
+  for (const match of Str.matchAll(/(?:\.|[\\/]+)([a-z])?/g)(key)) {
+    const index = match.index ?? last;
+    const letter = match[1];
+
+    const replacement =
+      letter === undefined ? (index === 0 ? "" : "_") : `_${Str.toUpperCase(letter)}`;
+
+    pretty += `${Str.slice(last, index)(key)}${replacement}`;
+    last = index + match[0].length;
+  }
+
+  return `${pretty}${Str.slice(last)(key)}`;
 }
 
 function fileBaseName(file: string): string {
   let pathname = file;
 
-  if (file.includes("://")) {
+  if (Str.includes("://")(file)) {
     try {
       pathname = decodeURIComponent(new URL(file).pathname);
     } catch {
@@ -567,8 +585,12 @@ function fileBaseName(file: string): string {
     }
   }
 
-  const slash = Math.max(pathname.lastIndexOf("/"), pathname.lastIndexOf("\\"));
-  const base = slash >= 0 ? pathname.slice(slash + 1) : pathname;
-  const dot = base.lastIndexOf(".");
-  return dot > 0 ? base.slice(0, dot) : base;
+  const base = pipe(pathname, Str.split(/[/\\]/), Arr.lastNonEmpty);
+
+  return pipe(
+    base,
+    Str.lastIndexOf("."),
+    Option.filter((dot) => dot > 0),
+    Option.match({ onNone: () => base, onSome: (dot) => Str.slice(0, dot)(base) }),
+  );
 }

@@ -3,7 +3,18 @@ import { oas3 } from "@stoplight/spectral-formats";
 // spectral-parsers is CommonJS without statically detectable named exports, so Node needs a default import.
 import spectralParsers from "@stoplight/spectral-parsers";
 import { oas } from "@stoplight/spectral-rulesets";
-import { Array as EffectArray, Config, Console, Context, Effect, Layer, Predicate } from "effect";
+import {
+  Array as EffectArray,
+  Config,
+  Console,
+  Context,
+  Effect,
+  Layer,
+  pipe,
+  Predicate,
+  Record,
+  String as EffectString,
+} from "effect";
 import { LintError } from "./errors.ts";
 
 /** Same TTY and `NO_COLOR` check as `CliOutput.defaultFormatter`. */
@@ -32,7 +43,7 @@ function spectralRules(strict: boolean): Record<string, "off" | "warn" | "error"
 
   if (strict) return rules;
 
-  for (const [id, rule] of Object.entries(oas.rules ?? {})) {
+  for (const [id, rule] of Record.toEntries(oas.rules ?? {})) {
     if (id === "operation-operationId-unique") continue;
 
     if (Predicate.isObject(rule) && "severity" in rule && rule.severity === 0) {
@@ -50,7 +61,7 @@ function isExampleRefRead(result: {
 }): boolean {
   return (
     result.code === "invalid-ref" &&
-    result.message.startsWith("ReadError:") &&
+    EffectString.startsWith("ReadError:")(result.message) &&
     result.path.includes("examples")
   );
 }
@@ -81,7 +92,7 @@ function makeSpectral(strict: boolean): Spectral {
 function spectralTarget(source: string | Record<string, unknown>, sourceUrl: string | undefined) {
   if (typeof source !== "string") return source;
 
-  if (source.trimStart().startsWith("{")) {
+  if (pipe(source, EffectString.trimStart, EffectString.startsWith("{"))) {
     return new Document(source, spectralParsers.Json, sourceUrl);
   }
 
@@ -93,7 +104,8 @@ function thrownMessage(cause: unknown): string {
 }
 
 function pathSegments(path: readonly unknown[]): Array<string | number> {
-  return path.filter(
+  return EffectArray.filter(
+    path,
     (segment): segment is string | number =>
       Predicate.isString(segment) || Predicate.isNumber(segment),
   );
@@ -150,7 +162,14 @@ export class Linter extends Context.Service<
       const failures = yield* Effect.forEach(
         results,
         Effect.fnUntraced(function* (result) {
-          const location = result.path.length ? ` at #/${result.path.join("/")}` : "";
+          const location = result.path.length
+            ? ` at #/${pipe(
+                result.path,
+                EffectArray.map((segment) => `${segment}`),
+                EffectArray.join("/"),
+              )}`
+            : "";
+
           const message = `${result.message}${location}`;
 
           // Spectral's parser rejects merge tags this repo accepts, and example payloads
@@ -173,7 +192,10 @@ export class Linter extends Context.Service<
 
       if (failures.length > 0) {
         return yield* new LintError({
-          message: failures.map((diagnostic) => diagnostic.message).join("\n"),
+          message: EffectArray.join(
+            EffectArray.map(failures, (diagnostic) => diagnostic.message),
+            "\n",
+          ),
           diagnostics: failures,
         });
       }

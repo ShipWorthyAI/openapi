@@ -1,4 +1,4 @@
-import { Array, Option, Order, Predicate, Result, Schema } from "effect";
+import { Array, Option, Order, pipe, Predicate, Result, Schema, String } from "effect";
 
 const pluginNames = ["standard-schema", "tanstack-query", "typescript", "zod"] as const;
 
@@ -86,8 +86,9 @@ const isPluginName = Schema.is(Schema.Literals(pluginNames));
 const isClientName = Schema.is(ClientName);
 const byName = Order.mapInput(Order.String, (file: OutputFile) => file.name);
 
+/** Converts a `ClientName` (single `-` or `_` separators) to PascalCase. */
 export function pascalCase(value: string): string {
-  return value.replace(/(?:^|[-_])([a-zA-Z0-9])/g, (_, letter: string) => letter.toUpperCase());
+  return pipe(value, String.split(/[-_]/), Array.map(String.capitalize), Array.join(""));
 }
 
 function isFilePath(output: string): boolean {
@@ -103,7 +104,7 @@ export function planFiles(options: PlanOptions): Result.Result<ReadonlyArray<Out
 
   if (Option.isSome(unknown)) {
     return Result.fail(
-      `Unknown plugin: ${unknown.value}. Available plugins: ${pluginNames.join(", ")}.`,
+      `Unknown plugin: ${unknown.value}. Available plugins: ${Array.join(pluginNames, ", ")}.`,
     );
   }
 

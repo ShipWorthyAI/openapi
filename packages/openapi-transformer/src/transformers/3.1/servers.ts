@@ -3,7 +3,7 @@ import type {
   OpenApiServer,
   OpenApiServerVariable,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import { child } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type { ParsedExternalDocs, ParsedServer, ParsedServerVariable } from "../../model/index.ts";
@@ -30,8 +30,8 @@ const transformServerVariable = (value: OpenApiServerVariable) =>
   });
 
 export const transformServer = Effect.fnUntraced(function* (value: OpenApiServer, at: string) {
-  const variables = Object.fromEntries(
-    yield* Effect.forEach(Object.entries(value.variables ?? {}), ([name, entry]) =>
+  const variables = Record.fromEntries(
+    yield* Effect.forEach(Record.toEntries(value.variables ?? {}), ([name, entry]) =>
       transformServerVariable(entry).pipe(Effect.map((variable) => [name, variable] as const)),
     ),
   );

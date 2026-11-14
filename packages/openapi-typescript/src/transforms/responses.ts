@@ -15,7 +15,7 @@ export const transformResponses = Effect.fnUntraced(function* (
   responses: readonly ParsedOperationResponse[],
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const byCode = Object.fromEntries(responses.map((response) => [response.code, response]));
+  const byCode = Record.fromIterableBy(responses, (response) => response.code);
 
   const type = yield* Effect.forEach(
     Record.toEntries(byCode),

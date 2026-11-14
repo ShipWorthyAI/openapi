@@ -1,4 +1,4 @@
-import { Effect, FileSystem } from "effect";
+import { Array as Arr, Effect, FileSystem, String as Str } from "effect";
 import type { HttpClient } from "effect/http";
 import {
   ParserFailure,
@@ -37,7 +37,7 @@ export const loadDocument = Effect.fnUntraced(function* (
   context: LoadContext,
 ): Effect.fn.Return<unknown, TaggedFailure, FileSystem.FileSystem | HttpClient.HttpClient> {
   const file = fileInfo(url);
-  const resolvers = context.resolvers.filter((plugin) => plugin.can(file));
+  const resolvers = Arr.filter(context.resolvers, (plugin) => plugin.can(file));
 
   if (resolvers.length === 0) {
     return yield* new UnmatchedResolverFailure({
@@ -46,7 +46,7 @@ export const loadDocument = Effect.fnUntraced(function* (
     });
   }
 
-  const bytes = yield* Effect.firstSuccessOf(resolvers.map((plugin) => plugin.run(file)));
+  const bytes = yield* Effect.firstSuccessOf(Arr.map(resolvers, (plugin) => plugin.run(file)));
 
   if (context.policy === "root") {
     return yield* parseText(bytes).pipe(
@@ -55,7 +55,7 @@ export const loadDocument = Effect.fnUntraced(function* (
   }
 
   const parsedFile: FileInfo = { ...file, data: bytes };
-  const parsers = context.parsers.filter((plugin) => plugin.can(parsedFile));
+  const parsers = Arr.filter(context.parsers, (plugin) => plugin.can(parsedFile));
   const selected = parsers.length > 0 ? parsers : context.parsers;
 
   if (selected.length === 0) {
@@ -65,7 +65,10 @@ export const loadDocument = Effect.fnUntraced(function* (
     });
   }
 
-  const parsed = yield* Effect.firstSuccessOf(selected.map((plugin) => plugin.run(parsedFile)));
+  const parsed = yield* Effect.firstSuccessOf(
+    Arr.map(selected, (plugin) => plugin.run(parsedFile)),
+  );
+
   return parsed;
 });
 
@@ -88,7 +91,8 @@ const readResolvedFile = Effect.fnUntraced(function* (
 ): Effect.fn.Return<Uint8Array, ResolverFailure, FileSystem.FileSystem> {
   const fs = yield* FileSystem.FileSystem;
   let filePath = toFileSystemPath(file.url);
-  if (filePath.endsWith("/") || filePath.endsWith("\\")) filePath = filePath.slice(0, -1);
+  if (Str.endsWith("/")(filePath) || Str.endsWith("\\")(filePath))
+    filePath = Str.slice(0, -1)(filePath);
 
   return yield* fs.readFile(filePath).pipe(
     Effect.mapError(

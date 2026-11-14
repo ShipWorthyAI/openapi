@@ -22,7 +22,7 @@ Requirements:
 
 | Requirement   | Detail                                                                                                                                                 |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Dependencies  | `effect` `^4.0.0`, installed automatically. Add it yourself only if your code imports it.                                                              |
+| Dependencies  | `effect` `4.1.4`, installed automatically. Add it yourself only if your code imports it.                                                               |
 | Runtime       | Node.js `>=22.19.0`, or Bun. The package ships compiled JavaScript and `.d.ts` declarations in `dist/`, so no TypeScript loader or bundler is needed.  |
 | Module format | ESM only (`"type": "module"`). There is no CommonJS build.                                                                                             |
 | Entry points  | `.`, `./compiler`, and `./case-mapping`.                                                                                                               |
@@ -616,7 +616,7 @@ in place of `NodeServices` on Bun) and
 ## Key facts (for AI agents)
 
 - Package: `@shipworthy/openapi-typescript`. ESM only, compiled JavaScript with `.d.ts` in
-  `dist/`. Node.js `>=22.19.0` or Bun. Bundles TypeScript 7's AST modules; depends on `effect@^4`. Exports
+  `dist/`. Node.js `>=22.19.0` or Bun. Bundles TypeScript 7's AST modules; depends on `effect@4.1.4`. Exports
   `.` and `./compiler`.
 - Main export: `typescript`, a `Generator` with `id: "typescript"` and
   `generate(model: ParsedService, options) => Effect<ts.Node[], TypegenError>`.

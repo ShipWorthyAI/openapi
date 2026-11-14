@@ -1,4 +1,4 @@
-import { JsonSchema, Predicate } from "effect";
+import { Array as Arr, JsonSchema, Predicate, Record as Rec, String as Str } from "effect";
 import { OpenApiHttpMethod } from "../schemas/3.1/http-method.ts";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -32,12 +32,12 @@ export interface Slot {
 
 export function isOpenApi3(document: unknown): document is Record<string, unknown> {
   const record = asRecord(document);
-  return typeof record?.openapi === "string" && record.openapi.startsWith("3.");
+  return typeof record?.openapi === "string" && Str.startsWith("3.")(record.openapi);
 }
 
 export function isOpenApi3_0(document: unknown): boolean {
   const record = asRecord(document);
-  return typeof record?.openapi === "string" && record.openapi.startsWith("3.0");
+  return typeof record?.openapi === "string" && Str.startsWith("3.0")(record.openapi);
 }
 
 export function upgradeOpenApi3_0(document: Record<string, unknown>): void {
@@ -66,20 +66,20 @@ export function schemaSlots(
     const pathItems = asRecord(components.pathItems);
 
     if (pathItems) {
-      for (const value of Object.values(pathItems)) collectPathItem(value, slots);
+      for (const value of Rec.values(pathItems)) collectPathItem(value, slots);
     }
   }
 
   const paths = asRecord(document.paths);
 
   if (paths) {
-    for (const value of Object.values(paths)) collectPathItem(value, slots);
+    for (const value of Rec.values(paths)) collectPathItem(value, slots);
   }
 
   const webhooks = asRecord(document.webhooks);
 
   if (webhooks) {
-    for (const value of Object.values(webhooks)) collectPathItem(value, slots);
+    for (const value of Rec.values(webhooks)) collectPathItem(value, slots);
   }
 
   return slots;
@@ -94,31 +94,31 @@ export function componentSchemas(document: Record<string, unknown>): Slot[] {
 function collectSchemaMap(value: unknown, slots: Slot[]) {
   const map = asRecord(value);
   if (!map) return;
-  for (const key of Object.keys(map)) slots.push({ parent: map, key });
+  for (const key of Rec.keys(map)) slots.push({ parent: map, key });
 }
 
 function collectParameterMap(value: unknown, slots: Slot[]) {
   const map = asRecord(value);
   if (!map) return;
-  for (const parameter of Object.values(map)) collectParameter(parameter, slots);
+  for (const parameter of Rec.values(map)) collectParameter(parameter, slots);
 }
 
 function collectResponseMap(value: unknown, slots: Slot[]) {
   const map = asRecord(value);
   if (!map) return;
-  for (const response of Object.values(map)) collectResponse(response, slots);
+  for (const response of Rec.values(map)) collectResponse(response, slots);
 }
 
 function collectRequestBodyMap(value: unknown, slots: Slot[]) {
   const map = asRecord(value);
   if (!map) return;
-  for (const body of Object.values(map)) collectRequestBody(body, slots);
+  for (const body of Rec.values(map)) collectRequestBody(body, slots);
 }
 
 function collectHeaderMap(value: unknown, slots: Slot[]) {
   const map = asRecord(value);
   if (!map) return;
-  for (const header of Object.values(map)) collectHeader(header, slots);
+  for (const header of Rec.values(map)) collectHeader(header, slots);
 }
 
 function collectPathItem(value: unknown, slots: Slot[]) {
@@ -126,7 +126,7 @@ function collectPathItem(value: unknown, slots: Slot[]) {
   if (!record || typeof record.$ref === "string") return;
   collectParameterList(record.parameters, slots);
 
-  for (const [key, child] of Object.entries(record)) {
+  for (const [key, child] of Rec.toEntries(record)) {
     if (METHODS.has(key)) collectOperation(child, slots);
   }
 }
@@ -139,22 +139,22 @@ function collectOperation(value: unknown, slots: Slot[]) {
   const responses = asRecord(record.responses);
 
   if (responses) {
-    for (const response of Object.values(responses)) collectResponse(response, slots);
+    for (const response of Rec.values(responses)) collectResponse(response, slots);
   }
 
   const callbacks = asRecord(record.callbacks);
 
   if (callbacks) {
-    for (const callback of Object.values(callbacks)) {
+    for (const callback of Rec.values(callbacks)) {
       const paths = asRecord(callback);
       if (!paths || typeof paths.$ref === "string") continue;
-      for (const pathItem of Object.values(paths)) collectPathItem(pathItem, slots);
+      for (const pathItem of Rec.values(paths)) collectPathItem(pathItem, slots);
     }
   }
 }
 
 function collectParameterList(value: unknown, slots: Slot[]) {
-  if (!Array.isArray(value)) return;
+  if (!Arr.isArray(value)) return;
   for (const parameter of value) collectParameter(parameter, slots);
 }
 
@@ -189,7 +189,7 @@ function collectContent(value: unknown, slots: Slot[]) {
   const content = asRecord(value);
   if (!content) return;
 
-  for (const media of Object.values(content)) {
+  for (const media of Rec.values(content)) {
     const mediaRecord = asRecord(media);
     if (mediaRecord && "schema" in mediaRecord) slots.push({ parent: mediaRecord, key: "schema" });
   }
@@ -202,25 +202,25 @@ function upgradeSchema(value: unknown): unknown {
   for (const key of SINGLE_KEYS) {
     if (!(key in record)) continue;
 
-    if (key === "items" && Array.isArray(record.items)) {
-      record.items = record.items.map((item) => upgradeSchema(item));
+    if (key === "items" && Arr.isArray(record.items)) {
+      record.items = Arr.map(record.items, (item) => upgradeSchema(item));
     } else {
       record[key] = upgradeSchema(record[key]);
     }
   }
 
   for (const key of ARRAY_KEYS) {
-    if (Array.isArray(record[key]))
-      record[key] = (record[key] as unknown[]).map((item) => upgradeSchema(item));
+    const items = record[key];
+    if (Arr.isArray(items)) record[key] = Arr.map(items, (item) => upgradeSchema(item));
   }
 
   for (const key of MAP_KEYS) {
     const map = asRecord(record[key]);
     if (!map) continue;
-    for (const child of Object.keys(map)) map[child] = upgradeSchema(map[child]);
+    for (const child of Rec.keys(map)) map[child] = upgradeSchema(map[child]);
   }
 
-  if (Array.isArray(record.items)) {
+  if (Arr.isArray(record.items)) {
     record.prefixItems = record.items;
 
     if ("additionalItems" in record) {
@@ -231,7 +231,7 @@ function upgradeSchema(value: unknown): unknown {
     }
   }
 
-  if (typeof record.$ref === "string" && Object.keys(record).some((key) => key !== "$ref")) {
+  if (typeof record.$ref === "string" && Arr.some(Rec.keys(record), (key) => key !== "$ref")) {
     const nullable = record.nullable === true;
     const readOnly = record.readOnly === true;
     const writeOnly = record.writeOnly === true;
@@ -241,8 +241,9 @@ function upgradeSchema(value: unknown): unknown {
     if (writeOnly) delete siblings.writeOnly;
 
     // OpenAPI 3.0 ignores the siblings of a $ref; 3.1 applies them, so they move into allOf
-    const target: Record<string, unknown> =
-      Object.keys(siblings).length > 0 ? { allOf: [{ $ref }, siblings] } : { $ref };
+    const target: Record<string, unknown> = !Rec.isEmptyRecord(siblings)
+      ? { allOf: [{ $ref }, siblings] }
+      : { $ref };
 
     const lifted = nullable ? orNull(target) : target;
     if (readOnly) lifted.readOnly = true;
@@ -273,12 +274,12 @@ function orNull(schema: Record<string, unknown>): Record<string, unknown> {
   const outer: Record<string, unknown> = {};
   const inner: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(schema)) {
-    if (ANNOTATION_KEYS.has(key) || key.startsWith("x-")) outer[key] = value;
+  for (const [key, value] of Rec.toEntries(schema)) {
+    if (ANNOTATION_KEYS.has(key) || Str.startsWith("x-")(key)) outer[key] = value;
     else inner[key] = value;
   }
 
-  return Object.keys(inner).length === 0 ? schema : { ...outer, anyOf: [inner, { type: "null" }] };
+  return Rec.isEmptyRecord(inner) ? schema : { ...outer, anyOf: [inner, { type: "null" }] };
 }
 
 function applyOpenApi30Keywords(schema: Record<string, unknown>): Record<string, unknown> {
@@ -307,8 +308,8 @@ function applyOpenApi30Keywords(schema: Record<string, unknown>): Record<string,
 
   if ("example" in schema) {
     const converted = JsonSchema.fromSchemaOpenApi3_0({ example: schema.example }).schema;
-    const existing = Array.isArray(schema.examples) ? schema.examples : [];
-    const convertedExamples = Array.isArray(converted.examples) ? converted.examples : [];
+    const existing = Arr.isArray(schema.examples) ? schema.examples : [];
+    const convertedExamples = Arr.isArray(converted.examples) ? converted.examples : [];
     schema.examples = [...convertedExamples, ...existing];
     delete schema.example;
   }
@@ -322,7 +323,7 @@ function applyOpenApi30Keywords(schema: Record<string, unknown>): Record<string,
   if (typeof schema.type === "string" && !composed) {
     const converted = JsonSchema.fromSchemaOpenApi3_0({ type: schema.type, nullable: true }).schema;
     schema.type = converted.type;
-    if (Array.isArray(schema.enum) && !schema.enum.includes(null))
+    if (Arr.isArray(schema.enum) && !schema.enum.includes(null))
       schema.enum = [...schema.enum, null];
     return schema;
   }

@@ -1,5 +1,4 @@
 export { createApiClient } from "./client.ts";
-export type { CaseMapping } from "@shipworthy/openapi-fetch/middleware/transform-casing";
 export type { ApiClient, ApiClientOptions, AuthToken, AuthTokenProvider } from "./client.ts";
 export type { OperationInput, OperationData, OperationError } from "./operation.ts";
 export { createTanstackQueryUtils } from "./query-utils.ts";

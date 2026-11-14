@@ -1,3 +1,4 @@
+import { Array as Arr, pipe, Predicate, Record as Rec, String as Str } from "effect";
 import * as Yaml from "effect/encoding/Yaml";
 
 const blockScalar = /^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/;
@@ -7,8 +8,8 @@ const blockScalar = /^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/;
  * OpenAPI fixtures in this repo use both, so expand those forms before parsing.
  */
 export function parseYamlDocument(source: string): unknown {
-  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
-  if (text.trim().length === 0) return null;
+  const text = Str.startsWith("\uFEFF")(source) ? Str.slice(1)(source) : source;
+  if (isBlank(text)) return null;
 
   return applyMergeKeys(
     Yaml.parse(expandCompactNestedSequences(deepenShallowBlockScalars(relaxIndentTabs(text)))),
@@ -21,13 +22,13 @@ export function parseYamlDocument(source: string): unknown {
  * drop the explicit indicator so auto-detection keeps the scalar text.
  */
 function deepenShallowBlockScalars(source: string): string {
-  const lines = source.replace(/\r\n?/g, "\n").split("\n");
+  const lines = pipe(source, Str.replace(/\r\n?/g, "\n"), Str.split("\n"));
   const output: string[] = [];
 
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index] ?? "";
     const indent = leadingSpaces(line);
-    const text = stripComment(line.slice(indent)).trimEnd();
+    const text = pipe(line, Str.slice(indent), stripComment, Str.trimEnd);
 
     if (!isExplicitBlockScalar(text) || !hasShallowContent(lines, index, indent)) {
       output.push(line);
@@ -39,15 +40,15 @@ function deepenShallowBlockScalars(source: string): string {
 
     while (index < lines.length) {
       const next = lines[index] ?? "";
-      if (next.trim().length > 0 && leadingSpaces(next) < indent) break;
-      output.push(next.trim().length === 0 ? next : `  ${next}`);
+      if (!isBlank(next) && leadingSpaces(next) < indent) break;
+      output.push(isBlank(next) ? next : `  ${next}`);
       index++;
     }
 
     index--;
   }
 
-  return output.join("\n");
+  return Arr.join(output, "\n");
 }
 
 function isExplicitBlockScalar(text: string): boolean {
@@ -56,12 +57,12 @@ function isExplicitBlockScalar(text: string): boolean {
 
 function scalarToken(text: string): string {
   const separator = mappingSeparator(text);
-  const token = separator === -1 ? text : text.slice(separator + 1).trim();
+  const token = separator === -1 ? text : afterIndex(text, separator);
 
-  if (token === "-" || token.startsWith("- ")) {
-    const item = token.slice(1).trimStart();
+  if (token === "-" || Str.startsWith("- ")(token)) {
+    const item = pipe(token, Str.slice(1), Str.trimStart);
     const nested = mappingSeparator(item);
-    return nested === -1 ? item : item.slice(nested + 1).trim();
+    return nested === -1 ? item : afterIndex(item, nested);
   }
 
   return token;
@@ -70,7 +71,7 @@ function scalarToken(text: string): string {
 function hasShallowContent(lines: readonly string[], header: number, indent: number): boolean {
   for (let index = header + 1; index < lines.length; index++) {
     const line = lines[index] ?? "";
-    if (line.trim().length === 0) continue;
+    if (isBlank(line)) continue;
     return leadingSpaces(line) <= indent;
   }
 
@@ -78,26 +79,24 @@ function hasShallowContent(lines: readonly string[], header: number, indent: num
 }
 
 function dropExplicitIndent(line: string): string {
-  return line.replace(
-    /([|>])(\+|-)?[1-9](\+|-)?(\s*(?:#.*)?)?$/,
-    (_, bar: string, before?: string, after?: string, tail?: string) =>
-      `${bar}${before ?? ""}${after ?? ""}${tail ?? ""}`,
-  );
+  return Str.replace(/([|>])(\+|-)?[1-9](\+|-)?(\s*(?:#.*)?)?$/, "$1$2$3$4")(line);
 }
 
-/** Effect rejects a tab after leading spaces, including inside block scalars. */
+/**
+ * Effect rejects a tab after leading spaces, including inside block scalars.
+ * Replace each tab in a line's leading run of spaces then tabs with two spaces.
+ */
 function relaxIndentTabs(source: string): string {
-  return source.replace(
-    /^( *)\t+/gm,
-    (match, spaces: string) => spaces + "  ".repeat(match.length - spaces.length),
-  );
+  return Str.replace(/(?<=^ *\t*)\t/gm, "  ")(source);
 }
 
 export function expandCompactNestedSequences(source: string): string {
-  const lines = source
-    .replace(/^\uFEFF/, "")
-    .replace(/\r\n?/g, "\n")
-    .split("\n");
+  const lines = pipe(
+    source,
+    Str.replace(/^\uFEFF/, ""),
+    Str.replace(/\r\n?/g, "\n"),
+    Str.split("\n"),
+  );
 
   const output: string[] = [];
   let blockIndent = -1;
@@ -109,11 +108,11 @@ export function expandCompactNestedSequences(source: string): string {
       const indent = leadingSpaces(raw);
 
       if (blockIndent >= 0) {
-        if (raw.trim().length > 0 && indent <= blockIndent) blockIndent = -1;
+        if (!isBlank(raw) && indent <= blockIndent) blockIndent = -1;
         else break;
       }
 
-      const text = stripComment(raw.slice(indent)).trimEnd();
+      const text = pipe(raw, Str.slice(indent), stripComment, Str.trimEnd);
       const compact = compactRest(raw, indent);
 
       if (compact === undefined) {
@@ -121,87 +120,87 @@ export function expandCompactNestedSequences(source: string): string {
         break;
       }
 
-      output.push(`${" ".repeat(indent)}-`);
-      raw = `${" ".repeat(indent + 2)}${compact}`;
+      output.push(`${Str.repeat(indent)(" ")}-`);
+      raw = `${Str.repeat(indent + 2)(" ")}${compact}`;
     }
 
     output.push(raw);
   }
 
-  return output.join("\n");
+  return Arr.join(output, "\n");
 }
 
 function compactRest(raw: string, indent: number): string | undefined {
-  const body = raw.slice(indent);
-  if (!body.startsWith("- ")) return undefined;
-  const rest = body.slice(2);
-  const text = stripComment(rest).trimEnd();
-  if (text === "-" || text.startsWith("- ")) return rest;
+  const body = Str.slice(indent)(raw);
+  if (!Str.startsWith("- ")(body)) return undefined;
+  const rest = Str.slice(2)(body);
+  const text = Str.trimEnd(stripComment(rest));
+  if (text === "-" || Str.startsWith("- ")(text)) return rest;
   return undefined;
 }
 
 function isBlockScalar(text: string): boolean {
   if (blockScalar.test(text)) return true;
   const separator = mappingSeparator(text);
-  if (separator !== -1) return blockScalar.test(text.slice(separator + 1).trim());
+  if (separator !== -1) return blockScalar.test(afterIndex(text, separator));
 
-  if (text === "-" || text.startsWith("- ")) {
-    const item = text.slice(1).trimStart();
+  if (text === "-" || Str.startsWith("- ")(text)) {
+    const item = pipe(text, Str.slice(1), Str.trimStart);
     const nested = mappingSeparator(item);
     if (nested === -1) return blockScalar.test(item);
-    return blockScalar.test(item.slice(nested + 1).trim());
+    return blockScalar.test(afterIndex(item, nested));
   }
 
   return false;
 }
 
 function applyMergeKeys(value: unknown, seen = new Set<object>()): unknown {
-  if (typeof value !== "object" || value === null || seen.has(value)) return value;
+  if (!Predicate.isObjectOrArray(value) || seen.has(value)) return value;
   seen.add(value);
 
-  if (Array.isArray(value)) {
+  if (Arr.isArray(value)) {
     for (let index = 0; index < value.length; index++)
       value[index] = applyMergeKeys(value[index], seen);
     return value;
   }
 
-  const record = value as Record<string, unknown>;
-  for (const key of Object.keys(record)) record[key] = applyMergeKeys(record[key], seen);
-  if (!Object.keys(record).some(isMergeKey)) return record;
+  const record: Record<string, unknown> = value;
+  for (const key of Rec.keys(record)) record[key] = applyMergeKeys(record[key], seen);
+  if (!Arr.some(Rec.keys(record), isMergeKey)) return record;
   const next: Record<string, unknown> = {};
 
-  for (const key of Object.keys(record)) {
+  for (const key of Rec.keys(record)) {
     if (!isMergeKey(key)) {
       next[key] = record[key];
       continue;
     }
 
     const source = record[key];
-    const entries = Array.isArray(source) ? source : [source];
+    const entries = Arr.isArray(source) ? source : [source];
 
     for (const entry of entries) {
-      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) continue;
+      if (!Predicate.isObject(entry)) continue;
 
-      for (const [mergedKey, mergedValue] of Object.entries(entry)) {
-        if (isMergeKey(mergedKey) || Object.hasOwn(next, mergedKey)) continue;
+      for (const [mergedKey, mergedValue] of Rec.toEntries(entry)) {
+        if (isMergeKey(mergedKey) || Rec.has(next, mergedKey)) continue;
         next[mergedKey] = mergedValue;
       }
     }
   }
 
-  for (const key of Object.keys(record)) delete record[key];
+  for (const key of Rec.keys(record)) delete record[key];
   Object.assign(record, next);
   return record;
 }
 
 function isMergeKey(key: string): boolean {
-  const text = key.trim();
+  const text = Str.trim(key);
   return text === "<<" || /^!!\S+\s+<<$/.test(text) || /^!<[^>]+>\s+<<$/.test(text);
 }
 
 function leadingSpaces(raw: string): number {
   let index = 0;
-  while (raw.charCodeAt(index) === 32) index++;
+  while (raw[index] === " ") index++;
   return index;
 }
 
@@ -259,7 +258,13 @@ const findIndicator = (input: string, indicator: "#" | ":"): number => {
 
 const stripComment = (input: string): string => {
   const index = findIndicator(input, "#");
-  return index === -1 ? input : input.slice(0, index).trimEnd();
+  return index === -1 ? input : pipe(input, Str.slice(0, index), Str.trimEnd);
 };
 
 const mappingSeparator = (input: string): number => findIndicator(input, ":");
+
+/** The trimmed text after `index`. */
+const afterIndex = (input: string, index: number): string =>
+  pipe(input, Str.slice(index + 1), Str.trim);
+
+const isBlank = (input: string): boolean => Str.isEmpty(Str.trim(input));

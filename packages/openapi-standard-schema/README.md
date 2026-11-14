@@ -241,7 +241,7 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 
 ## Key facts (for AI agents)
 
-- Package: `@shipworthy/openapi-standard-schema`, ESM-only compiled JavaScript with `.d.ts` declarations. Node.js `>=22.19.0` or Bun. Depends on `effect@^4`. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
+- Package: `@shipworthy/openapi-standard-schema`, ESM-only compiled JavaScript with `.d.ts` declarations. Node.js `>=22.19.0` or Bun. Depends on `effect@4.1.4`. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
 - CLI: `openapi generate standard-schema [-i <input>] [-o <dir>] [--camel-case]` (from `@shipworthy/openapi-cli`, runs on Node.js or Bun) writes `<dir>/standard-schema.ts`. Without `-i`, it reads stdin; without `-o`, output goes to stdout. It can run in one command with other plugins.
 - `standardSchema.generate(model: ParsedService, { camelCase?: boolean })` returns `Effect<string, SchemaGenerationError>`. The string is a TS module, or `""` when there are no component schemas.
 - Output: for each `components.schemas` entry `Name`, `export type Name` and `export const Name = Schema.toStandardSchemaV1(...)`. Validate with `Name["~standard"].validate(value)`, which is synchronous and returns `{ value }` or `{ issues }`. `vendor` is `"effect"`.

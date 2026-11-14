@@ -430,6 +430,13 @@ describe("typed failures", () => {
     );
   });
 
+  test("accepts YAML flow sequences that span lines", async () => {
+    expect(await apply("items: [\n  value\n]", { target: "$", update: { added: true } })).toEqual({
+      items: ["value"],
+      added: true,
+    });
+  });
+
   test("does not mutate the caller's document when a later merge fails", async () => {
     const document = { info: { title: "Original", tags: [] } };
 

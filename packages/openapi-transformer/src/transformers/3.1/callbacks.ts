@@ -4,7 +4,7 @@ import {
   type OpenApiOperation,
   type OpenApiReference,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect, type SchemaIssue } from "effect";
+import { Array, Effect, Record, type SchemaIssue } from "effect";
 import type { TransformContext } from "./context.ts";
 import { child, resolve } from "./pointer.ts";
 import type { ParsedCallbackOperation } from "../../model/index.ts";
@@ -20,8 +20,9 @@ const transformCallback = Effect.fnUntraced(function* (
   const { value: callback, id } = yield* resolve(ctx.document, OpenApiCallback, value, at);
   const paths = yield* transformPathItemMap(ctx, callback, id, true, false);
 
-  return Object.values(paths).flatMap((item) =>
-    item.operations.map(
+  return Array.flatMap(Record.values(paths), (item) =>
+    Array.map(
+      item.operations,
       ({ callbacks: _callbacks, ...operation }) =>
         ({ ...operation, key }) satisfies typeof ParsedCallbackOperation.Encoded,
     ),
@@ -33,7 +34,7 @@ export const transformCallbackList = Effect.fnUntraced(function* (
   value: OpenApiOperation["callbacks"],
   at: string,
 ) {
-  const callbacks = yield* Effect.forEach(Object.entries(value ?? {}), ([key, entry]) =>
+  const callbacks = yield* Effect.forEach(Record.toEntries(value ?? {}), ([key, entry]) =>
     transformCallback(ctx, key, entry, child(at, key)),
   );
 
@@ -45,9 +46,9 @@ export const transformCallbackMap = Effect.fnUntraced(function* (
   value: OpenApiComponents["callbacks"],
   at: string,
 ) {
-  return Object.fromEntries(
+  return Record.fromEntries(
     yield* Effect.forEach(
-      Object.entries(value ?? {}),
+      Record.toEntries(value ?? {}),
       Effect.fnUntraced(function* ([key, entry]) {
         return [key, yield* transformCallback(ctx, key, entry, child(at, key))] as const;
       }),

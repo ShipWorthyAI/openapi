@@ -5,9 +5,11 @@ import {
   Console,
   Effect,
   type JsonSchema,
+  Option,
   Predicate,
   Record as EffectRecord,
   Result,
+  String as EffectString,
 } from "effect";
 import ts from "#compiler";
 import { propertyName } from "@shipworthy/openapi-transformer";
@@ -65,14 +67,15 @@ export function createDiscriminatorProperty(
   // if mapping, and there’s a match, use this rather than the inferred name
   if (discriminator.mapping) {
     // Mapping value can either be a fully-qualified ref (#/components/schemas/XYZ) or a schema name (XYZ)
-    const matchedValue = Object.entries(discriminator.mapping).find(
+    const matchedValue = EffectArray.findFirst(
+      EffectRecord.toEntries(discriminator.mapping),
       ([, v]) =>
-        (!v.startsWith("#") && v === value) ||
-        (v.startsWith("#") && parseRef(v).pointer.pop() === value),
+        (!EffectString.startsWith("#")(v) && v === value) ||
+        (EffectString.startsWith("#")(v) && parseRef(v).pointer.pop() === value),
     );
 
-    if (matchedValue) {
-      value = matchedValue[0]; // why was this designed backwards!?
+    if (Option.isSome(matchedValue)) {
+      value = matchedValue.value[0]; // why was this designed backwards!?
     }
   }
 
@@ -118,7 +121,8 @@ export const debug = Effect.fnUntraced(function* (msg: string, group?: string, t
     (!group ||
       setting === "*" ||
       setting === "openapi-ts:*" ||
-      setting.toLocaleLowerCase() === `openapi-ts:${group.toLocaleLowerCase()}`)
+      EffectString.toLocaleLowerCase()(setting) ===
+        `openapi-ts:${EffectString.toLocaleLowerCase()(group)}`)
   ) {
     const groupColor = (group && DEBUG_GROUPS[group]) || colors.white;
     const groupName = groupColor(`openapi-ts:${group ?? "info"}`);
@@ -215,7 +219,7 @@ function patchDiscriminatorEnum(
   const resolved = resolveRef<unknown>(model, ref, { silent });
   const resolvedSchema = Predicate.isObject(resolved) ? resolved : undefined;
 
-  if (Array.isArray(resolvedSchema?.allOf)) {
+  if (EffectArray.isArray(resolvedSchema?.allOf)) {
     // if the schema is an allOf, we can append a new schema object to the allOf array
     resolvedSchema.allOf.push({
       type: "object",
@@ -253,7 +257,8 @@ function patchDiscriminatorEnum(
   }
 
   warn(
-    `Discriminator mapping has an invalid schema (neither an object schema nor an allOf array): ${ref} => ${values.join(
+    `Discriminator mapping has an invalid schema (neither an object schema nor an allOf array): ${ref} => ${EffectArray.join(
+      values,
       ", ",
     )} (Discriminator: ${discriminatorRef})`,
     silent,
@@ -263,8 +268,8 @@ function patchDiscriminatorEnum(
 }
 
 function discriminatorMappingRef(target: string): string {
-  if (target.startsWith("#")) return target;
-  return `#/components/schemas/${target.replaceAll("~", "~0").replaceAll("/", "~1")}`;
+  if (EffectString.startsWith("#")(target)) return target;
+  return `#/components/schemas/${escapePointer(target)}`;
 }
 
 /** Values that select a referenced branch of one discriminated union. */
@@ -281,7 +286,7 @@ export function discriminatorValues(discriminator: ParsedDiscriminator, ref: str
   );
 
   if (mapped.length > 0) return mapped;
-  return Object.hasOwn(discriminator.mapping ?? {}, name) ? [] : [name];
+  return EffectRecord.has(discriminator.mapping ?? {}, name) ? [] : [name];
 }
 
 /**
@@ -337,14 +342,14 @@ export const scanDiscriminators = Effect.fnUntraced(function* (
     objects[ref] = discriminator;
 
     // Infer discriminator values for referenced oneOf and anyOf branches.
-    if (!Array.isArray(obj.oneOf) && !Array.isArray(obj.anyOf)) {
+    if (!EffectArray.isArray(obj.oneOf) && !EffectArray.isArray(obj.anyOf)) {
       return;
     }
 
     // Include referenced branches and explicit mappings, including mapped schemas outside the union.
     const branches = [
-      ...(Array.isArray(obj.oneOf) ? obj.oneOf : []),
-      ...(Array.isArray(obj.anyOf) ? obj.anyOf : []),
+      ...(EffectArray.isArray(obj.oneOf) ? obj.oneOf : []),
+      ...(EffectArray.isArray(obj.anyOf) ? obj.anyOf : []),
     ];
 
     const branchRefs = EffectArray.filterMap(branches, (item) =>
@@ -371,7 +376,7 @@ export const scanDiscriminators = Effect.fnUntraced(function* (
   // (sometimes this mapping is implicit, so it can’t be done until we know
   // about every discriminator in the document)
   walk(model, (obj, path) => {
-    if (!Array.isArray(obj.allOf)) {
+    if (!EffectArray.isArray(obj.allOf)) {
       return;
     }
 
@@ -390,7 +395,7 @@ export const scanDiscriminators = Effect.fnUntraced(function* (
         const ref = createRef(path);
         const mappedValues: string[] = [];
 
-        for (const [mappedValue, target] of Object.entries(parent.mapping ?? {})) {
+        for (const [mappedValue, target] of EffectRecord.toEntries(parent.mapping ?? {})) {
           if (discriminatorMappingRef(target) === ref) {
             mappedValues.push(mappedValue);
           }
@@ -428,11 +433,7 @@ export function walk(
   cb: (value: Record<string, unknown>, path: (string | number)[]) => void,
   path: (string | number)[] = [],
 ): void {
-  if (!obj || typeof obj !== "object") {
-    return;
-  }
-
-  if (Array.isArray(obj)) {
+  if (EffectArray.isArray(obj)) {
     for (let i = 0; i < obj.length; i++) {
       walk(obj[i], cb, path.concat(i));
     }
@@ -440,10 +441,14 @@ export function walk(
     return;
   }
 
-  cb(obj as Record<string, unknown>, path);
+  if (!Predicate.isObject(obj)) {
+    return;
+  }
 
-  for (const k of Object.keys(obj)) {
-    walk((obj as Record<string, unknown>)[k], cb, path.concat(k));
+  cb(obj, path);
+
+  for (const k of EffectRecord.keys(obj)) {
+    walk(obj[k], cb, path.concat(k));
   }
 }
 

@@ -1,4 +1,16 @@
-import { Array, Clock, Console, Effect, FileSystem, Option, Path, Stdio, Stream } from "effect";
+import {
+  Array,
+  Clock,
+  Console,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  pipe,
+  Stdio,
+  Stream,
+  String,
+} from "effect";
 import { CliError } from "effect/cli";
 import type { RenderedFile } from "./render.ts";
 
@@ -36,7 +48,7 @@ export const writeFiles = Effect.fn("writeFiles")(function* (
   );
 
   const elapsed = formatTime((yield* Clock.currentTimeMillis) - options.started);
-  const output = options.outputLabel.replace(/(?<=.)\/+$/, "");
+  const output = pipe(options.outputLabel, String.replace(/(?<=.)\/+$/, ""));
 
   yield* Effect.forEach(
     files,
@@ -69,6 +81,6 @@ export const checkFiles = Effect.fn("checkFiles")(function* (
   if (names.length === 0) return;
 
   return yield* new CliError.UserError({
-    cause: `Generated files are not up-to-date: ${names.join(", ")}`,
+    cause: `Generated files are not up-to-date: ${Array.join(names, ", ")}`,
   });
 });

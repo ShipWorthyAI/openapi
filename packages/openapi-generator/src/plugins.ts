@@ -1,5 +1,5 @@
 import type { Generator } from "./generator.ts";
-import { Context, Effect, Predicate, Schema } from "effect";
+import { Context, Effect, Predicate, Schema, String as EffectString } from "effect";
 import { InvalidPlugin, MissingPlugin } from "./errors.ts";
 
 export const ModuleLoader = Context.Reference<{
@@ -23,9 +23,9 @@ const moduleSchema = Schema.Record(Schema.String, Schema.Unknown);
 function isPackageNotFound(cause: unknown, specifier: string): boolean {
   if (!Predicate.isError(cause) || !Predicate.hasProperty(cause, "code")) return false;
   if (cause.code !== "ERR_MODULE_NOT_FOUND" && cause.code !== "MODULE_NOT_FOUND") return false;
-  const [scope = "", name = ""] = specifier.split("/");
-  const packageName = scope.startsWith("@") ? `${scope}/${name}` : scope;
-  return cause.message.includes(`'${packageName}'`);
+  const [scope, name = ""] = EffectString.split(specifier, "/");
+  const packageName = EffectString.startsWith("@")(scope) ? `${scope}/${name}` : scope;
+  return EffectString.includes(`'${packageName}'`)(cause.message);
 }
 
 export const importPlugin = Effect.fn("importPlugin")(function* (

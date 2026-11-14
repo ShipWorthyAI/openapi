@@ -4,7 +4,15 @@ import {
   schemaPropertyCollision,
   type ParsedSchema,
 } from "@shipworthy/openapi-transformer";
-import { Array as Arr, Effect, type JsonSchema, Predicate, Record } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  type JsonSchema,
+  pipe,
+  Predicate,
+  Record,
+  String as Str,
+} from "effect";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
 import { TypegenError } from "../errors.ts";
@@ -94,7 +102,7 @@ function resolveSchema(ctx: GlobalContext, $ref: string): JsonSchema.JsonSchema 
 }
 
 function stringAt(value: unknown, index: number): string | undefined {
-  if (!Array.isArray(value)) return undefined;
+  if (!Arr.isArray(value)) return undefined;
   const entry: unknown = value[index];
   return typeof entry === "string" ? entry : undefined;
 }
@@ -109,14 +117,15 @@ function shouldTransformToTsEnum(
     return false;
   }
 
-  if (!values.every((value) => typeof value === "string" || typeof value === "number")) {
+  if (!Arr.every(values, (value) => typeof value === "string" || typeof value === "number")) {
     return false;
   }
 
   // With conditionalEnums, only convert when x-enum-* metadata is present
   if (ctx.conditionalEnums) {
-    return ["x-enum-varnames", "x-enumNames", "x-enum-descriptions", "x-enumDescriptions"].some(
-      (key) => Array.isArray(schema[key]),
+    return Arr.some(
+      ["x-enum-varnames", "x-enumNames", "x-enum-descriptions", "x-enumDescriptions"],
+      (key) => Arr.isArray(schema[key]),
     );
   }
 
@@ -206,16 +215,21 @@ function transformEnum(
   // hoist enum to top level if string/number enum and option is enabled
   if (shouldTransformToTsEnum(ctx, schema, values)) {
     // allow #/components/schemas to have simpler names
-    const enumName = parseRef(path).pointer.join("/").replace("components/schemas", "");
+    const enumName = pipe(
+      parseRef(path).pointer,
+      Arr.join("/"),
+      Str.replace("components/schemas", ""),
+    );
 
-    const metadata = values.map((_, index) => ({
+    const metadata = Arr.map(values, (_, index) => ({
       name: stringAt(schema["x-enum-varnames"], index) ?? stringAt(schema["x-enumNames"], index),
       description:
         stringAt(schema["x-enum-descriptions"], index) ??
         stringAt(schema["x-enumDescriptions"], index),
     }));
 
-    const members = values.filter(
+    const members = Arr.filter(
+      values,
       (value): value is string | number => typeof value === "string" || typeof value === "number",
     );
 
@@ -233,9 +247,9 @@ function transformEnum(
     return applyAdditionalPropertiesToEnum(hasAdditionalProperties, ref, schema);
   }
 
-  const enumType = values.map(tsLiteral);
+  const enumType = Arr.map(values, tsLiteral);
 
-  if (Array.isArray(schema.type) && schema.type.includes("null")) {
+  if (Arr.isArray(schema.type) && schema.type.includes("null")) {
     enumType.push(NULL);
   }
 
@@ -248,10 +262,10 @@ function transformEnum(
   // hoist array with valid enum values to top level if string/number enum and option is enabled
   if (
     ctx.enumValues &&
-    values.every((value) => typeof value === "string" || typeof value === "number")
+    Arr.every(values, (value) => typeof value === "string" || typeof value === "number")
   ) {
     // allow #/components/schemas to have simpler names
-    const name = `${parseRef(path).pointer.join("/").replace("components/schemas", "")}Values`;
+    const name = `${pipe(parseRef(path).pointer, Arr.join("/"), Str.replace("components/schemas", ""))}Values`;
     const { ref, extractProperties } = enumValuesRef(path);
 
     const valuesType = oapiRef(ref, undefined, {
@@ -309,7 +323,7 @@ const transformComposition = Effect.fnUntraced(function* (
     return tsLiteral(schema.const);
   }
 
-  const values = Array.isArray(schema.enum) ? schema.enum : undefined;
+  const values = Arr.isArray(schema.enum) ? schema.enum : undefined;
 
   // enum (non-objects). Object enums are handled with oneOf below.
   if (values && schema.type !== "object" && !schema.properties) {
@@ -320,7 +334,7 @@ const transformComposition = Effect.fnUntraced(function* (
 
   let finalType: ts.TypeNode | undefined;
   // a list of types transforms each non-null type with the schema's allOf/anyOf already applied
-  const perType = Array.isArray(schema.type) && schema.type.some((type) => type !== "null");
+  const perType = Arr.isArray(schema.type) && Arr.some(schema.type, (type) => type !== "null");
 
   // core + allOf: intersect
   const coreObjectType = yield* transformCore(schema, path);
@@ -361,12 +375,12 @@ const transformComposition = Effect.fnUntraced(function* (
   const oneOfType = oneOf
     ? yield* collectUnion(oneOf, "oneOf", path, discriminatorOf(schema.discriminator))
     : schema.type === "object" && values
-      ? values.map(tsLiteral)
+      ? Arr.map(values, tsLiteral)
       : [];
 
   if (oneOfType.length) {
     // note: oneOf is the only type that may include primitives
-    finalType = oneOfType.every(tsIsPrimitive)
+    finalType = Arr.every(oneOfType, tsIsPrimitive)
       ? tsUnion([...(finalType ? [finalType] : []), ...oneOfType])
       : tsIntersection([...(finalType ? [finalType] : []), tsUnion(oneOfType)]);
   }
@@ -401,7 +415,7 @@ const collectUnion = Effect.fnUntraced(function* (
         undefined,
         tsPropertyIndex(discriminator.propertyName),
         undefined,
-        tsUnion(values.map(tsLiteral)),
+        tsUnion(Arr.map(values, tsLiteral)),
       );
 
       return tsIntersection([itemType, ts.factory.createTypeLiteralNode([property])]);
@@ -431,7 +445,7 @@ const collectAllOf = Effect.fnUntraced(function* (
 
         // make keys required, unless the discriminator scan already did
         if (properties && !ctx.discriminators.refsHandled.includes($ref)) {
-          const validRequired = required.filter((key) => properties[key] !== undefined);
+          const validRequired = Arr.filter(required, (key) => properties[key] !== undefined);
 
           if (validRequired.length) {
             itemType = tsWithRequired(
@@ -561,7 +575,7 @@ const transformCore = Effect.fnUntraced(function* (
             oneOf &&
             type !== "object" &&
             type !== "array" &&
-            oneOf.some((item) => Predicate.isObject(item) && item.type === type)
+            Arr.some(oneOf, (item) => Predicate.isObject(item) && item.type === type)
           ) {
             return undefined;
           }
@@ -575,7 +589,7 @@ const transformCore = Effect.fnUntraced(function* (
         }),
       );
 
-      return tsUnion(members.filter(Predicate.isNotUndefined));
+      return tsUnion(Arr.filter(members, Predicate.isNotUndefined));
     }
   }
 
@@ -600,7 +614,7 @@ const transformCore = Effect.fnUntraced(function* (
   const $defs = subschemaMap(schema.$defs) ?? {};
 
   if (
-    !Object.keys(properties).length &&
+    !Record.keys(properties).length &&
     !schema.additionalProperties &&
     !schema.patternProperties &&
     !schema.$defs
@@ -614,9 +628,9 @@ const transformCore = Effect.fnUntraced(function* (
 
   coreObjectType.push(...propertyTypes);
 
-  if (Object.keys($defs).length) {
+  if (Record.keys($defs).length) {
     const defKeys = yield* Effect.forEach(
-      Object.entries($defs),
+      Record.toEntries($defs),
       Effect.fnUntraced(function* ([key, value]) {
         const defPath = createRef([path, "$defs", key]);
         const readOnly = Predicate.isObject(value) && value.readOnly === true;
@@ -661,7 +675,7 @@ const transformCore = Effect.fnUntraced(function* (
   const additionalProperties = subschema(schema.additionalProperties);
 
   const additionalKeys = Predicate.isObject(additionalProperties)
-    ? Object.keys(additionalProperties).length
+    ? Record.keys(additionalProperties).length
     : 0;
 
   const stringIndexTypes: ts.TypeNode[] = [];

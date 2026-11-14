@@ -10,7 +10,7 @@
 
 ## Installation
 
-Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect`, `@effect/platform-node`, and `@effect/platform-node-shared` pinned to `4.0.0`, plus `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
+Install the CLI and the generator packages you need as dev dependencies. The CLI brings its own dependencies (`effect`, `@effect/platform-node`, and `@effect/platform-node-shared` pinned to `4.1.4`, plus `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, `@shipworthy/overlay`, and `@shipworthy/openapi-validator`):
 
 ```sh
 bun add -d @shipworthy/openapi-cli @shipworthy/openapi-typescript
@@ -34,7 +34,7 @@ The generated files import packages at runtime, so your application needs those 
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `types.ts` (TypeScript)      | nothing (types only)                                                                                                                          |
 | `zod-schema.ts` (Zod)        | `zod` (v4; the generator is built against `zod@4.6.7`) and `./types`                                                                          |
-| `standard-schema.ts`         | `effect` (`4.0.0`)                                                                                                                            |
+| `standard-schema.ts`         | `effect` (`4.1.4`)                                                                                                                            |
 | `client.ts` (TanStack Query) | `@shipworthy/openapi-tanstack-query` (a runtime dependency), which peers on `@tanstack/react-query@^5.104.1` and `react@^18.0.0 \|\| ^19.0.0` |
 
 ## Quick start
@@ -451,7 +451,7 @@ openapi.pipe(
 );
 ```
 
-This uses `effect` and `@effect/platform-node` `4.0.0`. The CLI depends on both, but add them to your own `package.json` when your code imports them, using versions compatible with the CLI so they resolve to one copy. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
+This uses `effect` and `@effect/platform-node` `4.1.4`. The CLI depends on both, but add them to your own `package.json` when your code imports them, using versions compatible with the CLI so they resolve to one copy. No other functions or types are exported. For direct access to the generation pipeline, use `@shipworthy/openapi-generator`, `@shipworthy/openapi-parser`, and `@shipworthy/openapi-transformer`.
 
 ## Errors and exit codes
 

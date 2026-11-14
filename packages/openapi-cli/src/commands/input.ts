@@ -1,8 +1,8 @@
-import { Effect, Path } from "effect";
+import { Effect, Path, pipe, String } from "effect";
 import { CliError } from "effect/cli";
 
 export const schemaSource = Effect.fn("schemaSource")(function* (input: string) {
-  if (input.includes("*")) {
+  if (pipe(input, String.includes("*"))) {
     return yield* new CliError.UserError({ cause: "Globbing is unsupported." });
   }
 

@@ -1,7 +1,16 @@
 // oxlint-disable-next-line effecttsgo/node-builtin-import -- Detect the public Node Readable input before adapting it with NodeStream.
 import { Readable } from "node:stream";
 import * as NodeStream from "@effect/platform-node/NodeStream";
-import { Effect, type FileSystem, Path, Predicate, Schema, Stream } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  type FileSystem,
+  Path,
+  Predicate,
+  Schema,
+  Stream,
+  String as Str,
+} from "effect";
 import type { HttpClient } from "effect/http";
 import { decodeDocument, type OpenAPIDocument } from "./document.ts";
 import { EmptySource, InvalidSource, ParseError, type LoadError } from "./errors.ts";
@@ -73,9 +82,9 @@ const parseSource = Effect.fnUntraced(function* (
 
   if (typeof source === "string") {
     if (
-      source.startsWith("http://") ||
-      source.startsWith("https://") ||
-      source.startsWith("file://")
+      Str.startsWith("http://")(source) ||
+      Str.startsWith("https://")(source) ||
+      Str.startsWith("file://")(source)
     ) {
       const url = yield* Effect.try({
         try: () => new URL(source),
@@ -115,22 +124,22 @@ const parseSource = Effect.fnUntraced(function* (
  * matches: one-line YAML needs `key: value` or `{...}`, and JSON starts with `{`.
  */
 function isFilePath(source: string, path: Path.Path): boolean {
-  const value = source.trim();
+  const value = Str.trim(source);
   if (value === "" || /[\r\n]/.test(value)) return false;
   if (
     path.isAbsolute(value) ||
-    value.startsWith("./") ||
-    value.startsWith("../") ||
-    value.startsWith(".\\") ||
-    value.startsWith("..\\")
+    Str.startsWith("./")(value) ||
+    Str.startsWith("../")(value) ||
+    Str.startsWith(".\\")(value) ||
+    Str.startsWith("..\\")(value)
   )
     return true;
 
   return (
-    [".json", ".yaml", ".yml"].includes(path.extname(value).toLowerCase()) &&
-    !value.includes(": ") &&
-    !value.startsWith("{") &&
-    !value.startsWith("[")
+    [".json", ".yaml", ".yml"].includes(Str.toLowerCase(path.extname(value))) &&
+    !Str.includes(": ")(value) &&
+    !Str.startsWith("{")(value) &&
+    !Str.startsWith("[")(value)
   );
 }
 
@@ -140,9 +149,9 @@ const fileUrl = Effect.fnUntraced(function* (
   cwd: string,
 ): Effect.fn.Return<URL, ParseError, Path.Path> {
   const path = yield* Path.Path;
-  const value = source.trim();
+  const value = Str.trim(source);
 
-  if (!path.isAbsolute(value) && !cwd.startsWith("file:")) {
+  if (!path.isAbsolute(value) && !Str.startsWith("file:")(cwd)) {
     return yield* Effect.try({ try: () => new URL(value, cwd), catch: parseFailure });
   }
 
@@ -158,7 +167,7 @@ const resolveCwd = Effect.fnUntraced(function* (path: Path.Path, cwd: LoadOption
   const directory = typeof cwd === "string" ? path.resolve(cwd) : path.resolve(".");
 
   return yield* path.toFileUrl(directory).pipe(
-    Effect.map((url) => (url.href.endsWith("/") ? url.href : `${url.href}/`)),
+    Effect.map((url) => (Str.endsWith("/")(url.href) ? url.href : `${url.href}/`)),
     Effect.mapError(parseFailure),
   );
 });
@@ -174,11 +183,7 @@ const readReadable = Effect.fnUntraced(function* (source: Readable) {
   return yield* NodeStream.fromReadable({
     evaluate: () => source,
     onError: parseFailure,
-  }).pipe(
-    Stream.decodeText,
-    Stream.mkString,
-    Effect.map((text) => text.trim()),
-  );
+  }).pipe(Stream.decodeText, Stream.mkString, Effect.map(Str.trim));
 });
 
 const documentObject = Schema.Record(Schema.String, Schema.Unknown);
@@ -205,6 +210,6 @@ function parseFailure(cause: unknown): ParseError {
 
 function valueKind(value: unknown): string {
   if (value === null) return "null";
-  if (Array.isArray(value)) return "Array";
+  if (Arr.isArray(value)) return "Array";
   return typeof value;
 }

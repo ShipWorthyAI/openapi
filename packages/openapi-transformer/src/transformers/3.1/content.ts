@@ -4,7 +4,7 @@ import type {
   OpenApiResponse,
   ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import { child } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type { ParsedBodyMediaType, ParsedEncoding, ParsedMediaType } from "../../model/index.ts";
@@ -52,7 +52,7 @@ export const transformBodyMediaType = Effect.fnUntraced(function* (
   const fields = yield* transformMediaType(document, mediaType, value, at);
 
   const encodings = yield* Effect.forEach(
-    Object.entries(value.encoding ?? {}),
+    Record.toEntries(value.encoding ?? {}),
     ([property, entry]) =>
       transformEncoding(document, property, entry, child(at, "encoding", property)),
   );
@@ -65,7 +65,7 @@ export const transformContent = Effect.fnUntraced(function* (
   value: OpenApiResponse["content"],
   at: string,
 ) {
-  return yield* Effect.forEach(Object.entries(value ?? {}), ([mediaType, entry]) =>
+  return yield* Effect.forEach(Record.toEntries(value ?? {}), ([mediaType, entry]) =>
     transformMediaType(document, mediaType, entry, child(at, mediaType)),
   );
 });
@@ -75,7 +75,7 @@ export const transformBodyContent = Effect.fnUntraced(function* (
   value: OpenApiResponse["content"],
   at: string,
 ) {
-  return yield* Effect.forEach(Object.entries(value ?? {}), ([mediaType, entry]) =>
+  return yield* Effect.forEach(Record.toEntries(value ?? {}), ([mediaType, entry]) =>
     transformBodyMediaType(document, mediaType, entry, child(at, mediaType)),
   );
 });

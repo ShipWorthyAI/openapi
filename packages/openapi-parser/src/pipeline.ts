@@ -1,4 +1,12 @@
-import { JsonPointer, JsonSchema, Predicate } from "effect";
+import {
+  Array as Arr,
+  Formatter,
+  JsonPointer,
+  JsonSchema,
+  Predicate,
+  Record as Rec,
+  String as Str,
+} from "effect";
 import type { DereferenceHooks } from "./plugins.ts";
 import { getAt, joinPointer } from "./pointer.ts";
 import { componentSchemas, schemaSlots } from "./upgraders/3.0-to-3.1.ts";
@@ -65,7 +73,7 @@ export function runSchemaPipeline(
   const others = schemaSlots(document, false);
   const slotSchemas: JsonSchema.JsonSchema[] = [];
 
-  const booleanSlots = others.map((slot) => {
+  const booleanSlots = Arr.map(others, (slot) => {
     const value = slot.parent[slot.key];
     return typeof value === "boolean" ? value : undefined;
   });
@@ -79,11 +87,11 @@ export function runSchemaPipeline(
   }
 
   const recursive = recursiveNames(definitions);
-  const rootDefs = new Set(Object.keys(asRecord(document.$defs) ?? {}));
+  const rootDefs = new Set(Rec.keys(asRecord(document.$defs) ?? {}));
   const aliases = new Map<string, string | null>();
   const resolving = new Set<string>();
 
-  for (const name of Object.keys(definitions)) {
+  for (const name of Rec.keys(definitions)) {
     definitions[name] = resolveValue(
       definitions[name],
       definitions,
@@ -115,9 +123,9 @@ export function runSchemaPipeline(
   }
 
   const parked: SavedAnnotation[] = [];
-  for (const [name, schema] of Object.entries(definitions))
+  for (const [name, schema] of Rec.toEntries(definitions))
     park(schema, "definition", name, [], parked);
-  slotSchemas.forEach((schema, index) => park(schema, "schema", String(index), [], parked));
+  Arr.forEach(slotSchemas, (schema, index) => park(schema, "schema", String(index), [], parked));
 
   const schemas = (slotSchemas.length > 0 ? slotSchemas : [{}]) as [
     JsonSchema.JsonSchema,
@@ -140,7 +148,7 @@ export function runSchemaPipeline(
     if (value !== undefined) slot.parent[slot.key] = value;
   }
 
-  others.forEach((slot, index) => {
+  Arr.forEach(others, (slot, index) => {
     slot.parent[slot.key] = booleanSlots[index] ?? converted.schemas[index];
   });
 
@@ -162,7 +170,7 @@ function normalizeSchema(value: unknown): JsonSchema.Document<"draft-2020-12"> {
   // Nested $defs on a schema without $id stay on that schema.
   if (typeof record.$id === "string") return normalized;
   const extracted = asRecord(normalized.definitions);
-  if (!extracted || Object.keys(extracted).length === 0) return normalized;
+  if (!extracted || Rec.isEmptyRecord(extracted)) return normalized;
   const schema = asRecord(normalized.schema) ?? {};
   schema.$defs = { ...asRecord(schema.$defs), ...extracted };
   return { dialect: normalized.dialect, schema, definitions: {} };
@@ -174,14 +182,14 @@ function mergeDefinitions(
   owner: JsonSchema.JsonSchema,
   order: string[],
 ): void {
-  for (const [name, schema] of Object.entries(extra)) {
-    if (!Object.hasOwn(pool, name)) {
+  for (const [name, schema] of Rec.toEntries(extra)) {
+    if (!Rec.has(pool, name)) {
       pool[name] = schema;
       rememberDefinition(order, name);
       continue;
     }
 
-    if (JSON.stringify(pool[name]) === JSON.stringify(schema)) continue;
+    if (Formatter.formatJson(pool[name]) === Formatter.formatJson(schema)) continue;
     const unique = uniqueName(pool, name);
     pool[unique] = schema;
     rememberDefinition(order, unique);
@@ -200,11 +208,11 @@ function orderDefinitions(definitions: unknown, order: readonly string[]): unkno
   const output: Record<string, unknown> = {};
 
   for (const name of order) {
-    if (Object.hasOwn(source, name)) output[name] = source[name];
+    if (Rec.has(source, name)) output[name] = source[name];
   }
 
-  for (const name of Object.keys(source)) {
-    if (!Object.hasOwn(output, name)) output[name] = source[name];
+  for (const name of Rec.keys(source)) {
+    if (!Rec.has(output, name)) output[name] = source[name];
   }
 
   return output;
@@ -212,7 +220,7 @@ function orderDefinitions(definitions: unknown, order: readonly string[]): unkno
 
 function uniqueName(pool: Record<string, unknown>, name: string): string {
   let suffix = 2;
-  while (Object.hasOwn(pool, `${name}_${suffix}`)) suffix += 1;
+  while (Rec.has(pool, `${name}_${suffix}`)) suffix += 1;
   return `${name}_${suffix}`;
 }
 
@@ -220,12 +228,16 @@ function rewriteDefName(schema: unknown, from: string, to: string): void {
   const record = asRecord(schema);
   if (!record) return;
   if (record.$ref === `#/$defs/${from}`) record.$ref = `#/$defs/${to}`;
-  for (const value of Object.values(record)) rewriteDefName(value, from, to);
+  for (const value of Rec.values(record)) rewriteDefName(value, from, to);
 }
 
 function recursiveNames(definitions: Record<string, JsonSchema.JsonSchema>): Set<string> {
-  const names = Object.keys(definitions);
-  const dependencies = new Map(names.map((name) => [name, collectDefRefs(definitions[name]!)]));
+  const names = Rec.keys(definitions);
+
+  const dependencies = new Map(
+    Arr.map(names, (name): [string, Set<string>] => [name, collectDefRefs(definitions[name]!)]),
+  );
+
   const recursive = new Set<string>();
   const state = new Map<string, 0 | 1 | 2>();
   const stack: string[] = [];
@@ -237,7 +249,7 @@ function recursiveNames(definitions: Record<string, JsonSchema.JsonSchema>): Set
       const start = stack.indexOf(name);
       const cycle = stack.slice(start);
 
-      if (cycle.every((item) => isPureRef(definitions[item]))) {
+      if (Arr.every(cycle, (item) => isPureRef(definitions[item]))) {
         throw circularAliasFailure(name);
       }
 
@@ -266,22 +278,23 @@ function collectDefRefs(
   found = new Set<string>(),
   seen = new Set<object>(),
 ): Set<string> {
-  if (typeof value !== "object" || value === null || seen.has(value)) return found;
+  if (!Predicate.isObjectOrArray(value) || seen.has(value)) return found;
   seen.add(value);
 
-  if (Array.isArray(value)) {
+  if (Arr.isArray(value)) {
     for (const item of value) collectDefRefs(item, found, seen);
     return found;
   }
 
-  const ref = (value as { $ref?: unknown }).$ref;
+  const record: Record<string, unknown> = value;
+  const ref = record.$ref;
 
   if (typeof ref === "string") {
     const key = referenceKey(ref);
     if (key) found.add(key);
   }
 
-  for (const child of Object.values(value)) collectDefRefs(child, found, seen);
+  for (const child of Rec.values(record)) collectDefRefs(child, found, seen);
   return found;
 }
 
@@ -298,7 +311,7 @@ function resolveValue(
   hooks: DereferenceHooks | undefined,
   pointer: string,
 ): unknown {
-  if (Array.isArray(value)) {
+  if (Arr.isArray(value)) {
     for (let index = 0; index < value.length; index++) {
       value[index] = resolveValue(
         value[index],
@@ -322,7 +335,7 @@ function resolveValue(
   if (typeof record.$ref === "string") {
     const key = referenceKey(record.$ref);
 
-    if (key && !Object.hasOwn(definitions, key)) {
+    if (key && !Rec.has(definitions, key)) {
       if (rootDefs.has(key)) {
         record.$ref = rootDefRef(key);
       } else {
@@ -355,25 +368,24 @@ function resolveValue(
         const siblings = { ...record };
         delete siblings.$ref;
 
-        const result =
-          Object.keys(siblings).length === 0
-            ? resolved
-            : {
-                allOf: [
-                  resolved,
-                  resolveValue(
-                    siblings,
-                    definitions,
-                    rootDefs,
-                    recursive,
-                    aliases,
-                    resolving,
-                    mode,
-                    hooks,
-                    pointer,
-                  ),
-                ],
-              };
+        const result = Rec.isEmptyRecord(siblings)
+          ? resolved
+          : {
+              allOf: [
+                resolved,
+                resolveValue(
+                  siblings,
+                  definitions,
+                  rootDefs,
+                  recursive,
+                  aliases,
+                  resolving,
+                  mode,
+                  hooks,
+                  pointer,
+                ),
+              ],
+            };
 
         hooks?.onDereference?.(pointer, result, record, "$ref");
         return result;
@@ -381,7 +393,7 @@ function resolveValue(
     }
   }
 
-  for (const [key, child] of Object.entries(record)) {
+  for (const [key, child] of Rec.toEntries(record)) {
     record[key] = resolveValue(
       child,
       definitions,
@@ -415,7 +427,7 @@ function finalName(
   if (isPureRef(schema)) {
     const key = referenceKey(schema.$ref);
 
-    if (key && Object.hasOwn(definitions, key)) {
+    if (key && Rec.has(definitions, key)) {
       const resolved = finalName(key, definitions, aliases);
       aliases.set(name, resolved);
       return resolved;
@@ -428,11 +440,11 @@ function finalName(
 
 function isPureRef(value: unknown): value is { $ref: string } {
   const record = asRecord(value);
-  return Boolean(record && typeof record.$ref === "string" && Object.keys(record).length === 1);
+  return Boolean(record && typeof record.$ref === "string" && Rec.size(record) === 1);
 }
 
 function referenceKey(ref: string): string | undefined {
-  if (!ref.startsWith("#")) return undefined;
+  if (!Str.startsWith("#")(ref)) return undefined;
   const tokens = JsonPointer.parseUriFragment(ref);
   if (tokens === undefined) throw invalidPointerFailure(ref, ref);
   return tokens.length === 2 && tokens[0] === "$defs" ? tokens[1] : undefined;
@@ -449,7 +461,7 @@ function park(
   if (!record) return;
 
   for (const key of ANNOTATIONS) {
-    if (!Object.hasOwn(record, key)) continue;
+    if (!Rec.has(record, key)) continue;
     saved.push({ scope, id, pointer: [...pointer], key, value: record[key] });
     delete record[key];
   }
@@ -457,9 +469,10 @@ function park(
   for (const key of NESTED_SINGLE) park(record[key], scope, id, [...pointer, key], saved);
 
   for (const key of NESTED_ARRAY) {
-    if (!Array.isArray(record[key])) continue;
+    const items = record[key];
+    if (!Arr.isArray(items)) continue;
 
-    (record[key] as unknown[]).forEach((item, index) =>
+    Arr.forEach(items, (item, index) =>
       park(item, scope, id, [...pointer, key, String(index)], saved),
     );
   }
@@ -467,8 +480,7 @@ function park(
   for (const key of NESTED_MAP) {
     const map = asRecord(record[key]);
     if (!map) continue;
-    for (const child of Object.keys(map))
-      park(map[child], scope, id, [...pointer, key, child], saved);
+    for (const child of Rec.keys(map)) park(map[child], scope, id, [...pointer, key, child], saved);
   }
 }
 
@@ -489,7 +501,7 @@ function descend(value: unknown, pointer: string[]): unknown {
   let current = value;
 
   for (const token of pointer) {
-    if (Array.isArray(current)) {
+    if (Arr.isArray(current)) {
       current = current[Number(token)];
       continue;
     }
@@ -504,7 +516,7 @@ function descend(value: unknown, pointer: string[]): unknown {
 
 function restoreRootDefs(document: Record<string, unknown>): void {
   const visit = (value: unknown) => {
-    if (Array.isArray(value)) {
+    if (Arr.isArray(value)) {
       for (const item of value) visit(item);
       return;
     }
@@ -512,22 +524,22 @@ function restoreRootDefs(document: Record<string, unknown>): void {
     const record = asRecord(value);
     if (!record) return;
 
-    if (typeof record.$ref === "string" && record.$ref.startsWith("#/root-defs/")) {
-      const name = record.$ref.slice("#/root-defs/".length);
+    if (typeof record.$ref === "string" && Str.startsWith("#/root-defs/")(record.$ref)) {
+      const name = Str.slice("#/root-defs/".length)(record.$ref);
       record.$ref = joinPointer("#/$defs", JsonPointer.unescapeToken(name));
     }
 
-    for (const child of Object.values(record)) visit(child);
+    for (const child of Rec.values(record)) visit(child);
   };
 
   visit(document);
 }
 
 function rewriteLeftoverDefinitionRefs(document: Record<string, unknown>): void {
-  const names = new Set(Object.keys(asRecord(asRecord(document.components)?.schemas) ?? {}));
+  const names = new Set(Rec.keys(asRecord(asRecord(document.components)?.schemas) ?? {}));
 
   const visit = (value: unknown) => {
-    if (Array.isArray(value)) {
+    if (Arr.isArray(value)) {
       for (const item of value) visit(item);
       return;
     }
@@ -535,7 +547,7 @@ function rewriteLeftoverDefinitionRefs(document: Record<string, unknown>): void 
     const record = asRecord(value);
     if (!record) return;
 
-    if (typeof record.$ref === "string" && record.$ref.startsWith("#/$defs/")) {
+    if (typeof record.$ref === "string" && Str.startsWith("#/$defs/")(record.$ref)) {
       const tokens = JsonPointer.parseUriFragment(record.$ref);
       const name = tokens?.[0] === "$defs" ? tokens[1] : undefined;
 
@@ -544,7 +556,7 @@ function rewriteLeftoverDefinitionRefs(document: Record<string, unknown>): void 
       }
     }
 
-    for (const child of Object.values(record)) visit(child);
+    for (const child of Rec.values(record)) visit(child);
   };
 
   visit(document);
@@ -558,7 +570,7 @@ export function inlineRemaining(
   const visiting = new Set<string>();
 
   const walk = (value: unknown, parent?: Record<string, unknown>, key?: string, pointer = "#") => {
-    if (Array.isArray(value)) {
+    if (Arr.isArray(value)) {
       for (let index = 0; index < value.length; index++) {
         walk(
           value[index],
@@ -574,7 +586,7 @@ export function inlineRemaining(
     const record = asRecord(value);
     if (!record) return;
 
-    if (typeof record.$ref === "string" && record.$ref.startsWith("#") && parent && key) {
+    if (typeof record.$ref === "string" && Str.startsWith("#")(record.$ref) && parent && key) {
       const ref = record.$ref;
       const name = componentSchemaName(ref);
 
@@ -598,7 +610,7 @@ export function inlineRemaining(
       return;
     }
 
-    for (const [childKey, child] of Object.entries(record)) {
+    for (const [childKey, child] of Rec.toEntries(record)) {
       walk(child, record, childKey, joinPointer(pointer, childKey));
     }
   };

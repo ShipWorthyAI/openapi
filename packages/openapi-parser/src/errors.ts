@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Formatter, Option, pipe, Schema, String as Str } from "effect";
 
 const failureFields = {
   message: Schema.String,
@@ -142,7 +142,11 @@ export function missingPointerFailure(
   targetFound = "",
   parentPath = "",
 ): MissingPointerFailure {
-  const hash = source.includes("#") ? source.slice(source.indexOf("#")) : source;
+  const hash = pipe(
+    source,
+    Str.indexOf("#"),
+    Option.match({ onNone: () => source, onSome: (index) => Str.slice(index)(source) }),
+  );
 
   return new MissingPointerFailure({
     message: `Missing $ref pointer "${hash}". Token "${token}" does not exist.`,
@@ -164,7 +168,7 @@ export function invalidPointerFailure(pointer: string, source = pointer): Invali
 
 export function circularAliasFailure(definition: string): CircularAliasFailure {
   return new CircularAliasFailure({
-    message: `Definition ${JSON.stringify(definition)} is a circular alias.`,
+    message: `Definition ${Formatter.formatJson(definition)} is a circular alias.`,
     definition,
   });
 }

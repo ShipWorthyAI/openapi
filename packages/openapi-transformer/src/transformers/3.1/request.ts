@@ -4,7 +4,7 @@ import {
   type OpenApiOperation,
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Array, Effect, Record } from "effect";
 import { child, resolve } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type { ParsedRequestBody } from "../../model/index.ts";
@@ -34,12 +34,12 @@ export const transformRequestBodyMap = Effect.fnUntraced(function* (
   at: string,
 ) {
   const entries = yield* Effect.forEach(
-    Object.entries(value ?? {}),
+    Record.toEntries(value ?? {}),
     Effect.fnUntraced(function* ([key, entry]) {
       const body = yield* transformRequestBody(document, entry, child(at, key));
       return body === undefined ? [] : [[key, body] as const];
     }),
   );
 
-  return Object.fromEntries(entries.flat());
+  return Record.fromEntries(Array.flatten(entries));
 });

@@ -1,4 +1,4 @@
-import { Effect, Predicate, Schema } from "effect";
+import { Effect, Predicate, Schema, String as Str } from "effect";
 import { ParseError, ParserFailure } from "./errors.ts";
 import type { EffectPlugin, FileInfo, Options, ParserPlugin } from "./plugins.ts";
 import { promisePlugin } from "./plugins.ts";
@@ -8,18 +8,18 @@ import { parseYamlDocument } from "./yaml.ts";
 function decodeData(data: Uint8Array | string | undefined): string {
   if (data === undefined) return "";
   const text = typeof data === "string" ? data : new TextDecoder().decode(data);
-  return text.replace(/^\uFEFF/, "");
+  return Str.replace(/^\uFEFF/, "")(text);
 }
 
 const decodeJsonText = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown));
 
 function parseJsonText(text: string) {
-  return text.trim().length === 0 ? Effect.succeed(null) : decodeJsonText(text);
+  return Str.isEmpty(Str.trim(text)) ? Effect.succeed(null) : decodeJsonText(text);
 }
 
 export const parseText = Effect.fnUntraced(function* (source: string | Uint8Array) {
   const text = decodeData(source);
-  const first = text.trimStart()[0];
+  const first = Str.trimStart(text)[0];
   const yaml = () => Effect.try({ try: () => parseYamlDocument(text), catch: parseFailure });
 
   if (first === "{" || first === "[") {

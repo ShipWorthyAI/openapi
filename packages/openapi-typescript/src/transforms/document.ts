@@ -55,7 +55,7 @@ function operationRootTypes(declarations: readonly ts.Node[]): ts.TypeAliasDecla
       }
 
       const operationId = property.name.text;
-      const capitalized = String.capitalize(operationId).replace(/[^a-zA-Z\d_$]/g, "_");
+      const capitalized = String.replace(/[^a-zA-Z\d_$]/g, "_")(String.capitalize(operationId));
       const baseName = /^\d/.test(capitalized) ? `_${capitalized}` : capitalized;
       let aliasName = baseName;
 
@@ -175,7 +175,8 @@ export const transformDocument = Effect.fnUntraced(function* (
 
   // if no operations were created, add an empty operations type
   if (
-    !ctx.injectFooter.some(
+    !Array.some(
+      ctx.injectFooter,
       (node) => ts.isInterfaceDeclaration(node) && node.name.text === "operations",
     )
   ) {

@@ -1,5 +1,5 @@
 import type { ParsedComponents, ParsedSchema } from "@shipworthy/openapi-transformer";
-import { Effect, Predicate, String, Record } from "effect";
+import { Array as Arr, Effect, Predicate, String, Record } from "effect";
 import { performance } from "node:perf_hooks";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
@@ -37,7 +37,7 @@ type ComponentKey =
 function isEnumSchema(schema: unknown): boolean {
   return (
     Predicate.isObject(schema) &&
-    Array.isArray(schema.enum) &&
+    Arr.isArray(schema.enum) &&
     schema.type !== "object" &&
     !("properties" in schema) &&
     !("additionalProperties" in schema)
@@ -46,7 +46,7 @@ function isEnumSchema(schema: unknown): boolean {
 
 function singularizeComponentKey(key: ComponentKey): string {
   // requestBodies is the only irregular plural
-  return key === "requestBodies" ? "requestBody" : key.slice(0, -1);
+  return key === "requestBodies" ? "requestBody" : String.slice(0, -1)(key);
 }
 
 interface Component {
@@ -201,5 +201,5 @@ export const transformComponents = Effect.fnUntraced(function* (
     ),
   ];
 
-  return [ts.factory.createTypeLiteralNode(type), ...Object.values(aliases)];
+  return [ts.factory.createTypeLiteralNode(type), ...Record.values(aliases)];
 });

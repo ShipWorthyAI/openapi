@@ -36,10 +36,11 @@ function transformOperationTags(
   value: readonly string[] | undefined,
   at: string,
 ) {
-  return (value ?? []).map(
-    (name, index) =>
-      ctx.tags.find((tag) => tag.name === name) ??
-      ({ id: child(at, index), name, extensions: {} } satisfies typeof ParsedTag.Encoded),
+  return Array.map(value ?? [], (name, index) =>
+    Option.getOrElse(
+      Array.findFirst(ctx.tags, (tag) => tag.name === name),
+      () => ({ id: child(at, index), name, extensions: {} }) satisfies typeof ParsedTag.Encoded,
+    ),
   );
 }
 

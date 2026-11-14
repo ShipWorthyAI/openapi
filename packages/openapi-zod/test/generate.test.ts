@@ -17,6 +17,9 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import type { ZodIssue } from "zod";
 
+const requiredZod: string = createRequire(import.meta.url)("../package.json").peerDependencies.zod;
+const requiredZodPattern = requiredZod.replaceAll(".", "\\.");
+
 const document = {
   openapi: "3.1.0",
   info: { title: "Fixture", version: "1" },
@@ -519,6 +522,7 @@ void test("generation resolves Zod from the output package before the generator"
       recursive: true,
     });
 
+    await cp(resolve(import.meta.dirname, "../package.json"), resolve(generator, "package.json"));
     await mkdir(resolve(generator, "node_modules/zod"), { recursive: true });
     await mkdir(resolve(output, "node_modules"), { recursive: true });
     await mkdir(resolve(wrongOutput, "node_modules/zod"), { recursive: true });
@@ -552,7 +556,10 @@ void test("generation resolves Zod from the output package before the generator"
 
     assert.throws(
       () => Effect.runSync(wrong),
-      /#: Found zod@3\.25\.76 at .*sdk-wrong\/node_modules\/zod\/package\.json \(resolved from .*validators\.ts\); require zod@4\.6\.7/,
+      new RegExp(
+        String.raw`#: Found zod@3\.25\.76 at .*sdk-wrong\/node_modules\/zod\/package\.json \(resolved from .*validators\.ts\); require zod@` +
+          requiredZodPattern,
+      ),
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -584,7 +591,10 @@ void test("an import-only Zod at the output location cannot be bypassed", async 
 
     assert.throws(
       () => Effect.runSync(generated),
-      /#: Found zod@3\.25\.76 at .*sdk\/node_modules\/zod\/package\.json .*require zod@4\.6\.7/,
+      new RegExp(
+        String.raw`#: Found zod@3\.25\.76 at .*sdk\/node_modules\/zod\/package\.json .*require zod@` +
+          requiredZodPattern,
+      ),
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -603,7 +613,7 @@ void test("a malformed Zod import entry fails in the typed error channel", async
       resolve(packageDirectory, "package.json"),
       JSON.stringify({
         name: "zod",
-        version: "4.6.7",
+        version: requiredZod,
         type: "module",
         exports: { ".": { import: "./%2F" } },
       }),

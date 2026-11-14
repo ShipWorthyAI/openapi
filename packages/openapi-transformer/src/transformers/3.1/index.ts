@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Array, Effect, Record } from "effect";
 import type { OpenApiComponents, ParsedOpenApi } from "@shipworthy/openapi-parser/schemas/3.1";
 import type { ParsedService } from "../../model/index.ts";
 import { transformCallbackMap } from "./callbacks.ts";
@@ -53,7 +53,7 @@ export const transformService = Effect.fnUntraced(function* (doc: ParsedOpenApi)
     tags: ctx.tags,
     security: ctx.security,
     securitySchemes,
-    operations: Object.values(paths).flatMap((item) => item.operations),
+    operations: Array.flatMap(Record.values(paths), (item) => item.operations),
     paths,
     webhooks: yield* transformPathItemMap(ctx, doc.webhooks, "#/webhooks", false),
     components: {

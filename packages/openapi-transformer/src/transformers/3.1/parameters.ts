@@ -5,7 +5,7 @@ import {
   type OpenApiReference,
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Effect, Record } from "effect";
 import { child, resolve } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type { ParameterLocation, ParamStyle, ParsedParameter } from "../../model/index.ts";
@@ -60,9 +60,9 @@ export const transformParameterMap = Effect.fnUntraced(function* (
   value: OpenApiComponents["parameters"],
   at: string,
 ) {
-  return Object.fromEntries(
+  return Record.fromEntries(
     yield* Effect.forEach(
-      Object.entries(value ?? {}),
+      Record.toEntries(value ?? {}),
       Effect.fnUntraced(function* ([key, entry]) {
         return [key, yield* transformParameter(document, entry, child(at, key))] as const;
       }),

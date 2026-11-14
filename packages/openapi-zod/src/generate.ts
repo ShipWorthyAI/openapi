@@ -19,12 +19,14 @@ import {
 import {
   Array,
   Effect,
+  Formatter,
   Option,
   Order,
   Predicate,
   Record,
   Result,
   Schema,
+  String,
   Struct,
   pipe,
 } from "effect";
@@ -129,14 +131,14 @@ const discriminatorOf = Effect.fnUntraced(function* (value: unknown, path: strin
 
 function schemaName(ref: string): string | undefined {
   const prefix = "#/components/schemas/";
-  if (!ref.startsWith(prefix)) return undefined;
-  const token = ref.slice(prefix.length);
-  if (!token || token.includes("/")) return undefined;
-  return token.replaceAll("~1", "/").replaceAll("~0", "~");
+  if (!pipe(ref, String.startsWith(prefix))) return undefined;
+  const token = pipe(ref, String.slice(prefix.length));
+  if (!token || pipe(token, String.includes("/"))) return undefined;
+  return pipe(token, String.replaceAll("~1", "/"), String.replaceAll("~0", "~"));
 }
 
 function componentRef(name: string): string {
-  return `#/components/schemas/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`;
+  return `#/components/schemas/${pipe(name, String.replaceAll("~", "~0"), String.replaceAll("/", "~1"))}`;
 }
 
 function discriminatorValues(discriminator: ParsedDiscriminator, ref: string): readonly string[] {
@@ -150,7 +152,7 @@ function discriminatorValues(discriminator: ParsedDiscriminator, ref: string): r
   );
 
   if (mapped.length > 0) return mapped;
-  return Object.hasOwn(discriminator.mapping ?? {}, name) ? [] : [name];
+  return Record.has(discriminator.mapping ?? {}, name) ? [] : [name];
 }
 
 const branchValues = Effect.fnUntraced(function* (
@@ -311,7 +313,7 @@ const constrainComponent = Effect.fnUntraced(function* (
 });
 
 function isAnnotation(key: string): boolean {
-  return annotations.has(key) || key.startsWith("x-");
+  return annotations.has(key) || pipe(key, String.startsWith("x-"));
 }
 
 const encodeJson = Effect.fnUntraced(function* (value: unknown) {
@@ -407,7 +409,7 @@ const scanDiscriminatorSchema = Effect.fnUntraced(function* (
       yield* Effect.forEach(
         Record.values(discriminator.mapping ?? {}),
         Effect.fnUntraced(function* (target) {
-          const ref = target.startsWith("#") ? target : componentRef(target);
+          const ref = pipe(target, String.startsWith("#")) ? target : componentRef(target);
           if (schemaName(ref) === undefined) return;
 
           yield* addDiscriminatorConstraint(
@@ -656,10 +658,11 @@ function isSingleRequiredKey(part: ParsedSchema): part is JsonSchema & { require
 }
 
 function indent(value: string, spaces: number): string {
-  const pad = " ".repeat(spaces);
+  const pad = pipe(" ", String.repeat(spaces));
 
   return pipe(
-    value.split("\n"),
+    value,
+    String.split("\n"),
     Array.map((line) => (line.length === 0 ? line : pad + line)),
     Array.join("\n"),
   );
@@ -670,30 +673,36 @@ function schemaLiteral(
   names: readonly string[],
   expression?: string,
 ): string {
-  if (names.length === 0) return expression ?? JSON.stringify(schema, null, 2);
+  if (names.length === 0) return expression ?? Formatter.formatJson(schema, { space: 2 });
 
   const defs = indent(
     pipe(
       names,
-      Array.map((name) => `${JSON.stringify(name)}: definitions.${name}`),
+      Array.map((name) => `${Formatter.formatJson(name)}: definitions.${name}`),
       Array.join(",\n"),
     ),
     4,
   );
 
   if (expression) return `{\n  ...${expression},\n  $defs: {\n${defs}\n  },\n}`;
-  const json = JSON.stringify(schema, null, 2);
-  if (!json.startsWith("{\n")) return `{\n  $defs: {\n${defs}\n  },\n}`;
-  return `{\n${json.slice(2, -2)},\n  $defs: {\n${defs}\n  },\n}`;
+  const json = Formatter.formatJson(schema, { space: 2 });
+  if (!pipe(json, String.startsWith("{\n"))) return `{\n  $defs: {\n${defs}\n  },\n}`;
+  return `{\n${pipe(json, String.slice(2, -2))},\n  $defs: {\n${defs}\n  },\n}`;
 }
 
 const definitionName = Effect.fnUntraced(function* (
   ref: string,
 ): Effect.fn.Return<string, ZodGenerationError> {
   const marker = "#/$defs/";
-  if (!ref.startsWith(marker))
+  if (!pipe(ref, String.startsWith(marker)))
     return yield* new ZodGenerationError({ message: `${ref}: Reference not found` });
-  return ref.slice(marker.length).replaceAll("~1", "/").replaceAll("~0", "~");
+
+  return pipe(
+    ref,
+    String.slice(marker.length),
+    String.replaceAll("~1", "/"),
+    String.replaceAll("~0", "~"),
+  );
 });
 
 const objectProperties = Effect.fnUntraced(function* (
@@ -777,7 +786,10 @@ const normalize = Effect.fnUntraced(function* (
   };
 
   if (schema.$ref) {
-    if (!Predicate.isString(schema.$ref) || !schema.$ref.startsWith("#/components/schemas/")) {
+    if (
+      !Predicate.isString(schema.$ref) ||
+      !pipe(schema.$ref, String.startsWith("#/components/schemas/"))
+    ) {
       const ref = Predicate.isString(schema.$ref) ? schema.$ref : yield* encodeJson(schema.$ref);
 
       return yield* new ZodGenerationError({
@@ -797,7 +809,7 @@ const normalize = Effect.fnUntraced(function* (
         message: `${path}: Zod does not preserve ${sibling.value} alongside $ref`,
       });
 
-    result.$ref = `#/$defs/${schema.$ref.slice("#/components/schemas/".length)}`;
+    result.$ref = `#/$defs/${pipe(schema.$ref, String.slice("#/components/schemas/".length))}`;
     return result;
   }
 
@@ -1046,7 +1058,7 @@ const compileExport = Effect.fnUntraced(function* (
     },
     catch: (cause) =>
       new ZodGenerationError({
-        message: `${name}: ${cause instanceof Error ? cause.message : String(cause)}`,
+        message: `${name}: ${cause instanceof Error ? cause.message : globalThis.String(cause)}`,
         cause,
       }),
   });
@@ -1113,13 +1125,16 @@ function renderSource(
   if (definitions.size > 0) {
     const keys = pipe(
       Array.fromIterable(definitions.keys()),
-      Array.map((name) => JSON.stringify(name)),
+      Array.map((name) => Formatter.formatJson(name)),
       Array.join(" | "),
     );
 
     const values = pipe(
       Array.fromIterable(definitions),
-      Array.map(([name, schema]) => `${JSON.stringify(name)}: ${JSON.stringify(schema, null, 2)}`),
+      Array.map(
+        ([name, schema]) =>
+          `${Formatter.formatJson(name)}: ${Formatter.formatJson(schema, { space: 2 })}`,
+      ),
       Array.join(",\n"),
     );
 
@@ -1214,7 +1229,7 @@ const compile = Effect.fnUntraced(function* (
   routes: Record<string, OperationRoute>,
   outputPath?: string,
 ): Effect.fn.Return<ZodSource, ZodGenerationError> {
-  if (!model.openapi.startsWith("3.1."))
+  if (!pipe(model.openapi, String.startsWith("3.1.")))
     return yield* new ZodGenerationError({ message: "Zod generation requires OpenAPI 3.1" });
 
   if (model.jsonSchemaDialect || Record.keys(model.$defs).length > 0) {
@@ -1242,7 +1257,7 @@ const compile = Effect.fnUntraced(function* (
     name,
     schema,
     types: "components",
-    type: `components["schemas"][${JSON.stringify(name)}]`,
+    type: `components["schemas"][${Formatter.formatJson(name)}]`,
     expression: `definitions.${name}`,
     discriminatorDiagnostics: diagnostics,
   }));
@@ -1254,7 +1269,7 @@ const compile = Effect.fnUntraced(function* (
       ZodGenerationError
     > {
       const id = operation.operationId;
-      if (!id || !Object.hasOwn(routes, id)) return;
+      if (!id || !Record.has(routes, id)) return;
       const location = `${operation.method} ${operation.path}`;
       const body = operation.request.body;
       if (!body) return;
@@ -1296,7 +1311,7 @@ function exportedRequestBody(
   routes: Record<string, OperationRoute>,
 ): ParsedSchema | undefined {
   const id = operation.operationId;
-  if (!id || !Object.hasOwn(routes, id) || !operation.request.body) return undefined;
+  if (!id || !Record.has(routes, id) || !operation.request.body) return undefined;
   const contents = operation.request.body.contents;
   const content = contents.length === 1 ? contents[0] : undefined;
   return content?.mediaType === "application/json" ? content.schema : undefined;
@@ -1310,7 +1325,7 @@ const assertNoCamelCaseCollisions = Effect.fnUntraced(function* (
   const resolve = (ref: string): ParsedSchema | undefined => {
     const name = schemaName(ref);
 
-    return name !== undefined && Object.hasOwn(model.components.schemas, name)
+    return name !== undefined && Record.has(model.components.schemas, name)
       ? model.components.schemas[name]
       : undefined;
   };

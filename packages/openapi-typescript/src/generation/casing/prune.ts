@@ -1,4 +1,4 @@
-import { Array, Record } from "effect";
+import { Array, Record, String } from "effect";
 import type { CaseMapping, CaseMediaMap, CaseOperation, CaseSchema } from "./types.ts";
 
 function hasContent(schema: CaseSchema, activeRefs: ReadonlySet<string>): boolean {
@@ -114,8 +114,8 @@ function compactSchema(
 }
 
 function isJsonMediaType(mediaType: string): boolean {
-  const normalized = mediaType.toLowerCase();
-  return normalized === "application/json" || normalized.endsWith("+json");
+  const normalized = String.toLowerCase(mediaType);
+  return normalized === "application/json" || String.endsWith("+json")(normalized);
 }
 
 function compactMedia(

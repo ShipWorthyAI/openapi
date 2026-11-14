@@ -7,10 +7,15 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { test, type TestContext } from "vitest";
 import { serve, workspace } from "./cli.ts";
+
+// The zod generator requires the exact zod version in its peerDependencies.
+const requiredZod: string = createRequire(import.meta.url)("../../openapi-zod/package.json")
+  .peerDependencies.zod;
 
 const stampLine = /^ \* (@shipworthy\/openapi-typescript@\S+:[0-9a-f]{64})$/m;
 
@@ -587,6 +592,6 @@ test("zod reports the version resolved from its output directory", async (contex
   const error = await cli.fails("generate", "zod", "-i", "a.json", "-o", "out/pets");
   expect(error).toContain("Found zod@3.25.76");
   expect(error).toContain("out/pets/node_modules/zod/package.json");
-  expect(error).toContain("require zod@4.6.7");
+  expect(error).toContain(`require zod@${requiredZod}`);
   expect(cli.files("out/pets")).toEqual(["node_modules"]);
 });

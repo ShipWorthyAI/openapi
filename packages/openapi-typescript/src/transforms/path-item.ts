@@ -1,6 +1,6 @@
 import { httpMethods } from "@shipworthy/openapi-transformer";
 import type { ParsedOperation, ParsedPathItem } from "@shipworthy/openapi-transformer";
-import { Effect } from "effect";
+import { Array as Arr, Effect, Option, pipe, String as Str } from "effect";
 import ts from "#compiler";
 import { TypegenContext } from "../context.ts";
 import type { TypegenError } from "../errors.ts";
@@ -22,11 +22,12 @@ const HASH_RE = /#/g;
 
 /** The index of the top-level `operations` interface in the footer, adding it on first use. */
 function operationsIndex(ctx: GlobalContext): number {
-  const index = ctx.injectFooter.findIndex(
+  const index = Arr.findFirstIndex(
+    ctx.injectFooter,
     (node) => ts.isInterfaceDeclaration(node) && node.name.text === "operations",
   );
 
-  if (index !== -1) return index;
+  if (Option.isSome(index)) return index.value;
 
   ctx.injectFooter.push(
     ts.factory.createInterfaceDeclaration(
@@ -84,11 +85,12 @@ export const transformPathItem = Effect.fnUntraced(function* (
   const methods = yield* Effect.forEach(
     httpMethods,
     Effect.fnUntraced(function* (method) {
-      const operation: ParsedOperation | undefined = item.operations.find(
-        (entry) => entry.method.toLowerCase() === method,
+      const found: Option.Option<ParsedOperation> = Arr.findFirst(
+        item.operations,
+        (entry) => Str.toLowerCase(entry.method) === method,
       );
 
-      if (!operation) {
+      if (Option.isNone(found)) {
         return ts.factory.createPropertySignature(
           /* modifiers     */ undefined,
           /* name          */ tsPropertyIndex(method),
@@ -97,12 +99,13 @@ export const transformPathItem = Effect.fnUntraced(function* (
         );
       }
 
+      const operation = found.value;
       const operationPath = createRef([path, method]);
       let operationType: ts.TypeNode;
 
       if (operation.operationId) {
         // Operation ids can contain "#" when a ref was parsed as part of the id.
-        const operationId = operation.operationId.replace(HASH_RE, "/");
+        const operationId = pipe(operation.operationId, Str.replace(HASH_RE, "/"));
         // the interface comes before anything the operation adds to the footer
         const index = operationsIndex(ctx);
 

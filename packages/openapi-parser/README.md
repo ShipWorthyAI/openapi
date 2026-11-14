@@ -16,11 +16,11 @@ bun add @shipworthy/openapi-parser effect @effect/platform-node
 
 ### Requirements
 
-| Requirement   | Details                                                                                                                                                                                                                                                                                                                                           |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `effect`      | `^4.0.0`, a regular dependency. Add a compatible version to your own `package.json` so your application and the parser resolve to one copy to run the returned effects and to use the schemas.                                                                                                                                                    |
-| Platform      | `@effect/platform-node` `^4.0.0` is a regular dependency. Install it yourself only if your code imports it, as the examples here do for `NodeServices`. The parser imports `node:stream`, `node:url`, `node:path`, `node:dns/promises`, `node:net`, and the `Buffer` global, so it needs Node.js `>=22.19.0` or Bun. It does not run in browsers. |
-| Module format | ESM only (`"type": "module"`). Ships compiled JavaScript with `.d.ts` declarations; no TypeScript loader or bundler is needed.                                                                                                                                                                                                                    |
+| Requirement   | Details                                                                                                                                                                                                                                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `effect`      | `4.1.4`, a regular dependency. Add a compatible version to your own `package.json` so your application and the parser resolve to one copy to run the returned effects and to use the schemas.                                                                                                                                                    |
+| Platform      | `@effect/platform-node` `4.1.4` is a regular dependency. Install it yourself only if your code imports it, as the examples here do for `NodeServices`. The parser imports `node:stream`, `node:url`, `node:path`, `node:dns/promises`, `node:net`, and the `Buffer` global, so it needs Node.js `>=22.19.0` or Bun. It does not run in browsers. |
+| Module format | ESM only (`"type": "module"`). Ships compiled JavaScript with `.d.ts` declarations; no TypeScript loader or bundler is needed.                                                                                                                                                                                                                   |
 
 ## Quick start
 
@@ -357,7 +357,7 @@ None of these settings can be configured through the public API.
 - Load files with `URL` or `file://` strings. Bare strings are parsed as JSON or YAML text.
 - Input can be OpenAPI 3.0 or 3.1. Output is always bundled and upgraded OpenAPI 3.1 (`openapi: "3.1.0"` when upgraded from 3.0), with external refs moved into `components`.
 - Every error is a `Schema.SchemaError`. Read `error.message`.
-- Depends on `effect` `^4.0.0`. ESM only, and Node.js `>=22.19.0` or Bun. Ships compiled JavaScript. It does not run in browsers.
+- Depends on `effect` `4.1.4`. ESM only, and Node.js `>=22.19.0` or Bun. Ships compiled JavaScript. It does not run in browsers.
 - Next step in the toolchain: pass the result to `decode` from `@shipworthy/openapi-transformer` to get a `ParsedService` for code generators.
 
 ## License

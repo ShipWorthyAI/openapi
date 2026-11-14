@@ -7,7 +7,7 @@ actions, recursive object merges, array concatenation/appending, and primitive r
 ## Installation
 
 ```sh
-bun add @shipworthy/overlay effect@^4
+bun add @shipworthy/overlay effect@4.1.4
 ```
 
 Requires Node.js 22.19.0 or later, or Bun. Ships ESM JavaScript and TypeScript declarations.

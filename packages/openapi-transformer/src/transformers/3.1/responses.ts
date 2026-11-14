@@ -6,7 +6,7 @@ import {
   type OpenApiReference,
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect } from "effect";
+import { Array, Effect, Record, String } from "effect";
 import { child, resolve } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type { ParsedLink, ParsedOperationResponse, ParsedResponse } from "../../model/index.ts";
@@ -39,9 +39,9 @@ export const transformLinkMap = Effect.fnUntraced(function* (
   value: OpenApiComponents["links"],
   at: string,
 ) {
-  return Object.fromEntries(
+  return Record.fromEntries(
     yield* Effect.forEach(
-      Object.entries(value ?? {}),
+      Record.toEntries(value ?? {}),
       Effect.fnUntraced(function* ([key, entry]) {
         return [key, yield* transformLink(document, key, entry, child(at, key))] as const;
       }),
@@ -62,7 +62,7 @@ export const transformResponse = Effect.fnUntraced(function* (
     description: reference?.description ?? response.description,
     headers: yield* transformHeaderList(document, response.headers, child(id, "headers")),
     contents: yield* transformBodyContent(document, response.content, child(id, "content")),
-    links: Object.values(yield* transformLinkMap(document, response.links, child(id, "links"))),
+    links: Record.values(yield* transformLinkMap(document, response.links, child(id, "links"))),
     extensions: readExtensions(response),
   } satisfies typeof ParsedResponse.Encoded;
 });
@@ -72,9 +72,9 @@ export const transformResponseMap = Effect.fnUntraced(function* (
   value: OpenApiComponents["responses"],
   at: string,
 ) {
-  return Object.fromEntries(
+  return Record.fromEntries(
     yield* Effect.forEach(
-      Object.entries(value ?? {}),
+      Record.toEntries(value ?? {}),
       Effect.fnUntraced(function* ([key, entry]) {
         return [key, yield* transformResponse(document, entry, child(at, key))] as const;
       }),
@@ -87,7 +87,10 @@ export const transformOperationResponses = Effect.fnUntraced(function* (
   value: OpenApiOperation["responses"],
   at: string,
 ) {
-  const entries = Object.entries(value ?? {}).filter(([code]) => !code.startsWith("x-"));
+  const entries = Array.filter(
+    Record.toEntries(value ?? {}),
+    ([code]) => !String.startsWith("x-")(code),
+  );
 
   return yield* Effect.forEach(
     entries,

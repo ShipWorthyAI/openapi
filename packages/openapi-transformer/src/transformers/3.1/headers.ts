@@ -4,7 +4,7 @@ import {
   type OpenApiReference,
   type ParsedOpenApi,
 } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Effect, type SchemaIssue } from "effect";
+import { Array, Effect, Record, type SchemaIssue } from "effect";
 import { child, resolve } from "./pointer.ts";
 import { readExtensions } from "./extensions.ts";
 import type { ParsedHeader } from "../../model/index.ts";
@@ -40,7 +40,7 @@ export const transformHeaderList = Effect.fnUntraced(function* (
   value: OpenApiComponents["headers"],
   at: string,
 ) {
-  return yield* Effect.forEach(Object.entries(value ?? {}), ([name, entry]) =>
+  return yield* Effect.forEach(Record.toEntries(value ?? {}), ([name, entry]) =>
     transformHeader(document, name, entry, child(at, name)),
   );
 });
@@ -51,5 +51,5 @@ export const transformHeaderMap = Effect.fnUntraced(function* (
   at: string,
 ) {
   const headers = yield* transformHeaderList(document, value, at);
-  return Object.fromEntries(headers.map((header) => [header.name, header]));
+  return Record.fromEntries(Array.map(headers, (header) => [header.name, header] as const));
 });

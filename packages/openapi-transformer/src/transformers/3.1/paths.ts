@@ -1,5 +1,5 @@
 import { OpenApiPathItem } from "@shipworthy/openapi-parser/schemas/3.1";
-import { Array, Effect, Predicate } from "effect";
+import { Array, Effect, Predicate, Record, String } from "effect";
 import type { TransformContext } from "./context.ts";
 import { transformOperation } from "./operation.ts";
 import { child, resolve } from "./pointer.ts";
@@ -17,7 +17,8 @@ export const transformPathItem = Effect.fnUntraced(function* (
 ) {
   const expand =
     value.$ref !== undefined &&
-    (value.$ref.startsWith("#/paths/") || Object.keys(value).some((key) => key !== "$ref"));
+    (String.startsWith("#/paths/")(value.$ref) ||
+      Array.some(Record.keys(value), (key) => key !== "$ref"));
 
   const {
     value: item,
@@ -56,11 +57,12 @@ export const transformPathItemMap = Effect.fnUntraced(function* (
   skipExtensions: boolean,
   includeCallbacks = true,
 ) {
-  const entries = Object.entries(value ?? {}).filter(
-    ([key]) => !skipExtensions || !key.startsWith("x-"),
+  const entries = Array.filter(
+    Record.toEntries(value ?? {}),
+    ([key]) => !skipExtensions || !String.startsWith("x-")(key),
   );
 
-  return Object.fromEntries(
+  return Record.fromEntries(
     yield* Effect.forEach(
       entries,
       Effect.fnUntraced(function* ([key, entry]) {

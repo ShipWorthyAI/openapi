@@ -1,5 +1,5 @@
 import { format } from "oxfmt";
-import { Effect, Predicate } from "effect";
+import { Array as Arr, Effect, Option, pipe, Predicate, String as Str } from "effect";
 import { TypegenError } from "./errors.ts";
 
 const formatSource = Effect.fnUntraced(function* (source: string) {
@@ -9,11 +9,11 @@ const formatSource = Effect.fnUntraced(function* (source: string) {
       new TypegenError({ message: Predicate.isError(cause) ? cause.message : String(cause) }),
   });
 
-  const failure = result.errors.find((error) => error.severity === "Error");
+  const failure = Arr.findFirst(result.errors, (error) => error.severity === "Error");
 
-  if (failure) return yield* new TypegenError({ message: failure.message });
+  if (Option.isSome(failure)) return yield* new TypegenError({ message: failure.value.message });
 
-  return result.code.endsWith("\n") ? result.code : `${result.code}\n`;
+  return pipe(result.code, Str.endsWith("\n")) ? result.code : `${result.code}\n`;
 });
 
 /** Format generated TypeScript the same way the committed examples are formatted. */

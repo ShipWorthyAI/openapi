@@ -25,7 +25,7 @@ export const transformResponse = Effect.fnUntraced(function* (
   response: ParsedResponse,
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const declared = Object.fromEntries(response.headers.map((header) => [header.name, header]));
+  const declared = Record.fromIterableBy(response.headers, (header) => header.name);
 
   const headers: ts.TypeElement[] = yield* Effect.forEach(
     Record.toEntries(declared),
@@ -62,7 +62,7 @@ export const transformResponse = Effect.fnUntraced(function* (
     ),
   );
 
-  const contents = Object.fromEntries(response.contents.map((media) => [media.mediaType, media]));
+  const contents = Record.fromIterableBy(response.contents, (media) => media.mediaType);
 
   const content = yield* Effect.forEach(
     Record.toEntries(contents),

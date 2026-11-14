@@ -1,4 +1,6 @@
-import { NodeRuntime, NodeServices } from "@effect/platform-node";
+// Import modules directly: the package index also loads NodeRedis, which requires `redis`.
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   Array,
   Cause,
@@ -8,11 +10,14 @@ import {
   JsonSchema,
   Layer,
   Order,
+  Option,
   Path,
   pipe,
   Predicate,
+  Record,
   Schema,
   SchemaRepresentation,
+  String,
 } from "effect";
 import { Command, Flag } from "effect/cli";
 import { Digest } from "effect/crypto";
@@ -27,6 +32,7 @@ class GenerateSchemasError extends Schema.TaggedError<
   cause: Schema.optionalKey(Schema.Defect()),
 }) {}
 
+const isGenerateSchemasError = Schema.is(GenerateSchemasError);
 const publicNames = new Set(["OverlayInfo", "OverlayAction"]);
 
 // Runs inside SchemaRepresentation's synchronous `onEnter` hook, so it can only report failure by
@@ -37,11 +43,12 @@ function normalize(
 ): JsonSchema.JsonSchema {
   if (schema.unevaluatedProperties === undefined) return schema;
 
+  const definitionPrefix = "#/$defs/";
   const reference = schema.$ref;
 
   const extension =
-    typeof reference === "string" && reference.startsWith("#/$defs/")
-      ? definitions[reference.slice("#/$defs/".length)]
+    Predicate.isString(reference) && pipe(reference, String.startsWith(definitionPrefix))
+      ? definitions[pipe(reference, String.slice(definitionPrefix.length))]
       : undefined;
 
   if (
@@ -49,9 +56,9 @@ function normalize(
     schema.type !== "object" ||
     !Predicate.isObject(schema.properties) ||
     !Predicate.isObject(extension) ||
-    Object.keys(extension).some((key) => key !== "patternProperties") ||
+    Array.some(Record.keys(extension), (key) => key !== "patternProperties") ||
     !Predicate.isObject(extension.patternProperties) ||
-    Object.values(extension.patternProperties).some((value) => value !== true) ||
+    Array.some(Record.values(extension.patternProperties), (value) => value !== true) ||
     schema.patternProperties !== undefined ||
     schema.additionalProperties !== undefined ||
     schema.propertyNames !== undefined ||
@@ -73,8 +80,8 @@ function normalize(
     additionalProperties: true,
     propertyNames: {
       anyOf: [
-        { enum: Object.keys(schema.properties) },
-        ...Object.keys(extension.patternProperties).map((pattern) => ({ pattern })),
+        { enum: Record.keys(schema.properties) },
+        ...Array.map(Record.keys(extension.patternProperties), (pattern) => ({ pattern })),
       ],
     },
   };
@@ -102,7 +109,7 @@ const importSchema = Effect.fnUntraced(function* (source: string) {
       });
     },
     catch: (cause) =>
-      cause instanceof GenerateSchemasError
+      isGenerateSchemasError(cause)
         ? cause
         : new GenerateSchemasError({ message: "Cannot import the Overlay JSON Schema", cause }),
   });
@@ -123,13 +130,16 @@ const generate = Effect.fn("generate")(function* (source: string, version: strin
     SchemaRepresentation.toMultiDocument(representation),
   );
 
-  if (Object.keys(code.references.recursives).length !== 0 || code.artifacts.length !== 0) {
+  if (
+    !Record.isEmptyReadonlyRecord(code.references.recursives) ||
+    Array.isReadonlyArrayNonEmpty(code.artifacts)
+  ) {
     return yield* new GenerateSchemasError({
       message: "Overlay schema generation needs support for recursive references or code artifacts",
     });
   }
 
-  const root = code.codes[0];
+  const root = Option.getOrUndefined(Array.head(code.codes));
 
   if (root === undefined) {
     return yield* new GenerateSchemasError({ message: "Missing generated Overlay schema" });
@@ -179,7 +189,7 @@ const run = Effect.fn("generateSchemas")(function* ({ check }: { readonly check:
   const versions = pipe(
     yield* fs.readDirectoryEntries(schemaDirectory),
     Array.filter((entry) => entry.type === "Directory" && /^v\d+\.\d+$/.test(entry.name)),
-    Array.map((entry) => entry.name.slice(1)),
+    Array.map((entry) => pipe(entry.name, String.slice(1))),
     Array.sort(Order.String),
   );
 

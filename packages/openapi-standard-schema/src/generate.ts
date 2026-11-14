@@ -20,6 +20,7 @@ import {
   Result,
   Schema,
   SchemaRepresentation,
+  String,
   Struct,
 } from "effect";
 import { SchemaGenerationError } from "./errors.ts";
@@ -78,7 +79,7 @@ const camelCaseModel = Effect.fnUntraced(function* (
       path[0] === "components" &&
       path[1] === "schemas" &&
       name !== undefined &&
-      Object.hasOwn(model.components.schemas, name)
+      Record.has(model.components.schemas, name)
       ? model.components.schemas[name]
       : undefined;
   };
@@ -148,7 +149,7 @@ function failure(cause: unknown): SchemaGenerationError {
   if (Schema.is(SchemaGenerationError)(cause)) return cause;
 
   return new SchemaGenerationError({
-    message: Predicate.isError(cause) ? cause.message : String(cause),
+    message: Predicate.isError(cause) ? cause.message : globalThis.String(cause),
     cause,
   });
 }
@@ -315,7 +316,7 @@ const mergeDefinitions = Effect.fnUntraced(function* (
   return yield* Effect.forEach(
     Record.toEntries(extra),
     Effect.fnUntraced(function* ([name, schema]) {
-      if (!Object.hasOwn(pool, name)) {
+      if (!Record.has(pool, name)) {
         pool[name] = schema;
         return;
       }
@@ -436,7 +437,7 @@ function retargetRootDefRefs(renames: ReadonlyMap<string, string>) {
       const name = path?.[1];
       if (path?.length !== 2 || path[0] !== "$defs" || name === undefined) return;
       const target = renames.get(name);
-      if (target === undefined || (local !== undefined && Object.hasOwn(local, name))) return;
+      if (target === undefined || (local !== undefined && Record.has(local, name))) return;
       record.$ref = defRef(target);
     }).pipe(Effect.as(schema));
   });
@@ -533,7 +534,7 @@ const visit = Effect.fnUntraced(function* (
         "propertyNames",
         "contentSchema",
       ],
-      (key) => Object.hasOwn(schema, key),
+      (key) => Record.has<string, unknown>(schema, key),
     ),
     Effect.fnUntraced(function* (key) {
       const entries = decodeSchemaList(schema[key]);
@@ -583,7 +584,7 @@ const emit = Effect.fnUntraced(function* (
     ),
   );
 
-  if (!Array.some(imports, (line) => line.includes("Schema")))
+  if (!Array.some(imports, (line) => pipe(line, String.includes("Schema"))))
     imports.unshift(`import { Schema } from "effect";`);
 
   const artifacts = Array.filterMap(code.artifacts, (artifact) =>
@@ -652,7 +653,10 @@ const emit = Effect.fnUntraced(function* (
     { concurrency: 1 },
   );
 
-  return `${[...imports, ...artifacts, ...types, ...declarations, ...bodies, ...Array.flatten(exports)].join("\n")}\n`;
+  return `${Array.join(
+    [...imports, ...artifacts, ...types, ...declarations, ...bodies, ...Array.flatten(exports)],
+    "\n",
+  )}\n`;
 });
 
 function forwardReferenced(
@@ -664,7 +668,7 @@ function forwardReferenced(
 
   const scan = (runtime: string, accept: (name: string) => boolean) =>
     pipe(
-      Array.fromIterable(runtime.matchAll(identifierPattern)),
+      Array.fromIterable(pipe(runtime, String.matchAll(identifierPattern))),
       Array.map((match) => match[0]),
       Array.filter(Predicate.isNotUndefined),
       Array.filter((name) => names.has(name) && accept(name)),

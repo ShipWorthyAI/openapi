@@ -1,4 +1,15 @@
-import { Array as Arr, Effect, Option, Predicate, Result, Schema } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Formatter,
+  Option,
+  pipe,
+  Predicate,
+  Record,
+  Result,
+  Schema,
+  String as Str,
+} from "effect";
 import * as Yaml from "effect/encoding/Yaml";
 import { exec, type Path } from "jsonpath-rfc9535";
 import { OverlayError } from "./errors.ts";
@@ -46,17 +57,19 @@ const parseInput = Effect.fnUntraced(function* (input: unknown, label: string) {
 });
 
 function cloneObject(value: Schema.JsonObject): Schema.MutableJsonObject {
-  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clone(item)]));
+  return Record.fromEntries(
+    Arr.map(Record.toEntries(value), ([key, item]) => [key, clone(item)] as const),
+  );
 }
 
 function clone(value: Schema.Json): Schema.MutableJson {
-  if (Array.isArray(value)) return value.map(clone);
+  if (Arr.isArray<Schema.Json>(value)) return Arr.map(value, clone);
   if (Predicate.isObject(value)) return cloneObject(value as Schema.JsonObject);
   return value as Schema.MutableJson;
 }
 
 function kind(value: Schema.Json): "array" | "object" | "primitive" {
-  if (Array.isArray(value)) return "array";
+  if (Arr.isArray<Schema.Json>(value)) return "array";
   return Predicate.isObject(value) ? "object" : "primitive";
 }
 
@@ -65,9 +78,12 @@ function merge(
   update: Schema.Json,
   append = false,
 ): Schema.MutableJson {
-  if (Array.isArray(target)) {
-    if (!Array.isArray(update) && !append) throw new TypeError("Incompatible array property");
-    const items = Array.isArray(update) ? update : [update];
+  if (Arr.isArray<Schema.MutableJson>(target)) {
+    if (!Arr.isArray<Schema.Json>(update) && !append) {
+      throw new TypeError("Incompatible array property");
+    }
+
+    const items = Arr.isArray<Schema.Json>(update) ? update : [update];
 
     for (const item of items) target.push(clone(item));
     return target;
@@ -78,8 +94,10 @@ function merge(
       throw new TypeError("An object target requires an object update");
     const object = target as Schema.MutableJsonObject;
 
-    for (const [key, value] of Object.entries(update as Schema.JsonObject)) {
-      const next = Object.hasOwn(object, key) ? merge(object[key]!, value) : clone(value);
+    for (const [key, value] of Record.toEntries(update as Schema.JsonObject)) {
+      const next = Record.has<string, Schema.MutableJson>(object, key)
+        ? merge(object[key]!, value)
+        : clone(value);
 
       Object.defineProperty(target, key, {
         value: next,
@@ -111,7 +129,7 @@ function select(document: Schema.MutableJsonObject, expression: string): Node[] 
     let parent: Schema.MutableJson = document;
 
     for (const key of path.slice(0, -1)) {
-      parent = Array.isArray(parent)
+      parent = Arr.isArray(parent)
         ? parent[Number(key)]!
         : (parent as Schema.MutableJsonObject)[key]!;
     }
@@ -128,11 +146,13 @@ function select(document: Schema.MutableJsonObject, expression: string): Node[] 
 }
 
 function uniqueNodes(nodes: Node[]): Node[] {
-  return [...new Map(nodes.map((node) => [JSON.stringify(node.path), node])).values()];
+  return [
+    ...new Map(Arr.map(nodes, (node) => [Formatter.formatJson(node.path), node] as const)).values(),
+  ];
 }
 
 function remove(nodes: Node[]): void {
-  if (nodes.some((node) => node.parent === undefined)) {
+  if (Arr.some(nodes, (node) => node.parent === undefined)) {
     throw new TypeError("Cannot remove the document root, which has no containing map or array");
   }
 
@@ -150,7 +170,7 @@ function remove(nodes: Node[]): void {
   );
 
   for (const { parent, key } of ordered) {
-    if (Array.isArray(parent)) parent.splice(Number(key), 1);
+    if (Arr.isArray(parent)) parent.splice(Number(key), 1);
     else if (parent !== undefined && key !== undefined) delete parent[key];
   }
 }
@@ -165,7 +185,7 @@ function applyAction(
     throw new TypeError(`Overlay ${version} action behavior is not implemented`);
   }
 
-  if (version === "1.0" && nodes.some((node) => kind(node.value) === "primitive")) {
+  if (version === "1.0" && Arr.some(nodes, (node) => kind(node.value) === "primitive")) {
     throw new TypeError("Overlay 1.0 targets must select objects or arrays, not primitives");
   }
 
@@ -174,7 +194,7 @@ function applyAction(
     return;
   }
 
-  const hasUpdate = Object.hasOwn(action, "update");
+  const hasUpdate = Record.has(action, "update");
   const copy = version === "1.1" && typeof action.copy === "string" ? action.copy : undefined;
 
   if (hasUpdate && copy !== undefined) {
@@ -183,7 +203,7 @@ function applyAction(
 
   if (!hasUpdate && copy === undefined) return;
 
-  if (version === "1.1" && new Set(nodes.map((node) => kind(node.value))).size > 1) {
+  if (version === "1.1" && new Set(Arr.map(nodes, (node) => kind(node.value))).size > 1) {
     throw new TypeError(
       "All selected nodes must be objects, arrays, or primitives of the same category",
     );
@@ -199,14 +219,14 @@ function applyAction(
   }
 
   for (const node of uniqueNodes(nodes)) {
-    if (version === "1.0" && Array.isArray(node.value)) {
+    if (version === "1.0" && Arr.isArray(node.value)) {
       node.value.push(clone(update!));
       continue;
     }
 
     const value = merge(node.value, update!, true);
 
-    if (Array.isArray(node.parent)) node.parent[Number(node.key)] = value;
+    if (Arr.isArray(node.parent)) node.parent[Number(node.key)] = value;
     else if (node.parent !== undefined && node.key !== undefined) {
       Object.defineProperty(node.parent, node.key, {
         value,
@@ -249,7 +269,7 @@ export const applyOverlayWithWarnings = Effect.fn("applyOverlayWithWarnings")(fu
   );
 
   const result = cloneObject(source);
-  const version = parsed.overlay.split(".").slice(0, 2).join(".");
+  const version = pipe(parsed.overlay, Str.split("."), Arr.take(2), Arr.join("."));
 
   const warnings = yield* Effect.forEach(
     parsed.actions,

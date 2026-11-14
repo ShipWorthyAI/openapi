@@ -14,7 +14,17 @@ import {
   type ParsedResponse,
   type ParsedService,
 } from "@shipworthy/openapi-transformer";
-import { Array as Arr, Effect, JsonPointer, Option, Predicate, Record, Schema } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  JsonPointer,
+  Option,
+  pipe,
+  Predicate,
+  Record,
+  Schema,
+  String as Str,
+} from "effect";
 import type { CaseMapping, CaseOperation, CaseSchema } from "./types.ts";
 import { compactCaseMapping } from "./prune.ts";
 import { CaseMappingGenerationError } from "./errors.ts";
@@ -31,7 +41,7 @@ function schemaEntries(value: unknown): Array<readonly [string, ParsedSchema]> {
 }
 
 function schemaList(value: unknown): ParsedSchema[] {
-  return Arr.filter(Array.isArray(value) ? value : [], (entry): entry is ParsedSchema =>
+  return Arr.filter(Arr.isArray(value) ? value : [], (entry): entry is ParsedSchema =>
     isParsedSchema(entry),
   );
 }
@@ -105,27 +115,35 @@ function resolveSchema(
   roots: ReadonlyMap<string, ParsedSchema>,
   ref: string,
 ): ParsedSchema | undefined {
-  if (!ref.startsWith("#/")) return undefined;
+  if (!Str.startsWith("#/")(ref)) return undefined;
 
   let prefix = ref;
 
-  while (prefix.startsWith("#/")) {
+  while (Str.startsWith("#/")(prefix)) {
     const root = roots.get(prefix);
 
     if (root !== undefined) {
-      const suffix = ref.slice(prefix.length);
+      const suffix = Str.slice(prefix.length)(ref);
 
-      const segments = suffix ? Arr.map(suffix.slice(1).split("/"), JsonPointer.unescapeToken) : [];
+      const segments = suffix
+        ? Arr.map(pipe(suffix, Str.slice(1), Str.split("/")), JsonPointer.unescapeToken)
+        : [];
 
       const resolved = Arr.reduce(segments, root as unknown, (value, segment) => {
-        if (Array.isArray(value)) return value[Number(segment)];
+        if (Arr.isArray(value)) return value[Number(segment)];
         return Predicate.isObject(value) ? value[segment] : undefined;
       });
 
       return isParsedSchema(resolved) ? resolved : undefined;
     }
 
-    prefix = prefix.slice(0, prefix.lastIndexOf("/"));
+    const slash = pipe(
+      prefix,
+      Str.lastIndexOf("/"),
+      Option.getOrElse(() => -1),
+    );
+
+    prefix = Str.slice(0, slash)(prefix);
   }
 
   return undefined;
@@ -144,7 +162,7 @@ function discriminatorFields(
 
     const discriminator = Option.getOrUndefined(decodeDiscriminator(schema.discriminator));
 
-    if (discriminator && Array.isArray(schema.oneOf)) {
+    if (discriminator && Arr.isArray(schema.oneOf)) {
       const references = [
         ...Arr.flatMap(schemaList(schema.oneOf), (item) =>
           Predicate.isObject(item) && Predicate.isString(item.$ref) ? [item.$ref] : [],
@@ -153,7 +171,7 @@ function discriminatorFields(
       ];
 
       Arr.forEach(references, (ref) => {
-        if (!ref.startsWith("#/")) return;
+        if (!Str.startsWith("#/")(ref)) return;
         const names = fields.get(ref) ?? [];
 
         if (!Arr.contains(names, discriminator.propertyName)) {
@@ -197,7 +215,7 @@ const caseSchema = Effect.fnUntraced(function* (
 
   const ref = Predicate.isString(schema.$ref) ? schema.$ref : undefined;
 
-  if (ref && !Object.hasOwn(context.schemas, ref)) {
+  if (ref && !Record.has(context.schemas, ref)) {
     const target = resolveSchema(context.roots, ref);
 
     if (target === undefined) {

@@ -2,7 +2,7 @@ import type { Generator } from "@shipworthy/openapi-generator";
 import type { ParsedService } from "@shipworthy/openapi-transformer";
 import type { CaseMapping } from "@shipworthy/openapi-fetch/middleware/transform-casing";
 import { buildCaseMapping } from "@shipworthy/openapi-typescript/case-mapping";
-import { Effect, Schema } from "effect";
+import { Array, Effect, Formatter, Record, Schema, pipe } from "effect";
 import { TanstackGenerationError } from "./errors.ts";
 import type { OperationRoute } from "./query-utils.ts";
 
@@ -34,7 +34,7 @@ export const operationRoutes = Effect.fnUntraced(function* (
       const id = operation.operationId;
       if (!id) return yield* reject(`${label}: Missing operationId`);
       if (blockedOperationIds.has(id)) return yield* reject(`Unsupported operationId: ${id}`);
-      if (Object.hasOwn(routes, id)) return yield* reject(`Duplicate operationId: ${id}`);
+      if (Record.has(routes, id)) return yield* reject(`Duplicate operationId: ${id}`);
       routes[id] = [operation.method as OperationRoute[0], operation.path];
       return routes;
     }),
@@ -71,16 +71,20 @@ function clientSource(
   routes: Record<string, OperationRoute>,
   mapping?: CaseMapping,
 ): string {
-  const entries = Object.entries(routes)
-    .map(([id, route]) => `  ${JSON.stringify(id)}: ${JSON.stringify(route)},`)
-    .join("\n");
+  const entries = pipe(
+    Record.collect(
+      routes,
+      (id, route) => `  ${Formatter.formatJson(id)}: ${Formatter.formatJson(route)},`,
+    ),
+    Array.join("\n"),
+  );
 
   const clientImport = mapping
     ? "createApiClient, createTanstackQueryUtils, type ApiClientOptions, type TanstackQueryUtilsOptions"
     : "createApiClient, createTanstackQueryUtils, type TanstackQueryUtilsOptions";
 
   const createClient = mapping
-    ? `const caseMapping = ${JSON.stringify(mapping, null, 2)} as const;
+    ? `const caseMapping = ${Formatter.formatJson(mapping, { space: 2 })} as const;
 
 export const create${prefix}ApiClient = (options: ApiClientOptions) =>
   createApiClient<paths>({ ...options, caseMapping });`
@@ -98,9 +102,7 @@ ${entries}
 } as const;
 
 export function create${prefix}ApiQueryUtils(client: ${prefix}ApiClient, options?: Partial<TanstackQueryUtilsOptions>) {
-  return createTanstackQueryUtils<Pick<operations, keyof typeof routes>>(client, routes, { prefix: ${JSON.stringify(
-    name,
-  )}, ...options });
+  return createTanstackQueryUtils<Pick<operations, keyof typeof routes>>(client, routes, { prefix: ${Formatter.formatJson(name)}, ...options });
 }
 `;
 }

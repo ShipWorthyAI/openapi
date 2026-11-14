@@ -2,19 +2,7 @@ import { effectNative, strict } from "@effect/tsgo/oxlint-presets";
 import { Record } from "effect";
 import { defineConfig } from "oxlint";
 
-// Not yet adopted: these prefer Effect's String, Array, and Record helpers over native methods.
-// global-json also flags infallible JSON.stringify calls in pure code generators;
-// global-json-in-effect still applies inside Effect code.
-const deferredEffectNativeRules = new Set([
-  "effecttsgo/global-json",
-  "effecttsgo/prefer-effect-array",
-  "effecttsgo/prefer-effect-record",
-  "effecttsgo/prefer-effect-string",
-]);
-
-const effectNativeErrors = Record.map(effectNative.rules ?? {}, (_, rule) =>
-  deferredEffectNativeRules.has(rule) ? ("off" as const) : ("error" as const),
-);
+const effectNativeErrors = Record.map(effectNative.rules ?? {}, () => "error" as const);
 
 const multilineStatements = [
   "multiline-block-like",

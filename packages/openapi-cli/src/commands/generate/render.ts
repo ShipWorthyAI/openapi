@@ -1,6 +1,6 @@
 import { runPlugin, type RunPluginOptions } from "@shipworthy/openapi-generator";
 import type { astToString } from "@shipworthy/openapi-typescript";
-import { Array, Effect, Path, Predicate, Schema } from "effect";
+import { Array, Effect, Path, pipe, Predicate, Schema } from "effect";
 import { CliError } from "effect/cli";
 import { pluginOptions, type TypeFlags } from "./flags.ts";
 import { pascalCase, plugins, type OutputFile } from "./plan.ts";
@@ -78,7 +78,11 @@ const renderTypes = Effect.fnUntraced(function* (run: PluginRun) {
   const types = yield* typescriptModule;
 
   // Print each top-level declaration on its own so a blank line separates them.
-  const body = Array.map(nodes, (node) => types.astToString(node)).join("\n");
+  const body = pipe(
+    nodes,
+    Array.map((node) => types.astToString(node)),
+    Array.join("\n"),
+  );
 
   return yield* Effect.tryPromise({
     try: () => types.formatTypeScript(`${run.header}${body}`),

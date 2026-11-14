@@ -21,7 +21,7 @@ export const transformRequestBody = Effect.fnUntraced(function* (
   body: ParsedRequestBody,
   path: string,
 ): Effect.fn.Return<ts.TypeNode, TypegenError, TypegenContext> {
-  const contents = Object.fromEntries(body.contents.map((media) => [media.mediaType, media]));
+  const contents = Record.fromIterableBy(body.contents, (media) => media.mediaType);
 
   const type = yield* Effect.forEach(
     Record.toEntries(contents),

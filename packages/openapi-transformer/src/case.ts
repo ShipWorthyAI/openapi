@@ -86,16 +86,19 @@ export function schemaPropertyCollision(
     const expanded = Array.flatMap(schemas, (member) => expand(member, new Set()));
     if (expanded.length === 0) return undefined;
 
-    const signature = Array.map(expanded, (member) => {
-      let id = schemaIds.get(member);
+    const signature = Array.join(
+      Array.map(expanded, (member) => {
+        let id = schemaIds.get(member);
 
-      if (id === undefined) {
-        id = ++nextId;
-        schemaIds.set(member, id);
-      }
+        if (id === undefined) {
+          id = ++nextId;
+          schemaIds.set(member, id);
+        }
 
-      return id;
-    }).join(",");
+        return `${id}`;
+      }),
+      ",",
+    );
 
     if (inspected.has(signature)) return undefined;
     inspected.add(signature);
