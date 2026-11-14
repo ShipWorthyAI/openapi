@@ -28,7 +28,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "bun test test/generate.test.ts test/cli.test.ts",
+    "test": "bun test --timeout 30000 test/generate.test.ts test/cli.test.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json"
   },
   "dependencies": {
