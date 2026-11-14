@@ -123,7 +123,7 @@
     },
     "packages/openapi-cli": {
       "name": "@shipworthy/openapi-cli",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "bin": {
         "openapi": "./src/bin.ts",
       },
@@ -161,7 +161,7 @@
     },
     "packages/openapi-fetch": {
       "name": "@shipworthy/openapi-fetch",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "devDependencies": {
         "tsdown": "catalog:",
         "typescript": "catalog:",
@@ -170,7 +170,7 @@
     },
     "packages/openapi-generator": {
       "name": "@shipworthy/openapi-generator",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-parser": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
@@ -186,7 +186,7 @@
     },
     "packages/openapi-overlay": {
       "name": "@shipworthy/openapi-overlay",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-parser": "workspace:*",
         "effect": "catalog:",
@@ -204,7 +204,7 @@
     },
     "packages/openapi-parser": {
       "name": "@shipworthy/openapi-parser",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@effect/platform-node": "catalog:",
         "@effect/platform-node-shared": "catalog:",
@@ -220,7 +220,7 @@
     },
     "packages/openapi-react-query": {
       "name": "@shipworthy/openapi-react-query",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-fetch": "workspace:*",
       },
@@ -239,7 +239,7 @@
     },
     "packages/openapi-standard-schema": {
       "name": "@shipworthy/openapi-standard-schema",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
@@ -255,7 +255,7 @@
     },
     "packages/openapi-tanstack-query": {
       "name": "@shipworthy/openapi-tanstack-query",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-fetch": "workspace:*",
         "effect": "catalog:",
@@ -287,7 +287,7 @@
     },
     "packages/openapi-transformer": {
       "name": "@shipworthy/openapi-transformer",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-parser": "workspace:*",
         "effect": "catalog:",
@@ -302,7 +302,7 @@
     },
     "packages/openapi-typescript": {
       "name": "@shipworthy/openapi-typescript",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
@@ -319,7 +319,7 @@
     },
     "packages/openapi-validator": {
       "name": "@shipworthy/openapi-validator",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@stoplight/spectral-core": "1.24.1",
         "@stoplight/spectral-formats": "1.9.0",
@@ -337,7 +337,7 @@
     },
     "packages/openapi-zod": {
       "name": "@shipworthy/openapi-zod",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "dependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
