@@ -1,6 +1,6 @@
 {
   "name": "@shipworthy/openapi-fetch",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Fast, type-safe fetch client for your OpenAPI schema. Works with React, Vue, Svelte, or vanilla JS.",
   "keywords": [
     "api",

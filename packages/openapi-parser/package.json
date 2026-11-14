@@ -1,6 +1,6 @@
 {
   "name": "@shipworthy/openapi-parser",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Parse, bundle, and upgrade OpenAPI documents with Effect schemas.",
   "license": "MIT",
   "repository": {
