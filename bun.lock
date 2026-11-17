@@ -124,7 +124,7 @@
     },
     "packages/openapi-cli": {
       "name": "@shipworthy/openapi-cli",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "bin": {
         "openapi": "./src/bin.ts",
       },
@@ -240,7 +240,7 @@
     },
     "packages/openapi-standard-schema": {
       "name": "@shipworthy/openapi-standard-schema",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "dependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
@@ -257,7 +257,7 @@
     },
     "packages/openapi-tanstack-query": {
       "name": "@shipworthy/openapi-tanstack-query",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "dependencies": {
         "@shipworthy/openapi-fetch": "workspace:*",
         "effect": "catalog:",
@@ -339,7 +339,7 @@
     },
     "packages/openapi-zod": {
       "name": "@shipworthy/openapi-zod",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "dependencies": {
         "@shipworthy/openapi-generator": "workspace:*",
         "@shipworthy/openapi-transformer": "workspace:*",
