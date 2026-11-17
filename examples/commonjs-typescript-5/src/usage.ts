@@ -7,9 +7,15 @@ import {
 
 type Pet = PetsApiComponents["schemas"]["Pet"];
 
-const api = createPetsApiQueryUtils(
-  createPetsApiClient({ baseUrl: "https://api.test", authToken: () => "token" }),
-);
+const client = createPetsApiClient({ baseUrl: "https://api.test" });
+
+client.use({
+  onRequest({ request }) {
+    request.headers.set("Authorization", "Bearer token");
+  },
+});
+
+const api = createPetsApiQueryUtils(client);
 
 export function usePets(ids: [string, ...string[]]) {
   const availability = useQuery(

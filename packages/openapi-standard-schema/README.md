@@ -74,15 +74,16 @@ Pet["~standard"].vendor; // "effect"
 ## CLI: `openapi generate standard-schema`
 
 ```
-openapi generate standard-schema [-i <input>] [-o <dir>] [--camel-case] [--check]
+openapi generate standard-schema [-i <input>] [-o <dir>] [--camel-case] [--validation-middleware] [--check]
 ```
 
-| Flag             | Description                                                                                                      |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `--input`, `-i`  | Path or URL of the OpenAPI document (JSON or YAML). When omitted, the document is read from stdin.               |
-| `--output`, `-o` | Output directory. The plugin writes `standard-schema.ts` inside it. When omitted, the code is written to stdout. |
-| `--camel-case`   | Rename snake_case property names to camelCase in the exported types and validators. Sets `camelCase: true`.      |
-| `--check`        | Write nothing; exit 1 when `standard-schema.ts` in the output directory differs or is missing. Requires `-o`.    |
+| Flag                      | Description                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `--input`, `-i`           | Path or URL of the OpenAPI document (JSON or YAML). When omitted, the document is read from stdin.                                       |
+| `--output`, `-o`          | Output directory. The plugin writes `standard-schema.ts` inside it. When omitted, the code is written to stdout.                         |
+| `--camel-case`            | Rename snake_case property names to camelCase in the exported types and validators. Sets `camelCase: true`.                              |
+| `--validation-middleware` | Also export openapi-fetch validation middleware. Sets `validationMiddleware: true`. See [Validation middleware](#validation-middleware). |
+| `--check`                 | Write nothing; exit 1 when `standard-schema.ts` in the output directory differs or is missing. Requires `-o`.                            |
 
 This plugin does not need `types.ts`. With `-o`, the CLI creates any missing directories, overwrites the file, and logs `<input> → <output>/standard-schema.ts [<elapsed>]`. The output starts with this header:
 
@@ -127,8 +128,9 @@ const standardSchema: Generator<string, SchemaGenerationError>;
 ```
 
 - `model` is a `ParsedService` from `@shipworthy/openapi-transformer`.
-- `options` is `{ camelCase?: boolean }`. Pass `{}` for the defaults. Unknown keys are ignored. An option of the wrong type fails with `SchemaGenerationError` (`#: Invalid generator options`).
+- `options` is `{ camelCase?: boolean; validationMiddleware?: boolean }`. Pass `{}` for the defaults. Unknown keys are ignored. An option of the wrong type fails with `SchemaGenerationError` (`#: Invalid generator options`).
 - `camelCase: true` renames lower snake_case property names (`first_name` becomes `firstName`) in every component schema and in top-level `$defs`. The rename covers `properties` keys, `required` entries, `dependentRequired`, and the discriminator `propertyName`, at every depth. The exported types and validators then use camelCase fields. `enum` and `const` values, `patternProperties` keys, and `$ref`s keep the API spelling. Names that are not lower snake_case, such as `_private` or `UPPER_CASE`, are unchanged. If two names at one object level would become the same name, including names merged through `allOf`, `anyOf`, `oneOf`, or a `$ref`, generation fails with `<path>: user_id and userId both become userId`. The default is `false`.
+  With `camelCase: true`, `default`, `example`, and `examples` annotations whose values contain objects are dropped from the renamed schemas, because their data keeps the API's field names.
 - On success, the Effect yields the TypeScript module source as a string. If the document has no component schemas, the string is empty (`""`).
 - On failure, the Effect fails with `SchemaGenerationError`.
 
@@ -218,7 +220,56 @@ and additional-property rules. Recursive component references are supported. Sch
 rejects every value. Component and property names are preserved, including when local
 `$defs` entries reuse a component name.
 
+Effect has no `not` constraint, so `not` fails generation, with one exception. A schema that
+holds only `not: { anyOf: [{ required: ["a"] }, { required: ["b"] }] }` (each branch requires
+one key) is rewritten to reject objects that have any of those keys. Use it, for example, in an
+`allOf` branch to forbid keys that select another `oneOf` branch.
+
 References inside literal `examples`, `default`, `const`, and `enum` values are preserved as data. Only references in schema positions are rewritten for generated validators.
+
+### Validation middleware
+
+With `--validation-middleware` (or the `validationMiddleware: true` option), the module also
+exports two [`@shipworthy/openapi-fetch`](../openapi-fetch/README.md) middleware hooks and the
+error they throw:
+
+```ts
+import createClient from "@shipworthy/openapi-fetch";
+import {
+  OpenApiValidationError,
+  onRequestValidation,
+  onResponseValidation,
+} from "./generated/pets/standard-schema";
+
+const client = createClient({ baseUrl: "https://api.example.com" });
+
+client.use({ onRequest: onRequestValidation, onResponse: onResponseValidation });
+```
+
+- **`onRequestValidation`** parses the JSON request body of the operation matched by method and
+  `schemaPath` with the schema documented for its media type. An invalid request is not sent.
+- **`onResponseValidation`** parses a JSON response body with the schema documented for its status:
+  the exact code, then its range (`2XX`), then `default`. Within that response it picks the
+  documented media type, then `application/*`, then `*/*`.
+- **`OpenApiValidationError`** extends `Error` with `direction` (`"request"` or `"response"`),
+  `method`, `schemaPath`, `status` (responses only), and the Standard Schema `issues`. Its
+  message lists each issue with its path. The client rejects with it, so `onError` hooks do not
+  see it.
+- **Skipped bodies.** Bodies that are empty, malformed JSON, or not `application/json` or
+  `*+json` pass through. So do undocumented operations, status codes, and media types.
+  Parameters and headers are not validated.
+- **Reused validators.** A body schema that only references a component (a `$ref`, optionally
+  with annotations) uses that component's export. Only inline body schemas get their own
+  validators.
+- **Field casing.** The hooks see the request and response as sent over the wire, so they check
+  the API's field names even with `--camel-case`. The module then holds a second set of
+  module-local schemas, prefixed `__wire_`, with the API's names, and each referenced component
+  gets one shared validator with those names instead of reusing its camelCase export.
+
+The hooks only need `request`, `response`, and `schemaPath`, so the generated file does not import
+openapi-fetch. With the option set, component schemas cannot be named `OpenApiValidationError`,
+`OpenApiValidationIssue`, `onRequestValidation`, or `onResponseValidation`, and the module is
+emitted even when there are no component schemas.
 
 ## Supported OpenAPI versions
 
@@ -226,11 +277,11 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 
 ## Limitations
 
-- Only `components.schemas` is emitted. The generator does not produce validators for request bodies, responses, parameters, or headers. Generate a component for any payload you want to validate.
-- An empty `components.schemas` gives an empty output string, not a module with zero exports.
-- Validators are not wired into any HTTP client. Call them where a payload should be checked.
+- Only `components.schemas` is exported. The generator does not export validators for request bodies, responses, parameters, or headers. Generate a component for any payload you want to validate, or use the [validation middleware](#validation-middleware) for request and response bodies.
+- Without `--validation-middleware`, an empty `components.schemas` gives an empty output string, not a module with zero exports.
+- Validators are not wired into any HTTP client unless you register the [validation middleware](#validation-middleware). Otherwise, call them where a payload should be checked.
 - Objects accept extra JSON-valued properties unless the schema sets `additionalProperties: false`.
-- The only generator option is `camelCase`.
+- The only generator options are `camelCase` and `validationMiddleware`.
 
 ## Troubleshooting
 
@@ -242,12 +293,12 @@ The CLI and `@shipworthy/openapi-generator` accept OpenAPI `3.0.x` and `3.1.x`. 
 ## Key facts (for AI agents)
 
 - Package: `@shipworthy/openapi-standard-schema`, ESM-only compiled JavaScript with `.d.ts` declarations. Node.js `>=22.19.0` or Bun. Depends on `effect@4.1.4`. Exports: `standardSchema` (generator plugin, `id: "standard-schema"`) and `SchemaGenerationError`.
-- CLI: `openapi generate standard-schema [-i <input>] [-o <dir>] [--camel-case]` (from `@shipworthy/openapi-cli`, runs on Node.js or Bun) writes `<dir>/standard-schema.ts`. Without `-i`, it reads stdin; without `-o`, output goes to stdout. It can run in one command with other plugins.
-- `standardSchema.generate(model: ParsedService, { camelCase?: boolean })` returns `Effect<string, SchemaGenerationError>`. The string is a TS module, or `""` when there are no component schemas.
+- CLI: `openapi generate standard-schema [-i <input>] [-o <dir>] [--camel-case] [--validation-middleware]` (from `@shipworthy/openapi-cli`, runs on Node.js or Bun) writes `<dir>/standard-schema.ts`. Without `-i`, it reads stdin; without `-o`, output goes to stdout. It can run in one command with other plugins.
+- `standardSchema.generate(model: ParsedService, { camelCase?: boolean; validationMiddleware?: boolean })` returns `Effect<string, SchemaGenerationError>`. The string is a TS module, or `""` when there are no component schemas and no middleware.
 - Output: for each `components.schemas` entry `Name`, `export type Name` and `export const Name = Schema.toStandardSchemaV1(...)`. Validate with `Name["~standard"].validate(value)`, which is synchronous and returns `{ value }` or `{ issues }`. `vendor` is `"effect"`.
 - The generated code needs `effect` (`^4.0.0`) at runtime.
 - Input: OpenAPI 3.0/3.1 through the CLI or `@shipworthy/openapi-generator`. 3.0 is upgraded to 3.1.
-- Not generated: request bodies, responses, parameters. Validators are standalone and are not called by a fetch client.
+- Not exported: request bodies, responses, parameters. `--validation-middleware` (option `validationMiddleware: true`) adds openapi-fetch hooks `onRequestValidation` and `onResponseValidation` that validate JSON request and response bodies with the API's field names and throw `OpenApiValidationError`.
 - Do not edit generated files. Re-run the CLI instead.
 
 ## License

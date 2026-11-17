@@ -56,7 +56,12 @@ export type OutputFile =
       readonly name: "types.ts" | "wire-types.ts";
       readonly camelCase: boolean;
     }
-  | { readonly plugin: "zod"; readonly name: "zod-schema.ts"; readonly camelCase: boolean }
+  | {
+      readonly plugin: "zod";
+      readonly name: "zod-schema.ts";
+      readonly camelCase: boolean;
+      readonly validationMiddleware: boolean;
+    }
   | {
       readonly plugin: "tanstack-query";
       readonly name: "client.ts";
@@ -67,6 +72,7 @@ export type OutputFile =
       readonly plugin: "standard-schema";
       readonly name: "standard-schema.ts";
       readonly camelCase: boolean;
+      readonly validationMiddleware: boolean;
     };
 
 interface PlanOptions {
@@ -79,6 +85,8 @@ interface PlanOptions {
   readonly name: Option.Option<string>;
   readonly camelCase: boolean;
   readonly wireTypes: boolean;
+  /** `--validation-middleware`. Plugins without middleware support ignore it. */
+  readonly validationMiddleware: boolean;
   readonly check: boolean;
 }
 
@@ -124,6 +132,7 @@ export function planFiles(options: PlanOptions): Result.Result<ReadonlyArray<Out
   }
 
   const camelCase = options.camelCase;
+  const validationMiddleware = options.validationMiddleware;
   const client = Array.contains(selected, "tanstack-query");
 
   // Every file but client.ts, whose name is resolved only once the other checks pass.
@@ -133,10 +142,17 @@ export function planFiles(options: PlanOptions): Result.Result<ReadonlyArray<Out
       ? [{ plugin: "typescript", name: "wire-types.ts", camelCase: false } as const]
       : []),
     ...(Array.contains(selected, "zod")
-      ? [{ plugin: "zod", name: "zod-schema.ts", camelCase } as const]
+      ? [{ plugin: "zod", name: "zod-schema.ts", camelCase, validationMiddleware } as const]
       : []),
     ...(Array.contains(selected, "standard-schema")
-      ? [{ plugin: "standard-schema", name: "standard-schema.ts", camelCase } as const]
+      ? [
+          {
+            plugin: "standard-schema",
+            name: "standard-schema.ts",
+            camelCase,
+            validationMiddleware,
+          } as const,
+        ]
       : []),
   ];
 

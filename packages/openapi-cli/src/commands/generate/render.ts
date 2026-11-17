@@ -98,7 +98,11 @@ function renderContents(run: PluginRun) {
       return renderTypes(run);
 
     case "zod":
-      return renderText(run, { outputPath: run.outputPath, camelCase: file.camelCase });
+      return renderText(run, {
+        outputPath: run.outputPath,
+        camelCase: file.camelCase,
+        validationMiddleware: file.validationMiddleware,
+      });
 
     case "tanstack-query":
       return renderText(run, {
@@ -108,7 +112,10 @@ function renderContents(run: PluginRun) {
       });
 
     case "standard-schema":
-      return renderText(run, { camelCase: file.camelCase });
+      return renderText(run, {
+        camelCase: file.camelCase,
+        validationMiddleware: file.validationMiddleware,
+      });
   }
 }
 

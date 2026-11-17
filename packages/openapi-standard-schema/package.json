@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
+    "@shipworthy/openapi-fetch": "workspace:*",
     "@shipworthy/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",

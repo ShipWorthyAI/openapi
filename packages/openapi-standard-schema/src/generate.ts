@@ -24,6 +24,13 @@ import {
   Struct,
 } from "effect";
 import { SchemaGenerationError } from "./errors.ts";
+import {
+  componentRoots,
+  middlewareNames,
+  middlewarePlan,
+  middlewareSource,
+  type MiddlewarePlan,
+} from "./middleware.ts";
 
 const sequential = { concurrency: 1, discard: true } as const;
 
@@ -31,7 +38,16 @@ const identifierPattern = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 
 type Pool = Record<string, JsonSchema.JsonSchema>;
 
-const GeneratorOptions = Schema.Struct({ camelCase: Schema.optionalKey(Schema.Boolean) });
+const GeneratorOptions = Schema.Struct({
+  camelCase: Schema.optionalKey(Schema.Boolean),
+  validationMiddleware: Schema.optionalKey(Schema.Boolean),
+});
+
+/** A multi-document before it is checked to hold at least one schema. */
+interface Assembled {
+  readonly schemas: readonly JsonSchema.JsonSchema[];
+  readonly definitions: Pool;
+}
 
 export const standardSchema: Generator<string, SchemaGenerationError> = {
   id: "standard-schema",
@@ -39,28 +55,95 @@ export const standardSchema: Generator<string, SchemaGenerationError> = {
     input: ParsedService,
     options: Readonly<Record<string, unknown>>,
   ): Effect.fn.Return<string, SchemaGenerationError> {
-    const { camelCase } = yield* Schema.decodeEffect(GeneratorOptions)(options).pipe(
+    const { camelCase, validationMiddleware } = yield* Schema.decodeEffect(GeneratorOptions)(
+      options,
+    ).pipe(
       Effect.mapError(() => new SchemaGenerationError({ message: "#: Invalid generator options" })),
     );
 
     const model = camelCase ? yield* camelCaseModel(input) : input;
+    const names = Record.keys(model.components.schemas);
+    // The middleware sees bodies as sent over the wire, so it always uses the API's field names.
+    const middleware = validationMiddleware ? middlewarePlan(input) : undefined;
 
-    return yield* pipe(
-      Record.keys(model.components.schemas),
-      Array.match({
-        onEmpty: () => Effect.succeed(""),
-        onNonEmpty: (names) =>
+    return yield* Effect.gen(function* () {
+      yield* assertNames(names, middleware);
+
+      const document =
+        middleware === undefined || !camelCase
+          ? yield* assemble(model, names, middleware?.roots ?? [])
+          : yield* withWireRoots(
+              yield* assemble(model, names, []),
+              yield* assemble(input, names, [...middleware.roots, ...componentRoots(middleware)]),
+              names.length,
+            );
+
+      return yield* Array.match(document.schemas, {
+        onEmpty: () =>
+          Effect.succeed(middleware === undefined ? "" : emitMiddlewareOnly(middleware)),
+        onNonEmpty: (schemas) =>
           pipe(
-            assemble(model, names),
-            Effect.flatMap(importSchemas),
+            importSchemas({ dialect: "draft-2020-12", schemas, definitions: document.definitions }),
             Effect.flatMap(compileSchemas),
-            Effect.flatMap(emitModule(names)),
+            Effect.flatMap((code) =>
+              emit(names, code, middleware && { plan: middleware, wire: camelCase === true }),
+            ),
           ),
-      }),
-      Effect.catchDefect((cause) => Effect.fail(failure(cause))),
-    );
+      });
+    }).pipe(Effect.catchDefect((cause) => Effect.fail(failure(cause))));
   }),
 };
+
+/** Fail when a component export would reuse a name the middleware section declares. */
+const assertNames = Effect.fnUntraced(function* (
+  names: readonly string[],
+  middleware: MiddlewarePlan | undefined,
+): Effect.fn.Return<void, SchemaGenerationError> {
+  if (middleware === undefined) return;
+  const reserved = Array.findFirst(names, (name) => middlewareNames.has(name));
+
+  if (Option.isSome(reserved))
+    return yield* new SchemaGenerationError({
+      message: `#/components/schemas/${reserved.value}: Cannot emit this name as a schema export`,
+    });
+});
+
+/**
+ * Appends the middleware roots of `wire` (the document assembled with the API's field names) to
+ * `main`. Wire definitions get a `__wire_` prefix so they stay apart from the renamed ones.
+ */
+const withWireRoots = Effect.fnUntraced(function* (
+  main: Assembled,
+  wire: Assembled,
+  components: number,
+): Effect.fn.Return<Assembled, SchemaGenerationError> {
+  const used = new Set(Record.keys(main.definitions));
+
+  const renames = new Map(
+    Array.map(Record.keys(wire.definitions), (key) => {
+      const prefixed = `__wire_${key}`;
+      const target = used.has(prefixed) ? uniqueAgainst(used, prefixed) : prefixed;
+      used.add(target);
+      return [key, target] as const;
+    }),
+  );
+
+  const roots = Array.drop(wire.schemas, components);
+
+  yield* Effect.forEach(
+    [...Record.values(wire.definitions), ...roots],
+    (schema) => rewriteDefKeys(schema, renames),
+    sequential,
+  );
+
+  return {
+    schemas: [...main.schemas, ...roots],
+    definitions: {
+      ...main.definitions,
+      ...Record.mapKeys(wire.definitions, (key) => renames.get(key) ?? key),
+    },
+  };
+});
 
 /**
  * A copy of the model whose component and root `$defs` schemas use camelCase property names.
@@ -109,11 +192,41 @@ const camelCaseModel = Effect.fnUntraced(function* (
     sequential,
   );
 
-  return Struct.evolve(model, {
+  const renamed = Struct.evolve(model, {
     components: Struct.evolve({ schemas: Record.map(camelCaseSchema) }),
     $defs: Record.map(camelCaseSchema),
   });
+
+  yield* Effect.forEach(
+    [...Record.values(renamed.components.schemas), ...Record.values(renamed.$defs)],
+    (schema) => visit(schema, dropObjectData),
+    sequential,
+  );
+
+  return renamed;
 });
+
+/**
+ * Effect types `default`, `example`, and `examples` as the schema's type. Their object values keep
+ * the API's field names, so they no longer match a renamed schema. They are annotations only, so
+ * drop them rather than emit code that does not type-check.
+ */
+function dropObjectData(schema: JsonSchema.JsonSchema): void {
+  if (Predicate.isObject(schema.default)) delete schema.default;
+  if (Predicate.isObject(schema.example)) delete schema.example;
+
+  if (Array.isArray(schema.examples) && Array.some(schema.examples, Predicate.isObject))
+    delete schema.examples;
+}
+
+/** The module when the middleware has no schemas to validate with. */
+function emitMiddlewareOnly(middleware: MiddlewarePlan): string {
+  return `${middlewareSource(
+    middleware,
+    () => "",
+    (name) => name,
+  )}\n`;
+}
 
 const importSchemas = Effect.fnUntraced(function* (
   document: JsonSchema.MultiDocument<"draft-2020-12">,
@@ -139,12 +252,6 @@ const compileSchemas = Effect.fnUntraced(function* (
   });
 });
 
-function emitModule(names: readonly string[]) {
-  return Effect.fnUntraced(function* (code: SchemaRepresentation.CodeDocument) {
-    return yield* emit(names, code);
-  });
-}
-
 function failure(cause: unknown): SchemaGenerationError {
   if (Schema.is(SchemaGenerationError)(cause)) return cause;
 
@@ -159,10 +266,15 @@ const decodeSchemaMap = Schema.decodeUnknownResult(Schema.Record(Schema.String, 
 const decodeSchemaList = Schema.decodeUnknownResult(Schema.Array(Schema.Unknown));
 const decodeReference = Schema.decodeUnknownResult(Schema.String);
 
+/**
+ * Component schemas as `$ref`s, then `extras` (inline roots such as body schemas), with every
+ * definition they share in one pool.
+ */
 const assemble = Effect.fnUntraced(function* (
   model: ParsedService,
-  names: Array.NonEmptyReadonlyArray<string>,
-): Effect.fn.Return<JsonSchema.MultiDocument<"draft-2020-12">, SchemaGenerationError> {
+  names: readonly string[],
+  extras: ReadonlyArray<{ readonly path: string; readonly schema: ParsedSchema }>,
+): Effect.fn.Return<Assembled, SchemaGenerationError> {
   const componentNames = new Set(names);
   const rootKeys = rootDefinitionKeys(model.$defs, componentNames);
 
@@ -193,6 +305,12 @@ const assemble = Effect.fnUntraced(function* (
     sequential,
   );
 
+  const convertedExtras = yield* Effect.forEach(
+    extras,
+    ({ path, schema }) => prepare(schema, path, componentNames, rootRenames),
+    { concurrency: 1 },
+  );
+
   const convertedRoots = yield* Effect.forEach(
     Record.toEntries(model.$defs),
     Effect.fnUntraced(function* ([name, schema]) {
@@ -218,10 +336,13 @@ const assemble = Effect.fnUntraced(function* (
           ...Record.values(pool),
           converted.schema,
           ...Record.values(converted.definitions),
-          ...Array.flatMap(convertedRoots, ({ converted }) => [
-            converted.schema,
-            ...Record.values(converted.definitions),
-          ]),
+          ...Array.flatMap(
+            [...convertedExtras, ...Array.map(convertedRoots, (root) => root.converted)],
+            (document: JsonSchema.Document<"draft-2020-12">) => [
+              document.schema,
+              ...Record.values(document.definitions),
+            ],
+          ),
         ];
 
         yield* Effect.forEach(schemas, (schema) => rewriteDefKey(schema, key, target), sequential);
@@ -233,17 +354,24 @@ const assemble = Effect.fnUntraced(function* (
   );
 
   yield* Effect.forEach(
-    [...convertedComponents, ...Array.map(convertedRoots, ({ converted }) => converted)],
+    [
+      ...convertedComponents,
+      ...convertedExtras,
+      ...Array.map(convertedRoots, ({ converted }) => converted),
+    ],
     (converted) => mergeDefinitions(pool, converted.definitions, converted.schema),
     sequential,
   );
 
-  const bindings = yield* bindComponents(pool, names);
+  const extraSchemas = Array.map(convertedExtras, (converted) => converted.schema);
+  const bindings = yield* bindComponents(pool, names, extraSchemas);
 
   return yield* Effect.try({
     try: () => ({
-      dialect: "draft-2020-12" as const,
-      schemas: Array.map(names, (name) => ({ $ref: defRef(binding(bindings, name)) })),
+      schemas: [
+        ...Array.map(names, (name) => ({ $ref: defRef(binding(bindings, name)) })),
+        ...extraSchemas,
+      ],
       definitions: pool,
     }),
     catch: failure,
@@ -281,6 +409,7 @@ const prepare = Effect.fnUntraced(function* (
 ) {
   return yield* pipe(
     normalize(value, path),
+    Effect.flatMap(forbidExcludedKeys),
     Effect.flatMap(retargetComponentRefs(componentNames)),
     Effect.flatMap(retargetRootDefRefs(rootRenames)),
     Effect.flatMap((schema) =>
@@ -288,6 +417,53 @@ const prepare = Effect.fnUntraced(function* (
     ),
   );
 });
+
+const decodeExclusions = Schema.decodeUnknownResult(
+  Schema.Struct({
+    anyOf: Schema.NonEmptyArray(Schema.Struct({ required: Schema.Tuple([Schema.String]) })),
+  }),
+);
+
+/**
+ * Effect cannot import `not`. Rewrites `{ not: { anyOf: [{ required: ["k"] }, …] } }`, which
+ * forbids those keys, into `false` property schemas that reject them.
+ */
+const forbidExcludedKeys = Effect.fnUntraced(function* (schema: JsonSchema.JsonSchema) {
+  return yield* visit(schema, (record) => {
+    const keys = Record.keys<string, unknown>(record);
+    if (
+      !Array.contains(keys, "not") ||
+      Array.some(keys, (key) => key !== "not" && !isAnnotation(key))
+    )
+      return;
+
+    const exclusions = decodeExclusions(record.not);
+    if (Result.isFailure(exclusions) || Record.keys(record.not ?? {}).length !== 1) return;
+    delete record.not;
+    record.type = "object";
+
+    record.properties = Record.fromEntries(
+      Array.map(exclusions.success.anyOf, ({ required: [key] }) => [key, false] as const),
+    );
+  }).pipe(Effect.as(schema));
+});
+
+const annotations = new Set([
+  "title",
+  "description",
+  "example",
+  "examples",
+  "deprecated",
+  "readOnly",
+  "writeOnly",
+  "$comment",
+  "externalDocs",
+  "xml",
+]);
+
+function isAnnotation(key: string): boolean {
+  return annotations.has(key) || pipe(key, String.startsWith("x-"));
+}
 
 const normalize = Effect.fnUntraced(function* (value: ParsedSchema | undefined, path: string) {
   return yield* pipe(
@@ -334,6 +510,7 @@ const mergeDefinitions = Effect.fnUntraced(function* (
 const bindComponents = Effect.fnUntraced(function* (
   pool: Pool,
   names: readonly string[],
+  extras: readonly JsonSchema.JsonSchema[],
 ): Effect.fn.Return<Map<string, string>, SchemaGenerationError> {
   const used = new Set(Record.keys(pool));
 
@@ -388,7 +565,7 @@ const bindComponents = Effect.fnUntraced(function* (
   Object.assign(pool, next);
 
   yield* Effect.forEach(
-    Record.values(pool),
+    [...Record.values(pool), ...extras],
     (schema) => rewriteDefKeys(schema, replacements),
     sequential,
   );
@@ -576,6 +753,13 @@ function uniqueAgainst(used: ReadonlySet<string>, name: string): string {
 const emit = Effect.fnUntraced(function* (
   names: readonly string[],
   code: SchemaRepresentation.CodeDocument,
+  middleware:
+    | {
+        readonly plan: MiddlewarePlan;
+        /** Whether exports use camelCase, so component bodies need their own wire validators. */
+        readonly wire: boolean;
+      }
+    | undefined,
 ): Effect.fn.Return<string, SchemaGenerationError> {
   const imports = Array.filterMap(code.artifacts, (artifact) =>
     Match.value(artifact).pipe(
@@ -653,11 +837,57 @@ const emit = Effect.fnUntraced(function* (
     { concurrency: 1 },
   );
 
+  const trailer =
+    middleware === undefined
+      ? []
+      : [
+          "",
+          middlewareSource(
+            middleware.plan,
+            (root) =>
+              standardSchemaOf(code, names.length + root, middleware.plan.roots[root]?.path),
+            (name) => (middleware.wire ? `__openapiWireComponents.${name}` : name),
+            middleware.wire
+              ? Array.map(
+                  middleware.plan.components,
+                  (name, index) =>
+                    [
+                      name,
+                      standardSchemaOf(
+                        code,
+                        names.length + middleware.plan.roots.length + index,
+                        `#/components/schemas/${name}`,
+                      ),
+                    ] as const,
+                )
+              : [],
+          ),
+        ];
+
   return `${Array.join(
-    [...imports, ...artifacts, ...types, ...declarations, ...bodies, ...Array.flatten(exports)],
+    [
+      ...imports,
+      ...artifacts,
+      ...types,
+      ...declarations,
+      ...bodies,
+      ...Array.flatten(exports),
+      ...trailer,
+    ],
     "\n",
   )}\n`;
 });
+
+/** `Schema.toStandardSchemaV1(...)` around the generated code at `index`. */
+function standardSchemaOf(
+  code: SchemaRepresentation.CodeDocument,
+  index: number,
+  path: string | undefined,
+): string {
+  const body = code.codes[index];
+  if (!body) throw new SchemaGenerationError({ message: `Missing generated schema for ${path}` });
+  return `Schema.toStandardSchemaV1(${body.runtime})`;
+}
 
 function forwardReferenced(
   nonRecursives: readonly { readonly code: SchemaRepresentation.Code }[],

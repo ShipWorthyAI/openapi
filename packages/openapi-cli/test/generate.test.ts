@@ -243,6 +243,36 @@ test("plugins sharing one model do not see each other's changes to it", async (c
   expect(zod).not.toContain("added by openapi-typescript");
 });
 
+test("--validation-middleware adds openapi-fetch middleware to plugins that support it", async (context) => {
+  const { expect } = context;
+  const cli = setup(context, reservations());
+
+  const run = (output: string, ...args: string[]) =>
+    cli.ok("generate", ...args, "-i", "a.json", "-o", `out/${output}`);
+
+  await Promise.all([
+    run("plain", "zod", "standard-schema"),
+    run("both", "zod", "standard-schema", "--validation-middleware"),
+    run("zod", "zod", "--validation-middleware"),
+    run("typescript", "typescript", "--validation-middleware"),
+  ]);
+
+  const read = (output: string, file: string) => cli.read(`out/${output}/${file}`);
+
+  for (const file of ["zod-schema.ts", "standard-schema.ts"]) {
+    expect(read("plain", file)).not.toContain("onRequestValidation");
+    expect(read("both", file)).toContain("export async function onRequestValidation(");
+    expect(read("both", file)).toContain("export async function onResponseValidation(");
+  }
+
+  expect(read("zod", "zod-schema.ts")).toBe(read("both", "zod-schema.ts"));
+  expect(cli.files("out/zod")).toEqual(["types.ts", "zod-schema.ts"]);
+  // typescript has no middleware, so the flag changes nothing.
+  expect(cli.files("out/typescript")).toEqual(["types.ts"]);
+  expect(read("typescript", "types.ts")).toBe(read("plain", "types.ts"));
+  expect(read("both", "types.ts")).toBe(read("plain", "types.ts"));
+});
+
 test("runs all four plugins in one invocation", async (context) => {
   const { expect } = context;
   const cli = setup(context, reservations());

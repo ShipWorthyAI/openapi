@@ -15,6 +15,7 @@ const run = Effect.fn("generate")(function* (
     readonly output: Option.Option<string>;
     readonly name: Option.Option<string>;
     readonly wireTypes: boolean;
+    readonly validationMiddleware: boolean;
     readonly check: boolean;
   } & TypeFlags,
 ) {
@@ -27,6 +28,7 @@ const run = Effect.fn("generate")(function* (
     name: flags.name,
     camelCase: flags.camelCase,
     wireTypes: flags.wireTypes,
+    validationMiddleware: flags.validationMiddleware,
     check: flags.check,
   });
 
@@ -115,6 +117,12 @@ export const generate = Command.make(
       ),
       Flag.withDefault(false),
     ),
+    validationMiddleware: Flag.Boolean("validation-middleware").pipe(
+      Flag.withDescription(
+        "Also export openapi-fetch onRequestValidation and onResponseValidation middleware from each plugin that supports it: zod and standard-schema.",
+      ),
+      Flag.withDefault(false),
+    ),
     check: Flag.Boolean("check").pipe(
       Flag.withDescription(
         "Write nothing; fail when a generated file in --output is missing or out of date.",
@@ -137,6 +145,12 @@ export const generate = Command.make(
         "openapi generate zod tanstack-query -i ./openapi.json -o ./src/generated/reservations --camel-case --wire-types",
       description:
         "Write client.ts, types.ts, wire-types.ts, and zod-schema.ts in src/generated/reservations",
+    },
+    {
+      command:
+        "openapi generate zod standard-schema -i ./openapi.json -o ./src/generated/api --validation-middleware",
+      description:
+        "Also export openapi-fetch validation middleware from zod-schema.ts and standard-schema.ts",
     },
     {
       command: "openapi generate typescript < ./openapi.json > ./types.ts",

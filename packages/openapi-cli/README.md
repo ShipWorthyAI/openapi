@@ -233,7 +233,7 @@ ERROR
 Runs one or more generator plugins against one OpenAPI document and writes one file per plugin into an output directory.
 
 ```text
-openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--check] [type flags]
+openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--validation-middleware] [--check] [type flags]
 ```
 
 ```sh
@@ -261,15 +261,16 @@ Pass at least one plugin. Each plugin writes one file with a fixed name:
 
 #### Options
 
-| Flag             | Type                                 | Default                            | Description                                                                                                                                                                                                                                   |
-| ---------------- | ------------------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--input`, `-i`  | path or `http:`/`https:`/`file:` URL | stdin                              | OpenAPI document (JSON or YAML). Reads the document from stdin when omitted. An input containing `*` fails with `Globbing is unsupported.`                                                                                                    |
-| `--output`, `-o` | directory                            | stdout                             | Directory that receives the files. It is created recursively. When omitted, the run must produce exactly one file, which is written to stdout.                                                                                                |
-| `--name`         | string                               | basename of the output directory   | Used only by `tanstack-query`: the PascalCase prefix of generated exports and the query-key prefix. Must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. Ignored when `tanstack-query` is not selected. See [Client name](#client-name). |
-| `--camel-case`   | boolean                              | `false`                            | Spell snake_case field and parameter names in camelCase in every generated file. See [camelCase and wire types](#camelcase-and-wire-types).                                                                                                   |
-| `--wire-types`   | boolean                              | `false`                            | Also write `wire-types.ts`: the same types as `types.ts` with the API's field names. Requires `--camel-case` and a plugin that writes `types.ts`.                                                                                             |
-| `--check`        | boolean                              | `false`                            | Writes nothing. Compares every generated file with the existing file in `--output` and exits `1` when any differs or is missing. Requires `--output`.                                                                                         |
-| type flags       | boolean                              | `false` (`--array-length`: `true`) | See the next table. They apply to `types.ts` and `wire-types.ts` and are ignored when neither is generated.                                                                                                                                   |
+| Flag                      | Type                                 | Default                            | Description                                                                                                                                                                                                                                   |
+| ------------------------- | ------------------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--input`, `-i`           | path or `http:`/`https:`/`file:` URL | stdin                              | OpenAPI document (JSON or YAML). Reads the document from stdin when omitted. An input containing `*` fails with `Globbing is unsupported.`                                                                                                    |
+| `--output`, `-o`          | directory                            | stdout                             | Directory that receives the files. It is created recursively. When omitted, the run must produce exactly one file, which is written to stdout.                                                                                                |
+| `--name`                  | string                               | basename of the output directory   | Used only by `tanstack-query`: the PascalCase prefix of generated exports and the query-key prefix. Must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. Ignored when `tanstack-query` is not selected. See [Client name](#client-name). |
+| `--camel-case`            | boolean                              | `false`                            | Spell snake_case field and parameter names in camelCase in every generated file. See [camelCase and wire types](#camelcase-and-wire-types).                                                                                                   |
+| `--wire-types`            | boolean                              | `false`                            | Also write `wire-types.ts`: the same types as `types.ts` with the API's field names. Requires `--camel-case` and a plugin that writes `types.ts`.                                                                                             |
+| `--validation-middleware` | boolean                              | `false`                            | Also export openapi-fetch `onRequestValidation` and `onResponseValidation` middleware from `zod-schema.ts` and `standard-schema.ts`. Plugins without middleware ignore it. See [Validation middleware](#validation-middleware).               |
+| `--check`                 | boolean                              | `false`                            | Writes nothing. Compares every generated file with the existing file in `--output` and exits `1` when any differs or is missing. Requires `--output`.                                                                                         |
+| type flags                | boolean                              | `false` (`--array-length`: `true`) | See the next table. They apply to `types.ts` and `wire-types.ts` and are ignored when neither is generated.                                                                                                                                   |
 
 Type-generation flags. All are boolean and default to `false` except `--array-length`, which
 defaults to `true`:
@@ -359,6 +360,8 @@ const pet = Pet.parse(await response.json()); // typed as components["schemas"][
 
 With `--camel-case`, the validators check camelCase objects. Convert wire payloads to camelCase before you parse them.
 
+With `--validation-middleware`, the file also exports openapi-fetch middleware. See [Validation middleware](#validation-middleware).
+
 #### `tanstack-query` output (`client.ts`)
 
 Generates a typed API client and TanStack Query helpers. For `-o src/generated/hotels`, `client.ts` exports:
@@ -373,10 +376,15 @@ Operations need unique `operationId`s.
 import { useQuery } from "@tanstack/react-query";
 import { createHotelsApiClient, createHotelsApiQueryUtils } from "./generated/hotels/client";
 
-const client = createHotelsApiClient({
-  baseUrl: "https://hotels.example.com",
-  authToken: () => getHotelsAccessToken(),
+const client = createHotelsApiClient({ baseUrl: "https://hotels.example.com" });
+
+client.use({
+  async onRequest({ request }) {
+    const token = await getHotelsAccessToken();
+    if (token) request.headers.set("Authorization", `Bearer ${token}`);
+  },
 });
+
 const hotelsApi = createHotelsApiQueryUtils(client);
 
 const hotels = useQuery(
@@ -391,7 +399,27 @@ See the `@shipworthy/openapi-tanstack-query` README for the full runtime API.
 
 #### `standard-schema` output (`standard-schema.ts`)
 
-Generates [Standard Schema](https://standardschema.dev) validators backed by Effect `Schema`. For each component schema, the output exports a type and a value with the same name, e.g. `export type Pet = …` and `export const Pet = Schema.toStandardSchemaV1(…)`. This plugin does not need `types.ts`.
+Generates [Standard Schema](https://standardschema.dev) validators backed by Effect `Schema`. For each component schema, the output exports a type and a value with the same name, e.g. `export type Pet = …` and `export const Pet = Schema.toStandardSchemaV1(…)`. This plugin does not need `types.ts`. With `--validation-middleware`, the file also exports openapi-fetch middleware. See [Validation middleware](#validation-middleware).
+
+#### Validation middleware
+
+`--validation-middleware` adds two openapi-fetch middleware hooks, and the error they throw, to the file of every selected plugin that supports them: `zod-schema.ts` (`zod`) and `standard-schema.ts` (`standard-schema`). Other plugins ignore the flag, so `openapi generate typescript --validation-middleware` writes the same `types.ts` as without it.
+
+```sh
+openapi generate zod standard-schema -i ./openapi.json -o ./src/generated/pets --validation-middleware
+```
+
+```ts
+import createClient from "@shipworthy/openapi-fetch";
+import { onRequestValidation, onResponseValidation } from "./generated/pets/zod-schema";
+import type { paths } from "./generated/pets/types";
+
+const client = createClient<paths>({ baseUrl: "https://api.example.com" });
+
+client.use({ onRequest: onRequestValidation, onResponse: onResponseValidation });
+```
+
+`onRequestValidation` checks JSON request bodies. `onResponseValidation` checks JSON response bodies against the schema documented for the status code and media type. A body that does not match throws `OpenApiValidationError`. Each file exports its own copy, so import the hooks from one of them. See the [`@shipworthy/openapi-zod`](../openapi-zod/README.md#validation-middleware) and [`@shipworthy/openapi-standard-schema`](../openapi-standard-schema/README.md#validation-middleware) READMEs for the matching rules.
 
 #### Migrating from the per-plugin subcommands
 
@@ -492,9 +520,10 @@ When `generate` fails validation or any file fails to generate, nothing is writt
 - Commands:
   - `openapi overlay <input> --overlay <overlay> -o <output> [--remove-unused-components]`: bundles and upgrades first, then applies actions using the declared Overlay 1.0 or 1.1 version and writes JSON. The optional flag prunes paths without operations and unreachable components after overlaying.
   - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
-  - `openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--check] [type flags]`: one command runs any number of plugins against one document. Plugin order does not matter. Nothing is written if any file fails to generate.
+  - `openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--validation-middleware] [--check] [type flags]`: one command runs any number of plugins against one document. Plugin order does not matter. Nothing is written if any file fails to generate.
 - `generate` plugin → file in the `-o` directory: `typescript` → `types.ts`, `zod` → `zod-schema.ts`, `tanstack-query` → `client.ts`, `standard-schema` → `standard-schema.ts`. `types.ts` is also written (once) when `zod` or `tanstack-query` is selected. `tanstack-query` names its exports after `--name`, which defaults to the output directory's basename.
 - `--camel-case` applies to every generated file. `--wire-types` (requires `--camel-case` and a plugin that writes `types.ts`) also writes `wire-types.ts` with the API's field names.
+- `--validation-middleware` also exports openapi-fetch `onRequestValidation` and `onResponseValidation` middleware from `zod-schema.ts` and `standard-schema.ts`. Plugins without middleware ignore it. They throw `OpenApiValidationError` for JSON bodies that do not match the document.
 - `generate` reads stdin when `-i` is omitted and writes the single generated file to stdout when `-o` is omitted. `--check` (requires `-o`) writes nothing and exits 1 when any generated file differs or is missing. Every run regenerates every file; there is no cache and no `--force`.
 - Each `generate` plugin needs its optional peer package installed: `@shipworthy/openapi-typescript` (also required by `zod` and `tanstack-query`), `@shipworthy/openapi-zod`, `@shipworthy/openapi-tanstack-query`, and `@shipworthy/openapi-standard-schema`.
 - Do not edit generated files by hand. Re-run the command instead.

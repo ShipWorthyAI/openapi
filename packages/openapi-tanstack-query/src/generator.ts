@@ -86,7 +86,7 @@ function clientSource(
   const createClient = mapping
     ? `const caseMapping = ${Formatter.formatJson(mapping, { space: 2 })} as const;
 
-export const create${prefix}ApiClient = (options: ApiClientOptions) =>
+export const create${prefix}ApiClient = (options: ApiClientOptions = {}) =>
   createApiClient<paths>({ ...options, caseMapping });`
     : `export const create${prefix}ApiClient: typeof createApiClient<paths> = createApiClient<paths>;`;
 

@@ -19,6 +19,7 @@ export const zod: Generator<ZodSource, ZodGenerationError> = {
       Schema.Struct({
         outputPath: Schema.optionalKey(Schema.String),
         camelCase: Schema.optionalKey(Schema.Boolean),
+        validationMiddleware: Schema.optionalKey(Schema.Boolean),
       }),
     )(options).pipe(
       Effect.mapError(() => new ZodGenerationError({ message: "#: Invalid generator options" })),

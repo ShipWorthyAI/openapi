@@ -3,11 +3,16 @@ import { createApiClient, createTanstackQueryUtils } from "@shipworthy/openapi-t
 
 const client = createApiClient({
   baseUrl: "https://api.test",
-  authToken: "token",
   fetch: async (request) => {
     assert.equal(request.url, "https://api.test/pets");
     assert.equal(request.headers.get("Authorization"), "Bearer token");
     return Response.json({ data: [] });
+  },
+});
+
+client.use({
+  onRequest({ request }) {
+    request.headers.set("Authorization", "Bearer token");
   },
 });
 

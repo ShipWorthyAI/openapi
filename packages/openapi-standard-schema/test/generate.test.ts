@@ -516,3 +516,61 @@ it.effect("invalid generator options fail in the typed error channel", () =>
     );
   }),
 );
+
+it.effect("rewrites not anyOf required into forbidden keys", () =>
+  Effect.gen(function* () {
+    const source = yield* sourceFor("3.1.0", {
+      Search: {
+        allOf: [
+          {
+            type: "object",
+            required: ["query"],
+            properties: { query: { type: "string" }, hotel_ids: { type: "array" } },
+          },
+          { not: { anyOf: [{ required: ["hotel_ids"] }, { required: ["geo"] }] } },
+        ],
+      },
+    });
+
+    const loaded = yield* Effect.tryPromise(() => load(source));
+
+    try {
+      assert.deepEqual(validate(loaded.module.Search!, { query: "austin" }).value, {
+        query: "austin",
+      });
+
+      assert.ok(validate(loaded.module.Search!, { query: "austin", hotel_ids: [] }).issues);
+      assert.ok(validate(loaded.module.Search!, { query: "austin", geo: {} }).issues);
+    } finally {
+      yield* Effect.tryPromise(() => loaded.dispose());
+    }
+  }),
+);
+
+it.effect("camelCase drops object example and default data that keeps API field names", () =>
+  Effect.gen(function* () {
+    const model = yield* modelFor({
+      Guest: {
+        type: "object",
+        properties: {
+          first_name: { type: "string", examples: ["Ada"] },
+          home_address: {
+            type: "object",
+            properties: { street_line: { type: "string" } },
+            default: { street_line: "1 Main St" },
+          },
+        },
+        examples: [{ first_name: "Ada" }],
+        example: { first_name: "Ada" },
+      },
+    });
+
+    const generated = standardSchema.generate(model, { camelCase: true });
+    const source = Effect.isEffect(generated) ? yield* generated : generated;
+
+    assert.match(source, /"firstName"/);
+    assert.doesNotMatch(source, /first_name|street_line/);
+    // Primitive examples stay: they do not contain field names.
+    assert.match(source, /"examples": \["Ada"\]/);
+  }),
+);

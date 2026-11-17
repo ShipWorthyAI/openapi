@@ -81,9 +81,14 @@ output directory's name; pass `--name` to choose another.
 // src/api.ts
 import { createHotelsApiClient, createHotelsApiQueryUtils } from "./generated/hotels/client";
 
-export const hotelsClient = createHotelsApiClient({
-  baseUrl: "https://hotels.example.com",
-  authToken: () => getHotelsAccessToken(), // string, or a sync/async getter; called per request
+export const hotelsClient = createHotelsApiClient({ baseUrl: "https://hotels.example.com" });
+
+// Optional: send a bearer token with every request. See "Authentication" below.
+hotelsClient.use({
+  async onRequest({ request }) {
+    const token = await getHotelsAccessToken();
+    if (token) request.headers.set("Authorization", `Bearer ${token}`);
+  },
 });
 
 export const hotelsApi = createHotelsApiQueryUtils(hotelsClient);
@@ -261,17 +266,12 @@ Generation fails with exit code 1, and no file is written, when:
 Most apps use the generated `create<Prefix>ApiClient` and
 `create<Prefix>ApiQueryUtils` wrappers. The underlying exports are listed below.
 
-### `createApiClient<Paths>(options): ApiClient<Paths>`
+### `createApiClient<Paths>(options?): ApiClient<Paths>`
 
 ```ts
-function createApiClient<Paths extends {}>(options: ApiClientOptions): Client<Paths>;
+function createApiClient<Paths extends {}>(options?: ApiClientOptions): Client<Paths>;
 
-interface ApiClientOptions extends Omit<ClientOptions, "baseUrl"> {
-  baseUrl: string; // required
-  authToken?: AuthToken | AuthTokenProvider;
-}
-type AuthToken = string | undefined | null;
-type AuthTokenProvider = () => AuthToken | Promise<AuthToken>;
+type ApiClientOptions = ClientOptions; // @shipworthy/openapi-fetch ClientOptions
 type ApiClient<Paths extends {} = {}> = Client<Paths>; // @shipworthy/openapi-fetch Client
 ```
 
@@ -282,16 +282,8 @@ With `--camel-case`, the generated factory passes `caseMapping` to
 `@shipworthy/openapi-typescript` builds the mapping from the OpenAPI schema. Use the generated
 factory so runtime values match `types.ts`.
 
-- **`baseUrl`** (required): the root URL for all requests. A trailing slash is
-  removed.
-- **`authToken`** (optional): a token string, or a sync or async getter.
-  - The getter runs **before every request**.
-  - A truthy token sets `Authorization: Bearer <token>`.
-  - A falsy token (`""`, `null`, `undefined`) _removes_ any `Authorization`
-    header.
-  - If you omit `authToken`, no auth middleware is installed.
-  - If the request's signal is already aborted after the token resolves, the
-    request fails with an `AbortError`.
+- **`baseUrl`** (optional): the root URL for all requests. A trailing slash is
+  removed. Without it, request URLs are relative.
 - All other `ClientOptions` from `@shipworthy/openapi-fetch` are passed
   through, including `fetch`, `Request`, `headers`, `querySerializer`,
   `bodySerializer`, `pathSerializer`, `requestInitExt`, and standard
@@ -306,12 +298,33 @@ The returned client is a full `openapi-fetch` client. You can call it directly
 ```ts
 const client = createHotelsApiClient({
   baseUrl: "https://hotels.example.com",
-  authToken: async () => (await session.get())?.accessToken,
   headers: { "X-App-Version": "1.4.0" },
   querySerializer: { array: { style: "form", explode: false } },
   fetch: (request) => fetch(request), // e.g. a custom or instrumented fetch
 });
 ```
+
+#### Authentication
+
+The client has no auth option. Add an `onRequest` middleware that sets the
+`Authorization` header. It runs before every request, so it can read a token that
+changes, such as one your app refreshes:
+
+```ts
+const client = createHotelsApiClient({ baseUrl: "https://hotels.example.com" });
+
+client.use({
+  async onRequest({ request }) {
+    const token = (await session.get())?.accessToken;
+    if (token) request.headers.set("Authorization", `Bearer ${token}`);
+    else request.headers.delete("Authorization");
+  },
+});
+```
+
+Mutate `request.headers` in place, or return a new `Request`. Middleware runs in
+the order you register it, so register auth before middleware that should see the
+header.
 
 ### `createTanstackQueryUtils<Operations>(client, routes, options)`
 
@@ -392,7 +405,7 @@ const hotels = useQuery(
   }),
 );
 
-// Disabled until hotelId exists. With skipToken there is no fetch and no authToken call.
+// Disabled until hotelId exists. With skipToken there is no fetch and no middleware call.
 const hotel = useQuery(
   hotelsApi.getHotel.queryOptions({
     input: hotelId ? { path: { hotel_id: hotelId } } : skipToken,
@@ -578,8 +591,8 @@ Generated files use extensionless `./types` imports and expect TypeScript `modul
 - **The package has no provider or hooks.** Use your app's existing
   `QueryClientProvider` and TanStack's hooks.
 - **Auth is the app's job.** The app owns token exchange and refresh, and it
-  clears account-specific caches on logout. `authToken` only reads a token for
-  each request.
+  clears account-specific caches on logout. An `onRequest` middleware only reads
+  a token for each request. See [Authentication](#authentication).
 - **Idempotency keys are not generated or persisted.** If an API needs them,
   pass them in `header`. Reuse the same key for every retry of one logical
   attempt.
@@ -622,7 +635,13 @@ Generated files use extensionless `./types` imports and expect TypeScript `modul
   `<Prefix>ApiOperations`.
 - **Setup:**
   ```ts
-  const api = createHotelsApiQueryUtils(createHotelsApiClient({ baseUrl, authToken }));
+  const client = createHotelsApiClient({ baseUrl });
+  client.use({
+    onRequest({ request }) {
+      request.headers.set("Authorization", `Bearer ${token}`);
+    },
+  });
+  const api = createHotelsApiQueryUtils(client);
   ```
   `api.<operationId>` exposes `queryOptions`, `queryKey`, `infiniteOptions`,
   `infiniteKey`, `mutationOptions`, `mutationKey`, and `key`.

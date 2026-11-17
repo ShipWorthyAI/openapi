@@ -11,7 +11,7 @@
   },
   "scripts": {
     "bundle": "openapi bundle ./openapi/v1/openapi.yaml ./openapi/v1/bundled.openapi.json",
-    "generate": "openapi generate tanstack-query zod standard-schema -i ./openapi/v1/bundled.openapi.json -o src/generated/hotels"
+    "generate": "openapi generate tanstack-query zod standard-schema -i ./openapi/v1/bundled.openapi.json -o src/generated/hotels --camel-case --validation-middleware"
   },
   "dependencies": {
     "@shipworthy/openapi-tanstack-query": "workspace:*",
@@ -26,6 +26,7 @@
     "@shipworthy/typescript-config": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
     "react": "catalog:"
   },
   "peerDependencies": {

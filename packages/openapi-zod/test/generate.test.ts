@@ -5,6 +5,7 @@ import { Effect, Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { astToString, typescript } from "@shipworthy/openapi-typescript";
 import { operationRoutes, zod, zodSources, ZodGenerationError, type ZodSource } from "../src/index";
+import createClient from "@shipworthy/openapi-fetch";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
@@ -1793,4 +1794,342 @@ void test("camelCase validators type-check against camelCase types", async () =>
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+const middlewareDocument = {
+  openapi: "3.1.0",
+  info: { title: "Items", version: "1" },
+  paths: {
+    "/items": {
+      post: {
+        operationId: "createItem",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["item_name"],
+                properties: { item_name: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: { "201": { description: "Created" } },
+      },
+    },
+    "/items/{id}": {
+      put: {
+        operationId: "updateItem",
+        parameters: [
+          { name: "id", in: "path" as const, required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/Item" } } },
+        },
+        responses: {
+          "200": {
+            description: "Updated",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Item" } } },
+          },
+          "204": { description: "Unchanged" },
+          "4XX": {
+            description: "Rejected",
+            content: {
+              "application/problem+json": {
+                schema: {
+                  type: "object",
+                  required: ["title"],
+                  properties: { title: { type: "string" } },
+                },
+              },
+            },
+          },
+          default: {
+            description: "Failed",
+            content: {
+              "text/plain": { schema: { type: "string" } },
+              "*/*": {
+                schema: {
+                  type: "object",
+                  required: ["error_code"],
+                  properties: { error_code: { type: "integer" } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      Item: {
+        type: "object",
+        required: ["item_name"],
+        properties: { item_name: { type: "string", minLength: 1 } },
+      },
+    },
+  },
+};
+
+function middlewareSourceFor(options: { readonly camelCase?: boolean } = {}) {
+  return Effect.runSync(
+    generateZod(Effect.runSync(decode(middlewareDocument)), {
+      ...options,
+      validationMiddleware: true,
+    }),
+  );
+}
+
+/** A client whose fetch answers with `respond` and records the requests that reached it. */
+function middlewareClient(
+  schemas: Record<string, unknown>,
+  respond: () => Response,
+): { client: ReturnType<typeof createClient>; sent: Request[] } {
+  const sent: Request[] = [];
+
+  const client = createClient({
+    baseUrl: "https://api.test",
+    fetch: async (request: Request) => {
+      sent.push(request);
+      return respond();
+    },
+  });
+
+  client.use({
+    onRequest: schemas.onRequestValidation as never,
+    onResponse: schemas.onResponseValidation as never,
+  });
+
+  return { client, sent };
+}
+
+/** The generated `OpenApiValidationError`, as the tests read it. */
+interface ValidationError extends Error {
+  readonly direction: "request" | "response";
+  readonly method: string;
+  readonly schemaPath: string;
+  readonly status: number | undefined;
+  readonly issues: readonly { readonly path: readonly PropertyKey[] }[];
+}
+
+function validationErrorClass(schemas: Record<string, unknown>) {
+  return schemas.OpenApiValidationError as abstract new (...args: never[]) => ValidationError;
+}
+
+function json(status: number, body: unknown, contentType = "application/json") {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": contentType } });
+}
+
+void test("validation middleware is generated only when requested", () => {
+  const source = sourceFor(middlewareDocument);
+  assert.doesNotMatch(source, /onRequestValidation|onResponseValidation|OpenApiValidationError/);
+
+  const middleware = middlewareSourceFor();
+  assert.match(middleware, /export async function onRequestValidation\(/);
+  assert.match(middleware, /export async function onResponseValidation\(/);
+  assert.match(middleware, /export class OpenApiValidationError extends Error/);
+  assert.match(middleware, /"PUT \/items\/\{id\}": \{/);
+  assert.match(middleware, /"4XX": \{/);
+  assert.doesNotMatch(middleware, /"text\/plain"/);
+  assert.doesNotMatch(middleware, /wireDefinitions|__openapiWireComponents/);
+  const table = middleware.slice(middleware.indexOf("const __openapiValidation"));
+  // A body that only references a component reuses the component's export.
+  assert.equal(table.match(/"request": \(\) => Item,/g)?.length, 1);
+  assert.equal(table.match(/"application\/json": \(\) => Item,/g)?.length, 1);
+  // Other request bodies reuse their `<operationId>RequestBody` export.
+  assert.match(table, /"request": \(\) => createItemRequestBody,/);
+  // Only the inline 4XX and default response schemas are compiled for the middleware.
+  assert.equal(table.match(/z\.compile/g)?.length, 2);
+});
+
+void test("validation middleware validates JSON bodies through openapi-fetch", async () => {
+  const generated = await loadGenerated(middlewareSourceFor());
+  const OpenApiValidationError = validationErrorClass(generated.schemas);
+
+  const put = (client: ReturnType<typeof createClient>, body: unknown) =>
+    client.PUT("/items/{id}" as never, { params: { path: { id: "1" } }, body } as never);
+
+  try {
+    const valid = middlewareClient(generated.schemas, () => json(200, { item_name: "Lamp" }));
+    const ok = await put(valid.client, { item_name: "Lamp" });
+    assert.deepEqual(ok.data, { item_name: "Lamp" });
+    assert.equal(valid.sent.length, 1);
+    // The middleware reads a clone, so the request body still reaches fetch.
+    assert.deepEqual(await valid.sent[0]?.json(), { item_name: "Lamp" });
+
+    await assert.rejects(put(valid.client, { item_name: "" }), (error: unknown) => {
+      assert.ok(error instanceof OpenApiValidationError);
+      assert.equal(error.direction, "request");
+      assert.equal(error.method, "PUT");
+      assert.equal(error.schemaPath, "/items/{id}");
+      assert.equal(error.status, undefined);
+      assert.deepEqual(error.issues[0]?.path, ["item_name"]);
+      assert.match(error.message, /^Invalid request body for PUT \/items\/\{id\}\n/);
+      return true;
+    });
+
+    assert.equal(valid.sent.length, 1, "an invalid request is not sent");
+
+    const wrong = middlewareClient(generated.schemas, () => json(200, { name: "Lamp" }));
+
+    await assert.rejects(put(wrong.client, { item_name: "Lamp" }), (error: unknown) => {
+      assert.ok(error instanceof OpenApiValidationError);
+      assert.equal(error.direction, "response");
+      assert.equal(error.status, 200);
+      assert.match(error.message, /^Invalid response body for PUT \/items\/\{id\} 200\n/);
+      return true;
+    });
+
+    const ranged = (body: unknown) =>
+      middlewareClient(generated.schemas, () => json(404, body, "application/problem+json"));
+
+    assert.deepEqual(
+      (await put(ranged({ title: "Missing" }).client, { item_name: "Lamp" })).error,
+      {
+        title: "Missing",
+      },
+    );
+
+    await assert.rejects(
+      put(ranged({ detail: "Missing" }).client, { item_name: "Lamp" }),
+      (error: unknown) => error instanceof OpenApiValidationError && error.status === 404,
+    );
+
+    // `default` documents `*/*`, which matches any JSON response.
+    await assert.rejects(
+      put(middlewareClient(generated.schemas, () => json(500, { error_code: "E1" })).client, {
+        item_name: "Lamp",
+      }),
+      (error: unknown) => error instanceof OpenApiValidationError && error.status === 500,
+    );
+
+    const skipped = [
+      () => new Response(null, { status: 204 }),
+      () => new Response("oops", { status: 500, headers: { "content-type": "text/plain" } }),
+    ];
+
+    await Effect.runPromise(
+      Effect.forEach(
+        skipped,
+        (respond) =>
+          Effect.promise(() =>
+            put(middlewareClient(generated.schemas, respond).client, {
+              item_name: "Lamp",
+            }),
+          ),
+        { discard: true },
+      ),
+    );
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("camelCase validation middleware validates the wire field names", async () => {
+  const source = middlewareSourceFor({ camelCase: true });
+  assert.match(source, /const wireDefinitions: Record<"Item", z\.core\.JSONSchema\.JSONSchema>/);
+  // The wire Item validator is compiled once and shared by the request and the 200 response.
+  assert.match(source, /const __openapiWireComponents = \{\n {2}"Item": __openapiLazy\(/);
+  assert.equal(source.match(/__openapiWireComponents\.Item/g)?.length, 2);
+  const generated = await loadGenerated(source);
+  const { onRequestValidation, onResponseValidation, Item } = generated.schemas;
+
+  const request = (body: unknown) =>
+    new Request("https://api.test/items/1", {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    assert.deepEqual(Item.parse({ itemName: "Lamp" }), { itemName: "Lamp" });
+    const schemaPath = "/items/{id}";
+
+    assert.equal(
+      await onRequestValidation({ request: request({ item_name: "Lamp" }), schemaPath }),
+      undefined,
+    );
+
+    await assert.rejects(
+      onRequestValidation({ request: request({ itemName: "Lamp" }), schemaPath }),
+    );
+
+    assert.equal(
+      await onResponseValidation({
+        request: request({}),
+        response: json(200, { item_name: "Lamp" }),
+        schemaPath,
+      }),
+      undefined,
+    );
+
+    await assert.rejects(
+      onResponseValidation({
+        request: request({}),
+        response: json(200, { itemName: "Lamp" }),
+        schemaPath,
+      }),
+    );
+  } finally {
+    await generated.dispose();
+  }
+});
+
+void test("validation middleware names cannot be reused by component exports", () => {
+  const failure = Effect.runSync(
+    Effect.flip(
+      generateZod(
+        Effect.runSync(
+          decode({
+            ...middlewareDocument,
+            components: {
+              schemas: {
+                ...middlewareDocument.components.schemas,
+                OpenApiValidationError: { type: "object" },
+              },
+            },
+          }),
+        ),
+        { validationMiddleware: true },
+      ),
+    ),
+  );
+
+  assert.equal(failure.message, "OpenApiValidationError: Cannot emit this name as a schema export");
+});
+
+void test("validation middleware fails generation for an unsupported response schema", () => {
+  const failure = Effect.runSync(
+    Effect.flip(
+      generateZod(
+        Effect.runSync(
+          decode({
+            ...middlewareDocument,
+            paths: {
+              "/items": {
+                get: {
+                  operationId: "listItems",
+                  responses: {
+                    "200": {
+                      description: "Items",
+                      content: { "application/json": { schema: { if: { type: "string" } } } },
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        ),
+        { validationMiddleware: true },
+      ),
+    ),
+  );
+
+  assert.equal(
+    failure.message,
+    "GET /items/responses/200/content/application/json: Unsupported keyword if",
+  );
 });

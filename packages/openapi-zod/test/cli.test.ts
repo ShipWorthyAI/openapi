@@ -111,6 +111,7 @@ async function generateAndTypeCheck(
   args: readonly string[],
   check: (files: { schemas: string; types: string }) => void,
   consumer: string,
+  compilerArgs: readonly string[] = [],
 ) {
   const directory = await mkdtemp(resolve(import.meta.dirname, ".generation-"));
   const input = resolve(directory, "schema.json");
@@ -156,6 +157,7 @@ async function generateAndTypeCheck(
         "ESNext",
         "--moduleResolution",
         "bundler",
+        ...compilerArgs,
         resolve(directory, "consumer.ts"),
       ]);
     }
@@ -235,5 +237,35 @@ void test("CLI writes a discriminator helper that type-checks in strict mode", a
       const pet: components["schemas"]["Pet"] = Pet.parse({ kind: "cat", lives: 9 });
       void pet;
     `,
+  );
+});
+
+void test("CLI writes validation middleware that openapi-fetch accepts", async () => {
+  await generateAndTypeCheck(
+    snakeSchema,
+    ["--camel-case", "--validation-middleware"],
+    ({ schemas }) => {
+      assert.match(schemas, /export async function onRequestValidation\(/);
+      assert.match(schemas, /export async function onResponseValidation\(/);
+      // The middleware sees the wire body, so it keeps the API field names.
+      assert.match(schemas, /const wireDefinitions: Record<"ReservationInput"/);
+      assert.match(schemas, /"party_size"/);
+    },
+    `
+      import createClient from "@shipworthy/openapi-fetch";
+      import {
+        OpenApiValidationError,
+        onRequestValidation,
+        onResponseValidation,
+      } from "./fixture/zod-schema";
+      import type { paths } from "./fixture/types";
+      const client = createClient<paths>({ baseUrl: "https://api.test" });
+      client.use({ onRequest: onRequestValidation, onResponse: onResponseValidation });
+      const issues = (error: unknown): number =>
+        error instanceof OpenApiValidationError ? error.issues.length : 0;
+      void issues;
+    `,
+    // openapi-fetch resolves to its TypeScript source inside this workspace.
+    ["--allowImportingTsExtensions"],
   );
 });

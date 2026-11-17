@@ -7,7 +7,7 @@ type Schemas = HotelsApiComponents["schemas"];
 
 export const isGetRatesByHotelIds = (
   request: GetRatesRequest,
-): request is Schemas["GetRatesByHotelIds"] => "hotel_ids" in request;
+): request is Schemas["GetRatesByHotelIds"] => "hotelIds" in request;
 
 export const isGetRatesByGeo = (request: GetRatesRequest): request is Schemas["GetRatesByGeo"] =>
   "geo" in request;
@@ -18,7 +18,7 @@ export const isGetRatesByMarket = (
 
 export const isGetRatesByPlaceId = (
   request: GetRatesRequest,
-): request is Schemas["GetRatesByPlaceId"] => "place_id" in request;
+): request is Schemas["GetRatesByPlaceId"] => "placeId" in request;
 
 // Selector-based searches may also include a query filter.
 export const isGetRatesByQuery = (

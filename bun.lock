@@ -74,6 +74,7 @@
         "@shipworthy/typescript-config": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
+        "@types/react": "catalog:",
         "react": "catalog:",
       },
       "peerDependencies": {
@@ -247,6 +248,7 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
+        "@shipworthy/openapi-fetch": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "typescript": "catalog:",
@@ -346,6 +348,7 @@
       },
       "devDependencies": {
         "@effect/platform-node": "catalog:",
+        "@shipworthy/openapi-fetch": "workspace:*",
         "@shipworthy/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "typescript": "catalog:",
