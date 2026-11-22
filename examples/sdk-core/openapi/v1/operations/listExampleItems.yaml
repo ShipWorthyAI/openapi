@@ -1,0 +1,23 @@
+summary: List example items
+operationId: listExampleItems
+tags:
+  - Examples
+description: A placeholder operation that the overlay removes, to show operation filtering.
+security:
+  - bearerAuth: []
+responses:
+  "200":
+    description: Example items
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: ../schemas/ExampleItem.yaml
+  "401":
+    description: Missing or invalid bearer token

@@ -1,10 +1,7 @@
-import { applyOverlayWithWarnings } from "@shipworthy/openapi-overlay";
-import { bundleDocument } from "@shipworthy/openapi-parser";
-import { Console, Effect, FileSystem, Path, Schema } from "effect";
+import { Console, Effect, FileSystem, Path } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
-import { HttpClient, HttpClientResponse } from "effect/http";
-import { fileURLToPath } from "node:url";
-import { asCliError, schemaSource } from "../input.ts";
+import { asCliError, SchemaInput, schemaSource } from "../input.ts";
+import { overlaySource, removeUnusedComponentsFlag } from "./apply.ts";
 
 const run = Effect.fn("overlay")(function* ({
   input,
@@ -17,38 +14,14 @@ const run = Effect.fn("overlay")(function* ({
   readonly output: string;
   readonly removeUnusedComponents: boolean;
 }) {
-  const document = yield* bundleDocument(input);
+  const source = SchemaInput.Url({ url: input });
+  const text = yield* overlaySource(source, overlay, { removeUnusedComponents });
   const fs = yield* FileSystem.FileSystem;
-
-  const text =
-    overlay.protocol === "file:"
-      ? yield* fs.readFileString(fileURLToPath(overlay))
-      : yield* HttpClient.get(overlay.href).pipe(
-          Effect.flatMap(HttpClientResponse.filterStatusOk),
-          Effect.flatMap((response) => response.text),
-        );
-
-  const result = yield* applyOverlayWithWarnings(document, text, { removeUnusedComponents });
-
-  yield* Effect.forEach(
-    result.warnings,
-    (warning) =>
-      Console.warn(
-        `WARNING Overlay action ${warning.action} (${warning.target}): ${warning.message}`,
-      ),
-    { discard: true },
-  );
-
   const path = yield* Path.Path;
   const outputPath = path.resolve(output);
 
   yield* fs.makeDirectory(path.dirname(outputPath), { recursive: true });
-
-  const serialized = yield* Schema.encodeEffect(
-    Schema.fromJsonString(Schema.Unknown, { space: 2 }),
-  )(result.document);
-
-  yield* fs.writeFileString(outputPath, `${serialized}\n`);
+  yield* fs.writeFileString(outputPath, text);
   yield* Console.log(`${input.href} + ${overlay.href} → ${output}`);
 }, Effect.mapError(asCliError));
 
@@ -67,12 +40,7 @@ export const overlay = Command.make(
       Flag.withAlias("o"),
       Flag.withDescription("Output JSON file. Parent directories are created."),
     ),
-    removeUnusedComponents: Flag.Boolean("remove-unused-components").pipe(
-      Flag.withDescription(
-        "Remove paths without operations and unreachable components after overlaying.",
-      ),
-      Flag.withDefault(false),
-    ),
+    removeUnusedComponents: removeUnusedComponentsFlag,
   },
   run,
 ).pipe(

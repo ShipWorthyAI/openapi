@@ -1,17 +1,20 @@
 import { loadService } from "@shipworthy/openapi-generator";
 import { Clock, Effect, Option, Path, Result } from "effect";
 import { Argument, CliError, Command, Flag } from "effect/cli";
-import { asCliError, schemaSource } from "../input.ts";
+import { asCliError, schemaLabel, schemaLocation, schemaSource, schemaText } from "../input.ts";
+import { overlaySource, removeUnusedComponentsFlag } from "../overlay/apply.ts";
 import { typeFlags, type TypeFlags } from "./flags.ts";
 import { checkFiles, writeFiles, writeStdout } from "./output.ts";
 import { ClientName, planFiles } from "./plan.ts";
 import { renderFile } from "./render.ts";
-import { readSource, readStdin } from "./source.ts";
+import { readInput } from "./source.ts";
 
 const run = Effect.fn("generate")(function* (
   flags: {
     readonly plugins: ReadonlyArray<string>;
     readonly input: Option.Option<URL>;
+    readonly overlay: Option.Option<URL>;
+    readonly removeUnusedComponents: boolean;
     readonly output: Option.Option<string>;
     readonly name: Option.Option<string>;
     readonly wireTypes: boolean;
@@ -30,6 +33,8 @@ const run = Effect.fn("generate")(function* (
     wireTypes: flags.wireTypes,
     validationMiddleware: flags.validationMiddleware,
     check: flags.check,
+    overlay: Option.isSome(flags.overlay),
+    removeUnusedComponents: flags.removeUnusedComponents,
   });
 
   if (Result.isFailure(files)) {
@@ -38,15 +43,21 @@ const run = Effect.fn("generate")(function* (
 
   const started = yield* Clock.currentTimeMillis;
 
-  const source = yield* Option.match(flags.input, {
-    onNone: readStdin,
-    onSome: (input) => Effect.succeed<URL | string>(input),
-  });
+  const input = yield* readInput(flags.input);
 
-  const [text, model] = yield* Effect.all(
-    [typeof source === "string" ? Effect.succeed(source) : readSource(source), loadService(source)],
-    { concurrency: "unbounded" },
-  );
+  // Stamps hash the text the model is loaded from: the input, or the overlaid document.
+  const { text, model } = yield* Option.match(flags.overlay, {
+    onNone: () =>
+      Effect.all(
+        { text: schemaText(input), model: loadService(schemaLocation(input)) },
+        { concurrency: "unbounded" },
+      ),
+    onSome: (overlay) =>
+      overlaySource(input, overlay, { removeUnusedComponents: flags.removeUnusedComponents }).pipe(
+        Effect.bindTo("text"),
+        Effect.bind("model", ({ text }) => loadService(text)),
+      ),
+  });
 
   const directory = path.resolve(Option.getOrElse(flags.output, () => "."));
 
@@ -70,7 +81,10 @@ const run = Effect.fn("generate")(function* (
         ? checkFiles(rendered, directory)
         : writeFiles(rendered, {
             directory,
-            label: Option.match(flags.input, { onNone: () => "stdin", onSome: (url) => url.href }),
+            label: Option.match(flags.overlay, {
+              onNone: () => schemaLabel(input),
+              onSome: (overlay) => `${schemaLabel(input)} + ${overlay.href}`,
+            }),
             outputLabel: output,
             started,
           }),
@@ -89,14 +103,17 @@ export const generate = Command.make(
     input: Flag.String("input").pipe(
       Flag.withAlias("i"),
       Flag.withDescription("OpenAPI schema file or URL. Reads stdin when omitted."),
+      Flag.mapEffect(schemaSource),
       Flag.optional,
-      Flag.mapEffect((input) =>
-        Option.match(input, {
-          onNone: () => Effect.succeed(Option.none<URL>()),
-          onSome: (value) => Effect.asSome(schemaSource(value)),
-        }),
-      ),
     ),
+    overlay: Flag.String("overlay").pipe(
+      Flag.withDescription(
+        "Overlay JSON/YAML file or URL. Bundles the input and applies the overlay before generating.",
+      ),
+      Flag.mapEffect(schemaSource),
+      Flag.optional,
+    ),
+    removeUnusedComponents: removeUnusedComponentsFlag,
     output: Flag.String("output").pipe(
       Flag.withAlias("o"),
       Flag.withDescription(
@@ -151,6 +168,12 @@ export const generate = Command.make(
         "openapi generate zod standard-schema -i ./openapi.json -o ./src/generated/api --validation-middleware",
       description:
         "Also export openapi-fetch validation middleware from zod-schema.ts and standard-schema.ts",
+    },
+    {
+      command:
+        "openapi generate typescript tanstack-query -i https://example.com/openapi.yaml --overlay ./openapi/api.overlay.yaml --remove-unused-components -o ./src/generated/api",
+      description:
+        "Apply an overlay, prune unreachable components, then write client.ts and types.ts",
     },
     {
       command: "openapi generate typescript < ./openapi.json > ./types.ts",

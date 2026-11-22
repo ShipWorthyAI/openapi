@@ -88,6 +88,9 @@ interface PlanOptions {
   /** `--validation-middleware`. Plugins without middleware support ignore it. */
   readonly validationMiddleware: boolean;
   readonly check: boolean;
+  /** Whether `--overlay` was given. */
+  readonly overlay: boolean;
+  readonly removeUnusedComponents: boolean;
 }
 
 const isPluginName = Schema.is(Schema.Literals(pluginNames));
@@ -129,6 +132,10 @@ export function planFiles(options: PlanOptions): Result.Result<ReadonlyArray<Out
 
   if (options.check && Option.isNone(options.output)) {
     return Result.fail("--check requires --output.");
+  }
+
+  if (options.removeUnusedComponents && !options.overlay) {
+    return Result.fail("--remove-unused-components requires --overlay.");
   }
 
   const camelCase = options.camelCase;

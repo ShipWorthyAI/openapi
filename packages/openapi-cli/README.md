@@ -233,7 +233,7 @@ ERROR
 Runs one or more generator plugins against one OpenAPI document and writes one file per plugin into an output directory.
 
 ```text
-openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--validation-middleware] [--check] [type flags]
+openapi generate <plugins...> [-i <input>] [--overlay <overlay> [--remove-unused-components]] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--validation-middleware] [--check] [type flags]
 ```
 
 ```sh
@@ -244,6 +244,8 @@ openapi generate typescript -i ./openapi.yaml -o ./src/generated            # wr
 openapi generate typescript -i https://example.com/openapi.json > schema.ts # one file, printed to stdout
 cat openapi.yaml | openapi generate standard-schema > schemas.ts            # reads stdin
 openapi generate typescript zod -i ./openapi.yaml -o ./src/generated --check # CI drift check
+openapi generate typescript tanstack-query -i https://example.com/openapi.yaml --overlay public.overlay.yaml --remove-unused-components -o src/generated/public
+# applies the overlay, prunes unreachable components, then writes client.ts and types.ts
 ```
 
 #### Plugins
@@ -261,16 +263,18 @@ Pass at least one plugin. Each plugin writes one file with a fixed name:
 
 #### Options
 
-| Flag                      | Type                                 | Default                            | Description                                                                                                                                                                                                                                   |
-| ------------------------- | ------------------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--input`, `-i`           | path or `http:`/`https:`/`file:` URL | stdin                              | OpenAPI document (JSON or YAML). Reads the document from stdin when omitted. An input containing `*` fails with `Globbing is unsupported.`                                                                                                    |
-| `--output`, `-o`          | directory                            | stdout                             | Directory that receives the files. It is created recursively. When omitted, the run must produce exactly one file, which is written to stdout.                                                                                                |
-| `--name`                  | string                               | basename of the output directory   | Used only by `tanstack-query`: the PascalCase prefix of generated exports and the query-key prefix. Must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. Ignored when `tanstack-query` is not selected. See [Client name](#client-name). |
-| `--camel-case`            | boolean                              | `false`                            | Spell snake_case field and parameter names in camelCase in every generated file. See [camelCase and wire types](#camelcase-and-wire-types).                                                                                                   |
-| `--wire-types`            | boolean                              | `false`                            | Also write `wire-types.ts`: the same types as `types.ts` with the API's field names. Requires `--camel-case` and a plugin that writes `types.ts`.                                                                                             |
-| `--validation-middleware` | boolean                              | `false`                            | Also export openapi-fetch `onRequestValidation` and `onResponseValidation` middleware from `zod-schema.ts` and `standard-schema.ts`. Plugins without middleware ignore it. See [Validation middleware](#validation-middleware).               |
-| `--check`                 | boolean                              | `false`                            | Writes nothing. Compares every generated file with the existing file in `--output` and exits `1` when any differs or is missing. Requires `--output`.                                                                                         |
-| type flags                | boolean                              | `false` (`--array-length`: `true`) | See the next table. They apply to `types.ts` and `wire-types.ts` and are ignored when neither is generated.                                                                                                                                   |
+| Flag                         | Type                                 | Default                            | Description                                                                                                                                                                                                                                   |
+| ---------------------------- | ------------------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--input`, `-i`              | path or `http:`/`https:`/`file:` URL | stdin                              | OpenAPI document (JSON or YAML). Reads the document from stdin when omitted. An input containing `*` fails with `Globbing is unsupported.`                                                                                                    |
+| `--overlay`                  | path or `http:`/`https:`/`file:` URL | none                               | Overlay JSON/YAML file or URL. The input is bundled and the overlay applied, exactly as `openapi overlay` does, before generating. Overlay warnings go to stderr. See [Overlays](#overlays).                                                  |
+| `--remove-unused-components` | boolean                              | `false`                            | Remove paths without operations and unreachable components after overlaying. Requires `--overlay`.                                                                                                                                            |
+| `--output`, `-o`             | directory                            | stdout                             | Directory that receives the files. It is created recursively. When omitted, the run must produce exactly one file, which is written to stdout.                                                                                                |
+| `--name`                     | string                               | basename of the output directory   | Used only by `tanstack-query`: the PascalCase prefix of generated exports and the query-key prefix. Must match `^[a-zA-Z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$`. Ignored when `tanstack-query` is not selected. See [Client name](#client-name). |
+| `--camel-case`               | boolean                              | `false`                            | Spell snake_case field and parameter names in camelCase in every generated file. See [camelCase and wire types](#camelcase-and-wire-types).                                                                                                   |
+| `--wire-types`               | boolean                              | `false`                            | Also write `wire-types.ts`: the same types as `types.ts` with the API's field names. Requires `--camel-case` and a plugin that writes `types.ts`.                                                                                             |
+| `--validation-middleware`    | boolean                              | `false`                            | Also export openapi-fetch `onRequestValidation` and `onResponseValidation` middleware from `zod-schema.ts` and `standard-schema.ts`. Plugins without middleware ignore it. See [Validation middleware](#validation-middleware).               |
+| `--check`                    | boolean                              | `false`                            | Writes nothing. Compares every generated file with the existing file in `--output` and exits `1` when any differs or is missing. Requires `--output`.                                                                                         |
+| type flags                   | boolean                              | `false` (`--array-length`: `true`) | See the next table. They apply to `types.ts` and `wire-types.ts` and are ignored when neither is generated.                                                                                                                                   |
 
 Type-generation flags. All are boolean and default to `false` except `--array-length`, which
 defaults to `true`:
@@ -316,6 +320,15 @@ Enum and const values keep the API's spelling. When two property names at one ob
 
 `--wire-types` also writes `wire-types.ts`: the same types as `types.ts`, with the API's field names. Import its `operations` or `components` types when a custom `fetch` or mock `Response` handles the API's snake_case payload before client conversion. It requires `--camel-case` and at least one of `typescript`, `zod`, or `tanstack-query`.
 
+#### Overlays
+
+`--overlay` applies an [OpenAPI Overlay](#openapi-overlay-input---overlay-overlay--o-output) to the input before generating, so one command replaces `openapi overlay … -o <file>` followed by `openapi generate -i <file>`. The input, including stdin, is bundled and upgraded to OpenAPI 3.1, the overlay actions run, and `--remove-unused-components` optionally prunes the result. Each skipped action is logged to stderr as a warning, as with `openapi overlay`. Files generated this way are identical to files generated from the JSON that `openapi overlay` writes for the same input and flags, stamps included, so `--check` passes on output from either workflow and fails when the overlay changes.
+
+```sh
+openapi generate typescript tanstack-query -i https://example.com/openapi.yaml \
+  --overlay public.overlay.yaml --remove-unused-components -o src/generated/public
+```
+
 #### stdin and stdout
 
 - Without `-i`, the document is read from stdin. Invalid invocations fail before stdin is read.
@@ -331,6 +344,7 @@ The document is read and parsed once, however many plugins run. All files are th
 
 ```text
 <input URL or stdin> → <output>/<file> [<elapsed>]
+<input URL or stdin> + <overlay URL> → <output>/<file> [<elapsed>]   # with --overlay
 ```
 
 The input is shown as a URL (`file:///…` for local paths) or as `stdin`, and the output directory as you typed it, without trailing slashes. Every line of one run shows the same elapsed time.
@@ -344,8 +358,7 @@ deprecated members, or declare path parameters. See the
 [overlay examples](../openapi-overlay/README.md#preparing-a-document-for-generation).
 
 ```sh
-openapi overlay openapi.yaml --overlay types.overlay.yaml -o types.openapi.json
-openapi generate typescript -i types.openapi.json -o src/generated
+openapi generate typescript -i openapi.yaml --overlay types.overlay.yaml -o src/generated
 ```
 
 #### `zod` output (`zod-schema.ts`)
@@ -450,7 +463,7 @@ Every generated file starts with a stamped header:
  */
 ```
 
-The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers the document text. It does not depend on the document's location, so reading the same document from stdin, another path, or a URL gives the same stamp.
+The stamp is `<generator package>@<generator version>:<sha256>`. The hash covers the document text. It does not depend on the document's location, so reading the same document from stdin, another path, or a URL gives the same stamp. With `--overlay`, the hash covers the overlaid document, serialized as `openapi overlay` writes it, so changing the input or the overlay changes the stamp.
 
 Files generated with `--camel-case` add a `Field casing: camelCase` line after the stamp, and their hash covers the document text plus the casing setting, so toggling the flag changes the stamp. `wire-types.ts` never has the casing line and always uses the plain hash.
 
@@ -493,6 +506,7 @@ Each failure prints an `ERROR` block to stderr and exits with `1`. Common messag
 | `--wire-types requires --camel-case.`                                                                                                                                                          | `--wire-types` was passed without `--camel-case`.                                                   |
 | `--wire-types requires typescript, zod, or tanstack-query.`                                                                                                                                    | No selected plugin writes `types.ts`.                                                               |
 | `--check requires --output.`                                                                                                                                                                   | `--check` was passed without `-o`.                                                                  |
+| `--remove-unused-components requires --overlay.`                                                                                                                                               | `generate --remove-unused-components` was passed without `--overlay`.                               |
 | `--output is required when generating more than one file.`                                                                                                                                     | `-o` was omitted and the run would write more than one file.                                        |
 | `--output must be a directory. Each plugin writes its own file inside it.`                                                                                                                     | `-o` ends in `.ts`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs`, or `.json`.                              |
 | `Invalid value for flag --name: "<value>". Expected: Schema validation failed: --name must start with a letter and contain only letters, numbers, and single hyphen or underscore separators.` | `--name` does not match the allowed pattern.                                                        |
@@ -520,7 +534,7 @@ When `generate` fails validation or any file fails to generate, nothing is writt
 - Commands:
   - `openapi overlay <input> --overlay <overlay> -o <output> [--remove-unused-components]`: bundles and upgrades first, then applies actions using the declared Overlay 1.0 or 1.1 version and writes JSON. The optional flag prunes paths without operations and unreachable components after overlaying.
   - `openapi lint [--strict] <input>`: exits 1 only on errors such as duplicate `operationId`. `--strict` also fails on every `error`-severity `oas` rule and on syntax errors.
-  - `openapi generate <plugins...> [-i <input>] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--validation-middleware] [--check] [type flags]`: one command runs any number of plugins against one document. Plugin order does not matter. Nothing is written if any file fails to generate.
+  - `openapi generate <plugins...> [-i <input>] [--overlay <overlay> [--remove-unused-components]] [-o <dir>] [--name <name>] [--camel-case] [--wire-types] [--validation-middleware] [--check] [type flags]`: one command runs any number of plugins against one document. Plugin order does not matter. `--overlay` bundles the input and applies an overlay first (as `openapi overlay` does); `--remove-unused-components` then prunes it and requires `--overlay`. Nothing is written if any file fails to generate.
 - `generate` plugin → file in the `-o` directory: `typescript` → `types.ts`, `zod` → `zod-schema.ts`, `tanstack-query` → `client.ts`, `standard-schema` → `standard-schema.ts`. `types.ts` is also written (once) when `zod` or `tanstack-query` is selected. `tanstack-query` names its exports after `--name`, which defaults to the output directory's basename.
 - `--camel-case` applies to every generated file. `--wire-types` (requires `--camel-case` and a plugin that writes `types.ts`) also writes `wire-types.ts` with the API's field names.
 - `--validation-middleware` also exports openapi-fetch `onRequestValidation` and `onResponseValidation` middleware from `zod-schema.ts` and `standard-schema.ts`. Plugins without middleware ignore it. They throw `OpenApiValidationError` for JSON bodies that do not match the document.

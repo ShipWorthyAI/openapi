@@ -1,5 +1,6 @@
-# Subset of Core's V6 contract (`/api-docs/v6/swagger.yaml`). The real SDK selects
-# only `createReservationToken` from the full document.
+# Subset of Core's V6 contract (`/api-docs/v6/swagger.yaml`) plus a placeholder
+# `listExampleItems` operation. `../core.overlay.yaml` keeps only `createReservationToken`,
+# as the real SDK does with the full document.
 openapi: 3.0.1
 info:
   title: Core API V6
@@ -7,6 +8,8 @@ info:
   description: "Clean, performance-optimized API with standardized patterns"
 components:
   schemas:
+    ExampleItem:
+      $ref: ./schemas/ExampleItem.yaml
     ReservationIdentityToken:
       $ref: ./schemas/ReservationIdentityToken.yaml
   securitySchemes:
@@ -15,6 +18,9 @@ components:
 security:
   - bearerAuth: []
 paths:
+  /api/v6/app/example_items:
+    get:
+      $ref: ./operations/listExampleItems.yaml
   /api/v6/app/reservations/token:
     post:
       $ref: ./operations/createReservationToken.yaml

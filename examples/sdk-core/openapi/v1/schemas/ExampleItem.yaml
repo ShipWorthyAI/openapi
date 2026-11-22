@@ -1,0 +1,12 @@
+type: object
+description: A placeholder schema used only by `listExampleItems`, which `--remove-unused-components` drops.
+required:
+  - id
+  - name
+properties:
+  id:
+    type: string
+    example: item_1
+  name:
+    type: string
+    example: Example item

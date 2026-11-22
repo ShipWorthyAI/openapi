@@ -1,0 +1,8 @@
+overlay: 1.0.0
+info:
+  title: Core SDK operations
+  version: 1.0.0
+actions:
+  # Keep only the operations this SDK exports. Add an operationId here to export it.
+  - target: "$.paths.*[?@.responses && @.operationId != 'createReservationToken']"
+    remove: true

@@ -20,7 +20,7 @@ steps {
   ["check_added_large_files"] = Builtins.check_added_large_files
   ["detect_private_key"] = Builtins.detect_private_key
   ["mise"] = Builtins.mise
-  ["ox_lint"] = Builtins.ox_lint
+  ["ox_lint"] = (Builtins.ox_lint) { exclude = generated }
   ["oxfmt"] = (Builtins.oxfmt) {
     exclude = List("**/pnpm-lock.yaml", "**/package-lock.json") + generated
   }

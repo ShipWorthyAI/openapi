@@ -93,6 +93,54 @@ const reservations = (title = "Reservations") => ({
   },
 });
 
+/** Two operations, each with its own response schema, in OpenAPI 3.0 so bundling upgrades it. */
+const catalog = {
+  openapi: "3.0.3",
+  info: { title: "Catalog", version: "1" },
+  paths: {
+    "/pets": {
+      get: {
+        operationId: "listPets",
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Pet" } } },
+          },
+        },
+      },
+    },
+    "/internal": {
+      get: {
+        operationId: "getInternal",
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Internal" } } },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      Pet: { type: "object", properties: { name: { type: "string", nullable: true } } },
+      Internal: { type: "object", properties: { secret: { type: "string" } } },
+    },
+  },
+};
+
+/** Removes `/internal`; the second action matches nothing, so it warns. */
+const catalogOverlay = (title = "Public catalog") => `overlay: 1.1.0
+info: { title: Public, version: '1' }
+actions:
+  - target: "$.paths['/internal']"
+    remove: true
+  - target: $.components.schemas.Missing
+    update: { description: stale }
+  - target: $.info.title
+    update: ${title}
+`;
+
 /** A mapped `oneOf` discriminator over an `allOf` branch. */
 const discriminated = {
   openapi: "3.1.0",
@@ -340,6 +388,10 @@ test("rejects invalid combinations before writing anything", async (context) => 
       "--wire-types requires typescript, zod, or tanstack-query.",
     ],
     [["typescript", "--check"], "--check requires --output."],
+    [
+      ["typescript", "-o", "out/pets", "--remove-unused-components"],
+      "--remove-unused-components requires --overlay.",
+    ],
     [["zod"], "--output is required when generating more than one file."],
     [
       ["typescript", "--camel-case", "--wire-types"],
@@ -624,4 +676,136 @@ test("zod reports the version resolved from its output directory", async (contex
   expect(error).toContain("out/pets/node_modules/zod/package.json");
   expect(error).toContain(`require zod@${requiredZod}`);
   expect(cli.files("out/pets")).toEqual(["node_modules"]);
+});
+
+test("--overlay generates from the overlaid document and warns on stderr", async (context) => {
+  const { expect } = context;
+  const cli = setup(context, catalog);
+  writeFileSync(join(cli.dir, "public.overlay.yaml"), catalogOverlay());
+  const args = ["-i", "a.json", "--overlay", "public.overlay.yaml"];
+
+  const [plain, overlaid, pruned] = await Promise.all([
+    cli.run(["generate", "typescript", "tanstack-query", "-i", "a.json", "-o", "out/plain/pets"]),
+    cli.run(["generate", "typescript", "tanstack-query", ...args, "-o", "out/overlaid/pets"]),
+    cli.run([
+      "generate",
+      "typescript",
+      "tanstack-query",
+      ...args,
+      "--remove-unused-components",
+      "-o",
+      "out/pruned/pets",
+    ]),
+  ]);
+
+  for (const result of [plain, overlaid, pruned]) expect(result.success, result.stderr).toBe(true);
+
+  expect(cli.read("out/plain/pets/client.ts")).toContain("getInternal");
+  expect(cli.read("out/plain/pets/types.ts")).toContain('"/internal"');
+  expect(plain.stderr).toBe("");
+
+  const warning =
+    "WARNING Overlay action 2 ($.components.schemas.Missing): Target matched no nodes";
+
+  for (const [result, directory] of [
+    [overlaid, "out/overlaid/pets"],
+    [pruned, "out/pruned/pets"],
+  ] as const) {
+    expect(result.stderr).toContain(warning);
+    expect(result.stdout).not.toContain("WARNING");
+    expect(cli.read(`${directory}/client.ts`)).not.toContain("getInternal");
+    expect(cli.read(`${directory}/client.ts`)).toContain("listPets");
+    expect(cli.read(`${directory}/types.ts`)).not.toContain('"/internal"');
+  }
+
+  // Without pruning, the schema only /internal used is still generated.
+  expect(cli.read("out/overlaid/pets/types.ts")).toContain("Internal:");
+  expect(cli.read("out/pruned/pets/types.ts")).not.toContain("Internal:");
+  expect(cli.read("out/pruned/pets/types.ts")).toContain("Pet:");
+
+  const href = (file: string) => pathToFileURL(join(cli.dir, file)).href;
+
+  expect(overlaid.stdout).toContain(
+    `${href("a.json")} + ${href("public.overlay.yaml")} → out/overlaid/pets/types.ts`,
+  );
+});
+
+test("--overlay output matches generating from the overlay command's file", async (context) => {
+  const { expect } = context;
+  const cli = setup(context, catalog);
+  writeFileSync(join(cli.dir, "public.overlay.yaml"), catalogOverlay());
+  const flags = ["--overlay", "public.overlay.yaml", "--remove-unused-components"];
+
+  await cli.ok("overlay", "a.json", ...flags, "-o", "overlaid.json");
+
+  await Promise.all([
+    cli.ok("generate", "zod", "tanstack-query", "-i", "overlaid.json", "-o", "out/two-step/pets"),
+    cli.ok(
+      "generate",
+      "zod",
+      "tanstack-query",
+      "-i",
+      "a.json",
+      ...flags,
+      "-o",
+      "out/one-step/pets",
+    ),
+  ]);
+
+  // Stamps hash the overlaid document, so they match the two-step workflow's.
+  expect(cli.snapshot("out/one-step/pets")).toEqual(cli.snapshot("out/two-step/pets"));
+});
+
+test("--check compares against output generated with the same overlay", async (context) => {
+  const { expect } = context;
+  const cli = setup(context, catalog);
+  writeFileSync(join(cli.dir, "public.overlay.yaml"), catalogOverlay());
+
+  const args = [
+    "generate",
+    "tanstack-query",
+    "-i",
+    "a.json",
+    "--overlay",
+    "public.overlay.yaml",
+    "-o",
+    "out/pets",
+  ];
+
+  await cli.ok(...args);
+  const generated = cli.snapshot("out/pets");
+  expect(await cli.ok(...args, "--check")).toBe("");
+
+  writeFileSync(join(cli.dir, "public.overlay.yaml"), catalogOverlay("Renamed catalog"));
+
+  expect(await cli.fails(...args, "--check")).toMatch(
+    /Generated files are not up-to-date: client\.ts, types\.ts$/m,
+  );
+
+  expect(cli.snapshot("out/pets")).toEqual(generated);
+});
+
+test("--overlay applies to a schema read from stdin", async (context) => {
+  const { expect } = context;
+  const cli = setup(context, catalog);
+  writeFileSync(join(cli.dir, "public.overlay.yaml"), catalogOverlay());
+  const flags = ["--overlay", "public.overlay.yaml", "--remove-unused-components"];
+
+  const [stdin] = await Promise.all([
+    cli.run(["generate", "typescript", ...flags], { stdin: JSON.stringify(catalog) }),
+    cli.ok("generate", "typescript", "-i", "a.json", ...flags, "-o", "out/pets"),
+  ]);
+
+  expect(stdin.success, stdin.stderr).toBe(true);
+  expect(stdin.stderr).toContain("WARNING Overlay action 2");
+  expect(stdin.stdout).not.toContain("Internal:");
+  expect(stdin.stdout).toBe(cli.read("out/pets/types.ts"));
+});
+
+test("--help documents --overlay and --remove-unused-components", async (context) => {
+  const { expect } = context;
+  const cli = setup(context);
+  const help = await cli.ok("generate", "--help");
+  expect(help).toContain("--overlay");
+  expect(help).toContain("--remove-unused-components");
 });
